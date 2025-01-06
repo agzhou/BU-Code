@@ -15,7 +15,9 @@
 % r = r(:, :, 1:2);
 % P_new.numSubFrames = 2;
 %%
-IQ = RcvData2IQ3D(RcvData, P);
+% IQ = RcvData2IQ3D(RcvData, P);
+
+IQ = RCA_DAS(RcvData, P, P.wl/2, P.wl/4);
 % IQ = RcvData2IQ3D(r, P_new);
 
 
