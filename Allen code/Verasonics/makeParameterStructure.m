@@ -1,0 +1,29 @@
+P.angles = angles;
+P.endDepth = endDepth;
+P.endDepthMM = endDepthMM;
+P.Event = Event;
+P.fps_target = fps_target;
+P.supFrameBurstRate = supFrameBurstRate;
+% P.flow_v_mm_s = flow_v_mm_s;
+P.maxAcqLength_adjusted = maxAcqLength_adjusted;
+P.maxAngle = maxAngle;
+P.Media = Media;
+P.na = na;
+% P.nf = nf;
+P.numSupFrames = numSupFrames;
+P.numSubFrames = numSubFrames;
+
+P.numElements = numElements;
+P.Receive = Receive;
+P.Resource = Resource;
+P.SeqControl = SeqControl;
+P.startDepth = startDepth;
+P.startDepthMM = startDepthMM;
+P.TGC = TGC;
+P.Trans = Trans;
+P.TW = TW;
+P.TX = TX;
+P.wl = wl;
+% P.L = L;
+
+P.TPC = TPC;
