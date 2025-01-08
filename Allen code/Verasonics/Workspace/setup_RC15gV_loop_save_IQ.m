@@ -21,6 +21,8 @@ mkdir(savepath)
 % tagtest = Hardware.enableAcquisitionTimeTagging(1);
 supFrameIndex = 0;
 
+ReconRegion = 5;
+
 runVSX = 1;
 simOrNot = 1;
 movePointsOrNot = 0;
@@ -28,7 +30,7 @@ movePointsOrNot = 0;
 initialVoltage = 1.6; % V
 
 startDepthMM = 0; % start depth in wavelengths
-endDepthMM = 20;
+endDepthMM = 10;
 
 fps_target = 500;   % Intended (sub)frame rate
 supFrameBurstRate = 0.5; % Defines spacing between end of superframe burst and the next burst after jumping
@@ -36,7 +38,7 @@ supFrameBurstRate = 0.5; % Defines spacing between end of superframe burst and t
 numChannels = 256; % enable channels
 
 numSupFrames = 1; % # of superframes, MUST BE ONE OR EVEN FOR VSX
-numSubFrames = 1; % # of subframes
+numSubFrames = 2; % # of subframes
 na = 11; % # of acquisitions per frame (acquisition pairs)
 maxAngle = 10; % degrees
 angleRange = [-maxAngle, maxAngle].*pi/180; % Angle range in radians
@@ -115,6 +117,7 @@ Media.function = 'movePointsZ3D'; % move points in _ dimension after each frame
 %% PData structure (Pixel Data --> image reconstruction range)
 % For 2D scans and slices of 3D scans, it's always a rectangular area at a
 % fixed location in the transducer coord system
+xyplane = 50;
 
 numElements = Trans.numelements./2; % the structure gives # row elements + # column elements
 
@@ -138,63 +141,21 @@ PData.Origin = [-half_probe_dist, half_probe_dist, startDepth];
 % Set a local region to view/use for processing
 PData.Region(1) = struct('Shape',struct('Name','PData'));
 
-PData.Region(2).Shape = struct('Name', 'Slice', 'Orientation', 'xz', ...
-                            'oPAIntersect', PData.Origin(2) - (numElements-1).*Trans.spacing./2); % out of Plane Axis Intersection
-PData.Region(3).Shape = struct('Name', 'Slice', 'Orientation', 'yz', ...
-                            'oPAIntersect', PData.Origin(1) + (numElements-1).*Trans.spacing./2);
-PData.Region(4).Shape = struct('Name', 'Slice', 'Orientation', 'xy', ...
-                            'oPAIntersect', Media.MP(3)); % currently set to the plane intersecting the only scatter point
+% PData.Region(2).Shape = struct('Name', 'Slice', 'Orientation', 'xz', ...
+%                             'oPAIntersect', PData.Origin(2) - (numElements-1).*Trans.spacing./2); % out of Plane Axis Intersection
+% PData.Region(3).Shape = struct('Name', 'Slice', 'Orientation', 'yz', ...
+%                             'oPAIntersect', PData.Origin(1) + (numElements-1).*Trans.spacing./2);
+% PData.Region(4).Shape = struct('Name', 'Slice', 'Orientation', 'xy', ...
+%                             'oPAIntersect', Media.MP(3)); % currently set to the plane intersecting the only scatter point
+PData(1).Region(2) = struct('Shape',struct('Name','Slice','Orientation','yz','oPAIntersect',PData.Origin(1)+PData.PDelta(2)*(PData.Size(2)-1)/2,'andWithPrev',1));
+PData(1).Region(3) = struct('Shape',struct('Name','Slice','Orientation','xz','oPAIntersect',PData.Origin(2)-PData.PDelta(1)*((PData.Size(1)-1)/2),'andWithPrev',1));
+PData(1).Region(4) = struct('Shape',struct('Name','Slice','Orientation','xy','oPAIntersect',xyplane,'andWithPrev',1));
 
-%     'Position', [0, 0, 10], ...
-%                      'width', PData.Size(2), 'height', PData.Size(1)./2);
-                    % Position is relative to the global coords
-% PData.Region = computeRegions(PData);
+PData.Region = computeRegions(PData);
 
-% Display window
-
-xd = 70;
-% 
-% xz
-% Resource.DisplayWindow(1).Title = 'Slice xz plane';
-% Resource.DisplayWindow(1).pdelta = 0.3; % pixel spacing (in wavelengths) on the display window, for all dimensions
-% llx = 100; % lower left corner x on screen
-% xmult = 200;
-% lly = 150; % lower left corner y
-% Resource.DisplayWindow(1).Position = [llx, lly, ...
-%                                       ceil(PData.Size(2).* PData.PDelta(1) ./ Resource.DisplayWindow(1).pdelta), ... % width (x)
-%                                       ceil(PData.Size(3).* PData.PDelta(3) ./ Resource.DisplayWindow(1).pdelta)]; % height (z)
-% Resource.DisplayWindow(1).ReferencePt = [PData.Origin(1), 0, PData.Origin(3)]; % Display Window location wrt transducer coords
-% Resource.DisplayWindow(1).AxesUnits = 'wavelengths'; % can change to mm
-% Resource.DisplayWindow(1).Colormap = gray(256);
-% Resource.DisplayWindow(1).Orientation = 'xz';
-% Resource.DisplayWindow(1).numFrames = numFrames; % Define buffer size for a history of displayed frames
-% 
-% % xy
-% Resource.DisplayWindow(2).Title = 'Slice xy plane';
-% Resource.DisplayWindow(2).pdelta = 0.3; % pixel spacing (in wavelengths) on the display window, for all dimensions
-% 
-% Resource.DisplayWindow(2).Position = [llx + 2.*xmult, lly, ...
-%                                       ceil(PData.Size(2).* PData.PDelta(1) ./ Resource.DisplayWindow(1).pdelta), ... % width (x)
-%                                       ceil(PData.Size(1).* PData.PDelta(2) ./ Resource.DisplayWindow(1).pdelta)]; % height (z)
-% Resource.DisplayWindow(2).ReferencePt = [PData.Origin(1), -PData.Origin(2), xd]; % Display Window location wrt transducer coords
-% Resource.DisplayWindow(2).AxesUnits = 'wavelengths'; % can change to mm
-% Resource.DisplayWindow(2).Colormap = gray(256);
-% Resource.DisplayWindow(2).Orientation = 'xy';
-% Resource.DisplayWindow(2).numFrames = numFrames; % Define buffer size for a history of displayed frames
-% 
-% % yz
-% Resource.DisplayWindow(3).Title = 'Slice yz plane';
-% Resource.DisplayWindow(3).pdelta = 0.3; % pixel spacing (in wavelengths) on the display window, for all dimensions
-% 
-% Resource.DisplayWindow(3).Position = [llx + 4.*xmult, lly, ...
-%                                       ceil(PData.Size(1).* PData.PDelta(2) ./ Resource.DisplayWindow(1).pdelta), ... % width (x)
-%                                       ceil(PData.Size(3).* PData.PDelta(3) ./ Resource.DisplayWindow(1).pdelta)]; % height (z)
-% Resource.DisplayWindow(3).ReferencePt = [0, -PData.Origin(2), PData.Origin(3)]; % Display Window location wrt transducer coords
-% Resource.DisplayWindow(3).AxesUnits = 'wavelengths'; % can change to mm
-% Resource.DisplayWindow(3).Colormap = gray(256);
-% Resource.DisplayWindow(3).Orientation = 'yz';
-% Resource.DisplayWindow(3).numFrames = numFrames; % Define buffer size for a history of displayed frames
-
+PData.Region(5).PixelsLA = unique([PData.Region(2).PixelsLA; PData.Region(3).PixelsLA; PData.Region(4).PixelsLA]);
+PData.Region(5).Shape.Name = 'Custom';
+PData.Region(5).numPixels = length(PData.Region(5).PixelsLA);
 
 %% Transmission Waveform (TW)
 tw.A = Trans.frequency; % frequency of transmission pulse, sets half cycle period of the waveform...
@@ -346,7 +307,7 @@ for lss = 1:length(startSample)
     Receive(lss).startSample = startSample(lss);
     Receive(lss).endSample = endSample(lss);    
 %     Receive(lss).decimSampleRate = samplesPerWave * Trans.frequency;
-    Receive(lss).decimSampleRate = 62;
+    Receive(lss).decimSampleRate = 62.5;
 
 end
 
@@ -369,51 +330,53 @@ end
 
 
 %% Reconstruction
-% numRegions = 3;
-% 
-% Resource.ImageBuffer(1).numFrames = numSupFrames; % Define an ImageBuffer with a # of frames
-% Resource.InterBuffer(1).numFrames = numSupFrames; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % Resource.InterBuffer(1).numFrames = 1;
-% 
-% % Recon = struct('senscutoff', 0.6, ... % Threshold for which the reconstruction doesn't consider an element's contribution due to directivity of the element, for a certain pixel (whose echoes are at an angle to the element). Should be in radians.
-% %                'pdatanum', 1, ... % Which PData structure to use
-% %                'rcvBufFrame', -1, ... % Use the most recently transferred frame
-% %                'IntBufDest', [1, 1], ... % idk but it's for the IQ (complex) data
-% %                'ImgBufDest', [1, -1], ... % [buffer #, frame #] Auto-increment ImageBuffer for each reconstruction???? % something is [first/oldest frame, last/newest frame]
-% %                'RINums', [1:2*na]); % The ReconInfo structure #(s). Each Recon must have its own unique set of ReconInfo #s
-% 
-% sco = 0.6; %%%%
-% % sco = 0.4;
-% Recon = struct('senscutoff', sco, ... % Threshold for which the reconstruction doesn't consider an element's contribution due to directivity of the element, for a certain pixel (whose echoes are at an angle to the element). Should be in radians.
+numRegions = 3;
+
+Resource.ImageBuffer(1).numFrames = numSupFrames; % Define an ImageBuffer with a # of frames
+Resource.InterBuffer(1).numFrames = numSupFrames; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Resource.InterBuffer(1).numFrames = 1;
+
+% Recon = struct('senscutoff', 0.6, ... % Threshold for which the reconstruction doesn't consider an element's contribution due to directivity of the element, for a certain pixel (whose echoes are at an angle to the element). Should be in radians.
 %                'pdatanum', 1, ... % Which PData structure to use
 %                'rcvBufFrame', -1, ... % Use the most recently transferred frame
-%                'IntBufDest', [1, -1], ... % IQ (complex) data, Auto-increment for every frame
+%                'IntBufDest', [1, 1], ... % idk but it's for the IQ (complex) data
 %                'ImgBufDest', [1, -1], ... % [buffer #, frame #] Auto-increment ImageBuffer for each reconstruction???? % something is [first/oldest frame, last/newest frame]
 %                'RINums', [1:2*na]); % The ReconInfo structure #(s). Each Recon must have its own unique set of ReconInfo #s
-% 
-% % Recon = repmat(Recon, 1, numFrames);
-% % for nf = 1:numFrames
-% %     Recon(nf).IntBufDest = [1, nf];
-% %     Recon(nf).ImgBufDest = [1, nf];
-% % end
-% 
-% ReconInfo = repmat(struct('mode', 'accumIQ_replaceIntensity', ... % reconstruct, and replace intensity data in ImageBuffer and IQ data in InterBuffer (see Table 12.4 in Tutorial)
-%                    'txnum', 1, ...                 % TX structure to use
-%                    'rcvnum', 1, ...                % RX structure to use
-%                    'regionnum', 1), 1, 2*na);                % PData Region to process in
-% 
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % for nf = 1
-% for n = 1:2*na % need to change this and above for more than 1 frame
-%     % - Set specific ReconInfo attributes.
-%     % ReconInfo(1).mode = 'replaceIQ'; % replace IQ data
-%     ReconInfo(n).txnum = n;
-%     ReconInfo(n).rcvnum = n;
-%     ReconInfo(n).pagenum = n; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %     ReconInfo(1).regionnum = 1; %1 for the whole volume, 5 for the slices
-% 
+
+sco = 0.6; %%%%
+% sco = 0.4;
+Recon = struct('senscutoff', sco, ... % Threshold for which the reconstruction doesn't consider an element's contribution due to directivity of the element, for a certain pixel (whose echoes are at an angle to the element). Should be in radians.
+               'pdatanum', 1, ... % Which PData structure to use
+               'rcvBufFrame', -1, ... % Use the most recently transferred frame
+               'IntBufDest', [1, -1], ... % IQ (complex) data, Auto-increment for every frame
+               'ImgBufDest', [1, -1], ... % [buffer #, frame #] Auto-increment ImageBuffer for each reconstruction???? % something is [first/oldest frame, last/newest frame]
+               'RINums', [1:2*na]); % The ReconInfo structure #(s). Each Recon must have its own unique set of ReconInfo #s
+
+% Recon = repmat(Recon, 1, numFrames);
+% for nf = 1:numFrames
+%     Recon(nf).IntBufDest = [1, nf];
+%     Recon(nf).ImgBufDest = [1, nf];
 % end
 
+ReconInfo = repmat(struct('mode', 'accumIQ', ... % reconstruct, and replace intensity data in ImageBuffer and IQ data in InterBuffer (see Table 12.4 in Tutorial)
+                   'txnum', 1, ...                 % TX structure to use
+                   'rcvnum', 1, ...                % RX structure to use
+                   'regionnum', ReconRegion), 1, 2*na);                % PData Region to process in
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% for nf = 1
+for n = 1:2*na % need to change this and above for more than 1 frame
+    % - Set specific ReconInfo attributes.
+    % ReconInfo(1).mode = 'replaceIQ'; % replace IQ data
+    ReconInfo(n).txnum = n;
+    ReconInfo(n).rcvnum = n;
+%     ReconInfo(n).pagenum = n; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%     ReconInfo(1).regionnum = 1; %1 for the whole volume, 5 for the slices
+
+end
+
+ReconInfo(1).mode = 'replaceIQ'; % replace IQ data
+ReconInfo(2*na).mode = 'accumIQ_replaceIntensity';
 
 %% Process the Reconstructed data
 % e.g., scaling and compression to make an image look good on the screen
@@ -511,6 +474,14 @@ Process(2).Parameters = {'srcbuffer','receive',... % name of buffer to process.
                          'srcbufnum',1,...
                          'srcframenum',-1, ...
                          'dstbuffer','none'};
+
+Process(3).classname = 'External';
+Process(3).method = 'saveIQData'; % Function name
+Process(3).Parameters = {'srcbuffer', 'inter', ...
+                         'srcbufnum', 1, ... % # of buffer to process
+                         'dstbuffer', 'none'};
+%                          'srcframenum', -1, ... % last frame transferred
+
 %%
 makeParameterStructureSmall;
 %% New Event structure
@@ -640,7 +611,14 @@ for nsupf = 1:numSupFrames
 % 
 %     Event(n).seqControl = [scInd, scInd-1]; % transfer and wait for the transfer
 
+    n = n + 1;
 
+    Event(n).info = ['Reconstruction'];
+    Event(n).tx = 0; 
+    Event(n).rcv = 0; 
+    Event(n).recon = 1;  %%
+    Event(n).process = 0; 
+    Event(n).seqControl = 0; 
 
 %     n = n + 1;
 % 
@@ -693,16 +671,15 @@ for nsupf = 1:numSupFrames
 
 end
 
-% Event(n).seqControl = [4, scInd, scInd-1]; % transfer and wait for the transfer
-Event(n).seqControl = [4, scInd]; % transfer
+% Event(n).seqControl = [4, scInd]; % transfer
 
 n = n + 1;
 
-Event(n).info = 'Save data - ext proc func';
+Event(n).info = 'Save IQ data - ext proc func';
 Event(n).tx = 0; 
 Event(n).rcv = 0; 
 Event(n).recon = 0;
-Event(n).process = 1; 
+Event(n).process = 3;
 Event(n).seqControl = 5; 
 
 % Test for time tag
