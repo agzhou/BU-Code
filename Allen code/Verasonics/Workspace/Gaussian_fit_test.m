@@ -1,0 +1,19 @@
+normDist = @(mu, sigma, x) 1/(sigma * sqrt(2*pi)) .* exp(-0.5 .* ((x - mu)./sigma).^2);
+
+pixels = 1:0.1:80;
+ref = normDist(mean(pixels), 10, pixels);
+figure; plot(pixels, ref)
+%%
+gaussianFit = fit(pixels', ref', 'gauss2');
+% hold on
+% plot(f)
+% hold off
+% %%
+% [psfFit_muhat, psfFit_sigmahat] = normfit(ref);%, [], [], pixels);
+% y = normpdf(ref, psfFit_muhat, psfFit_sigmahat);
+% % [psfFit_muhat, psfFit_sigmahat] = normfit([pixels', ref']);%, [], [], pixels);
+% fittest = normDist(psfFit_muhat(1), psfFit_sigmahat(1), pixels);
+% hold on
+% plot(pixels, fittest)
+% hold off
+
