@@ -35,8 +35,8 @@ supFrameBurstRate = 0.5; % Defines spacing between end of superframe burst and t
 
 numChannels = 256; % enable channels
 
-numSupFrames = 1; % # of superframes, MUST BE ONE OR EVEN FOR VSX
-numSubFrames = 100; % # of subframes
+numSupFrames = 2; % # of superframes, MUST BE ONE OR EVEN FOR VSX
+numSubFrames = 2; % # of subframes
 na = 11; % # of acquisitions per frame (acquisition pairs)
 maxAngle = 10; % degrees
 angleRange = [-maxAngle, maxAngle].*pi/180; % Angle range in radians
