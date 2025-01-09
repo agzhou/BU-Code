@@ -17,7 +17,7 @@
 %%
 % IQ = RcvData2IQ3D(RcvData, P);
 
-IQ = RCA_DAS(RcvData, P, P.wl/2, P.wl/4);
+IQ = RCA_DAS(RcvData, P, P.wl/40);
 % IQ = RcvData2IQ3D(r, P_new);
 
 

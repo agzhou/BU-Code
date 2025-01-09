@@ -10,6 +10,7 @@
 clear
 
 cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
+% cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000\Allen code\12-18-2024 RCA acq testing'
 
 activate
 % numElements = 80;
@@ -18,26 +19,28 @@ savepath = "G:\Allen\Data\01-07-2025 testing\RC15gV\run 1\";
 savepath = char(savepath);
 mkdir(savepath)
 
+ReconRegion = 5;
+
 % tagtest = Hardware.enableAcquisitionTimeTagging(1);
 supFrameIndex = 0;
 
 runVSX = 1;
-simOrNot = 1;
+simOrNot = 0;
 movePointsOrNot = 0;
 
-initialVoltage = 1.6; % V
+initialVoltage = 15; % V
 
 startDepthMM = 0; % start depth in wavelengths
-endDepthMM = 20;
+endDepthMM = 8;
 
-fps_target = 500;   % Intended (sub)frame rate
-supFrameBurstRate = 0.5; % Defines spacing between end of superframe burst and the next burst after jumping
+fps_target = 50;   % Intended (sub)frame rate
+supFrameBurstRate = .5; % Defines spacing between end of superframe burst and the next burst after jumping
 
 numChannels = 256; % enable channels
 
-numSupFrames = 1; % # of superframes, MUST BE ONE OR EVEN FOR VSX
+numSupFrames = 10; % # of superframes, MUST BE ONE OR EVEN FOR VSX
 numSubFrames = 1; % # of subframes
-na = 11; % # of acquisitions per frame (acquisition pairs)
+na = 21; % # of acquisitions per frame (acquisition pairs)
 maxAngle = 10; % degrees
 angleRange = [-maxAngle, maxAngle].*pi/180; % Angle range in radians
 
@@ -49,7 +52,6 @@ else
     angles = 0;
 end
 
-% numAngles = length(angles);
 pair = 2; % The R-C and C-R pair of acquisitions per angle
 
 % Resource is a structure, define system parameters
@@ -58,6 +60,8 @@ Resource.Parameters.numRcvChannels = numChannels; % number of receive channels
 % Resource.Parameters.connector = 1; % transducer connector to use since the current plate for the 256 bit system is split into two 128 bit connectors. 1 is left and 2 is right
 Resource.Parameters.speedOfSound = 1540; % speed of sound in m/s, the 1540 is for average human tissue
 % Resource.Parameters.speedOfSound = 1481;
+Resource.Parameters.verbose = 2; % Describe errors in varying levels
+
 %% Define Transducer
 
 Trans.name = 'RC15gV'; 
@@ -79,7 +83,7 @@ endDepth = endDepthMM/1e3/wl;
 % angpitch = wl / (Trans.spacingMm*Trans.numelements / 2 / 1e3);
 % angles = -(na - 1) / 2 * angpitch : angpitch : (na - 1) / 2 * angpitch
 %% enable time tag
-TimeTagEna = 2;
+TimeTagEna = 0;
 % 0: disable
 % 1: enable but don't reset counter
 % 2: enable and reset counter
@@ -115,6 +119,7 @@ Media.function = 'movePointsZ3D'; % move points in _ dimension after each frame
 %% PData structure (Pixel Data --> image reconstruction range)
 % For 2D scans and slices of 3D scans, it's always a rectangular area at a
 % fixed location in the transducer coord system
+xyplane = 50;
 
 numElements = Trans.numelements./2; % the structure gives # row elements + # column elements
 
@@ -138,23 +143,83 @@ PData.Origin = [-half_probe_dist, half_probe_dist, startDepth];
 % Set a local region to view/use for processing
 PData.Region(1) = struct('Shape',struct('Name','PData'));
 
-PData.Region(2).Shape = struct('Name', 'Slice', 'Orientation', 'xz', ...
-                            'oPAIntersect', PData.Origin(2) - (numElements-1).*Trans.spacing./2); % out of Plane Axis Intersection
-PData.Region(3).Shape = struct('Name', 'Slice', 'Orientation', 'yz', ...
-                            'oPAIntersect', PData.Origin(1) + (numElements-1).*Trans.spacing./2);
-PData.Region(4).Shape = struct('Name', 'Slice', 'Orientation', 'xy', ...
-                            'oPAIntersect', Media.MP(3)); % currently set to the plane intersecting the only scatter point
+% PData.Region(2).Shape = struct('Name', 'Slice', 'Orientation', 'xz', ...
+%                             'oPAIntersect', PData.Origin(2) - (numElements-1).*Trans.spacing./2); % out of Plane Axis Intersection
+% PData.Region(3).Shape = struct('Name', 'Slice', 'Orientation', 'yz', ...
+%                             'oPAIntersect', PData.Origin(1) + (numElements-1).*Trans.spacing./2);
+% PData.Region(4).Shape = struct('Name', 'Slice', 'Orientation', 'xy', ...
+%                             'oPAIntersect', Media.MP(3)); % currently set to the plane intersecting the only scatter point
+PData(1).Region(2) = struct('Shape',struct('Name','Slice','Orientation','yz','oPAIntersect',PData.Origin(1)+PData.PDelta(2)*(PData.Size(2)-1)/2,'andWithPrev',1));
+PData(1).Region(3) = struct('Shape',struct('Name','Slice','Orientation','xz','oPAIntersect',PData.Origin(2)-PData.PDelta(1)*((PData.Size(1)-1)/2),'andWithPrev',1));
+PData(1).Region(4) = struct('Shape',struct('Name','Slice','Orientation','xy','oPAIntersect',xyplane,'andWithPrev',1));
+
+PData.Region = computeRegions(PData);
+
+PData.Region(5).PixelsLA = unique([PData.Region(2).PixelsLA; PData.Region(3).PixelsLA; PData.Region(4).PixelsLA]);
+PData.Region(5).Shape.Name = 'Custom';
+PData.Region(5).numPixels = length(PData.Region(5).PixelsLA);
 
 %     'Position', [0, 0, 10], ...
 %                      'width', PData.Size(2), 'height', PData.Size(1)./2);
                     % Position is relative to the global coords
-% PData.Region = computeRegions(PData);
+
+% Define Super Region coordinates in 'P' structure in units of wavelengths
+P.zCoord = (PData(1).Origin(3) + (0:PData(1).Size(3)-1)*PData(1).PDelta(3));
+P.xCoord = (PData(1).Origin(1) + (0:PData(1).Size(2)-1)*PData(1).PDelta(1));
+P.yCoord = (PData(1).Origin(2) - (0:PData(1).Size(1)-1)*PData(1).PDelta(2));
+
+RegionIndices = reshape(PData.Region(1).PixelsLA,PData.Size);
+
+RegXY = reshape(PData.Region(4).PixelsLA,[PData.Size(1),PData.Size(2),1]);
+RegYZ = reshape(PData.Region(2).PixelsLA,[PData.Size(1),1,PData.Size(3)]);
+RegXZ = reshape(PData.Region(3).PixelsLA,[1,PData.Size(2),PData.Size(3)]);
+
+find(squeeze(any(bsxfun(@eq,RegionIndices,RegXY),[1,2])))
+find(squeeze(any(bsxfun(@eq,RegionIndices,RegXZ),[2,3])))
+find(squeeze(any(bsxfun(@eq,RegionIndices,RegYZ),[1,3])))
 
 % Display window
 
 xd = 70;
-% 
-% xz
+
+Resource.DisplayWindow(1).Type = 'Verasonics';
+Resource.DisplayWindow(1).Title = 'XZ plane';
+Resource.DisplayWindow(1).pdelta = 0.4;
+Resource.DisplayWindow(1).Position = [0,40, ...
+    ceil(PData(1).Size(2)*PData(1).PDelta(2)/Resource.DisplayWindow(1).pdelta), ... % width
+    ceil(PData(1).Size(3)*PData(1).PDelta(3)/Resource.DisplayWindow(1).pdelta)];    % height
+Resource.DisplayWindow(1).Orientation = 'xz';
+Resource.DisplayWindow(1).ReferencePt = [PData(1).Origin(1),PData(1).Region(3).Shape.oPAIntersect,0.0];
+Resource.DisplayWindow(1).Colormap = gray(256);
+Resource.DisplayWindow(1).AxesUnits = 'mm';
+Resource.DisplayWindow(1).numFrames = numSubFrames;
+
+Resource.DisplayWindow(2).Type = 'Verasonics';
+Resource.DisplayWindow(2).Title = 'YZ plane';
+Resource.DisplayWindow(2).pdelta = Resource.DisplayWindow(1).pdelta;
+Resource.DisplayWindow(2).Position = [430,40, ...
+    ceil(PData(1).Size(1)*PData(1).PDelta(1)/Resource.DisplayWindow(2).pdelta), ... % width
+    ceil(PData(1).Size(3)*PData(1).PDelta(3)/Resource.DisplayWindow(2).pdelta)];    % height
+Resource.DisplayWindow(2).Orientation = 'yz';
+Resource.DisplayWindow(2).ReferencePt = [PData(1).Region(2).Shape.oPAIntersect,-PData(1).Origin(2),0];
+Resource.DisplayWindow(2).Colormap = gray(256);
+Resource.DisplayWindow(2).AxesUnits = 'mm';
+Resource.DisplayWindow(2).numFrames = numSubFrames;
+
+Resource.DisplayWindow(3).Type = 'Verasonics';
+Resource.DisplayWindow(3).Title = 'XY plane';
+Resource.DisplayWindow(3).pdelta = Resource.DisplayWindow(1).pdelta;
+Resource.DisplayWindow(3).Position = [860,40, ...
+    ceil(PData(1).Size(2)*PData(1).PDelta(2)/Resource.DisplayWindow(3).pdelta), ... % width
+    ceil(PData(1).Size(1)*PData(1).PDelta(1)/Resource.DisplayWindow(3).pdelta)];    % height
+Resource.DisplayWindow(3).Orientation = 'xy';
+Resource.DisplayWindow(3).ReferencePt = [PData(1).Origin(1),-PData(1).Origin(2),PData.Region(4).Shape.oPAIntersect];
+Resource.DisplayWindow(3).Colormap = gray(256);
+Resource.DisplayWindow(3).AxesUnits = 'mm';
+Resource.DisplayWindow(3).numFrames = numSubFrames;
+
+% % xz
+% Resource.DisplayWindow(1).Type = 'Verasonics';
 % Resource.DisplayWindow(1).Title = 'Slice xz plane';
 % Resource.DisplayWindow(1).pdelta = 0.3; % pixel spacing (in wavelengths) on the display window, for all dimensions
 % llx = 100; % lower left corner x on screen
@@ -164,12 +229,13 @@ xd = 70;
 %                                       ceil(PData.Size(2).* PData.PDelta(1) ./ Resource.DisplayWindow(1).pdelta), ... % width (x)
 %                                       ceil(PData.Size(3).* PData.PDelta(3) ./ Resource.DisplayWindow(1).pdelta)]; % height (z)
 % Resource.DisplayWindow(1).ReferencePt = [PData.Origin(1), 0, PData.Origin(3)]; % Display Window location wrt transducer coords
-% Resource.DisplayWindow(1).AxesUnits = 'wavelengths'; % can change to mm
+% Resource.DisplayWindow(1).AxesUnits = 'mm'; % can change to mm
 % Resource.DisplayWindow(1).Colormap = gray(256);
 % Resource.DisplayWindow(1).Orientation = 'xz';
-% Resource.DisplayWindow(1).numFrames = numFrames; % Define buffer size for a history of displayed frames
+% Resource.DisplayWindow(1).numFrames = numSubFrames; % Define buffer size for a history of displayed frames
 % 
 % % xy
+% Resource.DisplayWindow(2).Type = 'Verasonics';
 % Resource.DisplayWindow(2).Title = 'Slice xy plane';
 % Resource.DisplayWindow(2).pdelta = 0.3; % pixel spacing (in wavelengths) on the display window, for all dimensions
 % 
@@ -177,12 +243,13 @@ xd = 70;
 %                                       ceil(PData.Size(2).* PData.PDelta(1) ./ Resource.DisplayWindow(1).pdelta), ... % width (x)
 %                                       ceil(PData.Size(1).* PData.PDelta(2) ./ Resource.DisplayWindow(1).pdelta)]; % height (z)
 % Resource.DisplayWindow(2).ReferencePt = [PData.Origin(1), -PData.Origin(2), xd]; % Display Window location wrt transducer coords
-% Resource.DisplayWindow(2).AxesUnits = 'wavelengths'; % can change to mm
+% Resource.DisplayWindow(2).AxesUnits = 'mm'; % can change to mm
 % Resource.DisplayWindow(2).Colormap = gray(256);
 % Resource.DisplayWindow(2).Orientation = 'xy';
-% Resource.DisplayWindow(2).numFrames = numFrames; % Define buffer size for a history of displayed frames
+% Resource.DisplayWindow(2).numFrames = numSubFrames; % Define buffer size for a history of displayed frames
 % 
 % % yz
+% Resource.DisplayWindow(3).Type = 'Verasonics';
 % Resource.DisplayWindow(3).Title = 'Slice yz plane';
 % Resource.DisplayWindow(3).pdelta = 0.3; % pixel spacing (in wavelengths) on the display window, for all dimensions
 % 
@@ -190,10 +257,10 @@ xd = 70;
 %                                       ceil(PData.Size(1).* PData.PDelta(2) ./ Resource.DisplayWindow(1).pdelta), ... % width (x)
 %                                       ceil(PData.Size(3).* PData.PDelta(3) ./ Resource.DisplayWindow(1).pdelta)]; % height (z)
 % Resource.DisplayWindow(3).ReferencePt = [0, -PData.Origin(2), PData.Origin(3)]; % Display Window location wrt transducer coords
-% Resource.DisplayWindow(3).AxesUnits = 'wavelengths'; % can change to mm
+% Resource.DisplayWindow(3).AxesUnits = 'mm'; % can change to mm
 % Resource.DisplayWindow(3).Colormap = gray(256);
 % Resource.DisplayWindow(3).Orientation = 'yz';
-% Resource.DisplayWindow(3).numFrames = numFrames; % Define buffer size for a history of displayed frames
+% Resource.DisplayWindow(3).numFrames = numSubFrames; % Define buffer size for a history of displayed frames
 
 
 %% Transmission Waveform (TW)
@@ -245,8 +312,8 @@ end
 % Accounts for decrease in amplitude of echoes for longer distance traveled
 
 % TGC curve definition
-TGC.CntrlPts = [0 785.2216 1023 1023 1023 1023 1023 1023];
-% TGC.CntrlPts = [1023 1023 1023 1023 1023 1023 1023 1023];
+% TGC.CntrlPts = [0 785.2216 1023 1023 1023 1023 1023 1023];
+TGC.CntrlPts = [1023 1023 1023 1023 1023 1023 1023 1023];
 % TGC(1).CntrlPts = [500,590,650,710,770,830,890,950]; % 0 to 1023, minimum to maximum gain
                                                      % Values represent the
                                                      % gain at increasing
@@ -335,21 +402,13 @@ startSample = (0:(na-1))*numRcvSamples + 1;
 endSample = startSample + numRcvSamples - 1;
 %%%%
 
-% spw = 3.6765; % samples per wave, it isn't always exactly 4... check p107
-% nspa = spw*(2*(Receive(1).endDepth - Receive(1).startDepth));
-% nspa = 128 * ceil(nspa/128); % # samples per acquisition
-% maxAcqLength_adjusted = nspa / spw / 2;
 Resource.RcvBuffer(1).rowsPerFrame = numRcvSamples * na * 2 * numSubFrames;
 maxAcqLength_adjusted = numRcvSamples / samplesPerWave / 2;
 
 for lss = 1:length(startSample)
     Receive(lss).startSample = startSample(lss);
     Receive(lss).endSample = endSample(lss);    
-%     Receive(lss).decimSampleRate = samplesPerWave * Trans.frequency;
-    Receive(lss).decimSampleRate = 62;
-
 end
-
 
 Resource.RcvBuffer(1).colsPerFrame = Resource.Parameters.numRcvChannels; % Usually 1:1 to # of receive channels available in the system. Can change to 256 with the 2D probe and new connector plate.
 Resource.RcvBuffer(1).numFrames = numSupFrames; % minimum # frames of RF data to acquire; RcvBuffer contains all the data needed for a whole frame, including multiple acquisition passes needed for reconstruction. Software can re-process RcvBuffer frames
@@ -369,123 +428,125 @@ end
 
 
 %% Reconstruction
-% numRegions = 3;
-% 
-% Resource.ImageBuffer(1).numFrames = numSupFrames; % Define an ImageBuffer with a # of frames
-% Resource.InterBuffer(1).numFrames = numSupFrames; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % Resource.InterBuffer(1).numFrames = 1;
-% 
-% % Recon = struct('senscutoff', 0.6, ... % Threshold for which the reconstruction doesn't consider an element's contribution due to directivity of the element, for a certain pixel (whose echoes are at an angle to the element). Should be in radians.
-% %                'pdatanum', 1, ... % Which PData structure to use
-% %                'rcvBufFrame', -1, ... % Use the most recently transferred frame
-% %                'IntBufDest', [1, 1], ... % idk but it's for the IQ (complex) data
-% %                'ImgBufDest', [1, -1], ... % [buffer #, frame #] Auto-increment ImageBuffer for each reconstruction???? % something is [first/oldest frame, last/newest frame]
-% %                'RINums', [1:2*na]); % The ReconInfo structure #(s). Each Recon must have its own unique set of ReconInfo #s
-% 
-% sco = 0.6; %%%%
-% % sco = 0.4;
-% Recon = struct('senscutoff', sco, ... % Threshold for which the reconstruction doesn't consider an element's contribution due to directivity of the element, for a certain pixel (whose echoes are at an angle to the element). Should be in radians.
+numRegions = 3;
+
+Resource.ImageBuffer(1).numFrames = numSupFrames; % Define an ImageBuffer with a # of frames
+Resource.InterBuffer(1).numFrames = numSupFrames; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Resource.InterBuffer(1).numFrames = 1;
+
+% Recon = struct('senscutoff', 0.6, ... % Threshold for which the reconstruction doesn't consider an element's contribution due to directivity of the element, for a certain pixel (whose echoes are at an angle to the element). Should be in radians.
 %                'pdatanum', 1, ... % Which PData structure to use
 %                'rcvBufFrame', -1, ... % Use the most recently transferred frame
-%                'IntBufDest', [1, -1], ... % IQ (complex) data, Auto-increment for every frame
+%                'IntBufDest', [1, 1], ... % idk but it's for the IQ (complex) data
 %                'ImgBufDest', [1, -1], ... % [buffer #, frame #] Auto-increment ImageBuffer for each reconstruction???? % something is [first/oldest frame, last/newest frame]
 %                'RINums', [1:2*na]); % The ReconInfo structure #(s). Each Recon must have its own unique set of ReconInfo #s
-% 
-% % Recon = repmat(Recon, 1, numFrames);
-% % for nf = 1:numFrames
-% %     Recon(nf).IntBufDest = [1, nf];
-% %     Recon(nf).ImgBufDest = [1, nf];
-% % end
-% 
-% ReconInfo = repmat(struct('mode', 'accumIQ_replaceIntensity', ... % reconstruct, and replace intensity data in ImageBuffer and IQ data in InterBuffer (see Table 12.4 in Tutorial)
-%                    'txnum', 1, ...                 % TX structure to use
-%                    'rcvnum', 1, ...                % RX structure to use
-%                    'regionnum', 1), 1, 2*na);                % PData Region to process in
-% 
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % for nf = 1
-% for n = 1:2*na % need to change this and above for more than 1 frame
-%     % - Set specific ReconInfo attributes.
-%     % ReconInfo(1).mode = 'replaceIQ'; % replace IQ data
-%     ReconInfo(n).txnum = n;
-%     ReconInfo(n).rcvnum = n;
-%     ReconInfo(n).pagenum = n; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %     ReconInfo(1).regionnum = 1; %1 for the whole volume, 5 for the slices
-% 
+
+sco = 0.6; %%%%
+% sco = 0.4;
+Recon = struct('senscutoff', sco, ... % Threshold for which the reconstruction doesn't consider an element's contribution due to directivity of the element, for a certain pixel (whose echoes are at an angle to the element). Should be in radians.
+               'pdatanum', 1, ... % Which PData structure to use
+               'rcvBufFrame', -1, ... % Use the most recently transferred frame
+               'IntBufDest', [1, -1], ... % IQ (complex) data, Auto-increment for every frame
+               'ImgBufDest', [1, -1], ... % [buffer #, frame #] Auto-increment ImageBuffer for each reconstruction???? % something is [first/oldest frame, last/newest frame]
+               'RINums', [1:2*na]); % The ReconInfo structure #(s). Each Recon must have its own unique set of ReconInfo #s
+
+% Recon = repmat(Recon, 1, numFrames);
+% for nf = 1:numFrames
+%     Recon(nf).IntBufDest = [1, nf];
+%     Recon(nf).ImgBufDest = [1, nf];
 % end
 
+ReconInfo = repmat(struct('mode', 'accumIQ', ... % reconstruct, and replace intensity data in ImageBuffer and IQ data in InterBuffer (see Table 12.4 in Tutorial)
+                   'txnum', 1, ...                 % TX structure to use
+                   'rcvnum', 1, ...                % RX structure to use
+                   'regionnum', ReconRegion), 1, 2*na);                % PData Region to process in
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% for nf = 1
+for n = 1:2*na % need to change this and above for more than 1 frame
+    % - Set specific ReconInfo attributes.
+    % ReconInfo(1).mode = 'replaceIQ'; % replace IQ data
+    ReconInfo(n).txnum = n;
+    ReconInfo(n).rcvnum = n;
+%     ReconInfo(n).pagenum = n; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%     ReconInfo(1).regionnum = 1; %1 for the whole volume, 5 for the slices
+
+end
+
+ReconInfo(1).mode = 'replaceIQ'; % replace IQ data
+ReconInfo(2*na).mode = 'accumIQ_replaceIntensity';
 
 %% Process the Reconstructed data
 % e.g., scaling and compression to make an image look good on the screen
 
-% pgainValue = 1.0; % Image processing gain
-% persValue = 0;
-% rejectLevel = 2;
-% % rejectLevel = 300;
-% compFac = 40;
+pgainValue = 1.0; % Image processing gain
+persValue = 0;
+rejectLevel = 2;
+% rejectLevel = 300;
+compFac = 40;
 
 % First image (xz)
-% Process(1).classname = 'Image';
-% Process(1).method = 'imageDisplay';             % To not overwrite orig data while processing, system uses another ImageP buffer as output.
-% Process(1).Parameters = {'imgbufnum', 1, ...             % which ImageBuffer to process
-%                          'framenum', -1, ...              % -1 means use last frame in ImageBuffer
-%                          'pdatanum', 1, ...              % PData structure which was used in Reconstruction
-%                          'srcData', 'intensity3D', ...
-%                          'pgain', pgainValue, ...
-%                          'reject', rejectLevel, ...                % Make intensity values below this threshold appear as black (reduce low intensity noise)
-%                          'persistMethod', 'simple', ...   % simple: Add a fraction of the previous weighted average frames' invensity values to the current one. See manual for 'dynamic' option, which is good when there is a lot of motion!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%                          'persistLevel', persValue, ...   % NewAvg = PL * PrevAvg + (1 - PL) * NewFrame; PL = persistLevel/100
-%                          'interpMethod', '4pt', ...
-%                          'grainRemoval', 'medium', ...    % low, medium, high. Remove pixels that differ significantly from their neighbors
-%                          'processMethod', 'none', ...     % see manual, reduces variation in line structures detected within the filter kernel???
-%                          'averageMethod', 'none', ...     % None or can do Running averages (2 or 3), can do things like spatial compounding...
-%                          'compressMethod', 'log', ...     % log or power (x^a fraction) compression
-%                          'compressFactor', compFac, ...        % Higher compressFactor means smaller powers for the power option (more compression), or a more rapid rise to the log curve (raise brightness of low intensity values). Not a real log bc intensities of 0 need to be mapped to 0, not -inf
-%                          'mappingMethod', 'full', ...     % Portion of the colormap to use. lowerHalf and upperHalf would be used to do the combined B-mode and Doppler imaging, for example.
-%                          'display', 1, ...                % 1: show processed image on screen, 0: don't but still tto useransfer the processed data to the DisplayData buffer
-%                          'displayWindow', 1};             % which displayWindow 
-% 
-% % Second image (xy)
-% Process(2).classname = 'Image';
-% Process(2).method = 'imageDisplay';             % To not overwrite orig data while processing, system uses another ImageP buffer as output.
-% Process(2).Parameters = {'imgbufnum', 1, ...             % which ImageBuffer to process
-%                          'framenum', -1, ...              % -1 means use last frame in ImageBuffer
-%                          'pdatanum', 1, ...              % PData structure which was used in Reconstruction
-%                          'srcData', 'intensity3D', ...
-%                          'pgain', pgainValue, ...
-%                          'reject', rejectLevel, ...                % Make intensity values below this threshold appear as black (reduce low intensity noise)
-%                          'persistMethod', 'simple', ...   % simple: Add a fraction of the previous weighted average frames' invensity values to the current one. See manual for 'dynamic' option, which is good when there is a lot of motion!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%                          'persistLevel', persValue, ...   % NewAvg = PL * PrevAvg + (1 - PL) * NewFrame; PL = persistLevel/100
-%                          'interpMethod', '4pt', ...
-%                          'grainRemoval', 'medium', ...    % low, medium, high. Remove pixels that differ significantly from their neighbors
-%                          'processMethod', 'none', ...     % see manual, reduces variation in line structures detected within the filter kernel???
-%                          'averageMethod', 'none', ...     % None or can do Running averages (2 or 3), can do things like spatial compounding...
-%                          'compressMethod', 'log', ...     % log or power (x^a fraction) compression
-%                          'compressFactor', compFac, ...        % Higher compressFactor means smaller powers for the power option (more compression), or a more rapid rise to the log curve (raise brightness of low intensity values). Not a real log bc intensities of 0 need to be mapped to 0, not -inf
-%                          'mappingMethod', 'full', ...     % Portion of the colormap to use. lowerHalf and upperHalf would be used to do the combined B-mode and Doppler imaging, for example.
-%                          'display', 1, ...                % 1: show processed image on screen, 0: don't but still tto useransfer the processed data to the DisplayData buffer
-%                          'displayWindow', 2};             % which displayWindow 
-% 
-% % Third image (yz)
-% Process(3).classname = 'Image';
-% Process(3).method = 'imageDisplay';             % To not overwrite orig data while processing, system uses another ImageP buffer as output.
-% Process(3).Parameters = {'imgbufnum', 1, ...             % which ImageBuffer to process
-%                          'framenum', -1, ...              % -1 means use last frame in ImageBuffer
-%                          'pdatanum', 1, ...              % PData structure which was used in Reconstruction
-%                          'srcData', 'intensity3D', ...
-%                          'pgain', pgainValue, ...
-%                          'reject', rejectLevel, ...                % Make intensity values below this threshold appear as black (reduce low intensity noise)
-%                          'persistMethod', 'simple', ...   % simple: Add a fraction of the previous weighted average frames' invensity values to the current one. See manual for 'dynamic' option, which is good when there is a lot of motion!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%                          'persistLevel', persValue, ...   % NewAvg = PL * PrevAvg + (1 - PL) * NewFrame; PL = persistLevel/100
-%                          'interpMethod', '4pt', ...
-%                          'grainRemoval', 'medium', ...    % low, medium, high. Remove pixels that differ significantly from their neighbors
-%                          'processMethod', 'none', ...     % see manual, reduces variation in line structures detected within the filter kernel???
-%                          'averageMethod', 'none', ...     % None or can do Running averages (2 or 3), can do things like spatial compounding...
-%                          'compressMethod', 'log', ...     % log or power (x^a fraction) compression
-%                          'compressFactor', compFac, ...        % Higher compressFactor means smaller powers for the power option (more compression), or a more rapid rise to the log curve (raise brightness of low intensity values). Not a real log bc intensities of 0 need to be mapped to 0, not -inf
-%                          'mappingMethod', 'full', ...     % Portion of the colormap to use. lowerHalf and upperHalf would be used to do the combined B-mode and Doppler imaging, for example.
-%                          'display', 1, ...                % 1: show processed image on screen, 0: don't but still tto useransfer the processed data to the DisplayData buffer
-%                          'displayWindow', 3};             % which displayWindow 
+Process(2).classname = 'Image';
+Process(2).method = 'imageDisplay';             % To not overwrite orig data while processing, system uses another ImageP buffer as output.
+Process(2).Parameters = {'imgbufnum', 1, ...             % which ImageBuffer to process
+                         'framenum', -1, ...              % -1 means use last frame in ImageBuffer
+                         'pdatanum', 1, ...              % PData structure which was used in Reconstruction
+                         'srcData', 'intensity3D', ...
+                         'pgain', pgainValue, ...
+                         'reject', rejectLevel, ...                % Make intensity values below this threshold appear as black (reduce low intensity noise)
+                         'persistMethod', 'simple', ...   % simple: Add a fraction of the previous weighted average frames' invensity values to the current one. See manual for 'dynamic' option, which is good when there is a lot of motion!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                         'persistLevel', persValue, ...   % NewAvg = PL * PrevAvg + (1 - PL) * NewFrame; PL = persistLevel/100
+                         'interpMethod', '4pt', ...
+                         'grainRemoval', 'medium', ...    % low, medium, high. Remove pixels that differ significantly from their neighbors
+                         'processMethod', 'none', ...     % see manual, reduces variation in line structures detected within the filter kernel???
+                         'averageMethod', 'none', ...     % None or can do Running averages (2 or 3), can do things like spatial compounding...
+                         'compressMethod', 'log', ...     % log or power (x^a fraction) compression
+                         'compressFactor', compFac, ...        % Higher compressFactor means smaller powers for the power option (more compression), or a more rapid rise to the log curve (raise brightness of low intensity values). Not a real log bc intensities of 0 need to be mapped to 0, not -inf
+                         'mappingMethod', 'full', ...     % Portion of the colormap to use. lowerHalf and upperHalf would be used to do the combined B-mode and Doppler imaging, for example.
+                         'display', 1, ...                % 1: show processed image on screen, 0: don't but still tto useransfer the processed data to the DisplayData buffer
+                         'displayWindow', 1};             % which displayWindow 
+
+% Second image (xy)
+Process(3).classname = 'Image';
+Process(3).method = 'imageDisplay';             % To not overwrite orig data while processing, system uses another ImageP buffer as output.
+Process(3).Parameters = {'imgbufnum', 1, ...             % which ImageBuffer to process
+                         'framenum', -1, ...              % -1 means use last frame in ImageBuffer
+                         'pdatanum', 1, ...              % PData structure which was used in Reconstruction
+                         'srcData', 'intensity3D', ...
+                         'pgain', pgainValue, ...
+                         'reject', rejectLevel, ...                % Make intensity values below this threshold appear as black (reduce low intensity noise)
+                         'persistMethod', 'simple', ...   % simple: Add a fraction of the previous weighted average frames' invensity values to the current one. See manual for 'dynamic' option, which is good when there is a lot of motion!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                         'persistLevel', persValue, ...   % NewAvg = PL * PrevAvg + (1 - PL) * NewFrame; PL = persistLevel/100
+                         'interpMethod', '4pt', ...
+                         'grainRemoval', 'medium', ...    % low, medium, high. Remove pixels that differ significantly from their neighbors
+                         'processMethod', 'none', ...     % see manual, reduces variation in line structures detected within the filter kernel???
+                         'averageMethod', 'none', ...     % None or can do Running averages (2 or 3), can do things like spatial compounding...
+                         'compressMethod', 'log', ...     % log or power (x^a fraction) compression
+                         'compressFactor', compFac, ...        % Higher compressFactor means smaller powers for the power option (more compression), or a more rapid rise to the log curve (raise brightness of low intensity values). Not a real log bc intensities of 0 need to be mapped to 0, not -inf
+                         'mappingMethod', 'full', ...     % Portion of the colormap to use. lowerHalf and upperHalf would be used to do the combined B-mode and Doppler imaging, for example.
+                         'display', 1, ...                % 1: show processed image on screen, 0: don't but still tto useransfer the processed data to the DisplayData buffer
+                         'displayWindow', 2};             % which displayWindow 
+
+% Third image (yz)
+Process(4).classname = 'Image';
+Process(4).method = 'imageDisplay';             % To not overwrite orig data while processing, system uses another ImageP buffer as output.
+Process(4).Parameters = {'imgbufnum', 1, ...             % which ImageBuffer to process
+                         'framenum', -1, ...              % -1 means use last frame in ImageBuffer
+                         'pdatanum', 1, ...              % PData structure which was used in Reconstruction
+                         'srcData', 'intensity3D', ...
+                         'pgain', pgainValue, ...
+                         'reject', rejectLevel, ...                % Make intensity values below this threshold appear as black (reduce low intensity noise)
+                         'persistMethod', 'simple', ...   % simple: Add a fraction of the previous weighted average frames' invensity values to the current one. See manual for 'dynamic' option, which is good when there is a lot of motion!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                         'persistLevel', persValue, ...   % NewAvg = PL * PrevAvg + (1 - PL) * NewFrame; PL = persistLevel/100
+                         'interpMethod', '4pt', ...
+                         'grainRemoval', 'medium', ...    % low, medium, high. Remove pixels that differ significantly from their neighbors
+                         'processMethod', 'none', ...     % see manual, reduces variation in line structures detected within the filter kernel???
+                         'averageMethod', 'none', ...     % None or can do Running averages (2 or 3), can do things like spatial compounding...
+                         'compressMethod', 'log', ...     % log or power (x^a fraction) compression
+                         'compressFactor', compFac, ...        % Higher compressFactor means smaller powers for the power option (more compression), or a more rapid rise to the log curve (raise brightness of low intensity values). Not a real log bc intensities of 0 need to be mapped to 0, not -inf
+                         'mappingMethod', 'full', ...     % Portion of the colormap to use. lowerHalf and upperHalf would be used to do the combined B-mode and Doppler imaging, for example.
+                         'display', 1, ...                % 1: show processed image on screen, 0: don't but still tto useransfer the processed data to the DisplayData buffer
+                         'displayWindow', 3};             % which displayWindow 
 
 Process(1).classname = 'External';
 Process(1).method = 'saveRcvData'; % Function name
@@ -504,13 +565,6 @@ Process(1).Parameters = {'srcbuffer', 'receive', ...
                          'srcbufnum', 1, ... % # of buffer to process
                          'dstbuffer', 'none'};
 %                          'srcframenum', -1, ... % last frame transferred
-
-Process(2).classname = 'External';
-Process(2).method = 'ShowTimeTag'; % Function name
-Process(2).Parameters = {'srcbuffer','receive',... % name of buffer to process.
-                         'srcbufnum',1,...
-                         'srcframenum',-1, ...
-                         'dstbuffer','none'};
 %%
 makeParameterStructureSmall;
 %% New Event structure
@@ -531,7 +585,6 @@ SeqControl(scInd).command = 'timeToNextAcq'; % In us, allowed range is from 10 -
                                          % the TPC (voltage) across acqs,
                                          % since it takes 800 us - 8 ms to
                                          % switch
-SeqControl(scInd).condition = 'ignore';  % don't print the warning message
 timePerAcq = 1 / fps_target / (na * 2) * 1e6; % frame rate converted to acq time step (us)
 timePerAcqLimits = [10, 4190000];
 if timePerAcq < timePerAcqLimits(1)
@@ -570,12 +623,6 @@ else
     SeqControl(scInd).argument = timeGapBetweenLastSuperframeBurstAndNextSuperframeBurst;
 end
 
-% superframe burst rate noop
-scInd = scInd + 1;
-SeqControl(scInd).command = 'noop'; % jump to
-noop_time_us = SeqControl(scInd - 1).argument;
-SeqControl(scInd).argument = noop_time_us / 200 * 1e3; % (value*200nsec; max. value is 2^25 - 1 for 6.7 sec)
-SeqControl(scInd).condition = 'Hw&Sw'; % need to enable the noop in hardware
 % Transfer data to host, needed for hardware but not simulation, which writes directly to RcvBuffer
 % NEED A UNIQUE SEQCONTROL FOR EACH TRANSFERTOHOST COMMAND!!!!!!!!!!!!!!!!!!
 
@@ -604,7 +651,6 @@ for nsupf = 1:numSupFrames
         
         end
     end
-%     Event(n).seqControl = 4; 
 
     scInd = scInd + 1;
 %     Event(n).seqControl = [Event(n).seqControl, scInd]; 
@@ -612,98 +658,63 @@ for nsupf = 1:numSupFrames
 
 % test 11/6/24
 %     scInd = scInd + 1;
-%     
+    
 %     SeqControl(scInd).command = 'waitForTransferComplete';
 %     SeqControl(scInd).argument = scInd - 1;
 % 
 %     Event(n).seqControl = [1, scInd, scInd-1]; % transfer and wait for the transfer
-%     Event(n).seqControl = [4, 5, scInd];
     Event(n).seqControl = [1, scInd];
-
-    % Transfer all the acquisitions for one superframe 
-%     n = n + 1;
-% 
-%     Event(n).info = 'Transfer data'; % want a transferToHost after all the acquisitions for one (super) frame
-%     Event(n).tx = 0; 
-%     Event(n).rcv = 0; 
-%     Event(n).recon = 0;
-%     Event(n).process = 0; 
-%     scInd = scInd + 1;
-% %     Event(n).seqControl = [Event(n).seqControl, scInd]; 
-%     SeqControl(scInd).command = 'transferToHost';
-% 
-% % test 11/6/24
-%     scInd = scInd + 1;
-%     
-%     SeqControl(scInd).command = 'waitForTransferComplete';
-%     SeqControl(scInd).argument = scInd - 1;
-% 
-%     Event(n).seqControl = [scInd, scInd-1]; % transfer and wait for the transfer
-
-
-
-%     n = n + 1;
-% 
-%     Event(n).info = 'Test ext proc func';
-%     Event(n).tx = 0; 
-%     Event(n).rcv = 0; 
-%     Event(n).recon = 0;
-%     Event(n).process = 2; 
-%     Event(n).seqControl = 0; 
-
     
+    n = n + 1;
 
-%     n = n + 1;
-% 
-%     Event(n).info = ['Frame ' num2str(nf) ': Reconstruction'];
-%     Event(n).tx = 0; 
-%     Event(n).rcv = 0; 
-%     Event(n).recon = 1;  %%
-%     Event(n).process = 0; 
-%     Event(n).seqControl = 2; 
-% 
-%     n = n + 1;
-% 
-%     Event(n).info = ['Frame ' num2str(nf) ': Processing xz'];
-%     Event(n).tx = 0; 
-%     Event(n).rcv = 0; 
-%     Event(n).recon = 0; 
-%     Event(n).process = 1; 
-%     Event(n).seqControl = 0; 
-% 
-%     n = n + 1;
-%     
-%     Event(n).info = ['Frame ' num2str(nf) ': Processing xy'];
-%     Event(n).tx = 0; 
-%     Event(n).rcv = 0; 
-%     Event(n).recon = 0; 
-%     Event(n).process = 2; 
-%     Event(n).seqControl = 0; 
-% 
-%     n = n + 1;
-%     
-%     Event(n).info = ['Frame ' num2str(nf) ': Processing yz'];
-%     Event(n).tx = 0; 
-%     Event(n).rcv = 0; 
-%     Event(n).recon = 0; 
-%     Event(n).process = 3; 
-%     Event(n).seqControl = 2;
+    Event(n).info = ['Reconstruction'];
+    Event(n).tx = 0; 
+    Event(n).rcv = 0; 
+    Event(n).recon = 1;  %%
+    Event(n).process = 0; 
+    Event(n).seqControl = 0; 
+
+    n = n + 1;
+
+    Event(n).info = ['Processing xz'];
+    Event(n).tx = 0; 
+    Event(n).rcv = 0; 
+    Event(n).recon = 0; 
+    Event(n).process = 2; 
+    Event(n).seqControl = 0; 
+
+    n = n + 1;
+    
+    Event(n).info = ['Processing xy'];
+    Event(n).tx = 0; 
+    Event(n).rcv = 0; 
+    Event(n).recon = 0; 
+    Event(n).process = 3; 
+    Event(n).seqControl = 0; 
+
+    n = n + 1;
+    
+    Event(n).info = ['Processing yz'];
+    Event(n).tx = 0; 
+    Event(n).rcv = 0; 
+    Event(n).recon = 0; 
+    Event(n).process = 4; 
+    Event(n).seqControl = 0;
 % 
 %     n = n + 1;
 
 end
 
 % Event(n).seqControl = [4, scInd, scInd-1]; % transfer and wait for the transfer
-Event(n).seqControl = [4, scInd]; % transfer
 
-n = n + 1;
-
-Event(n).info = 'Save data - ext proc func';
-Event(n).tx = 0; 
-Event(n).rcv = 0; 
-Event(n).recon = 0;
-Event(n).process = 1; 
-Event(n).seqControl = 5; 
+% n = n + 1;
+% 
+% Event(n).info = 'Save data - ext proc func';
+% Event(n).tx = 0; 
+% Event(n).rcv = 0; 
+% Event(n).recon = 0;
+% Event(n).process = 1; 
+% Event(n).seqControl = 0; 
 
 % Test for time tag
 % n = n+1;
@@ -735,26 +746,38 @@ Event(n).seqControl = 3;
 
 %% User specified UI Control Elements
 
-import vsv.seq.uicontrol.VsSliderControl
+%% User specified UI Control Elements
+import vsv.seq.uicontrol.VsSliderControl;
 
-% - Time Tag
-UI(1).Control = VsSliderControl('LocationCode', 'UserB5',...
-                                'Label', 'Time Tag', ...
-                                'SliderMinMaxVal', [0, 2, TimeTagEna],...
-                                'SliderStep', [0.5, 0.5], ...
-                                'ValueFormat', '%1.0f',...
-                                'Callback', @TimeTagCallback);
+% - Sensitivity Cutoff
+UI(1).Control = VsSliderControl('LocationCode','UserB7','Label','Sens. Cutoff',...
+                  'SliderMinMaxVal',[0,1.0,Recon(1).senscutoff],...
+                  'SliderStep',[0.025,0.1],'ValueFormat','%1.3f', ...
+                  'Callback', @SensCutoffCallback );
 
 
-% External function definitions.
+UI(2).Control = VsSliderControl('LocationCode','UserB4','Label','XY Slider',...
+              'SliderMinMaxVal',[startDepth,endDepth,xyplane],...
+              'SliderStep',[0.0125,0.1],'ValueFormat','%1.3f', ...
+              'Callback', @ChangeXYCallback );
+        
+UI(3).Control = VsSliderControl('LocationCode','UserB5','Label','XZ Slider',...
+              'SliderMinMaxVal',[min(P.yCoord),max(P.yCoord),PData(1).Region(3).Shape.oPAIntersect],...
+              'SliderStep',[0.0125,0.1],'ValueFormat','%1.3f', ...
+              'Callback', @ChangeXZCallback );
+          
+UI(4).Control = VsSliderControl('LocationCode','UserB6','Label','YZ Slider',...
+              'SliderMinMaxVal',[min(P.xCoord),max(P.xCoord),PData(1).Region(2).Shape.oPAIntersect],...
+              'SliderStep',[0.0125,0.1],'ValueFormat','%1.3f', ...
+              'Callback', @ChangeYZCallback );
 
-import vsv.seq.function.ExFunctionDef
 
-EF(1).Function = vsv.seq.function.ExFunctionDef('readTimeTag',@readTimeTag);
+% Specify factor for converting sequenceRate to frameRate.
+frameRateFactor = 1;
 
 %% Save all the data/structures to a .mat file.
 currentDir = cd; currentDir = regexp(currentDir, filesep, 'split');
-filename = 'RC15gV_Allen_loop.mat';
+filename = 'RC15gV_Allen_loop_live.mat';
 
 save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+filename);
 
@@ -778,77 +801,107 @@ savefast([savepath, 'params.mat'], 'P')
 %% **** Callback routines used by UIControls (UI) ****
 %% Time tag callback test
 
-function TimeTagCallback(~, ~, UIValue)
-    import com.verasonics.hal.hardware.*
-    TimeTagEna = round(UIValue);
-    VDAS = evalin('base', 'VDAS');
-    switch TimeTagEna
-        case 0
-            if VDAS % can't execute this command if HW is not present
-                % disable time tag
-                rc = Hardware.enableAcquisitionTimeTagging(false);
-                if ~rc
-                    error('Error from enableAcqTimeTagging')
-                end
-            end
-            tagstr = 'off';
-        case 1
-            if VDAS
-                % enable time tag
-                rc = Hardware.enableAcquisitionTimeTagging(true);
-                if ~rc
-                    error('Error from enableAcqTimeTagging')
-                end
-            end
-            tagstr = 'on';
-        case 2
-            if VDAS
-                % enable time tag and reset counter
-                rc = Hardware.enableAcquisitionTimeTagging(true);
-                if ~rc
-                    error('Error from enableAcqTimeTagging')
-                end
-                rc = Hardware.setTimeTaggingAttributes(false, true); % reset hardware counter to 0 (otherwise, it continuously counts up from system bootup until it gets to 107,000s - see p37 of User Manual
-                if ~rc
-                    error('Error from setTimeTaggingAttributes')
-                end
-            end
-            tagstr = 'on, reset';
+function SensCutoffCallback(~,~,UIValue)
+    %SensCutoff - Sensitivity cutoff change
+    ReconL = evalin('base', 'Recon');
+    for i = 1:size(ReconL,2)
+        ReconL(i).senscutoff = UIValue;
     end
-    % display at the GUI slider value
-    h = findobj('Tag', 'UserB5Edit');
-    set(h,'String', tagstr);
-    assignin('base', 'TimeTagEna', TimeTagEna);
+    assignin('base','Recon',ReconL);
+    Control = evalin('base','Control');
+    Control.Command = 'update&Run';
+    Control.Parameters = {'Recon'};
+    assignin('base','Control', Control);
 end
 
-%% **** Callback routines used by External function definition (EF) ****
 
-function readTimeTag(RDatain)
-    persistent frmCount
-    if isempty(frmCount)
-        frmCount = 0;
-    end
-    % get time tag from first two samples
-    % time tag is 32 bit unsigned interger value, with 16 LS bits in sample 1
-    % and 16 MS bits in sample 2.  Note RDatain is in signed INT16 format so must
-    % convert to double in unsigned format before scaling and adding
-    W = zeros(2, 1);
-    for i=1:2
-        W(i) = double(RDatain(i, 1));
-        if W(i) < 0
-            % translate 2's complement negative values to their unsigned integer
-            % equivalents
-            W(i) = W(i) + 65536;
-        end
-    end
-    timeStamp = W(1) + 65536 * W(2);
-    % the 32 bit time tag counter increments every 25 usec, so we have to scale
-    % by 25 * 1e-6 to convert to a value in seconds
-    frmCount = frmCount + 1;
-    if mod(frmCount, 25) == 1
-        TimeTagEna = evalin('base', 'TimeTagEna');
-        if TimeTagEna
-            disp(['Time tag value in seconds ', num2str(timeStamp/4e4,'%2.3f')]);
-        end
-    end
+function ChangeXYCallback(~,~,UIValue)    
+    % Import relevant structs
+    tic;
+    Resource = evalin('base','Resource');
+    PData = evalin('base','PData');
+    P = evalin('base','P');
+    
+    % Adjust PData Region
+    [~,I] = min(abs(UIValue-P.zCoord));
+    RegionIndices = reshape(PData.Region(1).PixelsLA,PData.Size);
+    PData.Region(4).PixelsLA = reshape(RegionIndices(:,:,I),[],1,1);
+    PData(1).Region(4).Shape.oPAIntersect = P.zCoord(I);
+    
+    % Adjust Display Window
+    Resource.DisplayWindow(3).ReferencePt = [PData(1).Origin(1),-PData(1).Origin(2),PData.Region(4).Shape.oPAIntersect];
+    
+    % Update Overlapped region
+    PData.Region(5).PixelsLA = unique([PData.Region(2).PixelsLA; PData.Region(3).PixelsLA; PData.Region(4).PixelsLA]);
+    PData.Region(5).numPixels = length(PData.Region(5).PixelsLA);
+
+    % Update relevant controls and commands
+    assignin('base','Resource',Resource);
+    assignin('base','PData',PData);
+    Control = evalin('base','Control');
+    Control.Command = 'update&Run';
+    Control.Parameters = {'PData','DisplayWindow','Recon'};
+    assignin('base','Control', Control);
+    toc
+end
+
+function ChangeXZCallback(~,~,UIValue)    
+    % Import relevant structs
+    tic;
+    Resource = evalin('base','Resource');
+    PData = evalin('base','PData');
+    P = evalin('base','P');
+    
+    % Adjust PData Region
+    [~,I] = min(abs(UIValue-P.yCoord));
+    RegionIndices = reshape(PData.Region(1).PixelsLA,PData.Size);
+    PData.Region(3).PixelsLA = reshape(RegionIndices(I,:,:),[],1,1);
+    PData(1).Region(3).Shape.oPAIntersect = P.yCoord(I);
+    
+    % Adjust Display Window
+    Resource.DisplayWindow(1).ReferencePt = [PData(1).Origin(1),PData(1).Region(3).Shape.oPAIntersect,0.0];
+    
+    % Update Overlapped region
+    PData.Region(5).PixelsLA = unique([PData.Region(2).PixelsLA; PData.Region(3).PixelsLA; PData.Region(4).PixelsLA]);
+    PData.Region(5).numPixels = length(PData.Region(5).PixelsLA);
+
+    % Update relevant controls and commands
+    assignin('base','Resource',Resource);
+    assignin('base','PData',PData);
+    Control = evalin('base','Control');
+    Control.Command = 'update&Run';
+    Control.Parameters = {'PData','DisplayWindow','Recon'};
+    assignin('base','Control', Control);
+
+    toc
+end
+
+function ChangeYZCallback(~,~,UIValue)    
+    % Import relevant structs
+    tic;
+    Resource = evalin('base','Resource');
+    PData = evalin('base','PData');
+    P = evalin('base','P');
+    
+    % Adjust PData Region
+    [~,I] = min(abs(UIValue-P.xCoord));
+    RegionIndices = reshape(PData.Region(1).PixelsLA,PData.Size);
+    PData.Region(2).PixelsLA = reshape(RegionIndices(:,I,:),[],1,1);
+    PData(1).Region(2).Shape.oPAIntersect = P.xCoord(I);
+    
+    % Adjust Display Window
+    Resource.DisplayWindow(2).ReferencePt = [PData(1).Region(2).Shape.oPAIntersect,-PData(1).Origin(2),0];
+    
+    % Update Overlapped region
+    PData.Region(5).PixelsLA = unique([PData.Region(2).PixelsLA; PData.Region(3).PixelsLA; PData.Region(4).PixelsLA]);
+    PData.Region(5).numPixels = length(PData.Region(5).PixelsLA);
+
+    % Update relevant controls and commands
+    assignin('base','Resource',Resource);
+    assignin('base','PData',PData);
+    Control = evalin('base','Control');
+    Control.Command = 'update&Run';
+    Control.Parameters = {'PData','DisplayWindow','Recon'};
+    assignin('base','Control', Control);
+    toc
 end

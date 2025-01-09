@@ -28,7 +28,7 @@ movePointsOrNot = 0;
 initialVoltage = 1.6; % V
 
 startDepthMM = 0; % start depth in wavelengths
-endDepthMM = 20;
+endDepthMM = 10;
 
 fps_target = 500;   % Intended (sub)frame rate
 supFrameBurstRate = 0.5; % Defines spacing between end of superframe burst and the next burst after jumping
@@ -36,7 +36,7 @@ supFrameBurstRate = 0.5; % Defines spacing between end of superframe burst and t
 numChannels = 256; % enable channels
 
 numSupFrames = 1; % # of superframes, MUST BE ONE OR EVEN FOR VSX
-numSubFrames = 1; % # of subframes
+numSubFrames = 2; % # of subframes
 na = 11; % # of acquisitions per frame (acquisition pairs)
 maxAngle = 10; % degrees
 angleRange = [-maxAngle, maxAngle].*pi/180; % Angle range in radians
@@ -346,7 +346,7 @@ for lss = 1:length(startSample)
     Receive(lss).startSample = startSample(lss);
     Receive(lss).endSample = endSample(lss);    
 %     Receive(lss).decimSampleRate = samplesPerWave * Trans.frequency;
-    Receive(lss).decimSampleRate = 62;
+    Receive(lss).decimSampleRate = 62.5;
 
 end
 
@@ -511,6 +511,7 @@ Process(2).Parameters = {'srcbuffer','receive',... % name of buffer to process.
                          'srcbufnum',1,...
                          'srcframenum',-1, ...
                          'dstbuffer','none'};
+
 %%
 makeParameterStructureSmall;
 %% New Event structure
