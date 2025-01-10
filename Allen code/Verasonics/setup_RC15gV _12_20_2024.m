@@ -14,30 +14,29 @@ cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 activate
 % numElements = 80;
 
-savepath = "G:\Allen\Data\01-07-2025 testing\RC15gV\run 1\";
+% savepath = 'D:\Allen\Simulation Results\RC15gV\datatest\'; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% savepath = strcat("G:\Allen\Data\10-28-2024 headbars with 250 um PMP\RC15gV\plastic and no PMP\trial 2", " max TGC ", num2str(na), " angles ", num2str(numFrames), " frames ", num2str(endDepthMM), " endDepthMM ", num2str(maxAngle), " maxAngle\");
+savepath = "G:\Allen\Data\12-19-2024 troubleshooting\RC15gV\run 1\";
 savepath = char(savepath);
 mkdir(savepath)
 
-% tagtest = Hardware.enableAcquisitionTimeTagging(1);
-supFrameIndex = 0;
-
 runVSX = 1;
-simOrNot = 1;
+simOrNot = 0;
 movePointsOrNot = 0;
 
-initialVoltage = 1.6; % V
-
 startDepthMM = 0; % start depth in wavelengths
-endDepthMM = 20;
+endDepthMM = 10;
 
-fps_target = 500;   % Intended (sub)frame rate
-supFrameBurstRate = 0.5; % Defines spacing between end of superframe burst and the next burst after jumping
+fps_target = 2000;   % Intended frame rate
+supFrameBurstRate = 1;
 
-numChannels = 256; % enable channels
+initialVoltage = 5;
+
+numChannels = 256; % enable all channels
 
 numSupFrames = 1; % # of superframes, MUST BE ONE OR EVEN FOR VSX
 numSubFrames = 1; % # of subframes
-na = 11; % # of acquisitions per frame (acquisition pairs)
+na = 21; % # of acquisitions per frame (acquisition pairs)
 maxAngle = 10; % degrees
 angleRange = [-maxAngle, maxAngle].*pi/180; % Angle range in radians
 
@@ -49,7 +48,7 @@ else
     angles = 0;
 end
 
-% numAngles = length(angles);
+numAngles = length(angles);
 pair = 2; % The R-C and C-R pair of acquisitions per angle
 
 % Resource is a structure, define system parameters
@@ -57,12 +56,12 @@ Resource.Parameters.numTransmit = numChannels; % number of transmit channels
 Resource.Parameters.numRcvChannels = numChannels; % number of receive channels
 % Resource.Parameters.connector = 1; % transducer connector to use since the current plate for the 256 bit system is split into two 128 bit connectors. 1 is left and 2 is right
 Resource.Parameters.speedOfSound = 1540; % speed of sound in m/s, the 1540 is for average human tissue
-% Resource.Parameters.speedOfSound = 1481;
+
+
 %% Define Transducer
 
 Trans.name = 'RC15gV'; 
-% Trans.frequency = 13.8889; % Not needed if using the default center frequency
-Trans.frequency = 15.625;
+% Trans.frequency = 18.5; % Not needed if using the default center frequency
 Trans.units = 'wavelengths'; % or mm
 % Trans.units = 'mm';
 
@@ -74,15 +73,6 @@ wl = Resource.Parameters.speedOfSound / Trans.frequency / 1e6; % m
 
 startDepth = startDepthMM/1e3/wl; % start depth in wavelengths
 endDepth = endDepthMM/1e3/wl;
-
-%% angles
-% angpitch = wl / (Trans.spacingMm*Trans.numelements / 2 / 1e3);
-% angles = -(na - 1) / 2 * angpitch : angpitch : (na - 1) / 2 * angpitch
-%% enable time tag
-TimeTagEna = 2;
-% 0: disable
-% 1: enable but don't reset counter
-% 2: enable and reset counter
 
 
 %% Simulation things - Media structure (define scattering points and attenuation)
@@ -245,8 +235,8 @@ end
 % Accounts for decrease in amplitude of echoes for longer distance traveled
 
 % TGC curve definition
-TGC.CntrlPts = [0 785.2216 1023 1023 1023 1023 1023 1023];
-% TGC.CntrlPts = [1023 1023 1023 1023 1023 1023 1023 1023];
+% TGC.CntrlPts = [0 785.2216 1023 1023 1023 1023 1023 1023];
+TGC.CntrlPts = [1023 1023 1023 1023 1023 1023 1023 1023];
 % TGC(1).CntrlPts = [500,590,650,710,770,830,890,950]; % 0 to 1023, minimum to maximum gain
                                                      % Values represent the
                                                      % gain at increasing
@@ -256,7 +246,7 @@ TGC.CntrlPts = [0 785.2216 1023 1023 1023 1023 1023 1023];
                                                      % distributed over the
                                                      % 0 to rangeMax depth
                                                      % (in wavelengths)
-TGC(1).rangeMax = endDepth;
+TGC(1).rangeMax = endDepth; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 TGC(1).Waveform = computeTGCWaveform(TGC); % Parameters can be adjusted later with GUI sliders
 
 %% Receiver array object
@@ -312,45 +302,21 @@ end
 % RcvBuffer dimensions: (samples, channels, frames, pages)
 
 Resource.RcvBuffer(1).datatype = 'int16'; % 16 bit signed integers are the only supported datatype
+% Resource.RcvBuffer(1).rowsPerFrame = pair*na*ceil(maxAcqLength + (endDepth - startDepth)/cosd(maxAngle))*4; %%%%% 4 accounts for sampling rate
+% Resource.RcvBuffer(1).rowsPerFrame = pair*na*ceil(maxAcqLength)*8; %%%%% 8 accounts for 4x sampling rate and round trip + extra for the VSX rounding up to some sample interval
 
-%%%% from Nikunj's SetUpCustomIntegratedRecon.m code
-if strcmp(Receive(1).sampleMode,'custom')
-    error('No handling of condition for custom Receive sampling. Refer to VsUpdate line 712 to implement');
-else
-    fs = 4*Trans.frequency;
-    samplesPerWave = 4;
-end
-
-% if statement included to match verasonics automatic extension to
-% multiples of 128 samples
-nSmpls = 2*(maxAcqLength - startDepth) * samplesPerWave; % maxAcqLength is the Receive(1).endDepth
-% nSmpls = 2*(Receive(1).endDepth - Receive(1).startDepth) * samplesPerWave;
-if abs(round(nSmpls/128) - nSmpls/128) < .01
-    numRcvSamples = 128*round(nSmpls/128);
-else
-    numRcvSamples = 128*ceil(nSmpls/128);
-end
-
-startSample = (0:(na-1))*numRcvSamples + 1;
-endSample = startSample + numRcvSamples - 1;
-%%%%
-
-% spw = 3.6765; % samples per wave, it isn't always exactly 4... check p107
-% nspa = spw*(2*(Receive(1).endDepth - Receive(1).startDepth));
+% nspa = 4*(maxAcqLength + (endDepth - startDepth));
 % nspa = 128 * ceil(nspa/128); % # samples per acquisition
-% maxAcqLength_adjusted = nspa / spw / 2;
-Resource.RcvBuffer(1).rowsPerFrame = numRcvSamples * na * 2 * numSubFrames;
-maxAcqLength_adjusted = numRcvSamples / samplesPerWave / 2;
+% spw = Receive(1).samplesPerWave;
 
-for lss = 1:length(startSample)
-    Receive(lss).startSample = startSample(lss);
-    Receive(lss).endSample = endSample(lss);    
-%     Receive(lss).decimSampleRate = samplesPerWave * Trans.frequency;
-    Receive(lss).decimSampleRate = 62;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+spw = 3.6765; % samples per wave, it isn't always exactly 4... check p107
+nspa = spw*(2*(Receive(1).endDepth - Receive(1).startDepth));
+nspa = 128 * ceil(nspa/128); % # samples per acquisition
+maxAcqLength_adjusted = nspa / spw / 2;
+Resource.RcvBuffer(1).rowsPerFrame = nspa*pair*na .* numSubFrames;
 
-end
-
-
+% Resource.RcvBuffer(1).colsPerFrame = 80; % Usually 1:1 to # of receive channels available in the system. Can change to 256 with the 2D probe and new connector plate.
 Resource.RcvBuffer(1).colsPerFrame = Resource.Parameters.numRcvChannels; % Usually 1:1 to # of receive channels available in the system. Can change to 256 with the 2D probe and new connector plate.
 Resource.RcvBuffer(1).numFrames = numSupFrames; % minimum # frames of RF data to acquire; RcvBuffer contains all the data needed for a whole frame, including multiple acquisition passes needed for reconstruction. Software can re-process RcvBuffer frames
 Resource.Parameters.verbose = 2; % Describe errors in varying levels
@@ -366,6 +332,34 @@ if numGBPerBufferFrame > 2
     return
 
 end
+%% for FPS stuff. values are per frame
+
+% manual p105
+acqsPerFrame = [1:60]; % range to graph for
+% n = number of samples per acquisition
+% n = (maxAcqLength - startDepth)*4; % NS200BW samples at 4x Trans.frequency (4 samples per period)
+% n = Resource.RcvBuffer(1).rowsPerFrame;
+n = Resource.RcvBuffer(1).rowsPerFrame/na.*acqsPerFrame; % # z samples per frame
+% n = mod(n, 128) + n;
+n = 128 * ceil(n/128); % round up to nearest multiple of 128, since VSX transfers in chunks of 128 samples
+
+% number of z samples per element * # rcv channels * 2 bytes (16 bits) per
+% int16 * 1024^2 bytes per megabyte
+RcvDataSize = n * Resource.RcvBuffer.colsPerFrame * 2 / 1024^2; % file size per frame, in MB
+
+%
+% Receive(1).Apod(1 : Trans.numelements/2) = zeros(1, Trans.numelements/2); % turn off rows for RX
+% Lowpass and Bandpass digital filters (hardware only, no simulation).
+% Empty values cause VSX to program a default set of values, according to
+% transducer frequency. See decimation/downsampling.
+% Receive(1).LowPassCoef = []; % cutoff is frequencies higher than 2*f_center. See tutorial p19 for possible inputs
+% Receive(1).InputFilter = []; % See tutorial p20 for possible inputs. Good to eliminate any DC components
+
+% Note: after running VSX, Receive will have startSample and endSample
+% fields. Since a column can have data from multiple acquisitions
+% (different acqNums), it helps to have this index
+
+% showGeometry
 
 
 %% Reconstruction
@@ -503,14 +497,7 @@ Process(1).method = 'saveRcvData'; % Function name
 Process(1).Parameters = {'srcbuffer', 'receive', ...
                          'srcbufnum', 1, ... % # of buffer to process
                          'dstbuffer', 'none'};
-%                          'srcframenum', -1, ... % last frame transferred
 
-Process(2).classname = 'External';
-Process(2).method = 'ShowTimeTag'; % Function name
-Process(2).Parameters = {'srcbuffer','receive',... % name of buffer to process.
-                         'srcbufnum',1,...
-                         'srcframenum',-1, ...
-                         'dstbuffer','none'};
 %%
 makeParameterStructureSmall;
 %% New Event structure
@@ -531,7 +518,6 @@ SeqControl(scInd).command = 'timeToNextAcq'; % In us, allowed range is from 10 -
                                          % the TPC (voltage) across acqs,
                                          % since it takes 800 us - 8 ms to
                                          % switch
-SeqControl(scInd).condition = 'ignore';  % don't print the warning message
 timePerAcq = 1 / fps_target / (na * 2) * 1e6; % frame rate converted to acq time step (us)
 timePerAcqLimits = [10, 4190000];
 if timePerAcq < timePerAcqLimits(1)
@@ -544,9 +530,6 @@ else
     SeqControl(scInd).argument = timePerAcq;
 end
 
-timePerSubframe = SeqControl(scInd).argument * na * 2; % us
-timeGapBetweenLastSuperframeBurstAndNextSuperframeBurst = 1 / supFrameBurstRate * 1e6 - timePerSubframe * numSubFrames * numSupFrames;
-
 scInd = scInd + 1;
 
 SeqControl(scInd).command = 'returnToMatlab';
@@ -556,26 +539,16 @@ scInd = scInd + 1;
 SeqControl(scInd).command = 'jump'; % jump to
 SeqControl(scInd).argument = 1;     % first event
 
-% superframe burst rate
-scInd = scInd + 1;
-SeqControl(scInd).command = 'timeToNextAcq'; % jump to
+% scInd = scInd + 1;
 
-if timeGapBetweenLastSuperframeBurstAndNextSuperframeBurst < timePerAcqLimits(1)
-    warning('Superframe burst delay time too short, setting to minimum of 10 us')
-    SeqControl(scInd).argument = timePerAcqLimits(1); 
-elseif timePerAcq > timePerAcqLimits(2)
-    warning('Superframe burst delay time too long, setting to maximum of 4190000 us')
-    SeqControl(scInd).argument = timePerAcqLimits(2);
-else
-    SeqControl(scInd).argument = timeGapBetweenLastSuperframeBurstAndNextSuperframeBurst;
-end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SAVE
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% DELAY?????%%%%%%%%%%%%%%
+% SeqControl(scInd).command = 'noop'; % jump to
+% SeqControl(scInd).argument = 1000000;     % first event
 
-% superframe burst rate noop
-scInd = scInd + 1;
-SeqControl(scInd).command = 'noop'; % jump to
-noop_time_us = SeqControl(scInd - 1).argument;
-SeqControl(scInd).argument = noop_time_us / 200 * 1e3; % (value*200nsec; max. value is 2^25 - 1 for 6.7 sec)
-SeqControl(scInd).condition = 'Hw&Sw'; % need to enable the noop in hardware
+
+
+% SeqControl(3).command = 'transferToHost'; % probably define this before Event stuff for longer loops
 % Transfer data to host, needed for hardware but not simulation, which writes directly to RcvBuffer
 % NEED A UNIQUE SEQCONTROL FOR EACH TRANSFERTOHOST COMMAND!!!!!!!!!!!!!!!!!!
 
@@ -604,43 +577,37 @@ for nsupf = 1:numSupFrames
         
         end
     end
-%     Event(n).seqControl = 4; 
 
+    % Transfer all the acquisitions for one superframe 
+    n = n + 1;
+
+    Event(n).info = 'Transfer data'; % want a transferToHost after all the acquisitions for one (super) frame
+    Event(n).tx = 0; 
+    Event(n).rcv = 0; 
+    Event(n).recon = 0;
+    Event(n).process = 0; 
     scInd = scInd + 1;
 %     Event(n).seqControl = [Event(n).seqControl, scInd]; 
     SeqControl(scInd).command = 'transferToHost';
 
 % test 11/6/24
-%     scInd = scInd + 1;
-%     
-%     SeqControl(scInd).command = 'waitForTransferComplete';
-%     SeqControl(scInd).argument = scInd - 1;
-% 
-%     Event(n).seqControl = [1, scInd, scInd-1]; % transfer and wait for the transfer
-%     Event(n).seqControl = [4, 5, scInd];
-    Event(n).seqControl = [1, scInd];
+    scInd = scInd + 1;
+    
+    SeqControl(scInd).command = 'waitForTransferComplete';
+    SeqControl(scInd).argument = scInd - 1;
 
-    % Transfer all the acquisitions for one superframe 
+    Event(n).seqControl = [scInd, scInd-1]; % transfer and wait for the transfer
+
+    
+
 %     n = n + 1;
 % 
-%     Event(n).info = 'Transfer data'; % want a transferToHost after all the acquisitions for one (super) frame
+%     Event(n).info = 'Save data - ext proc func';
 %     Event(n).tx = 0; 
 %     Event(n).rcv = 0; 
 %     Event(n).recon = 0;
-%     Event(n).process = 0; 
-%     scInd = scInd + 1;
-% %     Event(n).seqControl = [Event(n).seqControl, scInd]; 
-%     SeqControl(scInd).command = 'transferToHost';
-% 
-% % test 11/6/24
-%     scInd = scInd + 1;
-%     
-%     SeqControl(scInd).command = 'waitForTransferComplete';
-%     SeqControl(scInd).argument = scInd - 1;
-% 
-%     Event(n).seqControl = [scInd, scInd-1]; % transfer and wait for the transfer
-
-
+%     Event(n).process = 1; 
+%     Event(n).seqControl = 0; 
 
 %     n = n + 1;
 % 
@@ -651,7 +618,14 @@ for nsupf = 1:numSupFrames
 %     Event(n).process = 2; 
 %     Event(n).seqControl = 0; 
 
-    
+%     n = n + 1;
+% 
+%     Event(n).info = 'Jump';
+%     Event(n).tx = 0; 
+%     Event(n).rcv = 0; 
+%     Event(n).recon = 0;
+%     Event(n).process = 0; 
+%     Event(n).seqControl = 3; 
 
 %     n = n + 1;
 % 
@@ -693,80 +667,39 @@ for nsupf = 1:numSupFrames
 
 end
 
-% Event(n).seqControl = [4, scInd, scInd-1]; % transfer and wait for the transfer
-Event(n).seqControl = [4, scInd]; % transfer
+ n = n + 1;
 
-n = n + 1;
-
-Event(n).info = 'Save data - ext proc func';
-Event(n).tx = 0; 
-Event(n).rcv = 0; 
-Event(n).recon = 0;
-Event(n).process = 1; 
-Event(n).seqControl = 5; 
-
-% Test for time tag
-% n = n+1;
-% Event(n).info = 'ext function call';
-% Event(n).tx = 0;         % no transmit
-% Event(n).rcv = 0;        % no rcv
-% Event(n).recon = 0;      % reconstruction
-% Event(n).process = 2;    % external processing function
-% Event(n).seqControl = 0; % none
-
-n = n + 1;
-
-Event(n).info = 'Jump';
-Event(n).tx = 0; 
-Event(n).rcv = 0; 
-Event(n).recon = 0;
-Event(n).process = 0; 
-Event(n).seqControl = 3; 
-
-%  n = n + 1;
-% 
-%     Event(n).info = 'Save data - ext proc func';
-%     Event(n).tx = 0; 
-%     Event(n).rcv = 0; 
-%     Event(n).recon = 0;
-%     Event(n).process = 1; 
-%     Event(n).seqControl = 2; 
-
-
-%% User specified UI Control Elements
-
-import vsv.seq.uicontrol.VsSliderControl
-
-% - Time Tag
-UI(1).Control = VsSliderControl('LocationCode', 'UserB5',...
-                                'Label', 'Time Tag', ...
-                                'SliderMinMaxVal', [0, 2, TimeTagEna],...
-                                'SliderStep', [0.5, 0.5], ...
-                                'ValueFormat', '%1.0f',...
-                                'Callback', @TimeTagCallback);
-
-
-% External function definitions.
-
-import vsv.seq.function.ExFunctionDef
-
-EF(1).Function = vsv.seq.function.ExFunctionDef('readTimeTag',@readTimeTag);
+    Event(n).info = 'Save data - ext proc func';
+    Event(n).tx = 0; 
+    Event(n).rcv = 0; 
+    Event(n).recon = 0;
+    Event(n).process = 1; 
+    Event(n).seqControl = 2; 
 
 %% Save all the data/structures to a .mat file.
+% disp(strcat('MatFiles/', mfilename))
+% save(strcat('MatFiles/', mfilename));
+% Save all the structures to a .mat file.
 currentDir = cd; currentDir = regexp(currentDir, filesep, 'split');
-filename = 'RC15gV_Allen_loop.mat';
-
+filename = 'RC15gV_Allen.mat';
+% filename = mfilename;
 save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+filename);
 
+% save('MatFiles/setup_RC15gV_selfrecon_g1')
+% save('MatFiles/setup_RC15gV_ctsacq1')
 
-%% Run VSX automatically and make parameter structure for RF file naming
 
+% plot(RcvData{1}(Receive(1).startSample:Receive(1).endSample,128,1))
+% imagesc(RcvData{1}(Receive(1).startSample:Receive(1).endSample,:,1))
+% colormap('gray')
+
+%% 
 if runVSX
     disp("running VSX")
     VSX
 end
 
-%% Save post-acquisition parameters in a structure P
+%% Save parameters in a structure P
 
 % save([savepath, 'params.mat'], 'angles', 'startDepth', 'startDepthMM', 'endDepth', 'endDepthMM', 'Event', 'fps_target', 'maxAcqLength_adjusted', 'maxAngle', 'Media', 'na', 'nf', 'Receive', 'Resource', 'SeqControl', 'TGC', 'Trans', 'TW', 'TX', 'wl', 'numElements', '-v7.3')
 % save([savepath, 'params.mat'], 'P')
@@ -774,81 +707,43 @@ end
 makeParameterStructure;
 savefast([savepath, 'params.mat'], 'P')
 % saveRcvData(RcvData{1})
+%% Plot FPS
 
-%% **** Callback routines used by UIControls (UI) ****
-%% Time tag callback test
+% maxTravelDist = (Trans.spacingMm*Trans.numelements /cosd(maxAngle)) + maxAcqLength*wl*1e3; 
+% maxTravelTime = maxTravelDist / 1e3 / Resource.Parameters.speedOfSound;
+% 
+% timePerFramePhysical = maxTravelTime * acqsPerFrame * pair;
+% maxFPSPhysical = 1./timePerFramePhysical;
+% 
+% figure (1)
+% plot(acqsPerFrame, maxFPSPhysical./1e3, 'LineWidth', 3)
+% xlabel('Acquisition pairs (angles) per frame')
+% ylabel('Max Frame Rate (kHz)')
+% title(['Max angle = ', num2str(maxAngle), ' degrees'])
+% 
+% % Data transfer parameters
+% writeRate = 6.6*1024; % MB/s for DMA https://verasonics.com/wp-content/uploads/2019/04/Vantage-Systems-Brochure.pdf
+% timePerFrameFile = RcvDataSize ./ writeRate;
+% 
+% mask = timePerFrameFile > timePerFramePhysical;
+% % totalTimePerFrame = timePerFramePhysical + timePerFrameFile;
+% totalTimePerFrame = timePerFramePhysical;
+% totalTimePerFrame(mask) = timePerFrameFile; % When file transfer time > physical time, that is the total since you can transfer the data during the next acq
+% 
+% totalFPS = 1 ./ totalTimePerFrame;
+% hold on
+% plot(acqsPerFrame, totalFPS./1e3, 'LineWidth', 3)
+% yline(1, '--', 'LineWidth', 2) % 1 kHz frame rate needed for g1
+% hold off
+% legend('Physical limit', 'Including file transfer', '1 kHz line')
+% title(['Max angle = ', num2str(maxAngle), ' degrees'])
+% 
+% figure(2)
+% plot(acqsPerFrame, timePerFramePhysical*1e3, 'LineWidth', 3)
+% hold on
+% plot(acqsPerFrame, timePerFrameFile*1e3, 'LineWidth', 3)
+% hold off
+% legend('Physical time per frame', 'File transfer time per frame')
+% xlabel('Acquisition pairs (angles) per frame')
+% ylabel('Time per frame (ms)')
 
-function TimeTagCallback(~, ~, UIValue)
-    import com.verasonics.hal.hardware.*
-    TimeTagEna = round(UIValue);
-    VDAS = evalin('base', 'VDAS');
-    switch TimeTagEna
-        case 0
-            if VDAS % can't execute this command if HW is not present
-                % disable time tag
-                rc = Hardware.enableAcquisitionTimeTagging(false);
-                if ~rc
-                    error('Error from enableAcqTimeTagging')
-                end
-            end
-            tagstr = 'off';
-        case 1
-            if VDAS
-                % enable time tag
-                rc = Hardware.enableAcquisitionTimeTagging(true);
-                if ~rc
-                    error('Error from enableAcqTimeTagging')
-                end
-            end
-            tagstr = 'on';
-        case 2
-            if VDAS
-                % enable time tag and reset counter
-                rc = Hardware.enableAcquisitionTimeTagging(true);
-                if ~rc
-                    error('Error from enableAcqTimeTagging')
-                end
-                rc = Hardware.setTimeTaggingAttributes(false, true); % reset hardware counter to 0 (otherwise, it continuously counts up from system bootup until it gets to 107,000s - see p37 of User Manual
-                if ~rc
-                    error('Error from setTimeTaggingAttributes')
-                end
-            end
-            tagstr = 'on, reset';
-    end
-    % display at the GUI slider value
-    h = findobj('Tag', 'UserB5Edit');
-    set(h,'String', tagstr);
-    assignin('base', 'TimeTagEna', TimeTagEna);
-end
-
-%% **** Callback routines used by External function definition (EF) ****
-
-function readTimeTag(RDatain)
-    persistent frmCount
-    if isempty(frmCount)
-        frmCount = 0;
-    end
-    % get time tag from first two samples
-    % time tag is 32 bit unsigned interger value, with 16 LS bits in sample 1
-    % and 16 MS bits in sample 2.  Note RDatain is in signed INT16 format so must
-    % convert to double in unsigned format before scaling and adding
-    W = zeros(2, 1);
-    for i=1:2
-        W(i) = double(RDatain(i, 1));
-        if W(i) < 0
-            % translate 2's complement negative values to their unsigned integer
-            % equivalents
-            W(i) = W(i) + 65536;
-        end
-    end
-    timeStamp = W(1) + 65536 * W(2);
-    % the 32 bit time tag counter increments every 25 usec, so we have to scale
-    % by 25 * 1e-6 to convert to a value in seconds
-    frmCount = frmCount + 1;
-    if mod(frmCount, 25) == 1
-        TimeTagEna = evalin('base', 'TimeTagEna');
-        if TimeTagEna
-            disp(['Time tag value in seconds ', num2str(timeStamp/4e4,'%2.3f')]);
-        end
-    end
-end

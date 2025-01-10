@@ -15,7 +15,7 @@ cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 activate
 % numElements = 80;
 
-savepath = "G:\Allen\Data\01-07-2025 testing\RC15gV\run 1\";
+savepath = "G:\Allen\Data\01-09-2025 phantom anechoic\RC15gV\run 0\";
 savepath = char(savepath);
 mkdir(savepath)
 
@@ -25,10 +25,10 @@ ReconRegion = 5;
 supFrameIndex = 0;
 
 runVSX = 1;
-simOrNot = 1;
+simOrNot = 0;
 movePointsOrNot = 0;
 
-initialVoltage = 5; % V
+initialVoltage = 25; % V
 
 startDepthMM = 0; % start depth in wavelengths
 endDepthMM = 20;
@@ -66,7 +66,8 @@ Resource.Parameters.verbose = 2; % Describe errors in varying levels
 
 Trans.name = 'RC15gV'; 
 % Trans.frequency = 18.5; % Not needed if using the default center frequency
-Trans.frequency = 15.625;
+% Trans.frequency = 15.625;
+
 Trans.units = 'wavelengths'; % or mm
 % Trans.units = 'mm';
 
@@ -402,13 +403,22 @@ startSample = (0:(na-1))*numRcvSamples + 1;
 endSample = startSample + numRcvSamples - 1;
 %%%%
 
+% spw = 3.6765; % samples per wave, it isn't always exactly 4... check p107
+% nspa = spw*(2*(Receive(1).endDepth - Receive(1).startDepth));
+% nspa = 128 * ceil(nspa/128); % # samples per acquisition
+% maxAcqLength_adjusted = nspa / spw / 2;
 Resource.RcvBuffer(1).rowsPerFrame = numRcvSamples * na * 2 * numSubFrames;
 maxAcqLength_adjusted = numRcvSamples / samplesPerWave / 2;
 
 for lss = 1:length(startSample)
     Receive(lss).startSample = startSample(lss);
     Receive(lss).endSample = endSample(lss);    
+%     Receive(lss).decimSampleRate = samplesPerWave * Trans.frequency;
+%     Receive(lss).decimSampleRate = 62.5;
+
 end
+
+Resource.RcvBuffer(1).colsPerFrame = Resource.Parameters.numRcvChannels; % Usually 1:1 to # of receive channels available in the system. Can change to 256 with the 2D probe and new connector plate.
 
 Resource.RcvBuffer(1).numFrames = numSupFrames; % minimum # frames of RF data to acquire; RcvBuffer contains all the data needed for a whole frame, including multiple acquisition passes needed for reconstruction. Software can re-process RcvBuffer frames
 % Resource.InterBuffer(1).pagesPerFrame = pair*na*numSubFrames; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

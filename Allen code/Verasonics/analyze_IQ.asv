@@ -17,13 +17,12 @@
 %%
 % IQ = RcvData2IQ3D(RcvData, P);
 
-% IQ = RCA_DAS(RcvData, P, P.wl/2);
-IQ = RCA_DAS(RcvData, P, P.wl/P.Receive(1).samplesPerWave/2);
+IQ = RCA_DAS(RcvData, P, P.wl/2);
 % IQ = RcvData2IQ3D(r, P_new);
 
 
-% IQ_coherent_sum = squeeze(sum(IQ, 4));
-% I_coherent_sum = abs(IQ_coherent_sum); % intensity
+IQ_coherent_sum = squeeze(sum(IQ, 4));
+I_coherent_sum = abs(IQ_coherent_sum); % intensity
 % figure; imagesc(squeeze(I_coherent_sum(40, :, :))')
 % title('xy')
 % xlabel('x pixels')
@@ -32,15 +31,13 @@ IQ = RCA_DAS(RcvData, P, P.wl/P.Receive(1).samplesPerWave/2);
 % title('yz')
 % xlabel('x pixels')
 % ylabel('z pixels')
-
-%
+%%
 IQ_coherent_sum = squeeze(sum(IQ, 4));
 I_coherent_sum = abs(IQ_coherent_sum); % intensity
 figure; imagesc(squeeze(I_coherent_sum(40, :, :, 1))')
-title('xz')
+title('xy')
 xlabel('x pixels')
 ylabel('z pixels')
-
 figure; imagesc(squeeze(I_coherent_sum(:, 40, :, 1))')
 title('yz')
 xlabel('x pixels')

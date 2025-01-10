@@ -5,9 +5,15 @@
 % load(P_path);
 % load(RcvData_path)
 %%
+IQ = LA_DAS(RcvData, P);
+
+IQ_coherent_sum = squeeze(sum(IQ, 3));
+I_coherent_sum = abs(IQ_coherent_sum); % intensity
+figure; imagesc(I_coherent_sum)
+%%
 % figure; imagesc(squeeze(RcvData(:, :, 1)))
 % figure; imagesc(squeeze(RcvData(:, :, 2)))
-% reshapedRcvData = reshapeRcvData(RcvData, P);
+reshapedRcvData = reshapeRcvData(RcvData, P);
 IQ = RcvData2IQ2D(RcvData, P);
 
 IQ_coherent_sum = squeeze(sum(IQ, 3));

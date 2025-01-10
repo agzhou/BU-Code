@@ -14,7 +14,7 @@ cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 activate
 % numElements = 80;
 
-savepath = "G:\Allen\Data\01-07-2025 testing\RC15gV\run 1\";
+savepath = "G:\Allen\Data\12-19-2024 troubleshooting\RC15gV\run 4\";
 savepath = char(savepath);
 mkdir(savepath)
 
@@ -22,7 +22,7 @@ mkdir(savepath)
 supFrameIndex = 0;
 
 runVSX = 1;
-simOrNot = 1;
+simOrNot = 0;
 movePointsOrNot = 0;
 
 initialVoltage = 1.6; % V
@@ -35,7 +35,7 @@ supFrameBurstRate = 0.5; % Defines spacing between end of superframe burst and t
 
 numChannels = 256; % enable channels
 
-numSupFrames = 1; % # of superframes, MUST BE ONE OR EVEN FOR VSX
+numSupFrames = 2; % # of superframes, MUST BE ONE OR EVEN FOR VSX
 numSubFrames = 2; % # of subframes
 na = 11; % # of acquisitions per frame (acquisition pairs)
 maxAngle = 10; % degrees
@@ -61,8 +61,7 @@ Resource.Parameters.speedOfSound = 1540; % speed of sound in m/s, the 1540 is fo
 %% Define Transducer
 
 Trans.name = 'RC15gV'; 
-% Trans.frequency = 13.8889; % Not needed if using the default center frequency
-Trans.frequency = 15.625;
+% Trans.frequency = 18.5; % Not needed if using the default center frequency
 Trans.units = 'wavelengths'; % or mm
 % Trans.units = 'mm';
 
@@ -312,45 +311,21 @@ end
 % RcvBuffer dimensions: (samples, channels, frames, pages)
 
 Resource.RcvBuffer(1).datatype = 'int16'; % 16 bit signed integers are the only supported datatype
+% Resource.RcvBuffer(1).rowsPerFrame = pair*na*ceil(maxAcqLength + (endDepth - startDepth)/cosd(maxAngle))*4; %%%%% 4 accounts for sampling rate
+% Resource.RcvBuffer(1).rowsPerFrame = pair*na*ceil(maxAcqLength)*8; %%%%% 8 accounts for 4x sampling rate and round trip + extra for the VSX rounding up to some sample interval
 
-%%%% from Nikunj's SetUpCustomIntegratedRecon.m code
-if strcmp(Receive(1).sampleMode,'custom')
-    error('No handling of condition for custom Receive sampling. Refer to VsUpdate line 712 to implement');
-else
-    fs = 4*Trans.frequency;
-    samplesPerWave = 4;
-end
-
-% if statement included to match verasonics automatic extension to
-% multiples of 128 samples
-nSmpls = 2*(maxAcqLength - startDepth) * samplesPerWave; % maxAcqLength is the Receive(1).endDepth
-% nSmpls = 2*(Receive(1).endDepth - Receive(1).startDepth) * samplesPerWave;
-if abs(round(nSmpls/128) - nSmpls/128) < .01
-    numRcvSamples = 128*round(nSmpls/128);
-else
-    numRcvSamples = 128*ceil(nSmpls/128);
-end
-
-startSample = (0:(na-1))*numRcvSamples + 1;
-endSample = startSample + numRcvSamples - 1;
-%%%%
-
-% spw = 3.6765; % samples per wave, it isn't always exactly 4... check p107
-% nspa = spw*(2*(Receive(1).endDepth - Receive(1).startDepth));
+% nspa = 4*(maxAcqLength + (endDepth - startDepth));
 % nspa = 128 * ceil(nspa/128); % # samples per acquisition
-% maxAcqLength_adjusted = nspa / spw / 2;
-Resource.RcvBuffer(1).rowsPerFrame = numRcvSamples * na * 2 * numSubFrames;
-maxAcqLength_adjusted = numRcvSamples / samplesPerWave / 2;
+% spw = Receive(1).samplesPerWave;
 
-for lss = 1:length(startSample)
-    Receive(lss).startSample = startSample(lss);
-    Receive(lss).endSample = endSample(lss);    
-%     Receive(lss).decimSampleRate = samplesPerWave * Trans.frequency;
-    Receive(lss).decimSampleRate = 62.5;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+spw = 3.6765; % samples per wave, it isn't always exactly 4... check p107
+nspa = spw*(2*(Receive(1).endDepth - Receive(1).startDepth));
+nspa = 128 * ceil(nspa/128); % # samples per acquisition
+maxAcqLength_adjusted = nspa / spw / 2;
+Resource.RcvBuffer(1).rowsPerFrame = nspa*pair*na .* numSubFrames;
 
-end
-
-
+% Resource.RcvBuffer(1).colsPerFrame = 80; % Usually 1:1 to # of receive channels available in the system. Can change to 256 with the 2D probe and new connector plate.
 Resource.RcvBuffer(1).colsPerFrame = Resource.Parameters.numRcvChannels; % Usually 1:1 to # of receive channels available in the system. Can change to 256 with the 2D probe and new connector plate.
 Resource.RcvBuffer(1).numFrames = numSupFrames; % minimum # frames of RF data to acquire; RcvBuffer contains all the data needed for a whole frame, including multiple acquisition passes needed for reconstruction. Software can re-process RcvBuffer frames
 Resource.Parameters.verbose = 2; % Describe errors in varying levels
@@ -511,7 +486,6 @@ Process(2).Parameters = {'srcbuffer','receive',... % name of buffer to process.
                          'srcbufnum',1,...
                          'srcframenum',-1, ...
                          'dstbuffer','none'};
-
 %%
 makeParameterStructureSmall;
 %% New Event structure

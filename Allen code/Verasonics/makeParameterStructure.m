@@ -27,3 +27,4 @@ P.wl = wl;
 % P.L = L;
 
 P.TPC = TPC;
+P.samplesPerWave = Receive(1).samplesPerWave;
