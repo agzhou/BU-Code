@@ -1,0 +1,257 @@
+% Plot reconstructed phantom data
+%% Plot planes
+[znumpix, xnumpix] = size(I_coherent_sum);
+
+% Get pixel spacing (need to change this manually) so we can properly
+% translate FWHM from pixel numbers to distance, and to correctly scale our
+% plot window aspect ratio
+xPixSpacing = P.Trans.spacingMm/1e3;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TEMP
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+P.samplesPerWave = 3.676470588235294;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+zPixSpacing = P.wl/P.samplesPerWave/2;
+
+% mask to get rid of the top line thing
+zStart = 1;
+zEnd = znumpix;
+imgMask = {zStart:zEnd, 1:xnumpix};
+xz_img = I_coherent_sum(imgMask{1}, imgMask{2});
+
+% Find max (in the wire target) and find where that occurs, so we can get the planes where that occurs
+% [img_max, img_max_ind] = max(img, [], 'all');
+
+% [my, mx, mz] = ind2sub(size(img), img_max_ind);
+% xz_max_img = squeeze(img(my, :, :))';
+% yz_max_img = squeeze(img(:, mx, :))';
+
+[xz_max, xz_max_ind] = max(xz_img, [], 'all');
+[mz, mx] = ind2sub(size(xz_img), xz_max_ind);
+
+% [znp, xnp] = size(xz_img);
+% w = xPixSpacing * xnp; % width of image (m)
+% h = zPixSpacing * znp; % height of image (m)
+hwRatio = (P.endDepth - P.startDepth) / (P.Trans.spacing * P.numElements); % height to width ratio
+%
+xzFig = figure; imagesc(xz_img)
+title(strcat("xz plane - ", num2str(P.na), " angles from -", num2str(P.maxAngle), " to ", num2str(P.maxAngle), " deg"))
+xlabel('x pixels')
+ylabel('z pixels')
+colorbar
+
+xzFig.Position(4) = ceil(xzFig.Position(3) * hwRatio);
+%% PSF
+wire_z_level = mz;
+wire_x_level = my;
+
+gfit_pixel_spacing = 0.01;
+
+figure
+lateral_psf = squeeze(xz_img(wire_z_level, :));
+plot(1:xnumpix, lateral_psf, '-', 'LineWidth', 1.5)
+xlabel('x pixels')
+ylabel('Intensity (au)')
+title(strcat("Lateral PSF - ", num2str(P.na), " angles from -", num2str(P.maxAngle), " to ", num2str(P.maxAngle), " deg"))
+% legend('z = 10 mm')
+
+% lateral_pixels = 1:length(lateral_psf);
+% lateral_psf_gFit = fit(lateral_pixels', lateral_psf', 'gauss2'); % get the fit object
+% lateral_pixels_finer = 1:0.01:length(lateral_psf); % define finer point spacing for more accurate FWHM
+% lateral_psf_gFit_values = lateral_psf_gFit(lateral_pixels_finer);
+% hold on; plot(lateral_pixels_finer, lateral_psf_gFit_values); hold off;
+% legend('Data', 'Fit')
+
+lateral_pixels = 1:length(lateral_psf);
+% [lateral_lb, lateral_ub] = findLocalMinsOfPSF(lateral_psf)
+% lateral_psf_cut = lateral_psf(lateral_lb:lateral_ub);
+% lateral_pixels_cut = lateral_pixels(lateral_lb:lateral_ub);
+% 
+% lateral_psf_gFit = fit(lateral_pixels_cut', lateral_psf_cut', 'gauss1'); % get the fit object
+% gfit_pixel_spacing = 0.01;
+% lateral_pixels_finer = lateral_lb:gfit_pixel_spacing:lateral_ub; % define finer point spacing for more accurate FWHM
+% lateral_psf_gFit_values = lateral_psf_gFit(lateral_pixels_finer);
+[lateral_psf_gFit, lateral_psf_gFit_values, lateral_pixels_finer] = PSFGaussianFit(lateral_pixels, lateral_psf, gfit_pixel_spacing);
+hold on; plot(lateral_pixels_finer, lateral_psf_gFit_values); hold off;
+legend('Data', 'Fit')
+
+
+% [fwhm_lateral(1)] = fwhm(1:xnumpix, lateral_psf);
+% fwhm_lateral_um = fwhm_lateral .* P.Trans.spacingMm / 1e3 .* 1e6
+[fwhm_lateral(1)] = fwhm(lateral_pixels_finer, lateral_psf_gFit_values);
+fwhm_lateral_um = fwhm_lateral .* P.Trans.spacingMm / 1e3 .* 1e6
+
+
+% Axial
+figure
+axial_psf = squeeze(xz_img(:, wire_x_level));
+axial_pixels = 1:length(axial_psf);
+
+plot(axial_pixels, axial_psf, '-', 'LineWidth', 1.5)
+xlabel('z pixels')
+ylabel('Intensity (au)')
+title(strcat("Axial PSF - ", num2str(P.na), " angles from -", num2str(P.maxAngle), " to ", num2str(P.maxAngle), " deg"))
+
+% [axial_lb, axial_ub] = findLocalMinsOfPSF(axial_psf)
+% axial_psf_cut = axial_psf(axial_lb:axial_ub);
+% axial_pixels_cut = axial_pixels(axial_lb:axial_ub);
+% 
+% axial_psf_gFit = fit(axial_pixels_cut', axial_psf_cut, 'gauss2'); % get the fit object
+% gfit_pixel_spacing = 0.01;
+% axial_pixels_finer = axial_lb:gfit_pixel_spacing:axial_ub; % define finer point spacing for more accurate FWHM
+% axial_psf_gFit_values = axial_psf_gFit(axial_pixels_finer);
+[axial_psf_gFit, axial_psf_gFit_values, axial_pixels_finer] = PSFGaussianFit(axial_pixels, axial_psf, gfit_pixel_spacing);
+hold on; plot(axial_pixels_finer, axial_psf_gFit_values); hold off;
+legend('Data', 'Fit')
+
+% zrange = {400:1000};
+% [fwhm_axial(1)] = fwhm(zrange{1}, squeeze(I_coherent_sum(40, wire_x_level, zrange{1}, 1)));
+% fwhm_axial_wl = fwhm_axial ./ P.Receive(1).samplesPerWave ./ 2; % if all samples are used, adjust with the samplesPerWave and factor of 2 for round trip
+[fwhm_axial(1)] = fwhm(axial_pixels_finer, axial_psf_gFit_values);
+fwhm_axial_wl = fwhm_axial ./ P.Receive(1).samplesPerWave ./ 2;
+% fwhm_axial_wl = fwhm_axial ./ 2; % half wavelength pixel size
+fwhm_axial_um = fwhm_axial_wl .* P.wl .* 1e6
+
+depths = [10];
+
+figure
+yyaxis left
+plot(depths, fwhm_lateral_um, '-o', 'LineWidth', 1.5)
+ylabel('FWHM (um)')
+yyaxis right
+plot(depths, fwhm_axial_um, '-o', 'LineWidth', 1.5)
+xlabel('Wire z depth (mm)')
+ylabel('FWHM (um)')
+title('FWHM of Lateral and Axial PSFs')
+legend('Lateral', 'Axial')
+
+% figure
+% plot(depths, fwhm_axial_um, '-o', 'LineWidth', 1.5)
+% xlabel('Wire z depth (mm)')
+% ylabel('FWHM (um)')
+% title('FWHM of Axial PSF')
+
+% figure
+% imagesc(squeeze(I_coherent_sum(:, :, 691, 1)))
+% xlabel('x pixels')
+% ylabel('y pixels')
+% title('xy plane - 10 mm depth')
+
+%% 2D gCNR for xz planes, assuming an anechoic target
+
+% Define corners of the rectangular "inside" region
+startXIn = 57;
+startZIn = 1076;
+endXIn = 73;
+endZIn = 1201;
+regionInside = {startZIn:endZIn, startXIn:endXIn}; % zrange, xrange
+% regionInside = {[wire_x_level - ceil(ceil(fwhm_lateral - 1)/2) : wire_x_level + ceil(ceil(fwhm_lateral - 1)/2)], [[wire_z_level - ceil(ceil(fwhm_axial - 1)/2) : wire_z_level + ceil(ceil(fwhm_axial - 1)/2)]]}; % xrange, zrange
+
+startXOut = 1;
+endXOut = 46;
+startZOut = startZIn;
+endZOut = endZIn;
+regionOutside = {startZOut:endZOut, startXOut:endXOut}; % zrange, xrange
+
+intensityInside = xz_img(regionInside{1}, regionInside{2});
+intensityInside_vectorized = intensityInside(:);
+
+intensityOutside = xz_img(regionOutside{1}, regionOutside{2});
+intensityOutside_vectorized = intensityOutside(:);
+
+% figure; plot(intensityInside_vectorized)
+% hold on; plot(intensityOutside_vectorized); hold off;
+% legend('Inside', 'Outside')
+
+powerInside = abs(intensityInside_vectorized) .^ 2;
+powerOutside = abs(intensityOutside_vectorized) .^ 2;
+% powerInside = abs(intensityInside_vectorized);
+% powerOutside = abs(intensityOutside_vectorized);
+mu_i = mean(powerInside);
+mu_o = mean(powerOutside);
+C = mu_i / mu_o % Contrast
+
+% C = mean(intensityInside_vectorized) / mean(intensityOutside_vectorized) % Contrast
+C_dB = 10 * log10(C) % Contrast in dB
+%
+% varianceInside = mean((abs(intensityInside_vectorized) .^ 2 - mu_i) .^2);
+varianceInside = var(powerInside);
+% varianceOutside = mean((abs(intensityOutside_vectorized) .^ 2 - mu_o) .^2);
+varianceOutside = var(powerOutside);
+
+CNR = abs(mu_i - mu_o) / sqrt(varianceInside + varianceOutside)
+CNR_dB = 10 * log10(CNR)
+% for gCNR
+signalMax = max(xz_img, [], 'all');
+signalMin = min(xz_img, [], 'all');
+%
+numBins = 100;
+binEdges = linspace(signalMin, signalMax, numBins);
+% figure; hInside = histogram(intensityInside_vectorized, binEdges, 'Normalization', 'pdf');
+figure; hInside = histogram(intensityInside_vectorized, binEdges);
+% figure; plot(hInside.Values)
+
+% figure; hOutside = histogram(intensityOutside_vectorized, binEdges, 'Normalization', 'pdf');
+figure; hOutside = histogram(intensityOutside_vectorized, binEdges);
+% figure; plot(hOutside.Values)
+
+p_i = hInside.Values ./ sum(hInside.Values); % normalize to a pdf
+p_o = hOutside.Values ./ sum(hOutside.Values);
+
+plot(p_i)
+hold on; plot(p_o)
+overlap = min(p_i, p_o);
+OVL = trapz(overlap); % integral of overlap
+hold off
+legend('Inside', 'Outside')
+title(strcat("pdf - ", num2str(P.na), " angles from -", num2str(P.maxAngle), " to ", num2str(P.maxAngle), " deg"))
+xlabel('Bin')
+ylabel('Probability')
+
+gCNR = 1 - OVL 
+
+%% 2D gCNR for xz planes (12/20/24)
+% xzp = 40;
+% regionInside = {[wire_x_level - ceil(ceil(fwhm_lateral - 1)/2) : wire_x_level + ceil(ceil(fwhm_lateral - 1)/2)], [[wire_z_level - ceil(ceil(fwhm_axial - 1)/2) : wire_z_level + ceil(ceil(fwhm_axial - 1)/2)]]}; % xrange, zrange
+% regionOutside = {[50:75], [820:900]}; % xrange, zrange
+% 
+% intensityInside = squeeze(I_coherent_sum(xzp, regionInside{1}, regionInside{2}));
+% intensityInside_vectorized = intensityInside(:);
+% 
+% intensityOutside = squeeze(I_coherent_sum(xzp, regionOutside{1}, regionOutside{2}));
+% intensityOutside_vectorized = intensityOutside(:);
+% 
+% % figure; plot(intensityInside_vectorized)
+% % hold on; plot(intensityOutside_vectorized); hold off;
+% % legend('Inside', 'Outside')
+% 
+% powerInside = mean(abs(intensityInside_vectorized) .^ 2);
+% powerOutside = mean(abs(intensityOutside_vectorized) .^ 2);
+% 
+% C = powerInside / powerOutside % Contrast
+% C_dB = 10 * log10(C) % Contrast in dB
+% 
+% varianceInside = mean((abs(intensityInside_vectorized) .^ 2 - powerInside) .^2)
+% varianceOutside = mean((abs(intensityOutside_vectorized) .^ 2 - powerOutside) .^2)
+% 
+% CNR = abs(powerInside - powerOutside) / sqrt(varianceInside + varianceOutside)
+% 
+% % for gCNR
+% signalMax = max(I_coherent_sum, [], 'all');
+% signalMin = min(I_coherent_sum, [], 'all');
+% %%
+% numBins = 20;
+% binEdges = linspace(signalMin, signalMax, numBins);
+% figure; hInside = histogram(intensityInside_vectorized, binEdges, 'Normalization', 'pdf');
+% % figure; plot(hInside.Values)
+% 
+% figure; hOutside = histogram(intensityOutside_vectorized, binEdges, 'Normalization', 'pdf');
+% % figure; plot(hOutside.Values)
+% 
+% figure
+% plot(hInside.Values)
+% hold on; plot(hOutside.Values)
+% overlap = min(hInside.Values, hOutside.Values);
+% overlap_integral = trapz(overlap)
+% hold off
+% legend('Inside', 'Outside')
+
