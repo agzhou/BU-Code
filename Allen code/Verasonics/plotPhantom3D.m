@@ -4,7 +4,8 @@
 
 % mask to get rid of the top line thing
 zStart = 200;
-imgMask = {1:ynumpix, 1:xnumpix, zStart:znumpix};
+zEnd = znumpix;
+imgMask = {1:ynumpix, 1:xnumpix, zStart:zEnd};
 img = I_coherent_sum(imgMask{1}, imgMask{2}, imgMask{3});
 
 % Find max (in the wire target) and find where that occurs, so we can get the planes where that occurs
@@ -19,19 +20,23 @@ xz_img = squeeze(img(41, :, :))';
 [mz, my] = ind2sub(size(xz_img), xz_max_ind);
 yz_img = squeeze(img(:, 41, :))';
 
-%%
-figure; imagesc(xz_img)
+hwRatio = (P.endDepth - P.startDepth) / (P.Trans.spacing * P.numElements) * (zEnd-zStart + 1) / znumpix; % height to width ratio, idk if the adjustment works (1/12/25 change)
+
+%
+xzFig = figure; imagesc(xz_img)
 title(strcat("xz plane - ", num2str(P.na), " angles from -", num2str(P.maxAngle), " to ", num2str(P.maxAngle), " deg"))
 xlabel('x pixels')
 ylabel('z pixels')
 colorbar
+xzFig.Position(4) = ceil(xzFig.Position(3) * hwRatio);
 
-figure; imagesc(yz_img)
+yzFig = figure; imagesc(yz_img)
 title(strcat("yz plane - ", num2str(P.na), " angles from -", num2str(P.maxAngle), " to ", num2str(P.maxAngle), " deg"))
 xlabel('y pixels')
 ylabel('z pixels')
 colorbar
-%%
+yzFig.Position(4) = ceil(xzFig.Position(3) * hwRatio);
+%% PSF
 wire_z_level = mz;
 wire_x_level = my;
 
@@ -128,14 +133,29 @@ legend('Lateral', 'Axial')
 % title('xy plane - 10 mm depth')
 
 %% 2D gCNR for xz planes
-xzp = 40;
-regionInside = {[wire_x_level - ceil(ceil(fwhm_lateral - 1)/2) : wire_x_level + ceil(ceil(fwhm_lateral - 1)/2)], [[wire_z_level - ceil(ceil(fwhm_axial - 1)/2) : wire_z_level + ceil(ceil(fwhm_axial - 1)/2)]]}; % xrange, zrange
-regionOutside = {[50:75], [820:900]}; % xrange, zrange
 
-intensityInside = squeeze(I_coherent_sum(xzp, regionInside{1}, regionInside{2}));
+% Define corners of the rectangular "inside" region
+startXIn = 28;
+startZIn = 957;
+endXIn = 50;
+endZIn = 1108;
+regionInside = {startXIn:endXIn, startZIn:endZIn}; % xrange, zrange
+% regionInside = {[wire_x_level - ceil(ceil(fwhm_lateral - 1)/2) : wire_x_level + ceil(ceil(fwhm_lateral - 1)/2)], [[wire_z_level - ceil(ceil(fwhm_axial - 1)/2) : wire_z_level + ceil(ceil(fwhm_axial - 1)/2)]]}; % xrange, zrange
+% regionOutside = {[50:75], [820:900]}; % xrange, zrange
+
+% Define corners of the rectangular "outside" region
+% Use the region on both sides of the cyst target since we want more pixels
+% for the histogram
+startXOut = [1, 69];
+endXOut = [14, xnumpix];
+startZOut = startZIn;
+endZOut = endZIn;
+regionOutside = {[startXOut(1):endXOut(1), startXOut(2):endXOut(2)], startZOut:endZOut}; % xrange, zxrange
+
+intensityInside = xz_img(regionInside{2}, regionInside{1});
 intensityInside_vectorized = intensityInside(:);
 
-intensityOutside = squeeze(I_coherent_sum(xzp, regionOutside{1}, regionOutside{2}));
+intensityOutside = xz_img(regionOutside{2}, regionOutside{1});
 intensityOutside_vectorized = intensityOutside(:);
 
 % figure; plot(intensityInside_vectorized)
@@ -162,7 +182,7 @@ CNR_dB = 10 * log10(CNR)
 signalMax = max(I_coherent_sum, [], 'all');
 signalMin = min(I_coherent_sum, [], 'all');
 %
-numBins = 20;
+numBins = 100;
 binEdges = linspace(signalMin, signalMax, numBins);
 % figure; hInside = histogram(intensityInside_vectorized, binEdges, 'Normalization', 'pdf');
 figure; hInside = histogram(intensityInside_vectorized, binEdges);

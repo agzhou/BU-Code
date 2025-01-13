@@ -31,7 +31,8 @@ xz_img = I_coherent_sum(imgMask{1}, imgMask{2});
 % [znp, xnp] = size(xz_img);
 % w = xPixSpacing * xnp; % width of image (m)
 % h = zPixSpacing * znp; % height of image (m)
-hwRatio = (P.endDepth - P.startDepth) / (P.Trans.spacing * P.numElements); % height to width ratio
+% hwRatio = (P.endDepth - P.startDepth) / (P.Trans.spacing * P.numElements); % height to width ratio
+hwRatio = (P.endDepth - P.startDepth) / (P.Trans.spacing * P.numElements) * (zEnd-zStart + 1) / znumpix; % height to width ratio, idk if the adjustment works (1/12/25 change)
 %
 xzFig = figure; imagesc(xz_img)
 title(strcat("xz plane - ", num2str(P.na), " angles from -", num2str(P.maxAngle), " to ", num2str(P.maxAngle), " deg"))
@@ -146,6 +147,7 @@ endZIn = 1201;
 regionInside = {startZIn:endZIn, startXIn:endXIn}; % zrange, xrange
 % regionInside = {[wire_x_level - ceil(ceil(fwhm_lateral - 1)/2) : wire_x_level + ceil(ceil(fwhm_lateral - 1)/2)], [[wire_z_level - ceil(ceil(fwhm_axial - 1)/2) : wire_z_level + ceil(ceil(fwhm_axial - 1)/2)]]}; % xrange, zrange
 
+% Define corners of the rectangular "outside" region
 startXOut = 1;
 endXOut = 46;
 startZOut = startZIn;
