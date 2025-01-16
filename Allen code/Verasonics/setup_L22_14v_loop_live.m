@@ -362,7 +362,7 @@ endSample = startSample + numRcvSamples - 1;
 % nspa = spw*(2*(Receive(1).endDepth - Receive(1).startDepth));
 % nspa = 128 * ceil(nspa/128); % # samples per acquisition
 % maxAcqLength_adjusted = nspa / spw / 2;
-Resource.RcvBuffer(1).rowsPerFrame = numRcvSamples * na * 2 * numSubFrames;
+Resource.RcvBuffer(1).rowsPerFrame = numRcvSamples * na * numSubFrames;
 maxAcqLength_adjusted = numRcvSamples / samplesPerWave / 2;
 
 for lss = 1:length(startSample)

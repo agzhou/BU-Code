@@ -577,8 +577,6 @@ SeqControl(scInd).command = 'noop'; % jump to
 noop_time_us = SeqControl(scInd - 1).argument;
 SeqControl(scInd).argument = noop_time_us / 200 * 1e3; % (value*200nsec; max. value is 2^25 - 1 for 6.7 sec)
 SeqControl(scInd).condition = 'Hw&Sw'; % need to enable the noop in hardware
-% Transfer data to host, needed for hardware but not simulation, which writes directly to RcvBuffer
-% NEED A UNIQUE SEQCONTROL FOR EACH TRANSFERTOHOST COMMAND!!!!!!!!!!!!!!!!!!
 
 n = 0;
 for nsupf = 1:numSupFrames
