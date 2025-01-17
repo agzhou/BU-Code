@@ -32,7 +32,7 @@ endDepthMM = 10;
 fps_target = 40000; % PRF (Hz)
 PRF = fps_target;
 
-frameRate = 750; % subframe rate (Hz)
+frameRate = 500; % subframe rate (Hz)
 
 
 

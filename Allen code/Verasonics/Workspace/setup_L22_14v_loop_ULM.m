@@ -14,14 +14,14 @@ cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 % cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
 activate
 
-savepath = "G:\Allen\Data\01-15-2025 test\L22-14v\run 4\";
+savepath = "G:\Allen\Data\01-15-2025 test\L22-14v\run 6\";
 savepath = char(savepath);
 mkdir(savepath)
 
 bufferIndex = 0;
 
 runVSX = 1;
-simOrNot = 0;
+simOrNot = 1;
 movePointsOrNot = 0; % Media movePoints on or off
 
 initialVoltage = 15; % probe voltage in V

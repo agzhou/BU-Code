@@ -17,16 +17,15 @@ function saveRcvData_ULM(RcvData)
 %     RcvData = RcvData(:, Trans.Connector, :);
 %     whos RcvData
     
-    savefast([savepath, filename], 'RcvData')
+%     savefast([savepath, filename], 'RcvData')
 
 
-%     % new 1/15/25
-%     fn = strcat("RcvData_buffer", num2str(Psmall.bufferIndex));
-%     if Psmall.bufferIndex == 1
-%         save([savepath, filename], fn, "-v6")
-% 
-%     else
-%         save([savepath, filename], fn, "-v6", "-append")
-%     end
+    % new 1/15/25
+    if Psmall.bufferIndex == 1
+        save([savepath, filename], strcat("RcvData", num2, "-v6")
+
+    else
+        save([savepath, filename], "RcvData", "-v6", "-append")
+    end
 %     toc
 end
