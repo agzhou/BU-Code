@@ -24,10 +24,16 @@ numFiles = 315; % regexp to get last file number?
 P.numSubFrames = P.numFramesPerBuffer; % temporary fix
 IQstack = []; % Create empty variable to append the data to
 
-for filenum = 1:numFiles
-% for filenum = 1:2
+% for filenum = 1:numFiles
+for filenum = 1:2
     load([datapath, filename_structure, num2str(filenum), '.mat'])
     IQ = LA_DAS(RcvData, P, P.wl/2);
     disp(strcat("recon on buffer ", num2str(filenum), " done"))
-    IQstack = cat(1, IQstack, IQ); % concatenate along the time/z sample dimension
+    IQstack = cat(4, IQstack, IQ); % concatenate along the frame dimension
 end
+% %%
+% [zs, xs, na, nf] = size(IQstack);
+% test = reshape(IQstack, [zs/numFiles, xs, na, nf*numFiles]);
+%%
+IQ_coherent_sum = squeeze(sum(IQ, 4));
+I_coherent_sum = abs(IQ_coherent_sum);
