@@ -13,7 +13,7 @@ clear
 cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 activate
 
-savepath = "G:\Allen\Data\01-15-2025 test\L22-14v\run 6\";
+savepath = "G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 3 allen code baseline after\";
 savepath = char(savepath);
 mkdir(savepath)
 
@@ -23,7 +23,7 @@ runVSX = 1;
 simOrNot = 0;
 movePointsOrNot = 0; % Media movePoints on or off
 
-initialVoltage = 25; % probe voltage in V
+initialVoltage = 20; % probe voltage in V
 
 startDepthMM = 0; % start depth in mm
 endDepthMM = 10;

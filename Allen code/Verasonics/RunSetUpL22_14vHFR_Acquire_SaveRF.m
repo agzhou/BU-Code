@@ -23,7 +23,7 @@
 % 2-28-2018 by Jianbo Tang
 % modified Jan 2025 AZ
 
-clear all
+clear
 cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500';
 % addpath('D:\CODE\Functions');
 % load('D:\CODE\Mains\DAQParameters.mat');
@@ -32,6 +32,9 @@ load('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Previous lab code\Mains\DA
 
 deftpath=DAQInfo.savepath;
 savepath=[uigetdir(deftpath),'\'];
+
+%% 0 voltage
+TPC.hv = 20;
 
 %% 1. DAQ parameter 
 prompt={'File name:',...
@@ -100,7 +103,9 @@ DAQInfo.StartDepth=StartDepth;
 DAQInfo.EndDepth=EndDepth;
 DAQInfo.Filename=Filename;
 DAQInfo.savepath=savepath;
-save('D:\CODE\Mains\DAQParameters.mat','DAQInfo');
+% save('D:\CODE\Mains\DAQParameters.mat','DAQInfo');
+save('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Previous lab code\Mains\DAQParameters.mat', 'DAQInfo')
+
 
 %%%% RF data save name
 RFdataFilename = ['RF-',num2str(P.CCangle),'-',num2str(P.numAngles),'-',num2str(P.CCFR),'-',num2str(P.numCCframes),'-',num2str(P.numSupFrames),'-',Filename,'-', '1'];
@@ -144,7 +149,7 @@ Trans.name = 'L22-14v';
 Trans.units = 'wavelengths';
 % Trans.frequency = 15;   % The center frequency for the A/D 4xFc sampling.
 Trans = computeTrans(Trans);
-Trans.maxHighVoltage = 20; % mfr data sheet lists 30 Volt limit
+Trans.maxHighVoltage = 25; % mfr data sheet lists 30 Volt limit
 P.LensDelay=Trans.lensCorrection;
 P.frequency=Trans.frequency;
 P.pitch=Trans.spacingMm;
@@ -434,7 +439,10 @@ frameRateFactor = P.numAcqs;
 
 %% 17. save setup files and run VSX
 save(['MatFiles/',filename]); 
-save('D:\CODE\Mains\P.mat','P');
+% save('D:\CODE\Mains\P.mat','P');
+% save('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Previous lab code\Mains\P.mat','P')
+save([savepath,'\P.mat'],'P')
+
 disp([ mfilename ': NOTE -- Running VSX automatically!']), disp(' ')
 VSX    
 % commandwindow  % just makes the Command window active to show printout

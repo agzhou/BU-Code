@@ -14,7 +14,7 @@ cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 % cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
 activate
 
-savepath = "G:\Allen\Data\01-09-2025 phantom anechoic\L22-14v\run 0\";
+savepath = "G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 0\";
 savepath = char(savepath);
 mkdir(savepath)
 
@@ -24,10 +24,10 @@ runVSX = 1;
 simOrNot = 0;
 movePointsOrNot = 0; % Media movePoints on or off
 
-initialVoltage = 25; % V
+initialVoltage = 20; % V
 
 startDepthMM = 0; % start depth in wavelengths %%%%%%%%%%%%%%%%%%%%%%%%%
-endDepthMM = 20;
+endDepthMM = 10;
 
 fps_target = 1000;         % Intended (sub)frame rate
 supFrameBurstRate = 0.5; % Defines spacing between end of superframe burst and the next burst after jumping

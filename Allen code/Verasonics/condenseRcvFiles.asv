@@ -10,11 +10,10 @@ filename_structure = [probe_name, '-RcvData-', num2str(P.maxAngle), '-', num2str
 r = []; % Create empty variable to append the data to
 
 %%
-numFiles = 315; % regexp to get last file number?
-
-for filenum = 1:numFiles
-% for filenum = 1:2
-    load([datapath, filename_structure, num2str(filenum), '.mat'])
+% regexp to get files?
+% for file = 1:numFiles
+for file = 1:numFiles
+    load([datapath, filename_structure, num2str(P.bufferIndex), '.mat'])
     r = cat(1, r, RcvData); % concatenate along the time/z sample dimension
 
 end
