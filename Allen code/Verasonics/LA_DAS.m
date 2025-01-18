@@ -1,5 +1,5 @@
 % Linear Array Delay and Sum
-function [IQ] = LA_DAS(RcvData, P)
+function [IQ] = LA_DAS(RcvData, P, zPixSpacing)
     %% changes
     % 9/12/24: now properly accounts for a nonzero startDepth
     % 11/7/24: now a function
@@ -48,10 +48,18 @@ function [IQ] = LA_DAS(RcvData, P)
     TX = [];
     wl = [];
     L = [];
+    numFramesPerBuffer = [];
     
     assignStructVars(P)
     
     nf = numSubFrames;
+%     if exist(P.numSubFrames)
+%         nf = numSubFrames;
+%     elseif exist(P.numFramesPerBuffer)
+%         nf = numFramesPerBuffer;
+%     else
+%         error('something wrong with the P struct, missing num frames variable')
+%     end
     tw_peak = TW.peak;
     
     %%
@@ -124,15 +132,15 @@ function [IQ] = LA_DAS(RcvData, P)
     
     %%
     % pixsizez = wl/2;
-    pixsizez = wl/2;
+    pixsizez = zPixSpacing;
     pixsizex = wl;
     zsize = (endDepth - startDepth) * wl;    % region's z span in m
     xsize = numElements.*Trans.spacing * wl; % region's x span in m
-    %         znumpix = ceil(zsize / pixsizez);         % # rows
+            znumpix = ceil(zsize / pixsizez);         % # rows
     %         znumpix = 712;
     %         xnumpix = ceil(xsize / pixsizex);         % # cols
     
-    znumpix = nzs_nopad; % Full z sample size
+%     znumpix = nzs_nopad; % Full z sample size
     xnumpix = nxs_nopad;
     
     % znumpix = nzs; % Full z sample size
