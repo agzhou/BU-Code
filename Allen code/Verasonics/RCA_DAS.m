@@ -126,6 +126,9 @@ function [IQ] = RCA_DAS(RcvData, P, zpix_spacing)
     
     end
     d = squeeze(d); 
+
+    d = hilbert(d);
+
     % (# x samples, # y samples, # z samples, # acquisitions (2 * # angles), # frames)
     d = permute(d, [2, 1, 3, 4]); 
     
@@ -348,11 +351,12 @@ function [IQ] = RCA_DAS(RcvData, P, zpix_spacing)
     disp(etime(tend, tstart))
     
     % Calculate IQ
-    d_sum = permute(d_sum, [3, 1, 2, 4, 5]); 
+    IQ = d_sum;
+%     d_sum = permute(d_sum, [3, 1, 2, 4, 5]); 
     
     % IQ = permute(hilbert(d_sum_p), [2, 3, 1, 4, 5]); % operates on the columns (z) of the d_sum_p matrix
     % change 9/25/24
-    IQ = permute(hilbert(d_sum), [3, 2, 1, 4, 5]); % operates on the columns (z) of the d_sum_p matrix
+%     IQ = permute(hilbert(d_sum), [3, 2, 1, 4, 5]); % operates on the columns (z) of the d_sum_p matrix
 
     
 end

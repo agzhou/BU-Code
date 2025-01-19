@@ -28,8 +28,8 @@ mkdir(datapath, 'IQ data')
 filename_structure_IQ = [probe_name, '-IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.PRF), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-'];
 
 
-% for filenum = 1:numFiles
-for filenum = 1:2
+for filenum = 1:numFiles
+% for filenum = 1:2
     load([datapath, filename_structure, num2str(filenum), '.mat'])
     IQ = LA_DAS(RcvData, P, P.wl/2);
     disp(strcat("recon on buffer ", num2str(filenum), " done"))
@@ -41,5 +41,5 @@ end
 % [zs, xs, na, nf] = size(IQstack);
 % test = reshape(IQstack, [zs/numFiles, xs, na, nf*numFiles]);
 %%
-IQ_coherent_sum = squeeze(sum(IQstack, 3)); % sum along angle dimension
-I_coherent_sum = abs(IQ_coherent_sum);
+IQ_coherent_sum_stack = squeeze(sum(IQstack, 3)); % sum along angle dimension
+I_coherent_sum_stack = abs(IQ_coherent_sum_stack);

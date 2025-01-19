@@ -113,6 +113,9 @@ function [IQ] = LA_DAS(RcvData, P, zPixSpacing)
         end
     end
     % d_old = d; %%%%% for testing purposes
+
+    d = hilbert(d);
+    
     d_pad = zeros(round(startDepth * samplesPerWL), nxs_nopad, na, nf);
     d_pad_size = size(d_pad);
     d = [d_pad; d; d_pad];
@@ -302,7 +305,8 @@ function [IQ] = LA_DAS(RcvData, P, zPixSpacing)
         disp(etime(tend, tstart))
     
         % Calculate IQ
-        IQ = hilbert(d_sum); % operates on the columns (z) of the d_sum matrix
+        IQ = d_sum;
+%         IQ = hilbert(d_sum); % operates on the columns (z) of the d_sum matrix
     %     env = abs(IQ);       % Absolute value of the Hilbert transform is the envelope of the original signal
     
     
