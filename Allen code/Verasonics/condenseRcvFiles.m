@@ -32,6 +32,7 @@ for filenum = 1:numFiles
 % for filenum = 1:2
     load([datapath, filename_structure, num2str(filenum), '.mat'])
     IQ = LA_DAS(RcvData, P, P.wl/2);
+%     IQ = LA_DAS(RcvData, P, P.wl/P.Receive(1).samplesPerWave / 2);
     disp(strcat("recon on buffer ", num2str(filenum), " done"))
     IQstack = cat(4, IQstack, IQ); % concatenate along the frame dimension
 
@@ -43,3 +44,18 @@ end
 %%
 IQ_coherent_sum_stack = squeeze(sum(IQstack, 3)); % sum along angle dimension
 I_coherent_sum_stack = abs(IQ_coherent_sum_stack);
+
+% %% test1
+% for filenum = 1:1
+%     load([datapath, filename_structure, num2str(filenum), '.mat'])
+%     IQ = LA_DAS(RcvData, P, P.wl/2);
+% %     IQ = LA_DAS(RcvData, P, P.wl/P.Receive(1).samplesPerWave / 2);
+%     disp(strcat("recon on buffer ", num2str(filenum), " done"))
+% %     IQstack = cat(4, IQstack, IQ); % concatenate along the frame dimension
+% 
+% %     save([datapath, 'IQ data\', filename_structure_IQ, num2str(filenum)], 'IQ', "-v6")
+% end
+% %% test2
+% test = sum(IQ, 3);
+% It = squeeze(abs(test));
+% figure; imagesc(It(:, :, 1))
