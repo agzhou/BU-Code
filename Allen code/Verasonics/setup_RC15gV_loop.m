@@ -342,13 +342,15 @@ endSample = startSample + numRcvSamples - 1;
 Resource.RcvBuffer(1).rowsPerFrame = numRcvSamples * na * 2 * numSubFrames;
 maxAcqLength_adjusted = numRcvSamples / samplesPerWave / 2;
 
-for lss = 1:length(startSample)
-    Receive(lss).startSample = startSample(lss);
-    Receive(lss).endSample = endSample(lss);    
-%     Receive(lss).decimSampleRate = samplesPerWave * Trans.frequency;
-    Receive(lss).decimSampleRate = 62.5;
-
-end
+% Commenting below section because it doesn't work for the second set of
+% TXs
+% for lss = 1:length(startSample)
+%     Receive(lss).startSample = startSample(lss);
+%     Receive(lss).endSample = endSample(lss);    
+% %     Receive(lss).decimSampleRate = samplesPerWave * Trans.frequency;
+%     Receive(lss).decimSampleRate = 62.5;
+% 
+% end
 
 
 Resource.RcvBuffer(1).colsPerFrame = Resource.Parameters.numRcvChannels; % Usually 1:1 to # of receive channels available in the system. Can change to 256 with the 2D probe and new connector plate.

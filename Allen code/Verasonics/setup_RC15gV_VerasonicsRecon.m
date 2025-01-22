@@ -12,7 +12,8 @@
 %% Specify system parameters
 clear
 
-cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
+% cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
+cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
 
 activate
 
@@ -34,11 +35,17 @@ activate
 % load([path, 'params.mat'])
 % load([path, 'RC15gV-RcvData-15-11-2000-50-4-1.mat'])
 
-path = 'G:\Allen\Data\12-03-2024 RC15gV saving tests\trial 1 exp\';
+% path = 'G:\Allen\Data\12-03-2024 RC15gV saving tests\trial 1 exp\';
+% 
+% % if ~exists('base', 'P')
+% load([path, 'params.mat'])
+% load([path, 'RC15gV-RcvData-15-21-500-50-1-1.mat'])
+
+path = 'D:\Allen\Data\01-21-2025 RCA sim\run 11 angles -5 to 5 deg\';
 
 % if ~exists('base', 'P')
 load([path, 'params.mat'])
-load([path, 'RC15gV-RcvData-15-21-500-50-1-1.mat'])
+load([path, 'RC15gV-RcvData-5-1-500-1-1-1.mat'])
 
 %%
 
@@ -65,7 +72,7 @@ Trans_acq = Trans;
 TX_acq = TX;
 TW_acq = TW;
 Resource_acq = Resource;
-clear Event Process Recon ReconInfo SeqControl Trans Receive TW TX Resource
+clear Event Process Recon ReconInfo SeqControl Trans TW TX Resource
 
 pair = 2; % The R-C and C-R pair of acquisitions per angle
 
@@ -97,45 +104,45 @@ TX_fn = fieldnames(TX_acq);
 TX = rmfield(TX_acq, TX_fn(6:14));
 
 %% Receive (need to be careful about the superframe and subframe definition since ReconInfo depends on it!!!!!!!!!!!!!!!!!!!!!!!!!!!!!)
-Receive = repmat(struct('Apod', zeros(1, Trans.numelements), ... 
-                        'startDepth', startDepth, ...
-                        'endDepth', maxAcqLength, ...
-                        'TGC', 1, ...
-                        'bufnum', 1, ...
-                        'framenum', 1, ...
-                        'acqNum', 1, ...
-                        'sampleMode', 'NS200BW', ...
-                        'mode', 0, ...
-                        'callMediaFunc', 0, ...
-                        'LowPassCoef', [], ...
-                        'InputFilter', []), 1, pair*P_new.numSupFrames*P_new.numSubFrames*na);
-j = 1;
-% an = 0;
-for nsupf = 1:P_new.numSupFrames
-    for nsubf = 1:P_new.numSubFrames
-        % Move points after all the acquisitions for one frame
-%         Receive(j).callMediaFunc = movePointsOrNot;
-    %     Receive(j).mode = 0; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        an = 0;
-
-        for n = 1:na
-            an = an + 1;
-            Receive(j).framenum = nsubf;
-            Receive(j).acqNum = an;
-            Receive(j).Apod(Trans.numelements/2 + 1 : end) = ones(1, Trans.numelements/2);
-            j = j + 1;
-        end
-    
-        for n = 1:na
-            an = an + 1;
-            Receive(j).framenum = nsubf;
-            Receive(j).acqNum = an;
-            Receive(j).Apod(1:Trans.numelements/2) = ones(1, Trans.numelements/2);
-            j = j + 1;
-        end
-        
-    end
-end
+% Receive = repmat(struct('Apod', zeros(1, Trans.numelements), ... 
+%                         'startDepth', startDepth, ...
+%                         'endDepth', maxAcqLength, ...
+%                         'TGC', 1, ...
+%                         'bufnum', 1, ...
+%                         'framenum', 1, ...
+%                         'acqNum', 1, ...
+%                         'sampleMode', 'NS200BW', ...
+%                         'mode', 0, ...
+%                         'callMediaFunc', 0, ...
+%                         'LowPassCoef', [], ...
+%                         'InputFilter', []), 1, pair*P_new.numSupFrames*P_new.numSubFrames*na);
+% j = 1;
+% % an = 0;
+% for nsupf = 1:P_new.numSupFrames
+%     for nsubf = 1:P_new.numSubFrames
+%         % Move points after all the acquisitions for one frame
+% %         Receive(j).callMediaFunc = movePointsOrNot;
+%     %     Receive(j).mode = 0; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%         an = 0;
+% 
+%         for n = 1:na
+%             an = an + 1;
+%             Receive(j).framenum = nsubf;
+%             Receive(j).acqNum = an;
+%             Receive(j).Apod(Trans.numelements/2 + 1 : end) = ones(1, Trans.numelements/2);
+%             j = j + 1;
+%         end
+%     
+%         for n = 1:na
+%             an = an + 1;
+%             Receive(j).framenum = nsubf;
+%             Receive(j).acqNum = an;
+%             Receive(j).Apod(1:Trans.numelements/2) = ones(1, Trans.numelements/2);
+%             j = j + 1;
+%         end
+%         
+%     end
+% end
 %% PData structure (Pixel Data --> image reconstruction range)
 % For 2D scans and slices of 3D scans, it's always a rectangular area at a
 % fixed location in the transducer coord system

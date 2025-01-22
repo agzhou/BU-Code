@@ -9,7 +9,7 @@
 %% Specify system parameters
 clear
 
-cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
+cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
 
 activate
 % numElements = 80;
@@ -19,7 +19,7 @@ activate
 
 
 runVSX = 1;
-simOrNot = 0;
+simOrNot = 1;
 movePointsOrNot = 0;
 
 startDepthMM = 0; % start depth in mm
@@ -34,8 +34,8 @@ numChannels = 256; % enable all channels
 
 numSupFrames = 1; % # of superframes, MUST BE ONE OR EVEN FOR VSX
 numSubFrames = 1; % # of subframes
-na = 21; % # of acquisitions per frame (acquisition pairs)
-maxAngle = 15; % degrees
+na = 1; % # of acquisitions per frame (acquisition pairs)
+maxAngle = 5; % degrees
 angleRange = [-maxAngle, maxAngle].*pi/180; % Angle range in radians
 
 % Need at least 2 acquisitions to use multiple angles. 
@@ -49,7 +49,7 @@ end
 numAngles = length(angles);
 pair = 2; % The R-C and C-R pair of acquisitions per angle
 
-savepath = strcat("G:\Allen\Data\01-09-2025 phantom anechoic\RC15gV\run 9 ", num2str(na), " angles -", num2str(maxAngle), " to ", num2str(maxAngle), " deg\");
+savepath = strcat("D:\Allen\Data\01-21-2025 RCA sim\run 1", num2str(na), " angles -", num2str(maxAngle), " to ", num2str(maxAngle), " deg\");
 savepath = char(savepath);
 mkdir(savepath)
 
@@ -64,7 +64,7 @@ Resource.Parameters.speedOfSound = 1540; % speed of sound in m/s, the 1540 is fo
 
 Trans.name = 'RC15gV'; 
 % Trans.frequency = 18.5; % Not needed if using the default center frequency
-Trans.frequency = 15.625;
+Trans.frequency = 13.8889;
 Trans.units = 'wavelengths'; % or mm
 % Trans.units = 'mm';
 
@@ -335,8 +335,6 @@ endSample = startSample + numRcvSamples - 1;
 Resource.RcvBuffer(1).rowsPerFrame = numRcvSamples * na * 2 * numSubFrames;
 maxAcqLength_adjusted = numRcvSamples / samplesPerWave / 2;
 
-% Commenting below section because it doesn't work for the second set of
-% TXs
 % for lss = 1:length(startSample)
 %     Receive(lss).startSample = startSample(lss);
 %     Receive(lss).endSample = endSample(lss);    
