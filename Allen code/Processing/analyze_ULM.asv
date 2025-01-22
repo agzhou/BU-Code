@@ -10,12 +10,12 @@ figure; imagesc(I_coherent_sum(:, :, 100))
 [PP, EVs, V_sort] = getSVs1D(IQ_coherent_sum);
 %% SVD proc part 2
 sv_threshold_lower = 50;
-sv_threshold_upper = 2000;
+sv_threshold_upper = 10000;
 tic
-[IQ_f_50_2000] = applySVs1D(IQ_coherent_sum, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
+[IQ_f_50_10000] = applySVs1D(IQ_coherent_sum, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
 toc
 %% Plot filtered data
-abs_IQ_f = abs(IQ_f_50_2000);
+abs_IQ_f = abs(IQ_f);
 figure; imagesc(abs_IQ_f(:, :, 1))
 figure; imagesc(abs_IQ_f(:, :, 100))
 figure; imagesc(abs_IQ_f(:, :, 500))
@@ -34,16 +34,12 @@ xlabel('EV #')
 ylabel('log10(EV magnitude)')
 
 %% Make video
-vo = VideoWriter('G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\Processing\video_50_10000');
-a = abs(IQ_f_50_10000);
+vo = VideoWriter('G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\Processing\video');
+a = abs(IQ_f_20_20000);
 a = a ./ max(a);
-
-vo.Quality = 100;
-vo.FrameRate = 60;
 open(vo);
-for f = 1:size(a, 3)
-    writeVideo(vo, a(:, :, f));
-end
+for f = 1:size
+writeVideo(vo, a(:, :, 1));
 close(vo);
 %%
 taustep = P.SeqControl(1).argument ./ 1e6 .* 1e3 .* P_new.na .* (0:P_new.numSubFrames - 1); % in ms

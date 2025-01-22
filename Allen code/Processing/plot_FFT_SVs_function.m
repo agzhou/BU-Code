@@ -3,7 +3,7 @@
 % component
 
 %%
-% function [] = plot_FFT_SVs(V_sort, P)
+function [] = plot_FFT_SVs_function(V_sort, P)
     V_sort_temp = V_sort;
     V_sort_zeroed = V_sort_temp - mean(V_sort_temp, 1); %%%
 
@@ -11,9 +11,10 @@
 
     singVecFS_shifted = fftshift(singVecFS, 1);
 
-    subFrameRate = P.fps_target;
+%     subFrameRate = P.fps_target;
+    frameRate = P.frameRate;
 %     tstep = 1/subFrameRate; 
-    faxis = linspace(-subFrameRate/2, subFrameRate/2, length(singVecFS_shifted));
+    faxis = linspace(-frameRate/2, frameRate/2, length(singVecFS_shifted));
     
     test = abs(singVecFS_shifted);
     % 1D plot
@@ -40,4 +41,4 @@
 %     xline(fD_predicted)
 %     xline(-fD_predicted)
 
-% end
+end
