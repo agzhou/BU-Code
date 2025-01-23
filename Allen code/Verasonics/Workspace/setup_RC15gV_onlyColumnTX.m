@@ -19,7 +19,7 @@ activate
 
 
 runVSX = 1;
-simOrNot = 0;
+simOrNot = 1;
 movePointsOrNot = 0;
 
 startDepthMM = 0; % start depth in mm
@@ -34,8 +34,8 @@ numChannels = 256; % enable all channels
 
 numSupFrames = 1; % # of superframes, MUST BE ONE OR EVEN FOR VSX
 numSubFrames = 1; % # of subframes
-na = 21; % # of acquisitions per frame (acquisition pairs)
-maxAngle = 15; % degrees
+na = 5; % # of acquisitions per frame (acquisition pairs)
+maxAngle = 5; % degrees
 angleRange = [-maxAngle, maxAngle].*pi/180; % Angle range in radians
 
 % Need at least 2 acquisitions to use multiple angles. 
@@ -49,7 +49,7 @@ end
 numAngles = length(angles);
 pair = 2; % The R-C and C-R pair of acquisitions per angle
 
-savepath = strcat("G:\Allen\Data\01-09-2025 phantom anechoic\RC15gV\run 9 ", num2str(na), " angles -", num2str(maxAngle), " to ", num2str(maxAngle), " deg\");
+savepath = strcat("G:\Allen\Data\01-21-2025 sim\RC15gV\run 1", num2str(na), " angles -", num2str(maxAngle), " to ", num2str(maxAngle), " deg\");
 savepath = char(savepath);
 mkdir(savepath)
 
@@ -64,7 +64,7 @@ Resource.Parameters.speedOfSound = 1540; % speed of sound in m/s, the 1540 is fo
 
 Trans.name = 'RC15gV'; 
 % Trans.frequency = 18.5; % Not needed if using the default center frequency
-Trans.frequency = 15.625;
+Trans.frequency = 13.6;
 Trans.units = 'wavelengths'; % or mm
 % Trans.units = 'mm';
 
@@ -220,18 +220,13 @@ TPC.hv = initialVoltage;
 TX = repmat(struct('waveform', 1, ...
                    'focus', 0, ... % plane wave
                    'Steer', [0.0, 0.0], ... % theta, alpha (beam angle projected in xz from +z axis, beam angle wrt xz)
-                   'Apod', zeros(1, Trans.numelements)), 1, na*2);
+                   'Apod', zeros(1, Trans.numelements)), 1, na);
 for n = 1:na
     TX(n).Apod(1:Trans.numelements/2) = ones(1, Trans.numelements/2); % Turn on columns (y)
     TX(n).Steer = [angles(n), 0];
     TX(n).Delay = computeTXDelays(TX(n));
 end
 
-for n = 1:na
-    TX(na + n).Apod(Trans.numelements/2 + 1 : end) = ones(1, Trans.numelements/2); % Turn on rows (x)
-    TX(na + n).Steer = [0, angles(n)];
-    TX(na + n).Delay = computeTXDelays(TX(na + n));
-end
 
 
 %% Define Time Gain Control waveform (TGC)
@@ -265,7 +260,7 @@ Receive = repmat(struct('Apod', zeros(1, Trans.numelements), ...
                         'mode', 0, ...
                         'callMediaFunc', 0, ...
                         'LowPassCoef', [], ...
-                        'InputFilter', []), 1, pair*numSupFrames*numSubFrames*na);
+                        'InputFilter', []), 1, numSupFrames*numSubFrames*na);
 j = 1;
 % an = 0;
 for nsupf = 1:numSupFrames
@@ -282,14 +277,6 @@ for nsupf = 1:numSupFrames
             j = j + 1;
         end
     
-        for n = 1:na
-            an = an + 1;
-            Receive(j).framenum = nsupf;
-            Receive(j).acqNum = an;
-            Receive(j).Apod(1:Trans.numelements/2) = ones(1, Trans.numelements/2);
-            j = j + 1;
-        end
-        
     end
 end
 
@@ -332,18 +319,16 @@ endSample = startSample + numRcvSamples - 1;
 % nspa = spw*(2*(Receive(1).endDepth - Receive(1).startDepth));
 % nspa = 128 * ceil(nspa/128); % # samples per acquisition
 % maxAcqLength_adjusted = nspa / spw / 2;
-Resource.RcvBuffer(1).rowsPerFrame = numRcvSamples * na * 2 * numSubFrames;
+Resource.RcvBuffer(1).rowsPerFrame = numRcvSamples * na * numSubFrames;
 maxAcqLength_adjusted = numRcvSamples / samplesPerWave / 2;
 
-% Commenting below section because it doesn't work for the second set of
-% TXs
-% for lss = 1:length(startSample)
-%     Receive(lss).startSample = startSample(lss);
-%     Receive(lss).endSample = endSample(lss);    
-% %     Receive(lss).decimSampleRate = samplesPerWave * Trans.frequency;
-%     Receive(lss).decimSampleRate = 62.5;
-% 
-% end
+for lss = 1:length(startSample)
+    Receive(lss).startSample = startSample(lss);
+    Receive(lss).endSample = endSample(lss);    
+%     Receive(lss).decimSampleRate = samplesPerWave * Trans.frequency;
+    Receive(lss).decimSampleRate = 62.5;
+
+end
 
 Resource.RcvBuffer(1).colsPerFrame = Resource.Parameters.numRcvChannels; % Usually 1:1 to # of receive channels available in the system. Can change to 256 with the 2D probe and new connector plate.
 Resource.RcvBuffer(1).numFrames = numSupFrames; % minimum # frames of RF data to acquire; RcvBuffer contains all the data needed for a whole frame, including multiple acquisition passes needed for reconstruction. Software can re-process RcvBuffer frames
@@ -559,20 +544,10 @@ for nsupf = 1:numSupFrames
             n = n + 1;
             Event(n).info = 'Transmit all columns and receive all rows';
             Event(n).tx = a.*2 - 1; % Use ath TX structure
-            Event(n).rcv = (nsupf - 1) .* numSubFrames .* pair .* na + (nsubf-1).*2.*na + a.*2 - 1; % Use nth Receive structure % need to make this alternate between (1 and 2) * numframes or something
+            Event(n).rcv = (nsupf - 1) .* numSubFrames .* na + (nsubf-1).*na + a.*2 - 1; % Use nth Receive structure % need to make this alternate between (1 and 2) * numframes or something
             Event(n).recon = 0; % 0 means no reconstruction
             Event(n).process = 0; % 0 means no processing
             Event(n).seqControl = 1;
-    %         Event((nsubf-1).*2.*na + a.*2 - 1 + i).seqControl = 0;
-            
-            n = n + 1;
-            Event(n).info = 'Transmit all rows and receive all columns';
-            Event(n).tx = a.*2; 
-            Event(n).rcv = (nsupf - 1) .* numSubFrames .* pair .* na + (nsubf-1).*pair.*na + a.*2; 
-            Event(n).recon = 0; 
-            Event(n).process = 0; 
-            Event(n).seqControl = 1;  
-    %         Event((nsubf-1).*2.*na + a.*2 + i).seqControl = 0;
         
         end
     end

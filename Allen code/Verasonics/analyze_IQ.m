@@ -33,7 +33,7 @@ IQ = RCA_DAS(RcvData, P, P.wl/P.Receive(1).samplesPerWave/2);
 % xlabel('x pixels')
 % ylabel('z pixels')
 
-%
+%%
 IQ_coherent_sum = squeeze(sum(IQ, 4));
 I_coherent_sum = abs(IQ_coherent_sum); % intensity
 figure; imagesc(squeeze(I_coherent_sum(40, :, :, 1))')
