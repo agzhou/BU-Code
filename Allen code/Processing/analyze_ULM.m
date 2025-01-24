@@ -61,6 +61,21 @@ for f = 1:size(a, 3)
 end
 close(vo);
 
+%% Localize bubble function test
+IQf = IQ_f_50_5000;
+load('G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\PSF sim\IQ.mat', 'IQ_coherent_sum')
+PSF = IQ_coherent_sum;
+zrange = 40:120;
+xrange = 1:128;
+framerange = 1:size(IQf, 3);
+range = {zrange, xrange, framerange};
+imgRefinementFactor = [2, 2];
+binaryThreshold = 0.6;
+areaThreshold = 3;
+[centroidCoordinates] = localizeBubbles(IQf, PSF, range, imgRefinementFactor, binaryThreshold, areaThreshold);
+
+
+
 %% Bubble tracking attempt
 zrange = 40:120;
 % frameRange = 1:10000; 
@@ -141,12 +156,13 @@ a = XC;
 
 % threshold = 7e3;
 % threshold = 800;
-threshold = 0.4; % XC threshold, set it manually
+threshold = 0.6; % XC threshold, set it manually
 
+tic
 mask = a > threshold;
 bi = zeros(size(a)); bi(mask) = 1; % binary image with white above the threshold
 % binaryImage = figure; imagesc(bi); colormap gray
-
+toc
 %% Make video of binary image
 vo = VideoWriter('G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\Processing\biXC_50_5000'); % video object
 va = bi;
