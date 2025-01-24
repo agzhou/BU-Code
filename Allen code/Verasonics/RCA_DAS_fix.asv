@@ -151,14 +151,14 @@ function [IQ] = RCA_DAS_fix(RcvData, P, zpix_spacing)
     ysize = numElements * Trans.spacingMm / 1e3; % region's y in m
     zsize = (endDepth - startDepth) * wl;    % region's z in m
     
-    znumpix = ceil(zsize / pixsizez);         % # rows
+%     znumpix = ceil(zsize / pixsizez);         % # rows
 %     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %     xnumpix = ceil(xsize / pixsizex);         % # cols
 %     ynumpix = ceil(ysize / pixsizey);         % # cols
     
     xnumpix = nxs_nopad*1;
     ynumpix = nys_nopad*1;
-%     znumpix = nzs_nopad;
+    znumpix = nzs_nopad;
     
     arrayLength = numElements * Trans.spacingMm / 1e3;
 
@@ -196,16 +196,16 @@ function [IQ] = RCA_DAS_fix(RcvData, P, zpix_spacing)
     %% Get travel delays
     
     % Go through each pixel (xp, yp, zp)
-    parfor zp = 1:znumpix % do z first so parfor is more efficient, theoretically
-%     for zp = 180*2
+%     parfor zp = 1:znumpix % do z first so parfor is more efficient, theoretically
+    for zp = 369
         z_level_pix = startDepth * wl + (zp - 1/2) / znumpix * zsize;      % z value of zp in m. z = 0 is at the level of the transducer array
 
-        for yp = 1:ynumpix
-%         for yp = 40
+%         for yp = 1:ynumpix
+        for yp = 40
             y_level_pix = (yp - (ynumpix + 1)/2) / ynumpix * ysize;       % y value of yp in m. y = 0 is center of transducer array
     
-            for xp = 1:xnumpix
-%             for xp = 40
+%             for xp = 1:xnumpix
+            for xp = 40
                 x_level_pix = (xp - (xnumpix + 1)/2) / xnumpix * xsize;  % x value of xp in m. x = 0 is center of transducer array
     
                 % RX travel dist from pixel to each transducer element e

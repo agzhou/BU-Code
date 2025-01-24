@@ -1,5 +1,7 @@
 % Linear Array Delay and Sum
-function [IQ] = LA_DAS(RcvData, P, zPixSpacing)
+% IQ: DAS beamformed data
+% pixSpacing: [z pixel spacing (m), x pixel spacing (m)]
+function [IQ, pixSpacing] = LA_DAS(RcvData, P, zPixSpacing)
     %% changes
     % 9/12/24: now properly accounts for a nonzero startDepth
     % 11/7/24: now a function
@@ -136,7 +138,8 @@ function [IQ] = LA_DAS(RcvData, P, zPixSpacing)
     %%
     % pixsizez = wl/2;
     pixsizez = zPixSpacing;
-    pixsizex = wl;
+%     pixsizex = wl;
+    pixsizex = Trans.spacingMm/1e3;
     zsize = (endDepth - startDepth) * wl;    % region's z span in m
     xsize = numElements.*Trans.spacing * wl; % region's x span in m
             znumpix = ceil(zsize / pixsizez);         % # rows
@@ -148,6 +151,7 @@ function [IQ] = LA_DAS(RcvData, P, zPixSpacing)
     
     % znumpix = nzs; % Full z sample size
     % xnumpix = nxs;
+    pixSpacing = [pixsizez, pixsizex];
     %% plot raw waveform from one element
     % 
     % figure

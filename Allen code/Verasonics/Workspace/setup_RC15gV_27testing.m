@@ -332,7 +332,7 @@ endSample = startSample + numRcvSamples - 1;
 % nspa = spw*(2*(Receive(1).endDepth - Receive(1).startDepth));
 % nspa = 128 * ceil(nspa/128); % # samples per acquisition
 % maxAcqLength_adjusted = nspa / spw / 2;
-Resource.RcvBuffer(1).rowsPerFrame = numRcvSamples * na * 2 * numSubFrames;
+Resource.RcvBuffer(1).rowsPerFrame = numRcvSamples * na * 2 * numSubFrames * 3;
 maxAcqLength_adjusted = numRcvSamples / samplesPerWave / 2;
 
 % for lss = 1:length(startSample)
@@ -360,50 +360,36 @@ if numGBPerBufferFrame > 2
 end
 
 %% Reconstruction
-% numRegions = 3;
-% 
-% Resource.ImageBuffer(1).numFrames = numSupFrames; % Define an ImageBuffer with a # of frames
-% Resource.InterBuffer(1).numFrames = numSupFrames; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % Resource.InterBuffer(1).numFrames = 1;
-% 
-% % Recon = struct('senscutoff', 0.6, ... % Threshold for which the reconstruction doesn't consider an element's contribution due to directivity of the element, for a certain pixel (whose echoes are at an angle to the element). Should be in radians.
-% %                'pdatanum', 1, ... % Which PData structure to use
-% %                'rcvBufFrame', -1, ... % Use the most recently transferred frame
-% %                'IntBufDest', [1, 1], ... % idk but it's for the IQ (complex) data
-% %                'ImgBufDest', [1, -1], ... % [buffer #, frame #] Auto-increment ImageBuffer for each reconstruction???? % something is [first/oldest frame, last/newest frame]
-% %                'RINums', [1:2*na]); % The ReconInfo structure #(s). Each Recon must have its own unique set of ReconInfo #s
-% 
-% sco = 0.6; %%%%
-% % sco = 0.4;
-% Recon = struct('senscutoff', sco, ... % Threshold for which the reconstruction doesn't consider an element's contribution due to directivity of the element, for a certain pixel (whose echoes are at an angle to the element). Should be in radians.
-%                'pdatanum', 1, ... % Which PData structure to use
-%                'rcvBufFrame', -1, ... % Use the most recently transferred frame
-%                'IntBufDest', [1, -1], ... % IQ (complex) data, Auto-increment for every frame
-%                'ImgBufDest', [1, -1], ... % [buffer #, frame #] Auto-increment ImageBuffer for each reconstruction???? % something is [first/oldest frame, last/newest frame]
-%                'RINums', [1:2*na]); % The ReconInfo structure #(s). Each Recon must have its own unique set of ReconInfo #s
-% 
-% % Recon = repmat(Recon, 1, numFrames);
-% % for nf = 1:numFrames
-% %     Recon(nf).IntBufDest = [1, nf];
-% %     Recon(nf).ImgBufDest = [1, nf];
-% % end
-% 
-% ReconInfo = repmat(struct('mode', 'accumIQ_replaceIntensity', ... % reconstruct, and replace intensity data in ImageBuffer and IQ data in InterBuffer (see Table 12.4 in Tutorial)
-%                    'txnum', 1, ...                 % TX structure to use
-%                    'rcvnum', 1, ...                % RX structure to use
-%                    'regionnum', 1), 1, 2*na);                % PData Region to process in
-% 
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % for nf = 1
-% for n = 1:2*na % need to change this and above for more than 1 frame
-%     % - Set specific ReconInfo attributes.
-%     % ReconInfo(1).mode = 'replaceIQ'; % replace IQ data
-%     ReconInfo(n).txnum = n;
-%     ReconInfo(n).rcvnum = n;
+numRegions = 3;
+
+Resource.ImageBuffer(1).numFrames = numSupFrames; % Define an ImageBuffer with a # of frames
+Resource.InterBuffer(1).numFrames = numSupFrames; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Resource.InterBuffer(1).numFrames = 1;
+
+sco = 0.6; %%%%
+% sco = 0.4;
+Recon = struct('senscutoff', sco, ... % Threshold for which the reconstruction doesn't consider an element's contribution due to directivity of the element, for a certain pixel (whose echoes are at an angle to the element). Should be in radians.
+               'pdatanum', 1, ... % Which PData structure to use
+               'rcvBufFrame', -1, ... % Use the most recently transferred frame
+               'IntBufDest', [1, -1], ... % IQ (complex) data, Auto-increment for every frame
+               'ImgBufDest', [1, -1], ... % [buffer #, frame #] Auto-increment ImageBuffer for each reconstruction???? % something is [first/oldest frame, last/newest frame]
+               'RINums', [1:2*na]); % The ReconInfo structure #(s). Each Recon must have its own unique set of ReconInfo #s
+
+
+ReconInfo = repmat(struct('mode', 'accumIQ_replaceIntensity', ... % reconstruct, and replace intensity data in ImageBuffer and IQ data in InterBuffer (see Table 12.4 in Tutorial)
+                   'txnum', 1, ...                 % TX structure to use
+                   'rcvnum', 1, ...                % RX structure to use
+                   'regionnum', 1), 1, 2*na);                % PData Region to process in
+
+for n = 1:2*na
+    % - Set specific ReconInfo attributes.
+    % ReconInfo(1).mode = 'replaceIQ'; % replace IQ data
+    ReconInfo(n).txnum = n;
+    ReconInfo(n).rcvnum = n;
 %     ReconInfo(n).pagenum = n; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %     ReconInfo(1).regionnum = 1; %1 for the whole volume, 5 for the slices
-% 
-% end
+%     ReconInfo(1).regionnum = 1; %1 for the whole volume, 5 for the slices
+
+end
 
 
 %% Process the Reconstructed data
@@ -624,14 +610,14 @@ for nsupf = 1:numSupFrames
 %     Event(n).process = 0; 
 %     Event(n).seqControl = 3; 
 
-%     n = n + 1;
-% 
-%     Event(n).info = ['Frame ' num2str(nf) ': Reconstruction'];
-%     Event(n).tx = 0; 
-%     Event(n).rcv = 0; 
-%     Event(n).recon = 1;  %%
-%     Event(n).process = 0; 
-%     Event(n).seqControl = 2; 
+    n = n + 1;
+
+    Event(n).info = ['Reconstruction'];
+    Event(n).tx = 0; 
+    Event(n).rcv = 0; 
+    Event(n).recon = 1;  %%
+    Event(n).process = 0; 
+    Event(n).seqControl = 0; 
 % 
 %     n = n + 1;
 % 
@@ -704,43 +690,6 @@ end
 makeParameterStructure;
 savefast([savepath, 'params.mat'], 'P')
 % saveRcvData(RcvData{1})
-%% Plot FPS
 
-% maxTravelDist = (Trans.spacingMm*Trans.numelements /cosd(maxAngle)) + maxAcqLength*wl*1e3; 
-% maxTravelTime = maxTravelDist / 1e3 / Resource.Parameters.speedOfSound;
-% 
-% timePerFramePhysical = maxTravelTime * acqsPerFrame * pair;
-% maxFPSPhysical = 1./timePerFramePhysical;
-% 
-% figure (1)
-% plot(acqsPerFrame, maxFPSPhysical./1e3, 'LineWidth', 3)
-% xlabel('Acquisition pairs (angles) per frame')
-% ylabel('Max Frame Rate (kHz)')
-% title(['Max angle = ', num2str(maxAngle), ' degrees'])
-% 
-% % Data transfer parameters
-% writeRate = 6.6*1024; % MB/s for DMA https://verasonics.com/wp-content/uploads/2019/04/Vantage-Systems-Brochure.pdf
-% timePerFrameFile = RcvDataSize ./ writeRate;
-% 
-% mask = timePerFrameFile > timePerFramePhysical;
-% % totalTimePerFrame = timePerFramePhysical + timePerFrameFile;
-% totalTimePerFrame = timePerFramePhysical;
-% totalTimePerFrame(mask) = timePerFrameFile; % When file transfer time > physical time, that is the total since you can transfer the data during the next acq
-% 
-% totalFPS = 1 ./ totalTimePerFrame;
-% hold on
-% plot(acqsPerFrame, totalFPS./1e3, 'LineWidth', 3)
-% yline(1, '--', 'LineWidth', 2) % 1 kHz frame rate needed for g1
-% hold off
-% legend('Physical limit', 'Including file transfer', '1 kHz line')
-% title(['Max angle = ', num2str(maxAngle), ' degrees'])
-% 
-% figure(2)
-% plot(acqsPerFrame, timePerFramePhysical*1e3, 'LineWidth', 3)
-% hold on
-% plot(acqsPerFrame, timePerFrameFile*1e3, 'LineWidth', 3)
-% hold off
-% legend('Physical time per frame', 'File transfer time per frame')
-% xlabel('Acquisition pairs (angles) per frame')
-% ylabel('Time per frame (ms)')
-
+%%
+IQ = IData{1} + 1i .* QData{1};

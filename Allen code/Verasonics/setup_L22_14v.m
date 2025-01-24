@@ -10,29 +10,29 @@
 %% Specify system parameters
 clear
 
-cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
-% cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
+% cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
+cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
 activate
 
 % savepath = 'G:\Allen\Data\10-03-2024 phantom\L22-14v\';
 
 movePointsOrNot = 0; % Media movePoints on or off
 runVSX = 1;
-simOrNot = 0;
+simOrNot = 1;
 
 fps_target = 1;
 supFrameBurstRate = 1;
 
 startDepthMM = 0; % start depth in mm
-endDepthMM = 20;
+endDepthMM = 10;
 
-initialVoltage = 25;
+initialVoltage = 20;
 
 
 numSupFrames = 1;
 numSubFrames = 1;
-na = 21; % # of acquisitions per frame (# angles)
-maxAngle = 15; % degrees
+na = 5; % # of acquisitions per frame (# angles)
+maxAngle = 5; % degrees
 angleRange = [-maxAngle, maxAngle].*pi/180; % Angle range in radians
 
 % savepath = strcat("G:\Allen\Data\10-04-2024 phantom\L22-14v\", "verex2 TGC ", num2str(na), " angles ", num2str(numFrames), " frames ", num2str(endDepthMM), " endDepthMM ", num2str(maxAngle), " maxAngle test\");
@@ -47,8 +47,9 @@ else
     angles = 0;
 end
 
-savepath = strcat("G:\Allen\Data\01-09-2025 phantom anechoic\L22-14v\run 9 ", num2str(na), " angles -", num2str(maxAngle), " to ", num2str(maxAngle), " deg\");
-savepath = char(savepath);
+% savepath = strcat("G:\Allen\Data\01-09-2025 phantom anechoic\L22-14v\run 9 ", num2str(na), " angles -", num2str(maxAngle), " to ", num2str(maxAngle), " deg\");
+% savepath = char(savepath);
+savepath = 'D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\PSF sim\';
 mkdir(savepath)
 
 numChannels = 128;
@@ -97,7 +98,7 @@ wl = Resource.Parameters.speedOfSound / Trans.frequency / 1e6; % m
 Resource.Parameters.simulateMode = simOrNot; % run script in simulate mode. Set to 0 if not
 
 xl = 40;
-zl = 60;
+zl = 50;
 zlmult = 1.5;
 % Set up Media model for the simulation, which generates the scattering points with 3D location
 % and reflectivity. For 1D transducer arrays, they are aligned on the
@@ -108,14 +109,14 @@ zlmult = 1.5;
 % Media.MP(4,:) = [-10, 10, zl, 1.0];
 
 Media.MP(1,:) = [0, 0, zl, 1.0];
-Media.MP(2,:) = [xl, 0, zl, 1.0];
-Media.MP(3,:) = [-xl, 0, zl, 1.0];
-Media.MP(4,:) = [0, 0, zl*zlmult, 1.0];
-Media.MP(5,:) = [xl, 0, zl*zlmult, 1.0];
-Media.MP(6,:) = [-xl, 0, zl*zlmult, 1.0];
-Media.MP(7,:) = [0, 0, zl*2, 1.0];
-Media.MP(8,:) = [xl, 0, zl*2, 1.0];
-Media.MP(9,:) = [-xl, 0, zl*2, 1.0];
+% Media.MP(2,:) = [xl, 0, zl, 1.0];
+% Media.MP(3,:) = [-xl, 0, zl, 1.0];
+% Media.MP(4,:) = [0, 0, zl*zlmult, 1.0];
+% Media.MP(5,:) = [xl, 0, zl*zlmult, 1.0];
+% Media.MP(6,:) = [-xl, 0, zl*zlmult, 1.0];
+% Media.MP(7,:) = [0, 0, zl*2, 1.0];
+% Media.MP(8,:) = [xl, 0, zl*2, 1.0];
+% Media.MP(9,:) = [-xl, 0, zl*2, 1.0];
 
 % Media.MP(1,:) = [-xl, 0, zl, 1.0];
 
