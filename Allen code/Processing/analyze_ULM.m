@@ -1,4 +1,14 @@
 
+%% Use parallel processing for speed
+% https://www.mathworks.com/matlabcentral/answers/91744-how-can-i-check-if-matlabpool-is-running-when-using-parallel-computing-toolbox
+
+pp = gcp('nocreate');
+if isempty(pp)
+    % There is no parallel pool
+    parpool LocalProfile1
+
+end
+
 %%
 
 % IQ_coherent_sum = squeeze(sum(IQ, 3));
@@ -14,13 +24,13 @@ disp('SVs decomposed')
 toc
 %% SVD proc part 2
 sv_threshold_lower = 50;
-sv_threshold_upper = 2000;
+sv_threshold_upper = 5000;
 tic
-[IQ_f_50_2000] = applySVs1D(IQ_coherent_sum, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
+[IQ_f_50_5000] = applySVs1D(IQ_coherent_sum, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
 disp('SVD filtered images put together')
 toc
 %% Plot filtered data
-abs_IQ_f = abs(IQ_f_50_2000);
+abs_IQ_f = abs(IQ_f_50_5000);
 figure; imagesc(abs_IQ_f(:, :, 1))
 figure; imagesc(abs_IQ_f(:, :, 100))
 figure; imagesc(abs_IQ_f(:, :, 500))
@@ -67,13 +77,53 @@ d(:, :, end+1) = IQs(:, :, end) - IQs(:, :, end-2); % add another value so you g
 % figure; imagesc(abs(d(:, :, 1)))
 % figure; imagesc(abs(d(:, :, 2)))
 
+%% image refinement?
+rfnZ = 2; % refinement pixel increase factor
+rfnX = 2;
+
+refIQs = zeros(size(IQs, 1) * rfnZ, size(IQs, 2) * rfnX, size(IQs, 3)); % refined IQ section
+% I = IQs(:, :, 1);
+
+tic
+% go through all frames and refine
+parfor f = 1:size(IQs, 3)
+% for f = 1:1
+% parfor f = 1:10
+    I_temp = IQs(:, :, f);
+    refIQs(:, :, f) = imresize(I_temp/max(I_temp, [], 'all') .* 256 .* 5, [size(I_temp, 1) * rfnZ, size(I_temp, 2) * rfnX], 'bilinear');
+end
+toc
+
+%% and cross correlation?
+% if ~exist('base', 'var', 'PSF')
+    load('G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\PSF sim\IQ.mat') % Load simulated PSF
+%     PSF = IQ_coherent_sum(90:110, 55:75);                             % Crop the PSF
+    refPSF = imresize(IQ_coherent_sum, [size(IQ_coherent_sum, 1) * rfnZ, size(IQ_coherent_sum, 2) * rfnX], 'bilinear');
+%     PSF = refPSF(198:205, 125:132);
+%     PSF = refPSF(160:240, 100:156);
+    PSF = refPSF(190:210, 118:138);
+% end
+
+% PSFn = PSF/max(PSF, [], 'all') .* 256 .* 5;
+% x = normxcorr2(abs(PSF), abs(refIQs));
+%%
+% XC = zeros(size(refIQs));
+XC = normxcorr2(abs(PSF), abs(refIQs(:, :, 1))); % Cross correlate the filtered/refined images and the simulated PSF
+parfor f = 2:size(refIQs, 3)
+% parfor f = 2:10
+    XC(:, :, f) = normxcorr2(abs(PSF), abs(refIQs(:, :, f)));
+end
+
 %% Make video
-vo = VideoWriter('G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\Processing\diff_50_5000'); % video object
-va = abs(d);
-va = va ./ max(va);
+% vo = VideoWriter('G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\Processing\diff_50_5000'); % video object
+vo = VideoWriter('G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\Processing\XC_50_5000'); % video object
+
+% va = abs(d);
+va = XC - min(XC, [], 'all');
+va = va ./ max(va, [], 'all');
 
 vo.Quality = 100;
-vo.FrameRate = 10;
+vo.FrameRate = 100;
 open(vo);
 for f = 1:size(va, 3)
     writeVideo(vo, va(:, :, f));
@@ -82,35 +132,51 @@ close(vo);
 
 %% binary image conversion of all frames
 % a = abs(d);
-a = abs(IQs);
+% a = abs(IQs);
+% a = abs(refIQs);
+a = XC;
+
 % figure; imagesc(a)
 % figure; plot(a(:))
 
-threshold = 7e3;
+% threshold = 7e3;
+% threshold = 800;
+threshold = 0.4; % XC threshold, set it manually
 
 mask = a > threshold;
 bi = zeros(size(a)); bi(mask) = 1; % binary image with white above the threshold
 % binaryImage = figure; imagesc(bi); colormap gray
 
 %% Make video of binary image
-vo = VideoWriter('G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\Processing\bi_50_5000'); % video object
+vo = VideoWriter('G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\Processing\biXC_50_5000'); % video object
 va = bi;
 va = va ./ max(va);
 
 vo.Quality = 100;
-vo.FrameRate = 10;
+vo.FrameRate = 100;
 open(vo);
 for f = 1:size(va, 3)
     writeVideo(vo, va(:, :, f));
 end
 close(vo);
 %% Centroid finding
-nf = size(bi, 3);
-centroids = cell(nf, 1);
+nf = size(bi, 3);        % # frames in the binary image stack
+centroids = cell(nf, 1); % initialize
+areaThreshold = 1;
+
 parfor f = 1:nf
     cf = bi(:, :, f); % current frame
     CC = bwconncomp(cf); % connected components (connected regions of 1 in a binary image)
-    s = regionprops(CC, cf, 'WeightedCentroid');
+
+    s = regionprops(CC, cf, 'Area', 'WeightedCentroid'); % Get the weighted centroids and area of each connected component
+
+    % Remove connected regions without enough pixels (probably noise)
+    for si = numel(s):-1:1
+        if s(si).Area <= areaThreshold
+            s = s(1:si - 1);
+        end
+    end
+
     centroidsCurrentFrame = zeros(numel(s), 2); % initialize centroid array. Dimensions: # centroids x 2 (z location, x location)
 
     % go through the s structure and get the .WeightedCentroid data
