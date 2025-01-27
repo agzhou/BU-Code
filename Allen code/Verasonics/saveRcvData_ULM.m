@@ -8,9 +8,11 @@ function saveRcvData_ULM(RcvData)
     Psmall = evalin('base', 'Psmall');
     Psmall.bufferIndex = Psmall.bufferIndex + 1;
     assignin('base', 'Psmall', Psmall);
-    paramNames = [num2str(Psmall.maxAngle), '-', num2str(Psmall.na), '-', num2str(Psmall.PRF), '-', num2str(Psmall.frameRate), '-', num2str(Psmall.numFramesPerBuffer), '-', num2str(Psmall.bufferIndex)];
+    paramNames = [num2str(Psmall.maxAngle), '-', num2str(Psmall.na), '-', num2str(Psmall.frameRate), '-', num2str(Psmall.numFramesPerBuffer), '-1-', num2str(Psmall.bufferIndex)];
 
-    filename = strcat(Trans.name, '-RcvData-', paramNames, '.mat');
+%     filename = strcat(Trans.name, '-RcvData-', paramNames, '.mat');
+    filename = strcat('RF-', paramNames, '.mat');
+
 %     disp(strcat('Saving ', filename))
 
 %     save([savepath, filename], 'RcvData', '-v7.3')

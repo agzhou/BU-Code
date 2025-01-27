@@ -19,26 +19,30 @@ savepath = char(savepath);
 mkdir(savepath)
 
 % tagtest = Hardware.enableAcquisitionTimeTagging(1);
-supFrameIndex = 0;
+bufferIndex = 0;
 
 runVSX = 1;
 simOrNot = 1;
 movePointsOrNot = 0;
 
-initialVoltage = 1.6; % V
+initialVoltage = 20; % V
 
 startDepthMM = 0; % start depth in wavelengths
 endDepthMM = 10;
 
-fps_target = 500;   % Intended (sub)frame rate
-supFrameBurstRate = 0.5; % Defines spacing between end of superframe burst and the next burst after jumping
-
 numChannels = 256; % enable channels
 
-numSupFrames = 1; % # of superframes, MUST BE ONE OR EVEN FOR VSX
-numSubFrames = 2; % # of subframes
+fps_target = 40000; % PRF (Hz)
+PRF = fps_target;
+
+frameRate = 500; % subframe rate (Hz)
+
+numFramesPerBuffer = 100;
+
+numBuffers = ceil(frameRate / numFramesPerBuffer);
+
 na = 11; % # of acquisitions per frame (acquisition pairs)
-maxAngle = 10; % degrees
+maxAngle = 5; % degrees
 angleRange = [-maxAngle, maxAngle].*pi/180; % Angle range in radians
 
 % Need at least 2 acquisitions to use multiple angles. 
@@ -61,8 +65,8 @@ Resource.Parameters.speedOfSound = 1540; % speed of sound in m/s, the 1540 is fo
 %% Define Transducer
 
 Trans.name = 'RC15gV'; 
-% Trans.frequency = 13.8889; % Not needed if using the default center frequency
-Trans.frequency = 15.625;
+Trans.frequency = 13.6; % Not needed if using the default center frequency
+% Trans.frequency = 15.625;
 Trans.units = 'wavelengths'; % or mm
 % Trans.units = 'mm';
 
@@ -245,8 +249,8 @@ end
 % Accounts for decrease in amplitude of echoes for longer distance traveled
 
 % TGC curve definition
-TGC.CntrlPts = [0 785.2216 1023 1023 1023 1023 1023 1023];
-% TGC.CntrlPts = [1023 1023 1023 1023 1023 1023 1023 1023];
+% TGC.CntrlPts = [0 785.2216 1023 1023 1023 1023 1023 1023];
+TGC.CntrlPts = [1023 1023 1023 1023 1023 1023 1023 1023];
 % TGC(1).CntrlPts = [500,590,650,710,770,830,890,950]; % 0 to 1023, minimum to maximum gain
                                                      % Values represent the
                                                      % gain at increasing
@@ -272,7 +276,7 @@ Receive = repmat(struct('Apod', zeros(1, Trans.numelements), ...
                         'mode', 0, ...
                         'callMediaFunc', 0, ...
                         'LowPassCoef', [], ...
-                        'InputFilter', []), 1, pair*numSupFrames*numSubFrames*na);
+                        'InputFilter', []), 1, pair * numBuffers * numFramesPerBuffer * na);
 j = 1;
 % an = 0;
 for nsupf = 1:numSupFrames
@@ -566,7 +570,7 @@ SeqControl(scInd).command = 'timeToNextAcq'; % jump to
 if timeGapBetweenLastSuperframeBurstAndNextSuperframeBurst < timePerAcqLimits(1)
     warning('Superframe burst delay time too short, setting to minimum of 10 us')
     SeqControl(scInd).argument = timePerAcqLimits(1); 
-elseif timeGapBetweenLastSuperframeBurstAndNextSuperframeBurst > timePerAcqLimits(2)
+elseif timePerAcq > timePerAcqLimits(2)
     warning('Superframe burst delay time too long, setting to maximum of 4190000 us')
     SeqControl(scInd).argument = timePerAcqLimits(2);
 else

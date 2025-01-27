@@ -1,32 +1,36 @@
-% Take note of spatial and temporal resolution. Note that the time lagged
-% stuff needs more subframes so the frame rate this displays is not
-% necessarily accurate
 
-% for straight up and down, t_tx_to_rcv = 2*h/c = 2*endDepth_wl*(c/f_c)/c =
-% 2*endDepth/(c^2 * f_c)
-
-% for endDepth = 100 and f_c = 13.6 MHz, t = 6.200827438413382e-12 s
+%% Description
+% Continuous acquisition and saving of RF data with the RC15gV probe
+% Saves all defined # of frames in one file
+% C-R and R-C pairs of TX-RX
+% Uses saveRcvData external function for saving
+% Note: update the savepath variable as needed
 
 %% Specify system parameters
 clear
 
 cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
-activate
 
-savepath = "G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 3 allen code baseline after\";
+activate
+% numElements = 80;
+
+savepath = "G:\Allen\Data\01-24-2025 testing\RC15gV\run 1\";
 savepath = char(savepath);
 mkdir(savepath)
 
+% tagtest = Hardware.enableAcquisitionTimeTagging(1);
 bufferIndex = 0;
 
 runVSX = 1;
-simOrNot = 0;
-movePointsOrNot = 0; % Media movePoints on or off
+simOrNot = 1;
+movePointsOrNot = 0;
 
-initialVoltage = 20; % probe voltage in V
+initialVoltage = 20; % V
 
-startDepthMM = 0; % start depth in mm
+startDepthMM = 0; % start depth in wavelengths
 endDepthMM = 10;
+
+numChannels = 256; % enable channels
 
 fps_target = 40000; % PRF (Hz)
 PRF = fps_target;
@@ -37,95 +41,164 @@ numFramesPerBuffer = 100;
 
 numBuffers = ceil(frameRate / numFramesPerBuffer);
 
-na = 5; % # of acquisitions per frame (# angles)
+na = 11; % # of acquisitions per frame (acquisition pairs)
 maxAngle = 5; % degrees
 angleRange = [-maxAngle, maxAngle].*pi/180; % Angle range in radians
 
-if na >= 2 % Need at least 2 acquisitions to use multiple angles
+% Need at least 2 acquisitions to use multiple angles. 
+% Otherwise, set angle to 0 degrees.
+if na >= 2 
     angles = linspace(angleRange(1), angleRange(2), na);
 else
     angles = 0;
 end
 
 % numAngles = length(angles);
-numChannels = 128;
+pair = 2; % The R-C and C-R pair of acquisitions per angle
+
 % Resource is a structure, define system parameters
 Resource.Parameters.numTransmit = numChannels; % number of transmit channels
 Resource.Parameters.numRcvChannels = numChannels; % number of receive channels
 % Resource.Parameters.connector = 1; % transducer connector to use since the current plate for the 256 bit system is split into two 128 bit connectors. 1 is left and 2 is right
 Resource.Parameters.speedOfSound = 1540; % speed of sound in m/s, the 1540 is for average human tissue
-
-
+% Resource.Parameters.speedOfSound = 1481;
 %% Define Transducer
 
-Trans.name = 'L22-14v';
+Trans.name = 'RC15gV'; 
 Trans.frequency = 13.6; % Not needed if using the default center frequency
+% Trans.frequency = 15.625;
 Trans.units = 'wavelengths'; % or mm
 % Trans.units = 'mm';
 
 Trans = computeTrans(Trans); % Generate required attributes for the probe into the Trans structure; e.g., the transducer element positions
 % Trans.maxHighVoltage = ; % set maximum high voltage that is allowed to the transducer
 
-% Bae and Song 2018 test for uniform angle condition (runs out of memory)
-L = Trans.spacingMm*Trans.numelements/1e3; % m
+L = Trans.spacingMm*Trans.numelements/2/1e3; % m
 wl = Resource.Parameters.speedOfSound / Trans.frequency / 1e6; % m
 
-%% angles
-% angpitch = wl / (Trans.spacingMm*Trans.numelements / 1e3);
-% angles = -(na - 1) / 2 * angpitch : angpitch : (na - 1) / 2 * angpitch
+startDepth = startDepthMM/1e3/wl; % start depth in wavelengths
+endDepth = endDepthMM/1e3/wl;
 
+%% angles
+% angpitch = wl / (Trans.spacingMm*Trans.numelements / 2 / 1e3);
+% angles = -(na - 1) / 2 * angpitch : angpitch : (na - 1) / 2 * angpitch
 %% enable time tag
 TimeTagEna = 2;
 % 0: disable
 % 1: enable but don't reset counter
 % 2: enable and reset counter
 
-%% Simulation things - Media structure
 
+%% Simulation things - Media structure (define scattering points and attenuation)
 Resource.Parameters.simulateMode = simOrNot; % run script in simulate mode. Set to 0 if not
 
-xl = 40;
-zl = 20;
-zlmult = 1.5;
+% xd_mm = 5; % in mm
+% xd = xd_mm/wl/1e3;
+
 % Set up Media model for the simulation, which generates the scattering points with 3D location
 % and reflectivity. For 1D transducer arrays, they are aligned on the
 % x-axis with the center at x = 0, and scan depth is in z.
-% Media.MP(1,:) = [-10, -10, zl, 1.0]; % [x, y, z, reflectivity]. x, y, z are defined as # of wavelengths.
-% Media.MP(2,:) = [10, -10, zl, 1.0];
-% Media.MP(3,:) = [10, 10, zl, 1.0];
-% Media.MP(4,:) = [-10, 10, zl, 1.0];
+Media.MP(1, :) = [0, 0, 50, 1.0]; % [x, y, z, reflectivity]. x, y, z are defined as # of wavelengths.
+% Media.MP(2, :) = [30, 30, 70, 1.0]; % [x, y, z, reflectivity]. x, y, z are defined as # of wavelengths.
+% Media.MP(3, :) = [20, -20, 100, 1.0]; % [x, y, z, reflectivity]. x, y, z are defined as # of wavelengths.
+% Media.MP(1, :) = [30, 30, 70, 1.0]; % [x, y, z, reflectivity]. x, y, z are defined as # of wavelengths.
 
-Media.MP(1,:) = [0, 0, zl, 1.0];
-Media.MP(2,:) = [xl, 0, zl, 1.0];
-Media.MP(3,:) = [-xl, 0, zl, 1.0];
-Media.MP(4,:) = [0, 0, zl*zlmult, 1.0];
-Media.MP(5,:) = [xl, 0, zl*zlmult, 1.0];
-Media.MP(6,:) = [-xl, 0, zl*zlmult, 1.0];
-Media.MP(7,:) = [0, 0, zl*2, 1.0];
-Media.MP(8,:) = [xl, 0, zl*2, 1.0];
-Media.MP(9,:) = [-xl, 0, zl*2, 1.0];
-
-% Media.MP(1,:) = [-xl, 0, zl, 1.0];
-
-% 
-% testmp = 4/1e3;
-% Media.MP(4,:) = [testmp/wl, 0, zl*2, 1.0];
-% Media.MP(5,:) = [-testmp/wl, 0, zl*2, 1.0];
+% new %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+vesselX = 30e-6;    % x dimension
+vesselY = 30e-6;    % x dimension
+vesselZ = endDepthMM * 1e-3; % z dimension
+flow_v_mm_s = 300;
+%  
+% Media.MP = randomPts3D_func(vesselX, vesselY, vesselZ, wl);
 
 % Media.attenuation = 0;
-Media.attenuation = -0.7; %  media attenuation in dB/cm/MHz
-% Media.FlowObj = struct();
+Media.attenuation = -0.7; % media attenuation in dB/cm/MHz
 
-% randomPts;
+Media.function = 'movePointsZ3D'; % move points in _ dimension after each frame
 
-% Media.function = 'movePointsX'; % move points in x after each frame
-Media.function = 'movePointsZ';
+%% PData structure (Pixel Data --> image reconstruction range)
+% For 2D scans and slices of 3D scans, it's always a rectangular area at a
+% fixed location in the transducer coord system
 
+numElements = Trans.numelements./2; % the structure gives # row elements + # column elements
 
-startDepth = ceil(startDepthMM/1e3/wl); % in wavelengths
-endDepth = ceil(endDepthMM/1e3/wl); % in wavelengths
+PData.PDelta = [Trans.spacing, Trans.spacing, 0.5]; % Spacing between pixels in x, y, z, in wavelengths
 
-numElements = Trans.numelements; % the structure gives # row elements + # column elements
+PData.Coord = 'rectangular'; % rectangular coords, could change to polar or spherical
+% Set PData array dimensions --> # of rows, columns, sections (planes
+% parallel to the xy plane)
+% For a 3D scan, rows - y axis, columns - x axis, sections - z axis
+PData.Size(1) = ceil(numElements.*Trans.spacing./PData.PDelta(2)); % # rows
+PData.Size(2) = ceil(numElements.*Trans.spacing./PData.PDelta(1)); % # cols
+PData.Size(3) = ceil((endDepth - startDepth)./PData.PDelta(3)); % sections
+
+% Define the location (x, y, z) of the upper left corner of the array
+half_probe_dist = (numElements-1)./2.*Trans.spacing;
+PData.Origin = [-half_probe_dist, half_probe_dist, startDepth];
+% PData.Origin = [-half_probe_dist, -half_probe_dist, startDepth];
+
+% Upper left corner if you look aligned with positive z
+
+% Set a local region to view/use for processing
+PData.Region(1) = struct('Shape',struct('Name','PData'));
+
+PData.Region(2).Shape = struct('Name', 'Slice', 'Orientation', 'xz', ...
+                            'oPAIntersect', PData.Origin(2) - (numElements-1).*Trans.spacing./2); % out of Plane Axis Intersection
+PData.Region(3).Shape = struct('Name', 'Slice', 'Orientation', 'yz', ...
+                            'oPAIntersect', PData.Origin(1) + (numElements-1).*Trans.spacing./2);
+PData.Region(4).Shape = struct('Name', 'Slice', 'Orientation', 'xy', ...
+                            'oPAIntersect', Media.MP(3)); % currently set to the plane intersecting the only scatter point
+
+%     'Position', [0, 0, 10], ...
+%                      'width', PData.Size(2), 'height', PData.Size(1)./2);
+                    % Position is relative to the global coords
+% PData.Region = computeRegions(PData);
+
+% Display window
+
+xd = 70;
+% 
+% xz
+% Resource.DisplayWindow(1).Title = 'Slice xz plane';
+% Resource.DisplayWindow(1).pdelta = 0.3; % pixel spacing (in wavelengths) on the display window, for all dimensions
+% llx = 100; % lower left corner x on screen
+% xmult = 200;
+% lly = 150; % lower left corner y
+% Resource.DisplayWindow(1).Position = [llx, lly, ...
+%                                       ceil(PData.Size(2).* PData.PDelta(1) ./ Resource.DisplayWindow(1).pdelta), ... % width (x)
+%                                       ceil(PData.Size(3).* PData.PDelta(3) ./ Resource.DisplayWindow(1).pdelta)]; % height (z)
+% Resource.DisplayWindow(1).ReferencePt = [PData.Origin(1), 0, PData.Origin(3)]; % Display Window location wrt transducer coords
+% Resource.DisplayWindow(1).AxesUnits = 'wavelengths'; % can change to mm
+% Resource.DisplayWindow(1).Colormap = gray(256);
+% Resource.DisplayWindow(1).Orientation = 'xz';
+% Resource.DisplayWindow(1).numFrames = numFrames; % Define buffer size for a history of displayed frames
+% 
+% % xy
+% Resource.DisplayWindow(2).Title = 'Slice xy plane';
+% Resource.DisplayWindow(2).pdelta = 0.3; % pixel spacing (in wavelengths) on the display window, for all dimensions
+% 
+% Resource.DisplayWindow(2).Position = [llx + 2.*xmult, lly, ...
+%                                       ceil(PData.Size(2).* PData.PDelta(1) ./ Resource.DisplayWindow(1).pdelta), ... % width (x)
+%                                       ceil(PData.Size(1).* PData.PDelta(2) ./ Resource.DisplayWindow(1).pdelta)]; % height (z)
+% Resource.DisplayWindow(2).ReferencePt = [PData.Origin(1), -PData.Origin(2), xd]; % Display Window location wrt transducer coords
+% Resource.DisplayWindow(2).AxesUnits = 'wavelengths'; % can change to mm
+% Resource.DisplayWindow(2).Colormap = gray(256);
+% Resource.DisplayWindow(2).Orientation = 'xy';
+% Resource.DisplayWindow(2).numFrames = numFrames; % Define buffer size for a history of displayed frames
+% 
+% % yz
+% Resource.DisplayWindow(3).Title = 'Slice yz plane';
+% Resource.DisplayWindow(3).pdelta = 0.3; % pixel spacing (in wavelengths) on the display window, for all dimensions
+% 
+% Resource.DisplayWindow(3).Position = [llx + 4.*xmult, lly, ...
+%                                       ceil(PData.Size(1).* PData.PDelta(2) ./ Resource.DisplayWindow(1).pdelta), ... % width (x)
+%                                       ceil(PData.Size(3).* PData.PDelta(3) ./ Resource.DisplayWindow(1).pdelta)]; % height (z)
+% Resource.DisplayWindow(3).ReferencePt = [0, -PData.Origin(2), PData.Origin(3)]; % Display Window location wrt transducer coords
+% Resource.DisplayWindow(3).AxesUnits = 'wavelengths'; % can change to mm
+% Resource.DisplayWindow(3).Colormap = gray(256);
+% Resource.DisplayWindow(3).Orientation = 'yz';
+% Resource.DisplayWindow(3).numFrames = numFrames; % Define buffer size for a history of displayed frames
+
 
 %% Transmission Waveform (TW)
 tw.A = Trans.frequency; % frequency of transmission pulse, sets half cycle period of the waveform...
@@ -158,16 +231,26 @@ TPC.hv = initialVoltage;
 TX = repmat(struct('waveform', 1, ...
                    'focus', 0, ... % plane wave
                    'Steer', [0.0, 0.0], ... % theta, alpha (beam angle projected in xz from +z axis, beam angle wrt xz)
-                   'Apod', ones(1, Trans.numelements)), 1, na);
+                   'Apod', zeros(1, Trans.numelements)), 1, na*2);
 for n = 1:na
+    TX(n).Apod(1:Trans.numelements/2) = ones(1, Trans.numelements/2); % Turn on columns (y)
     TX(n).Steer = [angles(n), 0];
     TX(n).Delay = computeTXDelays(TX(n));
 end
+
+for n = 1:na
+    TX(na + n).Apod(Trans.numelements/2 + 1 : end) = ones(1, Trans.numelements/2); % Turn on rows (x)
+    TX(na + n).Steer = [0, angles(n)];
+    TX(na + n).Delay = computeTXDelays(TX(na + n));
+end
+
 
 %% Define Time Gain Control waveform (TGC)
 % Accounts for decrease in amplitude of echoes for longer distance traveled
 
 % TGC curve definition
+% TGC.CntrlPts = [0 785.2216 1023 1023 1023 1023 1023 1023];
+TGC.CntrlPts = [1023 1023 1023 1023 1023 1023 1023 1023];
 % TGC(1).CntrlPts = [500,590,650,710,770,830,890,950]; % 0 to 1023, minimum to maximum gain
                                                      % Values represent the
                                                      % gain at increasing
@@ -177,114 +260,53 @@ end
                                                      % distributed over the
                                                      % 0 to rangeMax depth
                                                      % (in wavelengths)
-% From SetUpL22_14vFlashAngles.m
-% TGC.CntrlPts = [330 560 780 1010 1023 1023 1023 1023]; % [0,511,716,920,1023,1023,1023,1023];
-% TGC.CntrlPts = [0,511,716,920,1023,1023,1023,1023];
-TGC.CntrlPts = [1023 1023 1023 1023 1023 1023 1023 1023];
-
 TGC(1).rangeMax = endDepth;
 TGC(1).Waveform = computeTGCWaveform(TGC); % Parameters can be adjusted later with GUI sliders
 
-
 %% Receiver array object
-
-maxAcqLength = ceil(sqrt(endDepth^2 + (numElements*Trans.spacing)^2)); % account for the longest distance an echo could travel
-
-Receive = repmat(struct('Apod', ones(1, Trans.numelements), ...
+maxAcqLength = ceil(sqrt(endDepth^2 + 2*(numElements*Trans.spacing)^2)); % account for the longest distance an echo could travel
+Receive = repmat(struct('Apod', zeros(1, Trans.numelements), ... 
                         'startDepth', startDepth, ...
-                        'endDepth', maxAcqLength + startDepth, ... % change 9/12/24, was previously just maxAcqLength
+                        'endDepth', maxAcqLength, ...
                         'TGC', 1, ...
                         'bufnum', 1, ...
-                        'framenum', 1, ... 
+                        'framenum', 1, ...
                         'acqNum', 1, ...
                         'sampleMode', 'NS200BW', ...
                         'mode', 0, ...
-                        'callMediaFunc', 0, ... % 1 to call Media func above %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                        'callMediaFunc', 0, ...
                         'LowPassCoef', [], ...
-                        'InputFilter', []), 1, numBuffers * numFramesPerBuffer * na);
-
-k = 1; % overall acquisition index
-
+                        'InputFilter', []), 1, pair * numBuffers * numFramesPerBuffer * na);
+j = 1;
+% an = 0;
 for nbuf = 1:numBuffers
-
+    
     for nf = 1:numFramesPerBuffer
-        Receive(k).callMediaFunc = movePointsOrNot;
-        j = 1; % acquisition index that starts from 1 at each new frame
-
+        an = 0; % acquisition number
+        
+        % Move points after all the acquisitions for one frame
+        Receive(j).callMediaFunc = movePointsOrNot;
+    %     Receive(j).mode = 0; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         for n = 1:na
-            Receive(k).bufnum = nbuf;
-            Receive(k).framenum = nf;
-            Receive(k).acqNum = j;
+            an = an + 1;
+            Receive(j).bufnum = nbuf;
+            Receive(j).framenum = nf;
+            Receive(j).acqNum = an;
+            Receive(j).Apod(Trans.numelements/2 + 1 : end) = ones(1, Trans.numelements/2);
             j = j + 1;
-            k = k + 1;
-            
         end
+    
+        for n = 1:na
+            an = an + 1;
+            Receive(j).bufnum = nbuf;
+            Receive(j).framenum = nf;
+            Receive(j).acqNum = an;
+            Receive(j).Apod(1:Trans.numelements/2) = ones(1, Trans.numelements/2);
+            j = j + 1;
+        end
+        
     end
 end
-
-% Lowpass and Bandpass digital filters (hardware only, no simulation).
-% Empty values cause VSX to program a default set of values, according to
-% transducer frequency. See decimation/downsampling.
-% Receive(1).LowPassCoef = []; % cutoff is frequencies higher than 2*f_center. See tutorial p19 for possible inputs
-% Receive(1).InputFilter = []; % See tutorial p20 for possible inputs. Good to eliminate any DC components
-
-%% PData structure (Pixel Data --> image reconstruction range)
-% For 2D scans and slices of 3D scans, it's always a rectangular area at a
-% fixed location in the transducer coord system
-
-
-% PData.PDelta = [Trans.spacing, 0, 0.086647727272727]; % Spacing between pixels in x, y, z, in wavelengths
-PData.PDelta = [Trans.spacing, 0, Trans.spacing/2]; % Spacing between pixels in x, y, z, in wavelengths
-
-PData.Coord = 'rectangular'; % rectangular coords, could change to polar or spherical
-% Set PData array dimensions --> # of rows, columns, sections (planes
-% parallel to the xy plane)
-% For a 3D scan, rows - y axis, columns - x axis, sections - z axis
-% PData.Size(1) = ceil((endDepth - startDepth)./PData.PDelta(3)); % # rows
-PData.Size(1) = floor((endDepth - startDepth)./PData.PDelta(3)); % # rows
-% (old)
-% PData.Size(1) = ceil((Receive(1).endDepth - Receive(1).startDepth)./PData.PDelta(3)); % # rows
-PData.Size(2) = ceil(numElements.*Trans.spacing./PData.PDelta(1)); % # cols
-PData.Size(3) = 1; % depth, is 1 unit deep for a 2D image
-
-% Define the location (x, y, z) of the upper left corner of the array
-% half_probe_dist = (numElements-1)./2.*Trans.spacing;
-% PData.Origin = [-half_probe_dist, half_probe_dist, startDepth];
-PData.Origin = [-(numElements-1)./2.*Trans.spacing, 0, startDepth];
-% Upper left corner if you look aligned with positive z
-
-% Set a local region to view/use for processing
-% PData.Region(1) = struct('Shape',struct('Name','PData'));
-% 
-% PData.Region(2).Shape = struct('Name', 'Slice', 'Orientation', 'xz', ...
-%                             'oPAIntersect', PData.Origin(2) - (numElements-1).*Trans.spacing./2); % out of Plane Axis Intersection
-% PData.Region(3).Shape = struct('Name', 'Slice', 'Orientation', 'yz', ...
-%                             'oPAIntersect', PData.Origin(1) + (numElements-1).*Trans.spacing./2);
-% PData.Region(4).Shape = struct('Name', 'Slice', 'Orientation', 'xy', ...
-%                             'oPAIntersect', Media.MP(3)); % currently set to the plane intersecting the only scatter point
-% 
-% %     'Position', [0, 0, 10], ...
-% %                      'width', PData.Size(2), 'height', PData.Size(1)./2);
-%                     % Position is relative to the global coords
-% PData.Region = computeRegions(PData);
-
-% Display window
-
-% % xz
-% Resource.DisplayWindow(1).Title = 'xz plane';
-% Resource.DisplayWindow(1).pdelta = 0.3; % pixel spacing (in wavelengths) on the display window, for all dimensions
-% llx = 100; % lower left corner x on screen
-% xmult = 200;
-% lly = 150; % lower left corner y
-% Resource.DisplayWindow(1).Position = [llx, lly, ...
-%                                       ceil(PData.Size(2).* PData.PDelta(1) ./ Resource.DisplayWindow(1).pdelta), ... % width (x)
-%                                       ceil(PData.Size(1).* PData.PDelta(3) ./ Resource.DisplayWindow(1).pdelta)]; % height (z)
-% Resource.DisplayWindow(1).ReferencePt = [PData.Origin(1), 0, PData.Origin(3)]; % Display Window location wrt transducer coords
-% Resource.DisplayWindow(1).AxesUnits = 'wavelengths'; % can change to mm
-% Resource.DisplayWindow(1).Colormap = gray(256);
-% % Resource.DisplayWindow(1).Orientation = 'xz';
-% Resource.DisplayWindow(1).numFrames = numSupFrames; % Define buffer size for a history of displayed frames
-% 
 
 %% Allocate storage space for RF data acquisition
 % RcvBuffer dimensions are (samples, channels, frames)
@@ -295,7 +317,8 @@ PData.Origin = [-(numElements-1)./2.*Trans.spacing, 0, startDepth];
 % are preset values for sampling rate, and the system will choose the
 % closest one above whatever the user sets.
 
-% RcvBuffer dimensions: (samples, channels, frames)!!!!!!!!!!!!!!!!!!!!!!!
+% RcvBuffer dimensions: (samples, channels, frames, pages)
+
 
 %%%% from Nikunj's SetUpCustomIntegratedRecon.m code
 if strcmp(Receive(1).sampleMode,'custom')
@@ -319,31 +342,50 @@ startSample = (0:(na-1))*numRcvSamples + 1;
 endSample = startSample + numRcvSamples - 1;
 %%%%
 
+% spw = 3.6765; % samples per wave, it isn't always exactly 4... check p107
+% nspa = spw*(2*(Receive(1).endDepth - Receive(1).startDepth));
+% nspa = 128 * ceil(nspa/128); % # samples per acquisition
+% maxAcqLength_adjusted = nspa / spw / 2;
+
+maxAcqLength_adjusted = numRcvSamples / samplesPerWave / 2;
+
 for nbuf = 1:numBuffers
-    Resource.RcvBuffer(nbuf).rowsPerFrame = numRcvSamples * na;
+    Resource.RcvBuffer(nbuf).rowsPerFrame = numRcvSamples * na * 2;
     Resource.RcvBuffer(nbuf).colsPerFrame = Resource.Parameters.numRcvChannels; % Usually 1:1 to # of receive channels available in the system. Can change to 256 with the 2D probe and new connector plate.
     Resource.RcvBuffer(nbuf).numFrames = numFramesPerBuffer; % minimum # frames of RF data to acquire; RcvBuffer contains all the data needed for a whole frame, including multiple acquisition passes needed for reconstruction. Software can re-process RcvBuffer frames
     Resource.RcvBuffer(nbuf).datatype = 'int16'; % 16 bit signed integers are the only supported datatype
-
 end
-maxAcqLength_adjusted = numRcvSamples / samplesPerWave / 2;
-
+% Commenting below section because it doesn't work for the second set of
+% TXs
 % for lss = 1:length(startSample)
 %     Receive(lss).startSample = startSample(lss);
 %     Receive(lss).endSample = endSample(lss);    
 % %     Receive(lss).decimSampleRate = samplesPerWave * Trans.frequency;
-% %     Receive(lss).decimSampleRate = 62.5;
+%     Receive(lss).decimSampleRate = 62.5;
 % 
 % end
 
+
 Resource.Parameters.verbose = 2; % Describe errors in varying levels
+% Resource.InterBuffer(1).pagesPerFrame = pair*na*numSubFrames; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+numSamplesInBuffer = Resource.RcvBuffer(1).rowsPerFrame * Resource.RcvBuffer(1).colsPerFrame * Resource.RcvBuffer(1).numFrames
+numGBInBuffer = numSamplesInBuffer ./ 1024^3 * 2 % # samples * (2 bytes per int16 sample) 
+numSamplesPerBufferFrame = Resource.RcvBuffer(1).rowsPerFrame * Resource.RcvBuffer(1).colsPerFrame
+numGBPerBufferFrame = numSamplesPerBufferFrame ./ 1024^3 * 2 % # samples * (2 bytes per int16 sample) 
+
+if numGBPerBufferFrame > 2
+    warning('Buffer size per frame is too large, exiting')
+    return
+
+end
 
 %% Reconstruction
-% numRegions = 1;
+% numRegions = 3;
 % 
-% Resource.ImageBuffer(1).numFrames = numFrames; % Define an ImageBuffer with a # of frames
-% Resource.InterBuffer(1).numFrames = numFrames;
-% Resource.InterBuffer(1).pagesPerFrame = na; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Resource.ImageBuffer(1).numFrames = numSupFrames; % Define an ImageBuffer with a # of frames
+% Resource.InterBuffer(1).numFrames = numSupFrames; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % Resource.InterBuffer(1).numFrames = 1;
 % 
 % % Recon = struct('senscutoff', 0.6, ... % Threshold for which the reconstruction doesn't consider an element's contribution due to directivity of the element, for a certain pixel (whose echoes are at an angle to the element). Should be in radians.
 % %                'pdatanum', 1, ... % Which PData structure to use
@@ -352,14 +394,14 @@ Resource.Parameters.verbose = 2; % Describe errors in varying levels
 % %                'ImgBufDest', [1, -1], ... % [buffer #, frame #] Auto-increment ImageBuffer for each reconstruction???? % something is [first/oldest frame, last/newest frame]
 % %                'RINums', [1:2*na]); % The ReconInfo structure #(s). Each Recon must have its own unique set of ReconInfo #s
 % 
-% sco = 0.6;
+% sco = 0.6; %%%%
 % % sco = 0.4;
 % Recon = struct('senscutoff', sco, ... % Threshold for which the reconstruction doesn't consider an element's contribution due to directivity of the element, for a certain pixel (whose echoes are at an angle to the element). Should be in radians.
 %                'pdatanum', 1, ... % Which PData structure to use
 %                'rcvBufFrame', -1, ... % Use the most recently transferred frame
-%                'IntBufDest', [1, -1], ... % idk but it's for the IQ (complex) data
+%                'IntBufDest', [1, -1], ... % IQ (complex) data, Auto-increment for every frame
 %                'ImgBufDest', [1, -1], ... % [buffer #, frame #] Auto-increment ImageBuffer for each reconstruction???? % something is [first/oldest frame, last/newest frame]
-%                'RINums', [1:na]); % The ReconInfo structure #(s). Each Recon must have its own unique set of ReconInfo #s
+%                'RINums', [1:2*na]); % The ReconInfo structure #(s). Each Recon must have its own unique set of ReconInfo #s
 % 
 % % Recon = repmat(Recon, 1, numFrames);
 % % for nf = 1:numFrames
@@ -367,16 +409,14 @@ Resource.Parameters.verbose = 2; % Describe errors in varying levels
 % %     Recon(nf).ImgBufDest = [1, nf];
 % % end
 % 
-% % The final image it shows only shows the image buffer data for the last
-% % page (angle)
-% ReconInfo = repmat(struct('mode', 'accumIQ', ... % reconstruct, and replace intensity data in ImageBuffer and IQ data in InterBuffer (see Table 12.4 in Tutorial)
+% ReconInfo = repmat(struct('mode', 'accumIQ_replaceIntensity', ... % reconstruct, and replace intensity data in ImageBuffer and IQ data in InterBuffer (see Table 12.4 in Tutorial)
 %                    'txnum', 1, ...                 % TX structure to use
 %                    'rcvnum', 1, ...                % RX structure to use
-%                    'regionnum', 1), ...
-%                    1, na);                % PData Region to process in
+%                    'regionnum', 1), 1, 2*na);                % PData Region to process in
 % 
-% 
-% for n = 1:na % need to change this and above for more than 1 frame
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % for nf = 1
+% for n = 1:2*na % need to change this and above for more than 1 frame
 %     % - Set specific ReconInfo attributes.
 %     % ReconInfo(1).mode = 'replaceIQ'; % replace IQ data
 %     ReconInfo(n).txnum = n;
@@ -385,37 +425,9 @@ Resource.Parameters.verbose = 2; % Describe errors in varying levels
 % %     ReconInfo(1).regionnum = 1; %1 for the whole volume, 5 for the slices
 % 
 % end
-% ReconInfo(end).mode = 'accumIQ_replaceIntensity';
-% %% Process the Reconstructed data
-% % e.g., scaling and compression to make an image look good on the screen
-% 
-% pgainValue = 1.0; % Image processing gain
-% persValue = 0;
-% rejectLevel = 2;
-% % rejectLevel = 300;
-% compFac = 40;
-% 
-% % First image (xz)
-% Process(2).classname = 'Image';
-% Process(2).method = 'imageDisplay';             % To not overwrite orig data while processing, system uses another ImageP buffer as output.
-% Process(2).Parameters = {'imgbufnum', 1, ...             % which ImageBuffer to process
-%                          'framenum', -1, ...              % -1 means use last frame in ImageBuffer
-%                          'pdatanum', 1, ...              % PData structure which was used in Reconstruction
-%                          'pgain', pgainValue, ...
-%                          'reject', rejectLevel, ...                % Make intensity values below this threshold appear as black (reduce low intensity noise)
-%                          'persistMethod', 'simple', ...   % simple: Add a fraction of the previous weighted average frames' invensity values to the current one. See manual for 'dynamic' option, which is good when there is a lot of motion!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%                          'persistLevel', persValue, ...   % NewAvg = PL * PrevAvg + (1 - PL) * NewFrame; PL = persistLevel/100
-%                          'interpMethod', '4pt', ...
-%                          'grainRemoval', 'medium', ...    % low, medium, high. Remove pixels that differ significantly from their neighbors
-%                          'processMethod', 'none', ...     % see manual, reduces variation in line structures detected within the filter kernel???
-%                          'averageMethod', 'none', ...     % None or can do Running averages (2 or 3), can do things like spatial compounding...
-%                          'compressMethod', 'log', ...     % log or power (x^a fraction) compression
-%                          'compressFactor', compFac, ...        % Higher compressFactor means smaller powers for the power option (more compression), or a more rapid rise to the log curve (raise brightness of low intensity values). Not a real log bc intensities of 0 need to be mapped to 0, not -inf
-%                          'mappingMethod', 'full', ...     % Portion of the colormap to use. lowerHalf and upperHalf would be used to do the combined B-mode and Doppler imaging, for example.
-%                          'display', 1, ...                % 1: show processed image on screen, 0: don't but still tto useransfer the processed data to the DisplayData buffer
-%                          'displayWindow', 1};             % which displayWindow 
 
-%% External processing function call
+
+%% Process the Reconstructed data
 
 nprevproc = 0; % number of previous Processes
 for nbuf = 1:numBuffers
@@ -437,18 +449,11 @@ for nbuf = 1:numBuffers
                              'dstbuffer', 'none'};
 end
 
-% Don't need to show the time tag live
-% ttpi = numBuffers + 1;
-% Process(ttpi).classname = 'External';
-% Process(ttpi).method = 'ShowTimeTag'; % Function name
-% Process(ttpi).Parameters = {'srcbuffer','receive',... % name of buffer to process.
-%                          'srcbufnum',1,...
-%                          'srcframenum',-1, ...
-%                          'dstbuffer','none'};
 %%
 makeParameterStructureSmall_ULM;
-%% Define sequence of Events for data acquisition
+%% New Event structure
 
+Resource.VDAS.dmaTimeout = 1000;
 % Flow:
 % 1. Transmit (TX)
 % 2. Receive (Receive)
@@ -457,14 +462,13 @@ makeParameterStructureSmall_ULM;
 % 5. Control (SeqControl)
 
 scInd = 1; % sequence control index
-SeqControl(scInd).command = 'timeToNextAcq'; % In us
+SeqControl(scInd).command = 'timeToNextAcq'; % In us, allowed range is from 10 - 4190000
                                          % Very useful if you are switching
                                          % the TPC (voltage) across acqs,
                                          % since it takes 800 us - 8 ms to
                                          % switch
+SeqControl(scInd).condition = 'ignore';  % don't print the warning message
 
-% SeqControl(scInd).argument = 1./fps_target.*1e6; % convert fps to s, then us
-% timePerAcq = 1 / PRF / na * 1e6; % frame rate converted to acq time step (us)
 timePerAcq = 1 / PRF * 1e6; % PRF in us
 
 timePerAcqLimits = [10, 4190000];
@@ -478,7 +482,7 @@ else
     SeqControl(scInd).argument = timePerAcq;
 end
 
-timePerFrame = SeqControl(scInd).argument * na; % us
+timePerFrame = SeqControl(scInd).argument * na * 2; % us
 frameTimeGap = 1 / frameRate * 1e6 - timePerFrame;
 
 scInd = scInd + 1;
@@ -490,59 +494,65 @@ scInd = scInd + 1;
 SeqControl(scInd).command = 'jump'; % jump to
 SeqControl(scInd).argument = 1;     % first event
 
-% % superframe burst rate
+% superframe burst rate
 scInd = scInd + 1;
-SeqControl(scInd).command = 'timeToNextAcq';
+SeqControl(scInd).command = 'timeToNextAcq'; % jump to
 
 if frameTimeGap < timePerAcqLimits(1)
-    warning('Frame delay time too short, setting to minimum of 10 us')
+    warning('Frame burst delay time too short, setting to minimum of 10 us')
     SeqControl(scInd).argument = timePerAcqLimits(1); 
 elseif frameTimeGap > timePerAcqLimits(2)
-    warning('Frame delay time too long, setting to maximum of 4190000 us')
+    warning('Frame burst delay time too long, setting to maximum of 4190000 us')
     SeqControl(scInd).argument = timePerAcqLimits(2);
 else
     SeqControl(scInd).argument = frameTimeGap;
 end
 
-% framerate noop
+% superframe burst rate noop
 scInd = scInd + 1;
 SeqControl(scInd).command = 'noop'; % jump to
 noop_time_us = SeqControl(scInd - 1).argument;
 SeqControl(scInd).argument = noop_time_us / 200 * 1e3; % (value*200nsec; max. value is 2^25 - 1 for 6.7 sec)
 SeqControl(scInd).condition = 'Hw&Sw'; % need to enable the noop in hardware
 
-
 n = 0;
 for nbuf = 1:numBuffers
     for nf = 1:numFramesPerBuffer
+    
         for a = 1:na % go through all the angles for each frame
             n = n + 1;
-            Event(n).info = 'Transmit and receive';
-            Event(n).tx = a; % Use ath TX structure
-%                 Event(n).rcv = (nsupf - 1) * na * numSubFrames + (nsubf - 1)*na + a; % Receive structure
-            Event(n).rcv = (nbuf - 1) * numFramesPerBuffer * na + (nf - 1)*na + a; % Receive structure
+            Event(n).info = 'Transmit all columns and receive all rows';
+            Event(n).tx = a.*2 - 1; % Use ath TX structure
+            Event(n).rcv = (nbuf - 1) .* numFramesPerBuffer .* pair .* na + (nf - 1).*pair.*na + a.*2 - 1; % Use nth Receive structure % need to make this alternate between (1 and 2) * numframes or something
             Event(n).recon = 0; % 0 means no reconstruction
             Event(n).process = 0; % 0 means no processing
             Event(n).seqControl = 1;
-    
-        end
-        scInd = scInd + 1;
-
-        SeqControl(scInd).command = 'transferToHost';
-        Event(n).seqControl = [4, 5, scInd];
-%         Event(n).seqControl = [4, scInd];
-    end
+    %         Event((nsubf-1).*2.*na + a.*2 - 1 + i).seqControl = 0;
+            
+            n = n + 1;
+            Event(n).info = 'Transmit all rows and receive all columns';
+            Event(n).tx = a.*2; 
+            Event(n).rcv = (nbuf - 1) .* numFramesPerBuffer .* pair .* na + (nf - 1).*pair.*na + a.*2; 
+            Event(n).recon = 0; 
+            Event(n).process = 0; 
+            Event(n).seqControl = 1;  
         
-    n = n + 1;
+        end
+        scInd = scInd + 1; 
+        SeqControl(scInd).command = 'transferToHost'; % Transfer every frame
+        Event(n).seqControl = [4, 5, scInd];
+
+    end
     
-    Event(n).info = 'Save data from each buffer - ext proc func';
+    n = n + 1;
+
+    Event(n).info = 'Save data - ext proc func';
     Event(n).tx = 0; 
     Event(n).rcv = 0; 
     Event(n).recon = 0;
-    Event(n).process = nbuf;
+    Event(n).process = nbuf; 
     Event(n).seqControl = 0; 
-    
-%     n = n + 1;
+
 end
 
 n = n + 1;
@@ -553,6 +563,7 @@ Event(n).rcv = 0;
 Event(n).recon = 0;
 Event(n).process = 0; 
 Event(n).seqControl = 3; 
+
 
 % %% User specified UI Control Elements
 % 
@@ -575,11 +586,12 @@ Event(n).seqControl = 3;
 
 %% Save all the data/structures to a .mat file.
 currentDir = cd; currentDir = regexp(currentDir, filesep, 'split');
-filename = 'L22-14v_Allen_loop_ULM.mat';
+filename = 'RC15gV_Allen_loop_ULM.mat';
 
 save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+filename);
 
-%% 
+%% Run VSX automatically and make parameter structure for RF file naming
+
 if runVSX
     disp("running VSX")
     VSX
@@ -587,32 +599,15 @@ end
 
 %% Save post-acquisition parameters in a structure P
 
+% save([savepath, 'params.mat'], 'angles', 'startDepth', 'startDepthMM', 'endDepth', 'endDepthMM', 'Event', 'fps_target', 'maxAcqLength_adjusted', 'maxAngle', 'Media', 'na', 'nf', 'Receive', 'Resource', 'SeqControl', 'TGC', 'Trans', 'TW', 'TX', 'wl', 'numElements', '-v7.3')
+% save([savepath, 'params.mat'], 'P')
+
 makeParameterStructure_ULM;
 savefast([savepath, 'params.mat'], 'P')
 % saveRcvData(RcvData{1})
 
 %% **** Callback routines used by UIControls (UI) ****
-%% User specified UI Control Elements
-
-import vsv.seq.uicontrol.VsSliderControl
-
-% - Time Tag
-UI(1).Control = VsSliderControl('LocationCode', 'UserB5',...
-                                'Label', 'Time Tag', ...
-                                'SliderMinMaxVal', [0, 2, TimeTagEna],...
-                                'SliderStep', [0.5, 0.5], ...
-                                'ValueFormat', '%1.0f',...
-                                'Callback', @TimeTagCallback);
-
-
-% External function definitions.
-
-import vsv.seq.function.ExFunctionDef
-
-EF(1).Function = vsv.seq.function.ExFunctionDef('readTimeTag',@readTimeTag);
 %% Time tag callback test
-% Time tag is hardware only (no sim) since the timing comes from the
-% Vantage system
 
 function TimeTagCallback(~, ~, UIValue)
     import com.verasonics.hal.hardware.*
@@ -656,7 +651,7 @@ function TimeTagCallback(~, ~, UIValue)
     set(h,'String', tagstr);
     assignin('base', 'TimeTagEna', TimeTagEna);
 end
-% 
+
 %% **** Callback routines used by External function definition (EF) ****
 
 function readTimeTag(RDatain)

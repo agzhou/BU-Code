@@ -509,7 +509,7 @@ SeqControl(scInd).command = 'timeToNextAcq'; % jump to
 if timeGapBetweenLastSuperframeBurstAndNextSuperframeBurst < timePerAcqLimits(1)
     warning('Superframe burst delay time too short, setting to minimum of 10 us')
     SeqControl(scInd).argument = timePerAcqLimits(1); 
-elseif timePerAcq > timePerAcqLimits(2)
+elseif timeGapBetweenLastSuperframeBurstAndNextSuperframeBurst > timePerAcqLimits(2)
     warning('Superframe burst delay time too long, setting to maximum of 4190000 us')
     SeqControl(scInd).argument = timePerAcqLimits(2);
 else
