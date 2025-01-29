@@ -1,0 +1,3 @@
+res_assumption = 10; % assumption of how good the localization is (um)
+maxPairDist = (res_assumption / 1e6) / (1 / P.frameRate); % maximum velocity we can detect
+% maximum travel distance between frames (m)

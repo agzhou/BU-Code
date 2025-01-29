@@ -6,6 +6,8 @@
 % Uses saveRcvData external function for saving
 % Note: update the savepath variable as needed
 
+% Collects nbuf buffers of nf frames with some duty cycle for saving delays
+
 %% Specify system parameters
 clear
 
@@ -14,7 +16,7 @@ cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 activate
 % numElements = 80;
 
-savepath = "G:\Allen\Data\01-24-2025 testing\RC15gV\run 2\";
+savepath = "G:\Allen\Data\01-24-2025 testing\RC15gV\run 3\";
 savepath = char(savepath);
 mkdir(savepath)
 
@@ -35,11 +37,15 @@ numChannels = 256; % enable channels
 fps_target = 40000; % PRF (Hz)
 PRF = fps_target;
 
-frameRate = 500; % subframe rate (Hz)
+frameRate = 500; % subframe (volume) rate (Hz)
 
-numFramesPerBuffer = 10;
+numFramesPerBuffer = 200;
 
 numBuffers = ceil(frameRate / numFramesPerBuffer);
+
+bufferDutyCycle = 1/5;
+
+disp(num2str(numFramesPerBuffer / frameRate / bufferDutyCycle))
 
 na = 11; % # of acquisitions per frame (acquisition pairs)
 maxAngle = 5; % degrees
@@ -482,8 +488,8 @@ else
     SeqControl(scInd).argument = timePerAcq;
 end
 
-timePerFrame = SeqControl(scInd).argument * na * 2; % us
-frameTimeGap = 1 / frameRate * 1e6 - timePerFrame;
+timePerFrame = SeqControl(scInd).argument * na * 2;     % Time to acquire all the acquisitions for one frame/volume based on PRF (us)
+frameTimeGap = 1 / frameRate * 1e6 - timePerFrame;      % Add delays to account for the frame/volume rate set above
 
 scInd = scInd + 1;
 
@@ -494,25 +500,51 @@ scInd = scInd + 1;
 SeqControl(scInd).command = 'jump'; % jump to
 SeqControl(scInd).argument = 1;     % first event
 
-% superframe burst rate
+% frame/volume rate
 scInd = scInd + 1;
-SeqControl(scInd).command = 'timeToNextAcq'; % jump to
+SeqControl(scInd).command = 'timeToNextAcq';
 
 if frameTimeGap < timePerAcqLimits(1)
-    warning('Frame burst delay time too short, setting to minimum of 10 us')
+    warning('Frame delay time too short, setting to minimum of 10 us')
     SeqControl(scInd).argument = timePerAcqLimits(1); 
 elseif frameTimeGap > timePerAcqLimits(2)
-    warning('Frame burst delay time too long, setting to maximum of 4190000 us')
+    warning('Frame delay time too long, setting to maximum of 4190000 us')
     SeqControl(scInd).argument = timePerAcqLimits(2);
 else
     SeqControl(scInd).argument = frameTimeGap;
 end
 
-% superframe burst rate noop
+% frame/volume rate noop
+scInd = scInd + 1;
+SeqControl(scInd).command = 'noop';                     % no operation
+frame_noop_time_us = SeqControl(scInd - 1).argument;
+SeqControl(scInd).argument = frame_noop_time_us / 200 * 1e3;  % (value*200nsec; max. value is 2^25 - 1 for 6.7 sec)
+SeqControl(scInd).condition = 'Hw&Sw';                  % need to enable the noop in hardware
+
+% buffer rate
+
+% need to change this to be consistent with the if blocks above
+timePerBuffer = 1 / frameRate * numFramesPerBuffer * 1e6;                 % Time to acquire all the frames within one buffer (us)
+bufferTimeGap = timePerBuffer / bufferDutyCycle - timePerBuffer;          % Add delay to account for the buffer rate duty cycle set above
+
+scInd = scInd + 1;
+SeqControl(scInd).command = 'timeToNextAcq';
+
+if bufferTimeGap < timePerAcqLimits(1)
+    warning('Buffer delay time too short, setting to minimum of 10 us')
+    SeqControl(scInd).argument = timePerAcqLimits(1); 
+elseif bufferTimeGap > timePerAcqLimits(2)
+    warning('Buffer delay time too long, setting to maximum of 4190000 us')
+    SeqControl(scInd).argument = timePerAcqLimits(2);
+else
+    SeqControl(scInd).argument = bufferTimeGap;
+end
+
+% buffer rate noop
 scInd = scInd + 1;
 SeqControl(scInd).command = 'noop'; % jump to
-noop_time_us = SeqControl(scInd - 1).argument;
-SeqControl(scInd).argument = noop_time_us / 200 * 1e3; % (value*200nsec; max. value is 2^25 - 1 for 6.7 sec)
+buffer_noop_time_us = SeqControl(scInd - 1).argument;
+SeqControl(scInd).argument = buffer_noop_time_us / 200 * 1e3; % (value*200nsec; max. value is 2^25 - 1 for 6.7 sec)
 SeqControl(scInd).condition = 'Hw&Sw'; % need to enable the noop in hardware
 
 n = 0;
@@ -543,6 +575,8 @@ for nbuf = 1:numBuffers
         Event(n).seqControl = [4, 5, scInd];
 
     end
+
+    Event(n).seqControl = [6, scInd];
     
     n = n + 1;
 
@@ -551,7 +585,7 @@ for nbuf = 1:numBuffers
     Event(n).rcv = 0; 
     Event(n).recon = 0;
     Event(n).process = nbuf; 
-    Event(n).seqControl = 0; 
+    Event(n).seqControl = 7; 
 
 end
 

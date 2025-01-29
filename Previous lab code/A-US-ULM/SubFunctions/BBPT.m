@@ -1,6 +1,6 @@
 %% microbubble pair and track - based on iBB closest and iBBest closest criteria 
 % function [BBPD]=BBPT(BB,PRSSinfo) % use 2D image of BB 
-% % BB, bubble position obtained from Img2ULM
+% % BB, bubble position obtained from dIQ2BB
 % % PRSSinfo.dCrit, pair distance criteria, in pixel. PRSSinfo.dCrit(1): maximum searching distance
 % % between two frames; PRSSinfo.dCrit(2): maximum footprint pairing distance
 % % BBPD, Paired and Tracked bubble 

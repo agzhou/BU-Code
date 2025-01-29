@@ -1,0 +1,40 @@
+% figure; imagesc(RcvData(:, :, 1))
+savepath = 'G:\Allen\Data\01-24-2025 testing\RC15gV\';
+filename = 'st.mat';
+%%
+clear r c
+r = RcvData;
+tic
+savefast([savepath, filename], 'r')
+toc
+%%
+clear r c
+r = RcvData;
+tic
+save([savepath, 'st'], 'r', '-ascii')
+toc
+%%
+clear r c
+s = size(RcvData, 1) / 2;
+tic
+r = RcvData(:, P.Trans.Connector, :);
+savefast([savepath, filename], 'r')
+toc
+%%
+clear r c
+s = size(RcvData, 1) / 2;
+tic
+r = RcvData(:, P.Trans.Connector, :);
+c = [r(s + 1:s * 2, 1:80, :); r(1:s, 81:160, :)];
+savefast([savepath, filename], 'c')
+toc
+%%
+clear r c
+s = size(RcvData, 1) / 2;
+tic
+r = RcvData(:, P.Trans.Connector, :);
+r = [r(s + 1:s * 2, 1:80, :); r(1:s, 81:160, :)];
+savefast([savepath, filename], 'r')
+toc
+%%
+figure; imagesc(r(:, :, 1))

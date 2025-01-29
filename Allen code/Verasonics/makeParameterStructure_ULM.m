@@ -27,3 +27,7 @@ P.wl = wl;
 
 P.TPC = TPC;
 P.samplesPerWave = Receive(1).samplesPerWave;
+
+if exist('bufferDutyCycle', 'var')
+    P.bufferDutyCycle = bufferDutyCycle;
+end

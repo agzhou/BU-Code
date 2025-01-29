@@ -179,7 +179,7 @@ close(vo);
 %% Centroid finding
 nf = size(bi, 3);        % # frames in the binary image stack
 centroids = cell(nf, 1); % initialize
-areaThreshold = 1;
+areaThreshold = 4;
 
 parfor f = 1:nf
     cf = bi(:, :, f); % current frame

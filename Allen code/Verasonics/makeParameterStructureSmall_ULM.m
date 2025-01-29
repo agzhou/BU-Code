@@ -8,3 +8,7 @@ Psmall.numFramesPerBuffer = numFramesPerBuffer;
 
 Psmall.bufferIndex = 0;
 Psmall.frameRate = frameRate;
+
+if exist('bufferDutyCycle', 'var')
+    Psmall.bufferDutyCycle = bufferDutyCycle;
+end
