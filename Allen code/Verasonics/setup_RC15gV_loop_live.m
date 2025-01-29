@@ -30,7 +30,7 @@ movePointsOrNot = 0;
 
 initialVoltage = 25; % V
 
-startDepthMM = 0; % start depth in wavelengths
+startDepthMM = 0; % start depth in mm
 endDepthMM = 20;
 
 fps_target = 50;   % Intended (sub)frame rate

@@ -22,6 +22,9 @@
 
 %% Clear Variables and specify Preliminaries
 clear all
+
+cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500' % added by Allen on 1/29/25
+
 P.startDepth = 0;   % Acquisition depth in wavelengths
 P.endDepth = 200;   % EndDepth in wavelengths
 

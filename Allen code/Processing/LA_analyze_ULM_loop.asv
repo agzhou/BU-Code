@@ -31,7 +31,7 @@ filename_structure = [P.Trans.name, '-IQ-', num2str(P.maxAngle), '-', num2str(P.
 % Define various processing parameters
 % Singular value thresholds
 sv_threshold_lower = 10;
-sv_threshold_upper = 500;
+sv_threshold_upper = 496;
 
 % Region of interest
 zrange = 40:120;
@@ -53,13 +53,16 @@ refPSF = refPSF(190:210, 118:138);
 allCentroids = {};
 
 %% Process the data
+tic
 % for filenum = 1:numFiles
-for filenum = 1:1
+for filenum = 1:10
     load([datapath, 'IQ data\', filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
     IQr = LA_rollingFrames(IQ);                                                 % rolling method to get more effective frames
     
     if filenum == 1
-        range{end + 1} = 1:size(IQr, 3); % set frame range after rolling on the first file
+        [zp, xp, nf] = size(IQr);
+        range{end + 1} = 1:nf; % set frame range after rolling on the first file
+        
     end
 
     % SVD proc part 1
@@ -74,21 +77,26 @@ for filenum = 1:1
 %     save([savepath, 'Filtered-Data-', num2str(filenum)], 'IQr', 'PP', 'EVs', 'V_sort', 'IQf', "-v6")
     [centroidCoordinates] = localizeBubbles(IQf, refPSF, range, imgRefinementFactor, binaryThreshold, areaThreshold);
 %     save([savepath, 'IQf-', num2str(filenum)], 'IQf', "-v6")
+    save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'centroidCoordinates', "-v6")
+
     allCentroids = [allCentroids; centroidCoordinates];
+    disp(strcat("Centroid finding done: file ", num2str(filenum)))
 %     toc
 end
-
+save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'i'
+toc
 %% Plot the centroid density map
 zpts = [];
 xpts = [];
+
 for f = 1:size(allCentroids, 1)
-    zpts = [zpts; centroids{f}(:, 1)];
-    xpts = [xpts; centroids{f}(:, 2)];
+    zpts = [zpts; allCentroids{f}(:, 1)];
+    xpts = [xpts; allCentroids{f}(:, 2)];
 end
 
 hPixFactor = 10; % increase the pixel count by this factor in each dimension
 figure;
-h = histogram2(zpts, xpts, [size(a, 1) * hPixFactor, size(a, 2) * hPixFactor], 'DisplayStyle','tile');
+h = histogram2(zpts, xpts, [zp * hPixFactor, xp * hPixFactor], 'DisplayStyle','tile');
 grid off
 colormap hot
 

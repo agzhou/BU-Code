@@ -16,7 +16,7 @@ cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 activate
 % numElements = 80;
 
-savepath = "G:\Allen\Data\01-24-2025 testing\RC15gV\run 3\";
+savepath = "G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\";
 savepath = char(savepath);
 mkdir(savepath)
 
@@ -24,12 +24,12 @@ mkdir(savepath)
 bufferIndex = 0;
 
 runVSX = 1;
-simOrNot = 1;
+simMode = 0;
 movePointsOrNot = 0;
 
 initialVoltage = 20; % V
 
-startDepthMM = 2; % start depth in wavelengths
+startDepthMM = 2; % start depth in mm
 endDepthMM = 10;
 
 numChannels = 256; % enable channels
@@ -43,7 +43,7 @@ numFramesPerBuffer = 200;
 
 numBuffers = ceil(frameRate / numFramesPerBuffer);
 
-bufferDutyCycle = 1/5;
+bufferDutyCycle = 1/3;
 
 disp(num2str(numFramesPerBuffer / frameRate / bufferDutyCycle))
 
@@ -96,7 +96,7 @@ TimeTagEna = 2;
 
 
 %% Simulation things - Media structure (define scattering points and attenuation)
-Resource.Parameters.simulateMode = simOrNot; % run script in simulate mode. Set to 0 if not
+Resource.Parameters.simulateMode = simMode; % run script in simulate mode. Set to 0 if not
 
 % xd_mm = 5; % in mm
 % xd = xd_mm/wl/1e3;
@@ -572,7 +572,8 @@ for nbuf = 1:numBuffers
         end
         scInd = scInd + 1; 
         SeqControl(scInd).command = 'transferToHost'; % Transfer every frame
-        Event(n).seqControl = [4, 5, scInd];
+%         Event(n).seqControl = [4, 5, scInd];
+        Event(n).seqControl = [4, scInd];
 
     end
 

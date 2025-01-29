@@ -53,6 +53,7 @@ refPSF = refPSF(190:210, 118:138);
 allCentroids = {};
 
 %% Process the data
+tic
 % for filenum = 1:numFiles
 for filenum = 1:10
     load([datapath, 'IQ data\', filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
@@ -76,11 +77,14 @@ for filenum = 1:10
 %     save([savepath, 'Filtered-Data-', num2str(filenum)], 'IQr', 'PP', 'EVs', 'V_sort', 'IQf', "-v6")
     [centroidCoordinates] = localizeBubbles(IQf, refPSF, range, imgRefinementFactor, binaryThreshold, areaThreshold);
 %     save([savepath, 'IQf-', num2str(filenum)], 'IQf', "-v6")
+    save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'centroidCoordinates', "-v6")
+
     allCentroids = [allCentroids; centroidCoordinates];
     disp(strcat("Centroid finding done: file ", num2str(filenum)))
 %     toc
 end
-
+save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'binaryThreshold', 'areaThreshold')
+toc
 %% Plot the centroid density map
 zpts = [];
 xpts = [];
