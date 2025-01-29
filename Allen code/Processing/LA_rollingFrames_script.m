@@ -1,0 +1,31 @@
+%% Create rolling re-sampled frames on delay and summed IQ data (pre-compounding)
+% for linear array
+
+% Need to make this into a function
+%% load test data
+load('G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\IQ data\L22-14v-IQ-5-5-40000-500-100-1.mat')
+load('G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\params.mat')
+%% Initialize variabes and separate R-C and C-R volumes
+[zp, xp, nacq, nf] = size(IQ);
+na = P.na;
+
+% IQ_full = reshape(IQ, [zp, xp, nacq*nf]); % stack all the acquisitions
+%%
+IQr = zeros(zp, xp, nacq * nf - nacq + 1);        % initiaize rolling IQ variable
+
+% initializeParfor;
+for rfi = 1:nacq * nf - nacq + 1                % rolling frame index
+    m = mod(rfi - 1, nacq) + 1;
+    f = floor((rfi - 1)/nacq) + 1; % the "original frame" index
+    if m == 1
+        temp = IQ(:, :, m:nacq, f);
+    else
+        temp = cat(3, IQ(:, :, m:nacq, f), IQ(:, :, 1 : m - 1, f + 1));
+    end
+    IQr(:, :, rfi) = sum(temp, 3);
+
+end
+% IQr(:, :, end) = sum(IQ(:, :, :, end), 3);
+%%
+testr = IQr(:, :, end);
+testo = sum(IQ(:, :, :, end), 3);
