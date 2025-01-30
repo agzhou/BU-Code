@@ -1,19 +1,25 @@
 
 %% Description
-% Verasonics reconstruction of RF data with the RC15gV probe
+% Verasonics reconstruction of RF data with the RC15gV probe that loops
+% over all the files in a folder
+
 % Output of IQ data for all subframes
 % C-R and R-C pairs of TX-RX
 
 % This version uses the same Recon structure (assumes the same Receive
 % parameters) for each subframe
 
-% Last updated on 12/05/2024 and working for an input of one superframe
+% Last updated on 01/29/2024 and working for an input of one superframe
+
+%% TO DO
+% make into a function
+% add adjustable pixel spacing
 
 %% Specify system parameters
 clear
 
-% cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
-cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
+cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
+% cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
 
 activate
 
@@ -21,10 +27,7 @@ activate
 % savepath = char(savepath);
 % mkdir(savepath)
 
-% Uncomment/initialize this variable to some arbitrary value if you want
-% the script to autoquit runAcq
 
-Mcr_AutoScriptTest = 1;
 
 %% Load parameters and RcvData, then reshape the RcvData
 % [paramsFilename, paramsPath] = uigetfile;
@@ -33,70 +36,67 @@ Mcr_AutoScriptTest = 1;
 % load([paramsPath, paramsFilename])
 % load([RcvDataPath, RcvDataFilename])
 
-%% 
-% path = 'G:\Allen\Data\12-04-2024 RC15gV saving tests\trial 1 exp\';
-% 
-% % if ~exists('base', 'P')
-% load([path, 'params.mat'])
-% load([path, 'RC15gV-RcvData-15-11-2000-50-4-1.mat'])
+%% Data loading test
+clearvars
 
-% path = 'G:\Allen\Data\12-03-2024 RC15gV saving tests\trial 1 exp\';
-% 
-% % if ~exists('base', 'P')
-% load([path, 'params.mat'])
-% load([path, 'RC15gV-RcvData-15-21-500-50-1-1.mat'])
+datapath = 'G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\';
 
-path = 'D:\Allen\Data\01-21-2025 RCA sim\run 11 angles -5 to 5 deg\';
+load([datapath, 'params.mat']) % load acquisition parameters
 
-% if ~exists('base', 'P')
-load([path, 'params.mat'])
-load([path, 'RC15gV-RcvData-5-1-500-1-1-1.mat'])
+filenameStructure = ['RF-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 
-%%
+filenum = 25;                                           % TEMPORARY FOR TESTING !!!!!!!!!!!
+saveAllAngles = 0; % choose if you want to save the matrix with pages for each angle or not
+load([datapath, filenameStructure, num2str(filenum)]);
 
-numSupFramesToUse = P.numSupFrames;
-[RcvDataStacked, P_new] = stackSuperFrames(RcvData, P, numSupFramesToUse);
-RcvDataStacked = int16(RcvDataStacked);
-r = reshapeRcvData(RcvDataStacked, P_new);
-r = int16(r);
+%% autorun VSX flag
+% Uncomment/initialize this variable to some arbitrary value if you want
+% the script to autoquit runAcq
 
-%% test
+% Mcr_AutoScriptTest = 1;
+Mcr_GuiHide = 1;
+%% Put RcvData into a cell array for VSX
+r = RcvData;
 clear RcvData;
-% RcvData{1} = squeeze(r(:, :, 1:2));
-% P_new.numSubFrames = 2;
-RcvData{1} = r;
-%%
-runVSX = 1;
-% numChannels = 160;
-numChannels = 256;
 
-assignFromParameterStructure;
+RcvData{1} = r;
+%% Assign variables and structures
+
+pair = 2; % The R-C and C-R pair of acquisitions per angle
+numChannels = P.Resource.Parameters.numTransmit;
+
+% assignFromParameterStructure;
+assignStructVars(P);                                                        % Assign parameters from P structure into the workspace
 
 maxAcqLength = maxAcqLength_adjusted;
 Trans_acq = Trans;
 TX_acq = TX;
 TW_acq = TW;
 Resource_acq = Resource;
+Receive_acq = Receive;
+Receive = Receive(1:numFramesPerBuffer * na * pair);
 clear Event Process Recon ReconInfo SeqControl Trans TW TX Resource
 
-pair = 2; % The R-C and C-R pair of acquisitions per angle
+
 
 %% Resource, define system parameters
-Resource.Parameters.numTransmit = numChannels; % number of transmit channels
-Resource.Parameters.numRcvChannels = numChannels; % number of receive channels
-% Resource.Parameters.connector = 1; % transducer connector to use since the current plate for the 256 bit system is split into two 128 bit connectors. 1 is left and 2 is right
-Resource.Parameters.speedOfSound = 1540; % speed of sound in m/s, the 1540 is for average human tissue
+Resource.Parameters.numTransmit = numChannels;                              % number of transmit channels
+Resource.Parameters.numRcvChannels = numChannels;                           % number of receive channels
+% Resource.Parameters.connector = 1;                                        % transducer connector to use since the current plate for the 256 bit system is split into two 128 bit connectors. 1 is left and 2 is right
+Resource.Parameters.speedOfSound = Resource_acq.Parameters.speedOfSound;    % speed of sound in m/s
 
-Resource.RcvBuffer = Resource_acq.RcvBuffer;
+Resource.RcvBuffer = Resource_acq.RcvBuffer(1);
 Resource.RcvBuffer.rowsPerFrame = size(RcvData{1}, 1);
-Resource.RcvBuffer.numFrames = P_new.numSubFrames;
-Resource.RcvBuffer.lastFrame = 1; %%%%%%%%%%%
-Resource.Parameters.simulateMode = 2; %%%%%%%%%%%
+Resource.RcvBuffer.numFrames = numFramesPerBuffer;
+Resource.RcvBuffer.lastFrame = 1; % reset the counter
+Resource.Parameters.simulateMode = 2; % Enable mode 2, which processes data in the buffers
+
+Resource.Parameters.verbose = 2; % Describe errors in varying levels
 %% Define Transducer
 
 Trans.name = Trans_acq.name; 
-% Trans.frequency = 13.8889; % Not needed if using the default center frequency
-Trans.units = Trans_acq.units; % or mm
+Trans.frequency = Trans_acq.frequency;
+Trans.units = Trans_acq.units;
 
 Trans = computeTrans(Trans); % Generate required attributes for the probe into the Trans structure; e.g., the transducer element positions
 
@@ -181,18 +181,17 @@ PData.Region(3).Shape = struct('Name', 'Slice', 'Orientation', 'yz', ...
 PData.Region(4).Shape = struct('Name', 'Slice', 'Orientation', 'xy', ...
                             'oPAIntersect', Media.MP(3)); % currently set to the plane intersecting the only scatter point
 
-%     'Position', [0, 0, 10], ...
-%                      'width', PData.Size(2), 'height', PData.Size(1)./2);
-                    % Position is relative to the global coords
 PData.Region = computeRegions(PData);
 
 %% Reconstruction
 numRegions = 3;
 
-Resource.ImageBuffer(1).numFrames = P_new.numSubFrames; % Define an ImageBuffer with a # of frames
-Resource.InterBuffer(1).numFrames = P_new.numSubFrames; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Resource.InterBuffer(1).numFrames = 1;
+Resource.ImageBuffer(1).numFrames = numFramesPerBuffer; % Define an ImageBuffer with a # of frames
+Resource.InterBuffer(1).numFrames = numFramesPerBuffer;
 
+if saveAllAngles
+    Resource.InterBuffer(1).pagesPerFrame = na * pair;
+end
 % Recon = struct('senscutoff', 0.6, ... % Threshold for which the reconstruction doesn't consider an element's contribution due to directivity of the element, for a certain pixel (whose echoes are at an angle to the element). Should be in radians.
 %                'pdatanum', 1, ... % Which PData structure to use
 %                'rcvBufFrame', -1, ... % Use the most recently transferred frame
@@ -201,7 +200,7 @@ Resource.InterBuffer(1).numFrames = P_new.numSubFrames; %%%%%%%%%%%%%%%%%%%%%%%%
 %                'RINums', [1:2*na]); % The ReconInfo structure #(s). Each Recon must have its own unique set of ReconInfo #s
 
 sco = 0.6; %%%%
-% sco = 0.4;
+
 Recon = repmat(struct('senscutoff', sco, ... % Threshold for which the reconstruction doesn't consider an element's contribution due to directivity of the element, for a certain pixel (whose echoes are at an angle to the element). Should be in radians.
                'pdatanum', 1, ... % Which PData structure to use
                'rcvBufFrame', -1, ... % Use the most recently transferred frame
@@ -209,33 +208,31 @@ Recon = repmat(struct('senscutoff', sco, ... % Threshold for which the reconstru
                'ImgBufDest', [1, -1], ... % [buffer #, frame #]
                'RINums', [1:pair*na]), 1, 1); % The ReconInfo structure #(s). Each Recon must have its own unique set of ReconInfo #s
 
-% Recon = repmat(Recon, 1, numFrames);
-% for nf = 1:numFrames
-%     Recon(nf).IntBufDest = [1, nf];
-%     Recon(nf).ImgBufDest = [1, nf];
-% end
-
-ReconInfo = repmat(struct('mode', 'accumIQ_replaceIntensity', ... % reconstruct, and replace intensity data in ImageBuffer and IQ data in InterBuffer (see Table 12.4 in Tutorial)
+ReconInfo = repmat(struct('mode', 'accumIQ', ... % reconstruct, and replace intensity data in ImageBuffer and IQ data in InterBuffer (see Table 12.4 in Tutorial)
                    'txnum', 1, ...                 % TX structure to use
                    'rcvnum', 1, ...                % RX structure to use
                    'regionnum', 1), 1, pair*na);                % PData Region to process in
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 rii = 0; % recon info index
-% for nsubf = 1:P_new.numSubFrames
-%     Recon(nsubf).RINums = (nsubf - 1) * pair * na + [1:pair*na];
-    for n = 1:pair*na
-        rii = rii + 1;
-        % - Set specific ReconInfo attributes.
-        % ReconInfo(1).mode = 'replaceIQ'; % replace IQ data
-        ReconInfo(rii).txnum = n;                               % (nsubf - 1) * pair * na + n
-        ReconInfo(rii).rcvnum = rii;
-%         ReconInfo(rii).pagenum = n; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %     ReconInfo(1).regionnum = 1; %1 for the whole volume, 5 for the slices
-    
-    end
-% end
 
+% Modify ReconInfo
+for n = 1:pair*na
+    rii = rii + 1;
+    
+    ReconInfo(rii).txnum = n;
+    ReconInfo(rii).rcvnum = rii;
+    if saveAllAngles
+        ReconInfo(rii).pagenum = n;
+        ReconInfo(rii).mode = 'replaceIQ'; % replace IQ data
+    end
+%     ReconInfo(1).regionnum = 1; %1 for the whole volume, 5 for the slices
+
+end
+
+if ~saveAllAngles
+    ReconInfo(1).mode = 'replaceIQ'; % replace IQ in the buffer for each new frame processed
+    ReconInfo(end).mode = 'accumIQ_replaceIntensity'; % at the last acquisition, update the ImgData
+end
 %% Process the Reconstructed data
 % e.g., scaling and compression to make an image look good on the screen
 
@@ -343,105 +340,21 @@ Process(1).Parameters = {'srcbuffer', 'receive', ...
 % 5. Control (SeqControl)
 
 
-SeqControl(1).command = 'noop';
+SeqControl(1).command = 'noop'; % VSX errors if there is no SeqControl structure
 
 n = 0;
-for nsupf = 1:P_new.numSupFrames
-    for nsubf = 1:P_new.numSubFrames
-        n = n + 1;
 
-        Event(n).info = ['Frame ' num2str(nsubf) ': Reconstruction'];
-        Event(n).tx = 0; 
-        Event(n).rcv = 0; 
-        Event(n).recon = 1;  %%
-        Event(n).process = 0; 
-        Event(n).seqControl = 0; 
-    end
+for nf = 1:numFramesPerBuffer
+    n = n + 1;
 
-%     scInd = scInd + 1;
-% %     Event(n).seqControl = [Event(n).seqControl, scInd]; 
-%     SeqControl(scInd).command = 'transferToHost';
-
-% % test 11/6/24
-%     scInd = scInd + 1;
-%     
-%     SeqControl(scInd).command = 'waitForTransferComplete';
-%     SeqControl(scInd).argument = scInd - 1;
-% 
-%     Event(n).seqControl = [scInd, scInd-1]; % transfer and wait for the transfer
-
-    % Transfer all the acquisitions for one superframe 
-%     n = n + 1;
-% 
-%     Event(n).info = 'Transfer data'; % want a transferToHost after all the acquisitions for one (super) frame
-%     Event(n).tx = 0; 
-%     Event(n).rcv = 0; 
-%     Event(n).recon = 0;
-%     Event(n).process = 0; 
-%     scInd = scInd + 1;
-% %     Event(n).seqControl = [Event(n).seqControl, scInd]; 
-%     SeqControl(scInd).command = 'transferToHost';
-% 
-% % test 11/6/24
-%     scInd = scInd + 1;
-%     
-%     SeqControl(scInd).command = 'waitForTransferComplete';
-%     SeqControl(scInd).argument = scInd - 1;
-% 
-%     Event(n).seqControl = [scInd, scInd-1]; % transfer and wait for the transfer
-
-
-
-%     n = n + 1;
-% 
-%     Event(n).info = 'Test ext proc func';
-%     Event(n).tx = 0; 
-%     Event(n).rcv = 0; 
-%     Event(n).recon = 0;
-%     Event(n).process = 2; 
-%     Event(n).seqControl = 0; 
-
-    
-
-%     n = n + 1;
-% 
-%     Event(n).info = ['Frame ' num2str(nf) ': Reconstruction'];
-%     Event(n).tx = 0; 
-%     Event(n).rcv = 0; 
-%     Event(n).recon = 1;  %%
-%     Event(n).process = 0; 
-%     Event(n).seqControl = 2; 
-% 
-%     n = n + 1;
-% 
-%     Event(n).info = ['Frame ' num2str(nf) ': Processing xz'];
-%     Event(n).tx = 0; 
-%     Event(n).rcv = 0; 
-%     Event(n).recon = 0; 
-%     Event(n).process = 1; 
-%     Event(n).seqControl = 0; 
-% 
-%     n = n + 1;
-%     
-%     Event(n).info = ['Frame ' num2str(nf) ': Processing xy'];
-%     Event(n).tx = 0; 
-%     Event(n).rcv = 0; 
-%     Event(n).recon = 0; 
-%     Event(n).process = 2; 
-%     Event(n).seqControl = 0; 
-% 
-%     n = n + 1;
-%     
-%     Event(n).info = ['Frame ' num2str(nf) ': Processing yz'];
-%     Event(n).tx = 0; 
-%     Event(n).rcv = 0; 
-%     Event(n).recon = 0; 
-%     Event(n).process = 3; 
-%     Event(n).seqControl = 2;
-% 
-%     n = n + 1;
-
+    Event(n).info = ['Frame ' num2str(nf) ': Reconstruction'];
+    Event(n).tx = 0; 
+    Event(n).rcv = 0; 
+    Event(n).recon = 1;
+    Event(n).process = 0; 
+    Event(n).seqControl = 0; 
 end
+
 % 
 % n = n + 1;
 % 
@@ -451,15 +364,6 @@ end
 % Event(n).recon = 0;
 % Event(n).process = 1; 
 % Event(n).seqControl = 0; 
-
-% Test for time tag
-% n = n+1;
-% Event(n).info = 'ext function call';
-% Event(n).tx = 0;         % no transmit
-% Event(n).rcv = 0;        % no rcv
-% Event(n).recon = 0;      % reconstruction
-% Event(n).process = 2;    % external processing function
-% Event(n).seqControl = 0; % none
 
 
 %% Save all the data/structures to a .mat file.
@@ -471,15 +375,16 @@ save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"
 
 %% Run VSX automatically and make parameter structure for RF file naming
 tic
-if runVSX
+
     disp("running VSX")
     VSX
-end
+
 toc
 %% 
 IQ = IData{1} + 1i .* QData{1};
 figure; imagesc(abs(squeeze(IQ(40, :, :, 1, 1)))')
 figure; imagesc(abs(squeeze(IQ(:, 40, :, 1, 1)))')
 % saveRcvData(RcvData{1})
-ImgData_temp = ImgData{1};
-figure; imagesc(squeeze(ImgData_temp(40, :, :, 2))')
+% ImgData_temp = ImgData{1};
+% figure; imagesc(squeeze(ImgData_temp(40, :, :, 2))')
+% IQ = single(IQ ./ 1000);

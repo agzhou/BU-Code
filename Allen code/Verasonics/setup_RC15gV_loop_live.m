@@ -15,7 +15,7 @@ cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 activate
 % numElements = 80;
 
-savepath = "G:\Allen\Data\01-09-2025 phantom anechoic\RC15gV\run 0\";
+savepath = "G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 0\";
 savepath = char(savepath);
 mkdir(savepath)
 
@@ -31,7 +31,7 @@ movePointsOrNot = 0;
 initialVoltage = 25; % V
 
 startDepthMM = 0; % start depth in mm
-endDepthMM = 20;
+endDepthMM = 10;
 
 fps_target = 50;   % Intended (sub)frame rate
 supFrameBurstRate = .5; % Defines spacing between end of superframe burst and the next burst after jumping
@@ -41,7 +41,7 @@ numChannels = 256; % enable channels
 numSupFrames = 10; % # of superframes, MUST BE ONE OR EVEN FOR VSX
 numSubFrames = 1; % # of subframes
 na = 21; % # of acquisitions per frame (acquisition pairs)
-maxAngle = 10; % degrees
+maxAngle = 5; % degrees
 angleRange = [-maxAngle, maxAngle].*pi/180; % Angle range in radians
 
 % Need at least 2 acquisitions to use multiple angles. 
@@ -120,7 +120,7 @@ Media.function = 'movePointsZ3D'; % move points in _ dimension after each frame
 %% PData structure (Pixel Data --> image reconstruction range)
 % For 2D scans and slices of 3D scans, it's always a rectangular area at a
 % fixed location in the transducer coord system
-xyplane = 100;
+xyplane = 50;
 
 numElements = Trans.numelements./2; % the structure gives # row elements + # column elements
 

@@ -54,8 +54,8 @@ allCentroids = {};
 
 %% Process the data
 tic
-% for filenum = 1:numFiles
-for filenum = 1:10
+for filenum = 1:numFiles
+% for filenum = 1:10
     load([datapath, 'IQ data\', filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
     IQr = LA_rollingFrames(IQ);                                                 % rolling method to get more effective frames
     
