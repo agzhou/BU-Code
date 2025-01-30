@@ -14,20 +14,14 @@
 %% TO DO
 % make into a function
 % add adjustable pixel spacing
-
-%% Specify system parameters
-clear
+% Add some regexp thing to automatically get the # of raw data files in the folder
+%% Activate the Verasonics folder
+clearvars
 
 cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 % cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
 
 activate
-
-% savepath = "G:\Allen\Data\12-04-2024 RC15gV saving tests\trial 1 exp\";
-% savepath = char(savepath);
-% mkdir(savepath)
-
-
 
 %% Load parameters and RcvData, then reshape the RcvData
 % [paramsFilename, paramsPath] = uigetfile;
@@ -36,30 +30,28 @@ activate
 % load([paramsPath, paramsFilename])
 % load([RcvDataPath, RcvDataFilename])
 
-%% Data loading test
+%% Load parameters, create save path, choose some options for recon
 clearvars
 
-datapath = 'G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\';
+Mcr_datapath = 'G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\';
+load([Mcr_datapath, 'params.mat']) % load acquisition parameters
 
-load([datapath, 'params.mat']) % load acquisition parameters
+Mcr_savepath = [Mcr_datapath, 'IQ Data - Verasonics Recon\'];
+mkdir(Mcr_savepath)
 
-filenameStructure = ['RF-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
+Mcr_numFiles = 96; % Manually define number of parameters for now
+Mcr_filenameStructure = ['RF-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
+Mcr_IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 
-filenum = 25;                                           % TEMPORARY FOR TESTING !!!!!!!!!!!
 saveAllAngles = 0; % choose if you want to save the matrix with pages for each angle or not
-load([datapath, filenameStructure, num2str(filenum)]);
 
 %% autorun VSX flag
 % Uncomment/initialize this variable to some arbitrary value if you want
 % the script to autoquit runAcq
 
-% Mcr_AutoScriptTest = 1;
-Mcr_GuiHide = 1;
-%% Put RcvData into a cell array for VSX
-r = RcvData;
-clear RcvData;
+Mcr_AutoScriptTest = 1;
+% Mcr_GuiHide = 1;
 
-RcvData{1} = r;
 %% Assign variables and structures
 
 pair = 2; % The R-C and C-R pair of acquisitions per angle
@@ -86,7 +78,13 @@ Resource.Parameters.numRcvChannels = numChannels;                           % nu
 Resource.Parameters.speedOfSound = Resource_acq.Parameters.speedOfSound;    % speed of sound in m/s
 
 Resource.RcvBuffer = Resource_acq.RcvBuffer(1);
-Resource.RcvBuffer.rowsPerFrame = size(RcvData{1}, 1);
+
+% load the first one to get this size
+load([Mcr_datapath, Mcr_filenameStructure, '1']);
+rpf = size(RcvData, 1);
+clear RcvData
+Resource.RcvBuffer.rowsPerFrame = rpf;
+
 Resource.RcvBuffer.numFrames = numFramesPerBuffer;
 Resource.RcvBuffer.lastFrame = 1; % reset the counter
 Resource.Parameters.simulateMode = 2; % Enable mode 2, which processes data in the buffers
@@ -233,102 +231,6 @@ if ~saveAllAngles
     ReconInfo(1).mode = 'replaceIQ'; % replace IQ in the buffer for each new frame processed
     ReconInfo(end).mode = 'accumIQ_replaceIntensity'; % at the last acquisition, update the ImgData
 end
-%% Process the Reconstructed data
-% e.g., scaling and compression to make an image look good on the screen
-
-% pgainValue = 1.0; % Image processing gain
-% persValue = 0;
-% rejectLevel = 2;
-% % rejectLevel = 300;
-% compFac = 40;
-
-% First image (xz)
-% Process(1).classname = 'Image';
-% Process(1).method = 'imageDisplay';             % To not overwrite orig data while processing, system uses another ImageP buffer as output.
-% Process(1).Parameters = {'imgbufnum', 1, ...             % which ImageBuffer to process
-%                          'framenum', -1, ...              % -1 means use last frame in ImageBuffer
-%                          'pdatanum', 1, ...              % PData structure which was used in Reconstruction
-%                          'srcData', 'intensity3D', ...
-%                          'pgain', pgainValue, ...
-%                          'reject', rejectLevel, ...                % Make intensity values below this threshold appear as black (reduce low intensity noise)
-%                          'persistMethod', 'simple', ...   % simple: Add a fraction of the previous weighted average frames' invensity values to the current one. See manual for 'dynamic' option, which is good when there is a lot of motion!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%                          'persistLevel', persValue, ...   % NewAvg = PL * PrevAvg + (1 - PL) * NewFrame; PL = persistLevel/100
-%                          'interpMethod', '4pt', ...
-%                          'grainRemoval', 'medium', ...    % low, medium, high. Remove pixels that differ significantly from their neighbors
-%                          'processMethod', 'none', ...     % see manual, reduces variation in line structures detected within the filter kernel???
-%                          'averageMethod', 'none', ...     % None or can do Running averages (2 or 3), can do things like spatial compounding...
-%                          'compressMethod', 'log', ...     % log or power (x^a fraction) compression
-%                          'compressFactor', compFac, ...        % Higher compressFactor means smaller powers for the power option (more compression), or a more rapid rise to the log curve (raise brightness of low intensity values). Not a real log bc intensities of 0 need to be mapped to 0, not -inf
-%                          'mappingMethod', 'full', ...     % Portion of the colormap to use. lowerHalf and upperHalf would be used to do the combined B-mode and Doppler imaging, for example.
-%                          'display', 1, ...                % 1: show processed image on screen, 0: don't but still tto useransfer the processed data to the DisplayData buffer
-%                          'displayWindow', 1};             % which displayWindow 
-% 
-% % Second image (xy)
-% Process(2).classname = 'Image';
-% Process(2).method = 'imageDisplay';             % To not overwrite orig data while processing, system uses another ImageP buffer as output.
-% Process(2).Parameters = {'imgbufnum', 1, ...             % which ImageBuffer to process
-%                          'framenum', -1, ...              % -1 means use last frame in ImageBuffer
-%                          'pdatanum', 1, ...              % PData structure which was used in Reconstruction
-%                          'srcData', 'intensity3D', ...
-%                          'pgain', pgainValue, ...
-%                          'reject', rejectLevel, ...                % Make intensity values below this threshold appear as black (reduce low intensity noise)
-%                          'persistMethod', 'simple', ...   % simple: Add a fraction of the previous weighted average frames' invensity values to the current one. See manual for 'dynamic' option, which is good when there is a lot of motion!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%                          'persistLevel', persValue, ...   % NewAvg = PL * PrevAvg + (1 - PL) * NewFrame; PL = persistLevel/100
-%                          'interpMethod', '4pt', ...
-%                          'grainRemoval', 'medium', ...    % low, medium, high. Remove pixels that differ significantly from their neighbors
-%                          'processMethod', 'none', ...     % see manual, reduces variation in line structures detected within the filter kernel???
-%                          'averageMethod', 'none', ...     % None or can do Running averages (2 or 3), can do things like spatial compounding...
-%                          'compressMethod', 'log', ...     % log or power (x^a fraction) compression
-%                          'compressFactor', compFac, ...        % Higher compressFactor means smaller powers for the power option (more compression), or a more rapid rise to the log curve (raise brightness of low intensity values). Not a real log bc intensities of 0 need to be mapped to 0, not -inf
-%                          'mappingMethod', 'full', ...     % Portion of the colormap to use. lowerHalf and upperHalf would be used to do the combined B-mode and Doppler imaging, for example.
-%                          'display', 1, ...                % 1: show processed image on screen, 0: don't but still tto useransfer the processed data to the DisplayData buffer
-%                          'displayWindow', 2};             % which displayWindow 
-% 
-% % Third image (yz)
-% Process(3).classname = 'Image';
-% Process(3).method = 'imageDisplay';             % To not overwrite orig data while processing, system uses another ImageP buffer as output.
-% Process(3).Parameters = {'imgbufnum', 1, ...             % which ImageBuffer to process
-%                          'framenum', -1, ...              % -1 means use last frame in ImageBuffer
-%                          'pdatanum', 1, ...              % PData structure which was used in Reconstruction
-%                          'srcData', 'intensity3D', ...
-%                          'pgain', pgainValue, ...
-%                          'reject', rejectLevel, ...                % Make intensity values below this threshold appear as black (reduce low intensity noise)
-%                          'persistMethod', 'simple', ...   % simple: Add a fraction of the previous weighted average frames' invensity values to the current one. See manual for 'dynamic' option, which is good when there is a lot of motion!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%                          'persistLevel', persValue, ...   % NewAvg = PL * PrevAvg + (1 - PL) * NewFrame; PL = persistLevel/100
-%                          'interpMethod', '4pt', ...
-%                          'grainRemoval', 'medium', ...    % low, medium, high. Remove pixels that differ significantly from their neighbors
-%                          'processMethod', 'none', ...     % see manual, reduces variation in line structures detected within the filter kernel???
-%                          'averageMethod', 'none', ...     % None or can do Running averages (2 or 3), can do things like spatial compounding...
-%                          'compressMethod', 'log', ...     % log or power (x^a fraction) compression
-%                          'compressFactor', compFac, ...        % Higher compressFactor means smaller powers for the power option (more compression), or a more rapid rise to the log curve (raise brightness of low intensity values). Not a real log bc intensities of 0 need to be mapped to 0, not -inf
-%                          'mappingMethod', 'full', ...     % Portion of the colormap to use. lowerHalf and upperHalf would be used to do the combined B-mode and Doppler imaging, for example.
-%                          'display', 1, ...                % 1: show processed image on screen, 0: don't but still tto useransfer the processed data to the DisplayData buffer
-%                          'displayWindow', 3};             % which displayWindow 
-
-Process(1).classname = 'External';
-Process(1).method = 'saveRcvData'; % Function name
-% Process(1).Parameters = {'srcbuffer', 'bufferName', ...
-%                          'srcbufnum', 1, ... % # of buffer to process
-%                          'srcframenum', 1, ... % starting frame #
-%                          'srcsectionnum', 1, ...
-%                          ' srcpagenum', 1, ...
-%                          'dstbuffer', 'bufferName', ... % destination buf
-%                          'dstbufnum', 1, ...
-%                          'dstframenum', 1, ...
-%                          'dstsectionnum', 1, ...
-%                          'dstpagenum', 1};
-
-Process(1).Parameters = {'srcbuffer', 'receive', ...
-                         'srcbufnum', 1, ... % # of buffer to process
-                         'dstbuffer', 'none'};
-%                          'srcframenum', -1, ... % last frame transferred
-
-% Process(2).classname = 'External';
-% Process(2).method = 'ShowTimeTag'; % Function name
-% Process(2).Parameters = {'srcbuffer','receive',... % name of buffer to process.
-%                          'srcbufnum',1,...
-%                          'srcframenum',-1, ...
-%                          'dstbuffer','none'};
 
 %% New Event structure
 
@@ -343,6 +245,7 @@ Process(1).Parameters = {'srcbuffer', 'receive', ...
 SeqControl(1).command = 'noop'; % VSX errors if there is no SeqControl structure
 
 n = 0;
+Event = struct('info', {}, 'tx', {}, 'rcv', {}, 'recon', {}, 'process', {}, 'SeqControl', {});
 
 for nf = 1:numFramesPerBuffer
     n = n + 1;
@@ -368,22 +271,58 @@ end
 
 %% Save all the data/structures to a .mat file.
 currentDir = cd; currentDir = regexp(currentDir, filesep, 'split');
-filename = 'RC15gV_Allen_recon.mat';
+Mcr_filename = 'RC15gV_Allen_recon.mat';
 
-save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+filename);
+save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+Mcr_filename, "Event", "SeqControl", "ReconInfo", "Recon", "Resource", "Media", "PData", "Receive", "TGC", "TPC", "Trans", "TW", "TX");
 
 
 %% Run VSX automatically and make parameter structure for RF file naming
-tic
 
-    disp("running VSX")
-    VSX
 
-toc
-%% 
-IQ = IData{1} + 1i .* QData{1};
-figure; imagesc(abs(squeeze(IQ(40, :, :, 1, 1)))')
-figure; imagesc(abs(squeeze(IQ(:, 40, :, 1, 1)))')
+for filenum = 1:Mcr_numFiles
+% for Mcr_filenum = 1:2
+    tic
+
+    load([Mcr_datapath, Mcr_filenameStructure, num2str(Mcr_filenum)]);
+    disp(strcat("Raw data file ", num2str(Mcr_filenum), " loaded."))
+    
+    % Put RcvData into a cell array for VSX
+    r = RcvData;
+    clear RcvData;
+    
+    RcvData{1} = r;
+    clear r;
+
+    filename = Mcr_filename; % VSX clears variables without the Mcr_ prefix, so redefine "filename" so VSX can autorun
+    Mcr_AutoScriptTest = 1;  % VSX also specially clears this, so redefine it
+
+%     disp("running VSX_auto")
+    VSX_auto % this is in the Verasonics folder
+    VsClose  % close the GUI window. runAcq stops automatically after one loop.
+
+    disp(strcat("IQ file ", num2str(Mcr_filenum), " reconstructed."))
+%     IQ = IData{1} + 1i .* QData{1};                                         % Merge the I and Q into one variable
+    IData = IData{1};
+    QData = QData{1};
+
+    savefast([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData')
+    disp(strcat("IQ file ", num2str(Mcr_filenum), " saved."))
+    
+    toc
+
+    clear IData QData RcvData
+end
+
+%% saving speed test
+% tic
+% test = IData{1};
+% savefast([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'test')
+% save([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IQ', '-v7.3')
+% toc
+%% random stuff and plotting
+% IQ = IData{1} + 1i .* QData{1};
+% figure; imagesc(abs(squeeze(IQ(40, :, :, 1, 1)))')
+% figure; imagesc(abs(squeeze(IQ(:, 40, :, 1, 1)))')
 % saveRcvData(RcvData{1})
 % ImgData_temp = ImgData{1};
 % figure; imagesc(squeeze(ImgData_temp(40, :, :, 2))')

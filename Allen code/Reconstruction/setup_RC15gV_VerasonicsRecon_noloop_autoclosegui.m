@@ -14,14 +14,20 @@
 %% TO DO
 % make into a function
 % add adjustable pixel spacing
-% Add some regexp thing to automatically get the # of raw data files in the folder
-%% Activate the Verasonics folder
+
+%% Specify system parameters
 clearvars
 
 cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 % cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
 
 activate
+
+% savepath = "G:\Allen\Data\12-04-2024 RC15gV saving tests\trial 1 exp\";
+% savepath = char(savepath);
+% mkdir(savepath)
+
+
 
 %% Load parameters and RcvData, then reshape the RcvData
 % [paramsFilename, paramsPath] = uigetfile;
@@ -30,20 +36,19 @@ activate
 % load([paramsPath, paramsFilename])
 % load([RcvDataPath, RcvDataFilename])
 
-%% Load parameters, create save path, choose some options for recon
+%% Data loading test
 clearvars
 
-Mcr_datapath = 'G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\';
-load([Mcr_datapath, 'params.mat']) % load acquisition parameters
+datapath = 'G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\';
 
-Mcr_savepath = [Mcr_datapath, 'IQ Data - Verasonics Recon\'];
-mkdir(Mcr_savepath)
+load([datapath, 'params.mat']) % load acquisition parameters
 
-Mcr_numFiles = 96; % Manually define number of parameters for now
-Mcr_filenameStructure = ['RF-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
-Mcr_IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
+filenameStructure = ['RF-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 
+filenum = 25;                                           % TEMPORARY FOR TESTING !!!!!!!!!!!
 saveAllAngles = 0; % choose if you want to save the matrix with pages for each angle or not
+load([datapath, filenameStructure, num2str(filenum)]);
+disp(strcat("Raw data file ", num2str(filenum), " loaded."))
 
 %% autorun VSX flag
 % Uncomment/initialize this variable to some arbitrary value if you want
@@ -51,7 +56,11 @@ saveAllAngles = 0; % choose if you want to save the matrix with pages for each a
 
 Mcr_AutoScriptTest = 1;
 % Mcr_GuiHide = 1;
+%% Put RcvData into a cell array for VSX
+r = RcvData;
+clear RcvData;
 
+RcvData{1} = r;
 %% Assign variables and structures
 
 pair = 2; % The R-C and C-R pair of acquisitions per angle
@@ -78,13 +87,7 @@ Resource.Parameters.numRcvChannels = numChannels;                           % nu
 Resource.Parameters.speedOfSound = Resource_acq.Parameters.speedOfSound;    % speed of sound in m/s
 
 Resource.RcvBuffer = Resource_acq.RcvBuffer(1);
-
-% load the first one to get this size
-load([Mcr_datapath, Mcr_filenameStructure, '1']);
-rpf = size(RcvData, 1);
-clear RcvData
-Resource.RcvBuffer.rowsPerFrame = rpf;
-
+Resource.RcvBuffer.rowsPerFrame = size(RcvData{1}, 1);
 Resource.RcvBuffer.numFrames = numFramesPerBuffer;
 Resource.RcvBuffer.lastFrame = 1; % reset the counter
 Resource.Parameters.simulateMode = 2; % Enable mode 2, which processes data in the buffers
@@ -242,7 +245,9 @@ end
 % 5. Control (SeqControl)
 
 
-SeqControl(1).command = 'noop'; % VSX errors if there is no SeqControl structure
+% SeqControl(1).command = 'noop'; % VSX errors if there is no SeqControl structure
+SeqControl(1).command = 'jump'; % jump so we can trigger the closing of VSX_auto on the second runAcq loop
+SeqControl(1).argument = 1;
 
 n = 0;
 Event = struct('info', {}, 'tx', {}, 'rcv', {}, 'recon', {}, 'process', {}, 'SeqControl', {});
@@ -258,6 +263,15 @@ for nf = 1:numFramesPerBuffer
     Event(n).seqControl = 0; 
 end
 
+% n = n + 1;
+% 
+% Event(n).info = 'Jump';
+% Event(n).tx = 0; 
+% Event(n).rcv = 0; 
+% Event(n).recon = 0;
+% Event(n).process = 0; 
+% Event(n).seqControl = 1; 
+
 % 
 % n = n + 1;
 % 
@@ -271,57 +285,23 @@ end
 
 %% Save all the data/structures to a .mat file.
 currentDir = cd; currentDir = regexp(currentDir, filesep, 'split');
-Mcr_filename = 'RC15gV_Allen_recon.mat';
+filename = 'RC15gV_Allen_recon.mat';
 
-save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+Mcr_filename, "Event", "SeqControl", "ReconInfo", "Recon", "Resource", "Media", "PData", "Receive", "TGC", "TPC", "Trans", "TW", "TX");
+save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+filename, "Event", "SeqControl", "ReconInfo", "Recon", "Resource", "Media", "PData", "Receive", "TGC", "TPC", "Trans", "TW", "TX");
 
 
 %% Run VSX automatically and make parameter structure for RF file naming
+tic
 
-
-% for filenum = 1:Mcr_numFiles
-for Mcr_filenum = 1:2
-    tic
-
-    load([Mcr_datapath, Mcr_filenameStructure, num2str(Mcr_filenum)]);
-    disp(strcat("Raw data file ", num2str(Mcr_filenum), " loaded."))
-    
-    % Put RcvData into a cell array for VSX
-    r = RcvData;
-    clear RcvData;
-    
-    RcvData{1} = r;
-    clear r;
-
-    filename = Mcr_filename; % VSX clears variables so havve to ad
-
-%     disp("running VSX_auto")
+    disp("running VSX")
+%     VSX
     VSX_auto % this is in the Verasonics folder
-    VsClose  % close the GUI window. runAcq stops automatically after one loop.
-
-    disp(strcat("IQ file ", num2str(Mcr_filenum), " reconstructed."))
-%     IQ = IData{1} + 1i .* QData{1};                                         % Merge the I and Q into one variable
-    IData = IData{1};
-    QData = QData{1};
-
-    savefast([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData')
-    disp(strcat("IQ file ", num2str(Mcr_filenum), " saved."))
-    
-    toc
-
-    clear IData QData RcvData
-end
-
-%% saving speed test
-% tic
-% test = IData{1};
-% savefast([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'test')
-% save([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IQ', '-v7.3')
-% toc
-%% random stuff and plotting
-% IQ = IData{1} + 1i .* QData{1};
-% figure; imagesc(abs(squeeze(IQ(40, :, :, 1, 1)))')
-% figure; imagesc(abs(squeeze(IQ(:, 40, :, 1, 1)))')
+    VsClose
+toc
+%% 
+IQ = IData{1} + 1i .* QData{1};
+figure; imagesc(abs(squeeze(IQ(40, :, :, 1, 1)))')
+figure; imagesc(abs(squeeze(IQ(:, 40, :, 1, 1)))')
 % saveRcvData(RcvData{1})
 % ImgData_temp = ImgData{1};
 % figure; imagesc(squeeze(ImgData_temp(40, :, :, 2))')
