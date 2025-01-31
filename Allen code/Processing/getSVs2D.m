@@ -13,9 +13,7 @@
 %% Main function
 function [PP, EVs, V_sort] = getSVs2D(IQ_coherent_sum)
 
-    
-    % IQ = IData{1, 1} + 1i.*QData{1, 1}; 
-    % dimensions (# x pixels, # y pixels, # z pixels, # pages (# angles*2), # frames)
+    % dimensions (# x pixels, # y pixels, # z pixels, # frames)
     
     [xp, yp, zp, nf] = size(IQ_coherent_sum);
 

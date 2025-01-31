@@ -33,7 +33,7 @@ filename_structure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2s
 % Define various processing parameters
 % Singular value thresholds
 sv_threshold_lower = 10;
-sv_threshold_upper = 200;
+sv_threshold_upper = 150;
 
 % % Region of interest
 % zrange = 40:120;
@@ -61,7 +61,7 @@ for filenum = 25
     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
 %     IQr = LA_rollingFrames(IQ);                                                 % rolling method to get more effective frames
     
-    IQ = IData + 1i .* QData;   % Combine I and Q, which are saved separately. It's easier to save the big reconstructed data with savefast, which doesn't support complex values.
+    IQ = squeeze(IData + 1i .* QData);   % Combine I and Q, which are saved separately. It's easier to save the big reconstructed data with savefast, which doesn't support complex values.
     clear IData QData
     
 %     if filenum == 1
@@ -77,7 +77,7 @@ for filenum = 25
 %     toc
     % SVD proc part 2
 %     tic
-    [IQf] = applySVs1D(IQr, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
+    [IQf] = applySVs2D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
 %     disp('SVD filtered images put together')
 %     save([savepath, 'Filtered-Data-', num2str(filenum)], 'IQr', 'PP', 'EVs', 'V_sort', 'IQf', "-v6")
     [centroidCoordinates] = localizeBubbles(IQf, refPSF, range, imgRefinementFactor, binaryThreshold, areaThreshold);
