@@ -1,9 +1,8 @@
-% For use with a 1D array and a single 2D image plane
-% Input:  IQ coherent sum across angles, lower and upper singular value #
-%         bounds
+% For use with a 1D array and a stack of 2D image planes
+% Input:  IQ coherent sum across angles
 % Output: PP     (space vs. frame/time data matrix),
 %         EVs    (sorted eigenvalues, square of singular values)
-%         V_sort (sorted eigenvectors),
+%         V_sort (sorted eigenvectors)
 
 function [PP, EVs, V_sort] = getSVs1D(IQ_coherent_sum)
     
@@ -23,7 +22,7 @@ function [PP, EVs, V_sort] = getSVs1D(IQ_coherent_sum)
 
     [V, D_V] = eig(CM_V); % get the angular eigenvectors that are also the right singular vector Vi of P
     % V: eigenvectors
-    % D_V: eigenvalues
+    % D_V: (unsorted) eigenvalues
 
     [D_V_Sort, ind_D_V_Sort]= sort(diag(D_V), 'descend'); % get the eigenvalues in descending order
 

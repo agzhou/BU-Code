@@ -1,4 +1,4 @@
-
+% I think this was to do a single R-C TX - RX event
 %% Description
 % Continuous acquisition and saving of RF data with the RC15gV probe
 % Saves all defined # of frames in one file

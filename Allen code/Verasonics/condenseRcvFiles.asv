@@ -34,8 +34,8 @@ mkdir(datapath, subfolderToSave)
 filename_structure_IQ = [probe_name, '-IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.PRF), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-'];
 
 
-for filenum = 1:numFiles
-% for filenum = 1:2
+% for filenum = 1:numFiles
+for filenum = 1:2
     load([datapath, filename_structure, num2str(filenum), '.mat'])
     IQ = LA_DAS(RcvData, P, P.wl/2);
 %     IQ = LA_DAS(RcvData, P, P.wl/P.Receive(1).samplesPerWave / 2);
