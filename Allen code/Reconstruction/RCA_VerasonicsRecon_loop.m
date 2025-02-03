@@ -36,14 +36,16 @@ clearvars
 Mcr_datapath = 'G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\';
 load([Mcr_datapath, 'params.mat']) % load acquisition parameters
 
-Mcr_savepath = [Mcr_datapath, 'IQ Data - Verasonics Recon\'];
+% Mcr_savepath = [Mcr_datapath, 'IQ Data - Verasonics Recon\'];
+Mcr_savepath = ['K:\Allen data backup\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\', 'IQ Data with pages - Verasonics Recon\']; 
 mkdir(Mcr_savepath)
 
-Mcr_numFiles = 96; % Manually define number of parameters for now
+Mcr_numFiles = 96; % Manually define number of files for now
 Mcr_filenameStructure = ['RF-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 Mcr_IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 
-saveAllAngles = 0; % choose if you want to save the matrix with pages for each angle or not
+%%%%%%%%%%
+saveAllAngles = 1; % choose if you want to save the matrix with pages for each angle or not
 
 %% autorun VSX flag
 % Uncomment/initialize this variable to some arbitrary value if you want
