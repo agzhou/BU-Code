@@ -13,8 +13,6 @@
 %         Threshold on PSF x refined IQf cross-correlated data to create a
 %         binary image
 %         Threshold on connected component areas to use
-
-function [centroidCoordinates] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, binaryThreshold, areaThreshold)
     
     %% Use parallel processing for speed
     % https://www.mathworks.com/matlabcentral/answers/91744-how-can-i-check-if-matlabpool-is-running-when-using-parallel-computing-toolbox
@@ -25,31 +23,19 @@ function [centroidCoordinates] = localizeBubbles3D(IQf, refPSF, range, imgRefine
         parpool LocalProfile1
     
     end
-
-    %% Section the data to a ROI
-%     zrange = range{1};
-%     xrange = range{2};
-%     framerange = range{3};
-%     IQs = IQf(zrange, xrange, framerange); % IQ section
-
-%     IQs = IQf;
     
-    %% image refinement/interpolation
-%     rfnX = imgRefinementFactor(1); % refinement pixel increase factor
-%     rfnY = imgRefinementFactor(2);
-%     rfnZ = imgRefinementFactor(3);
-%     
-%     refIQs = zeros(size(IQs, 1) * rfnX, size(IQs, 2) * rfnY, size(IQs, 3) * rfnZ, size(IQs, 4)); % refined IQ section
-% 
-%     % go through all frames and refine
-%     parfor f = 1:size(IQs, 4)
-% %     for f = 1
-%         I_temp = IQs(:, :, :, f);
-%         refIQs(:, :, :, f) = imresize3(I_temp/max(I_temp, [], 'all') .* 256 .* 5, [size(IQf, 1) * rfnX, size(IQf, 2) * rfnY, size(IQf, 3) * rfnZ], 'linear');
-%     end
-    refIQs = IQf;
+    %% 3D cross correlation and regionprops testing
+    psfXC = normxcorr3(abs(refPSF), abs(refPSF));
+    mask = psfXC < 0.4; XCT = psfXC; XCT(mask) = 0;
+    bi = zeros(size(psfXC)); bi(~mask) = 1;
+    %%
+    cf = bi;
+    CC = bwconncomp(cf); % connected components (connected regions of 1 in a binary image)
     
+    s = regionprops3(CC, cf, 'Volume', 'WeightedCentroid');
     %% and cross correlation
+
+    refIQs = IQf;
 
     % normxcorr3 from file exchange
     % (https://www.mathworks.com/matlabcentral/fileexchange/73946-normxcorr3-fast-3d-ncc)
@@ -111,5 +97,3 @@ function [centroidCoordinates] = localizeBubbles3D(IQf, refPSF, range, imgRefine
 %     h = histogram2(zpts, xpts, [size(a, 1) * hPixFactor, size(a, 2) * hPixFactor], 'DisplayStyle','tile');
 %     grid off
 %     colormap hot
-
-end

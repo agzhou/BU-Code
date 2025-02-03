@@ -23,6 +23,8 @@ end
 datapath = 'G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\';
 load([datapath, 'params.mat'])
 
+numFiles = 96; % define # of files manually for now
+
 IQfolderName = 'IQ Data - Verasonics Recon\'; % 'IQ data\'
 saveFolderName = 'Processed Data\';
 mkdir([datapath, saveFolderName])
@@ -47,7 +49,7 @@ range = {xrange, yrange, zrange, framerange};
 % % Image refinement and localization parameters
 imgRefinementFactor = [2, 2, 2]; % z, x pixel refinement factor
 binaryThreshold = 0.4;
-areaThreshold = 4;
+volumeThreshold = 4;
 % 
 % Load and refine simulated PSF
 load('G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\PSF sim\PSF.mat', 'PSF')
@@ -65,9 +67,9 @@ allCentroids = {};
 
 %% Process the data
 tic
-% for filenum = 1:numFiles
-for filenum = 25:30
-    load([datapathtf, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
+for filenum = 1:numFiles
+% for filenum = 25:25
+    load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
 %     IQr = LA_rollingFrames(IQ);                                                 % rolling method to get more effective frames
     
     IQ = squeeze(IData + 1i .* QData);   % Combine I and Q, which are saved separately. It's easier to save the big reconstructed data with savefast, which doesn't support complex values.
@@ -91,16 +93,17 @@ for filenum = 25:30
 %     toc
 
 %     save([savepath, 'Filtered-Data-', num2str(filenum)], 'IQr', 'PP', 'EVs', 'V_sort', 'IQf', "-v6")
-    [centroidCoordinates] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, binaryThreshold, areaThreshold);
+    [centroidCoordinates] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, binaryThreshold, volumeThreshold);
 %     save([savepath, 'IQf-', num2str(filenum)], 'IQf', "-v6")
 
-%     save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'centroidCoordinates', "-v6")
+% %     save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'centroidCoordinates', "-v6")
+    save([savepath, 'dataproc-', num2str(filenum)], 'centroidCoordinates', "-v6")
 
     allCentroids = [allCentroids; centroidCoordinates];
     disp(strcat("Centroid finding done: file ", num2str(filenum)))
 %     toc
 end
-save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'binaryThreshold', 'areaThreshold')
+save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'binaryThreshold', 'volumeThreshold')
 toc
 %% Plot the centroid density map
 
@@ -212,8 +215,8 @@ framerange = 1:size(IQf, 3);
 range = {zrange, xrange, framerange};
 imgRefinementFactor = [2, 2];
 binaryThreshold = 0.6;
-areaThreshold = 3;
-[centroidCoordinates] = localizeBubbles(IQf, PSF, range, imgRefinementFactor, binaryThreshold, areaThreshold);
+volumeThreshold = 3;
+[centroidCoordinates] = localizeBubbles(IQf, PSF, range, imgRefinementFactor, binaryThreshold, volumeThreshold);
 
 
 
@@ -320,7 +323,7 @@ close(vo);
 %% Centroid finding
 nf = size(bi, 3);        % # frames in the binary image stack
 centroids = cell(nf, 1); % initialize
-areaThreshold = 1;
+volumeThreshold = 1;
 
 parfor f = 1:nf
     cf = bi(:, :, f); % current frame
@@ -330,7 +333,7 @@ parfor f = 1:nf
 
     % Remove connected regions without enough pixels (probably noise)
     for si = numel(s):-1:1
-        if s(si).Area <= areaThreshold
+        if s(si).Area <= volumeThreshold
             s = s(1:si - 1);
         end
     end

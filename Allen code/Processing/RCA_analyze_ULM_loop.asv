@@ -66,7 +66,7 @@ allCentroids = {};
 %% Process the data
 tic
 % for filenum = 1:numFiles
-for filenum = 25:30
+for filenum = 25:29
     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
 %     IQr = LA_rollingFrames(IQ);                                                 % rolling method to get more effective frames
     
@@ -103,19 +103,23 @@ end
 save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'binaryThreshold', 'areaThreshold')
 toc
 %% Plot the centroid density map
-zpts = [];
-xpts = [];
 
-for f = 1:size(allCentroids, 1)
-    zpts = [zpts; allCentroids{f}(:, 1)];
-    xpts = [xpts; allCentroids{f}(:, 2)];
+xpts = [];
+ypts = [];
+zpts = [];
+for f = 1:length(allCentroids)
+    xpts = [xpts; allCentroids{f}(:, 1)];
+    ypts = [ypts; allCentroids{f}(:, 2)];
+    zpts = [zpts; allCentroids{f}(:, 3)];
 end
 
-hPixFactor = 10; % increase the pixel count by this factor in each dimension
-figure;
-h = histogram2(zpts, xpts, [zp * hPixFactor, xp * hPixFactor], 'DisplayStyle','tile');
-grid off
-colormap hot
+figure; scatter3(xpts, ypts, zpts)
+
+% hPixFactor = 10; % increase the pixel count by this factor in each dimension
+% figure;
+% h = histogram2(zpts, xpts, [zp * hPixFactor, xp * hPixFactor], 'DisplayStyle','tile');
+% grid off
+% colormap hot
 
 
 
