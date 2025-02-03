@@ -1,0 +1,177 @@
+v1f = abs(IQf(:, :, :, 1));
+vf = figure;
+V = volshow(v1f);
+
+V_old = V;
+V.Alphamap(1:100) = 0;          % Change transparency
+V.BackgroundColor = [1, 1, 1];  % Make background white
+V.ScaleFactors(3) = size(v1f, 1) / size(v1f, 3) * 8.8 / 8; % scale with # pixels and region size
+V.CameraPosition = V.CameraPosition ./ 2;
+
+cv = getframe(vf);     % get the current volume
+rgb = frame2im(cv);      % convert the frame to rgb data
+
+%% Make 3D video of the filtered IQ data
+savepath = 'D:\Allen\Data\01-29-2025 AZ001 ULM RC15gV\run 1 left eye\Processed Data\';
+
+datapath = 'D:\Allen\Data\01-29-2025 AZ001 ULM RC15gV\run 1 left eye\';
+numFiles = 96;
+
+vo = VideoWriter([savepath, 'IQf_10_150_buffer1']);
+
+vo.Quality = 100;
+vo.FrameRate = 30;
+open(vo);
+
+vf = figure;
+findfigs
+
+for f = 1:size(IQf, 4)
+%     for f = 1:100
+    v1f = abs(IQf(:, :, :, f));
+    
+    V = volshow(v1f);
+    
+%     V_old = V;
+    V.Alphamap(1:100) = 0;          % Change transparency
+    V.BackgroundColor = [1, 1, 1];  % Make background white
+    V.ScaleFactors(3) = size(v1f, 1) / size(v1f, 3) * 8.8 / 8; % scale with # pixels and region size
+    V.CameraPosition = V.CameraPosition ./ 2;
+    
+    cv = getframe(vf);     % get the current volume
+    rgb = frame2im(cv);      % convert the frame to rgb data
+
+    writeVideo(vo, rgb);
+end
+close(vo);
+    
+%% Make 2D video of the filtered IQ data
+savepath = 'D:\Allen\Data\01-29-2025 AZ001 ULM RC15gV\run 1 left eye\Processed Data\';
+
+datapath = 'D:\Allen\Data\01-29-2025 AZ001 ULM RC15gV\run 1 left eye\';
+numFiles = 96;
+
+vo = VideoWriter([savepath, 'IQf_10_150_buffer1_2D']);
+
+vo.Quality = 100;
+vo.FrameRate = 30;
+open(vo);
+
+vf = figure;
+findfigs
+
+for f = 1:size(IQf, 4)
+%     for f = 1:100
+    v1f = abs(IQf(40, :, :, f));
+    
+    imagesc(squeeze(v1f)')
+    
+    cv = getframe(vf);     % get the current volume
+    rgb = frame2im(cv);      % convert the frame to rgb data
+
+    writeVideo(vo, rgb);
+end
+close(vo);
+
+%% 2D video of all buffers with loop
+
+savepath = 'D:\Allen\Data\01-29-2025 AZ001 ULM RC15gV\run 1 left eye\Processed Data\';
+
+datapath = 'D:\Allen\Data\01-29-2025 AZ001 ULM RC15gV\run 1 left eye\';
+numFiles = 96;
+
+vo = VideoWriter([savepath, 'IQf_10_150_2D_allbuffers']);
+
+vo.Quality = 100;
+vo.FrameRate = 30;
+open(vo);
+
+vf = figure;
+findfigs
+
+filename_structure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
+
+% for filenum = 1:numFiles
+for filenum = 1:5
+    load([datapath, filename_structure, num2str(filenum)])
+    disp(strcat('File ', num2str(filenum), ' loaded.'))
+    
+    [PP, EVs, V_sort] = getSVs2D(IQ);
+
+    [IQf] = applySVs2D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
+    
+    for f = 1:size(IQf, 4)
+    %     for f = 1:100
+        v1f = abs(IQf(:, :, :, f));
+        
+        V = volshow(v1f);
+        
+    %     V_old = V;
+        V.Alphamap(1:100) = 0;          % Change transparency
+        V.BackgroundColor = [1, 1, 1];  % Make background white
+        V.ScaleFactors(3) = size(v1f, 1) / size(v1f, 3) * 8.8 / 8; % scale with # pixels and region size
+        V.CameraPosition = V.CameraPosition ./ 2;
+        
+        cv = getframe(vf);     % get the current volume
+        rgb = frame2im(cv);      % convert the frame to rgb data
+    
+        writeVideo(vo, rgb);
+    end
+end
+close(vo);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+%% with loop
+
+savepath = 'D:\Allen\Data\01-29-2025 AZ001 ULM RC15gV\run 1 left eye\Processed Data\';
+vo = VideoWriter([savepath, 'IQf_10_150']);
+
+vo.Quality = 100;
+vo.FrameRate = 10;
+open(vo);
+
+vf = figure;
+findfigs
+
+filename_structure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
+
+
+for filenum = 1:numFiles
+load([datapath, filename_structure, num2str(filenum)])
+disp(strcat('File ', num2str(filenum), ' loaded.'))
+
+% ADD SVD STEP HERE %%%%%%%%%%
+
+for f = 1:size(IQf, 4)
+%     for f = 1:100
+    v1f = abs(IQf(:, :, :, f));
+    
+    V = volshow(v1f);
+    
+%     V_old = V;
+    V.Alphamap(1:100) = 0;          % Change transparency
+    V.BackgroundColor = [1, 1, 1];  % Make background white
+    V.ScaleFactors(3) = size(v1f, 1) / size(v1f, 3) * 8.8 / 8; % scale with # pixels and region size
+    V.CameraPosition = V.CameraPosition ./ 2;
+    
+    cv = getframe(vf);     % get the current volume
+    rgb = frame2im(cv);      % convert the frame to rgb data
+
+    writeVideo(vo, rgb);
+end
+end
+close(vo);
