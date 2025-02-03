@@ -20,7 +20,7 @@ if isempty(pp)
 end
 
 %% Load parameters and make folder for saving the processed data
-datapath = 'D:\Allen\Data\01-29-2025 AZ001 ULM RC15gV\run 1 left eye\';
+datapath = 'G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\';
 load([datapath, 'params.mat'])
 
 IQfolderName = 'IQ Data - Verasonics Recon\'; % 'IQ data\'
@@ -32,32 +32,41 @@ filename_structure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2s
 %% Parameters for processing the data
 % Define various processing parameters
 % Singular value thresholds
-sv_threshold_lower = 10;
+sv_threshold_lower = 20;
 sv_threshold_upper = 150;
 
 % % Region of interest
-% zrange = 40:120;
-% xrange = 1:128;
-% % framerange = 1:size(IQf, 3);
-% % range = {zrange, xrange, framerange};
-% range = {zrange, xrange};
-% 
+xrange = 1:80;
+yrange = 1:80;
+zrange = 1:142;
+
+framerange = 1:200;
+% framerange = 1:size(IQf, 3);
+range = {xrange, yrange, zrange, framerange};
+
 % % Image refinement and localization parameters
-% imgRefinementFactor = [2, 2]; % z, x pixel refinement factor
-% binaryThreshold = 0.6;
-% areaThreshold = 3;
+imgRefinementFactor = [2, 2, 2]; % z, x pixel refinement factor
+binaryThreshold = 0.4;
+areaThreshold = 4;
 % 
-% % Load and refine simulated PSF
-% load('G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\PSF sim\PSF.mat')
+% Load and refine simulated PSF
+load('G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\PSF sim\PSF.mat', 'PSF')
+% figure; imagesc(squeeze(abs(PSF(40, :, :)))')
+
 % refPSF = imresize(PSF, [size(PSF, 1) * imgRefinementFactor(1), size(PSF, 2) * imgRefinementFactor(2)], 'bilinear');
 % refPSF = refPSF(190:210, 118:138);
+
+% temporary non-refined PSF...
+refPSF = PSF(35:46, 35:46, 95:105);
+psfFig = figure; psfV = volshow(abs(refPSF));
+psfV.BackgroundColor = [1, 1, 1];
 % 
-% allCentroids = {};
+allCentroids = {};
 
 %% Process the data
 tic
 % for filenum = 1:numFiles
-for filenum = 25
+for filenum = 25:30
     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
 %     IQr = LA_rollingFrames(IQ);                                                 % rolling method to get more effective frames
     
@@ -73,16 +82,19 @@ for filenum = 25
     % SVD proc part 1
 %     tic
     [PP, EVs, V_sort] = getSVs2D(IQ);
-%     disp('SVs decomposed')
+    disp('SVs decomposed')
 %     toc
     % SVD proc part 2
 %     tic
     [IQf] = applySVs2D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
-%     disp('SVD filtered images put together')
+    disp('SVD filtered images put together')
+%     toc
+
 %     save([savepath, 'Filtered-Data-', num2str(filenum)], 'IQr', 'PP', 'EVs', 'V_sort', 'IQf', "-v6")
-    [centroidCoordinates] = localizeBubbles(IQf, refPSF, range, imgRefinementFactor, binaryThreshold, areaThreshold);
+    [centroidCoordinates] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, binaryThreshold, areaThreshold);
 %     save([savepath, 'IQf-', num2str(filenum)], 'IQf', "-v6")
-    save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'centroidCoordinates', "-v6")
+
+%     save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'centroidCoordinates', "-v6")
 
     allCentroids = [allCentroids; centroidCoordinates];
     disp(strcat("Centroid finding done: file ", num2str(filenum)))

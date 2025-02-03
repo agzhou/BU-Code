@@ -75,7 +75,7 @@ for filenum = 1:numFiles
     [IQf] = applySVs1D(IQr, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
 %     disp('SVD filtered images put together')
 %     save([savepath, 'Filtered-Data-', num2str(filenum)], 'IQr', 'PP', 'EVs', 'V_sort', 'IQf', "-v6")
-    [centroidCoordinates] = localizeBubbles(IQf, refPSF, range, imgRefinementFactor, binaryThreshold, areaThreshold);
+    [centroidCoordinates] = localizeBubbles2D(IQf, refPSF, range, imgRefinementFactor, binaryThreshold, areaThreshold);
 %     save([savepath, 'IQf-', num2str(filenum)], 'IQf', "-v6")
     save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'centroidCoordinates', "-v6")
 

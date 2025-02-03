@@ -20,7 +20,7 @@ if isempty(pp)
 end
 
 %% Load parameters and make folder for saving the processed data
-datapath = 'D:\Allen\Data\01-29-2025 AZ001 ULM RC15gV\run 1 left eye\';
+datapath = 'G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\';
 load([datapath, 'params.mat'])
 
 IQfolderName = 'IQ Data - Verasonics Recon\'; % 'IQ data\'
@@ -32,33 +32,42 @@ filename_structure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2s
 %% Parameters for processing the data
 % Define various processing parameters
 % Singular value thresholds
-sv_threshold_lower = 10;
+sv_threshold_lower = 20;
 sv_threshold_upper = 150;
 
 % % Region of interest
-% zrange = 40:120;
-% xrange = 1:128;
-% % framerange = 1:size(IQf, 3);
-% % range = {zrange, xrange, framerange};
-% range = {zrange, xrange};
-% 
+xrange = 1:80;
+yrange = 1:80;
+zrange = 1:142;
+
+framerange = 1:200;
+% framerange = 1:size(IQf, 3);
+range = {xrange, yrange, zrange, framerange};
+
 % % Image refinement and localization parameters
-% imgRefinementFactor = [2, 2]; % z, x pixel refinement factor
-% binaryThreshold = 0.6;
-% areaThreshold = 3;
+imgRefinementFactor = [2, 2, 2]; % z, x pixel refinement factor
+binaryThreshold = 0.4;
+areaThreshold = 4;
 % 
-% % Load and refine simulated PSF
-% load('G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\PSF sim\PSF.mat')
+% Load and refine simulated PSF
+load('G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\PSF sim\PSF.mat', 'PSF')
+% figure; imagesc(squeeze(abs(PSF(40, :, :)))')
+
 % refPSF = imresize(PSF, [size(PSF, 1) * imgRefinementFactor(1), size(PSF, 2) * imgRefinementFactor(2)], 'bilinear');
 % refPSF = refPSF(190:210, 118:138);
+
+% temporary non-refined PSF...
+refPSF = PSF(35:46, 35:46, 95:105);
+psfFig = figure; psfV = volshow(abs(refPSF));
+psfV.BackgroundColor = [1, 1, 1];
 % 
-% allCentroids = {};
+allCentroids = {};
 
 %% Process the data
 tic
 % for filenum = 1:numFiles
-for filenum = 25
-    load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
+for filenum = 25:30
+    load([datapathtf, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
 %     IQr = LA_rollingFrames(IQ);                                                 % rolling method to get more effective frames
     
     IQ = squeeze(IData + 1i .* QData);   % Combine I and Q, which are saved separately. It's easier to save the big reconstructed data with savefast, which doesn't support complex values.
@@ -73,16 +82,19 @@ for filenum = 25
     % SVD proc part 1
 %     tic
     [PP, EVs, V_sort] = getSVs2D(IQ);
-%     disp('SVs decomposed')
+    disp('SVs decomposed')
 %     toc
     % SVD proc part 2
 %     tic
     [IQf] = applySVs2D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
-%     disp('SVD filtered images put together')
+    disp('SVD filtered images put together')
+%     toc
+
 %     save([savepath, 'Filtered-Data-', num2str(filenum)], 'IQr', 'PP', 'EVs', 'V_sort', 'IQf', "-v6")
-    [centroidCoordinates] = localizeBubbles(IQf, refPSF, range, imgRefinementFactor, binaryThreshold, areaThreshold);
+    [centroidCoordinates] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, binaryThreshold, areaThreshold);
 %     save([savepath, 'IQf-', num2str(filenum)], 'IQf', "-v6")
-    save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'centroidCoordinates', "-v6")
+
+%     save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'centroidCoordinates', "-v6")
 
     allCentroids = [allCentroids; centroidCoordinates];
     disp(strcat("Centroid finding done: file ", num2str(filenum)))
@@ -91,19 +103,23 @@ end
 save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'binaryThreshold', 'areaThreshold')
 toc
 %% Plot the centroid density map
-zpts = [];
-xpts = [];
 
-for f = 1:size(allCentroids, 1)
-    zpts = [zpts; allCentroids{f}(:, 1)];
-    xpts = [xpts; allCentroids{f}(:, 2)];
+xpts = [];
+ypts = [];
+zpts = [];
+for f = 1:length(allCentroids)
+    xpts = [xpts; allCentroids{f}(:, 1)];
+    ypts = [ypts; allCentroids{f}(:, 2)];
+    zpts = [zpts; allCentroids{f}(:, 3)];
 end
 
-hPixFactor = 10; % increase the pixel count by this factor in each dimension
-figure;
-h = histogram2(zpts, xpts, [zp * hPixFactor, xp * hPixFactor], 'DisplayStyle','tile');
-grid off
-colormap hot
+figure; scatter3(xpts, ypts, zpts)
+
+% hPixFactor = 10; % increase the pixel count by this factor in each dimension
+% figure;
+% h = histogram2(zpts, xpts, [zp * hPixFactor, xp * hPixFactor], 'DisplayStyle','tile');
+% grid off
+% colormap hot
 
 
 
