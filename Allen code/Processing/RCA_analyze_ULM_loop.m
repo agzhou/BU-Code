@@ -104,6 +104,7 @@ for filenum = 1:numFiles
 %     toc
 end
 save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'binaryThreshold', 'volumeThreshold')
+save([savepath, 'allCentroids'], 'allCentroids', "-v6")
 toc
 %% Plot the centroid density map
 
