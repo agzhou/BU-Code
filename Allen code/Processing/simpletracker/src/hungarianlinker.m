@@ -100,11 +100,14 @@ function [ target_indices target_distances unassigned_targets total_cost ] = hun
     % submission.
     [ target_indices total_cost ] = munkres(D);
     % Set unmatched sources to -1
+    target_indices = double(target_indices); % Allen change 2/4/25
     target_indices ( target_indices  == 0 ) = -1;
     
     % Collect distances
     target_distances = NaN(numel(target_indices), 1);
     for i = 1 : numel(target_indices)
+    % for i = 1 : size(target_indices, 1)
+
         if target_indices(i) < 0
             continue
         end
