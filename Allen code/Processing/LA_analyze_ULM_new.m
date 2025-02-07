@@ -206,7 +206,7 @@ figure; plot(1:mbci-1, bubbleCount)
 figure; imagesc(centerSum); colormap turbo
 
 %%
-test = centerSum;
+test = centerSum .^ 0.5;
 figure; imagesc(test); colormap turbo
 
 %% remove rectangular regions of the test plot

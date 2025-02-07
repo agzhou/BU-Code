@@ -1,3 +1,113 @@
+% Acknowledgement: using Jean-Yves Tinevez's simpletracker as a reference
+%%
+addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Processing\munkres')
+%% Define some threshold parameters
 res_assumption = 10; % assumption of how good the localization is (um)
-maxPairDist = (res_assumption / 1e6) / (1 / P.frameRate); % maximum velocity we can detect
-% maximum travel distance between frames (m)
+% maxDetectSpeed = (res_assumption / 1e6) / (1 / P.frameRate); % maximum bubble speed we can detect
+maxDistPerFrame = (res_assumption / 1e6); % maximum travel distance between frames (m)
+
+%%
+totalFrames = length(allCenters) * size(allCenters{1}, 3);
+
+% allCentersE = cell(totalFrames, 1); % elongated (take the frames from each buffer out individually)
+% 
+% caiGlobal = 1;
+% for cai = 1:length(allCenters) % cell array index
+%     for bfi = 1:size(allCenters{cai}, 3) % buffer frame index
+%         allCentersE{caiGlobal} = allCenters{cai}(:, :, bfi);
+%         caiGlobal = caiGlobal + 1;
+%     end
+%     
+% end
+% 
+% clear allCenters % save memory
+
+% figure; spy(currentFrame, 'ro')
+% hold on; spy(nextFrame, 'b*'); hold off
+%% Turn the logical matrices into coordinates
+totalFrames = length(allCenters) * size(allCenters{1}, 3);
+
+centerCoords = cell(totalFrames, 1);
+
+caiGlobal = 1;
+for cai = 1:length(allCenters)           % cell array index
+    for bfi = 1:size(allCenters{cai}, 3) % buffer frame index
+        [zc, xc] = find(allCenters{cai}(:, :, bfi));
+        centerCoords{caiGlobal} = [zc, xc];
+%         centerCoords{caiGlobal}  = find(allCenters{cai}(:, :, bfi));
+        caiGlobal = caiGlobal + 1;
+    end
+    
+end
+%%
+maxSpeedExpectedMMPerS = 100; % max expected flow speed [mm/s]
+timePerFrame = 1 / P.frameRate;
+maxDistPerFrameM = maxSpeedExpectedMMPerS * timePerFrame / 1000;
+maxPixelDistPerFrame = maxDistPerFrameM / (P.wl/2/imgRefinementFactor(1)); % HARD CODE THIS FOR TESTING NOW
+%%
+
+pairedBubbles = cell(totalFrames - 1, 1);
+costs = zeros(totalFrames - 1, 1); % cost vector for each frame pairing
+%%
+testFig = figure;
+parfor f = 1:totalFrames - 1
+% for f = 3
+    currentFrame = centerCoords{f};
+    nextFrame = centerCoords{f + 1};
+
+%     figure(testFig); scatter(currentFrame(:, 1), currentFrame(:, 2), 'ro')
+%     hold on; scatter(nextFrame(:, 1), nextFrame(:, 2), 'b*');
+%     title(strcat("Frame ", num2str(f)))
+
+    npC = size(currentFrame, 1); % number of points in the current frame
+    npN = size(nextFrame, 1);    % number of points in the next frame
+    D = NaN(npC, npN);
+
+    if npC > 1 && npN > 1
+        % Go through each current frame point and get the distance to each
+        % point in the next frame. Store in the distance matrix D.
+        for cpi = 1:npC % current point index
+    %     for cpi = 1
+            currentPoint = currentFrame(cpi, :);
+            d = nextFrame - currentPoint;
+            D(cpi, :) = sqrt(sum((d .^ 2), 2));
+    
+            D(D > maxPixelDistPerFrame) = Inf; 
+        end
+    
+        [assignment, cost] = munkres(D);  % Use the munkres.m function from Yi Cao (Matlab File Exchange)
+        costs(f) = cost;                  % update the overall cost vector
+    
+        [pzct, pxct] = find(assignment); % temporarily store the z and x coords from the paired point as stored in the "assignment" matrix
+        pairedBubbles{f} = [pzct, pxct];
+    
+%         % Plot a line for each pair
+%         for npb = 1:size(pairedBubbles{f}, 1)
+%             pairInd = pairedBubbles{f}(npb, :);
+%             ZVecTemp = [currentFrame(pairInd(1), 1), nextFrame(pairInd(2), 1)];
+%             XVecTemp = [currentFrame(pairInd(1), 2), nextFrame(pairInd(2), 2)];
+%             line(ZVecTemp, XVecTemp, 'LineWidth', 1.5)
+%         end
+        
+    end
+%     hold off
+end
+
+%% Plot density map with the paired bubbles only
+bSum = zeros(size(allCenters{1}, 1), size(allCenters{1}, 2));
+bSumFig = figure; colormap turbo
+hold on
+for f = 1:length(pairedBubbles)
+    coordsCF = centerCoords{f}; % coords for the current frame
+%     for npb = 1:size(pairedBubbles{f}, 1)
+    
+    keepBubblesCF = pairedBubbles{f}(:, 1); % which bubbles (indices) to keep for the current frame. Could do it more efficiently or correctly
+    for kbcfi = keepBubblesCF % index for each kept bubble in the current frame
+        kbcfCoord = coordsCF(kbcfi, :);
+        bSum(kbcfCoord(1), kbcfCoord(2)) = bSum(kbcfCoord(1), kbcfCoord(2)) + 1; % Update the count for that pixel
+    end
+    figure(bSumFig)
+    imagesc(bSum)
+
+end
+hold off
