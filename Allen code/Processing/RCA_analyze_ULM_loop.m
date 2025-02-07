@@ -67,8 +67,8 @@ allCentroids = {};
 
 %% Process the data
 tic
-for filenum = 1:numFiles
-% for filenum = 25:25
+% for filenum = 1:numFiles
+for filenum = 25:25
     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
 %     IQr = LA_rollingFrames(IQ);                                                 % rolling method to get more effective frames
     
@@ -97,14 +97,14 @@ for filenum = 1:numFiles
 %     save([savepath, 'IQf-', num2str(filenum)], 'IQf', "-v6")
 
 % %     save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'centroidCoordinates', "-v6")
-    save([savepath, 'dataproc-', num2str(filenum)], 'centroidCoordinates', "-v6")
+%     save([savepath, 'dataproc-', num2str(filenum)], 'centroidCoordinates', "-v6")
 
     allCentroids = [allCentroids; centroidCoordinates];
     disp(strcat("Centroid finding done: file ", num2str(filenum)))
 %     toc
 end
-save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'binaryThreshold', 'volumeThreshold')
-save([savepath, 'allCentroids'], 'allCentroids', "-v6")
+% save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'binaryThreshold', 'volumeThreshold')
+% save([savepath, 'allCentroids'], 'allCentroids', "-v6")
 toc
 %% Plot the centroid density map
 

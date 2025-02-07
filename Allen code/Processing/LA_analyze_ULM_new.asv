@@ -20,12 +20,13 @@ if isempty(pp)
 end
 
 %% Load parameters and make folder for saving the processed data
-% datapath = 'G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\';
-datapath = 'D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\';
+datapath = 'F:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\';
+% datapath = 'D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\';
 load([datapath, 'params.mat'])
 saveFolderName = 'Processed Data\';
 mkdir([datapath, saveFolderName])
 savepath = [datapath, saveFolderName];
+extHDsavepath = 'K:\Allen data backup\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\Processed Data\';
 
 filename_structure = [P.Trans.name, '-IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.PRF), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-'];
 %% Parameters for processing the data
@@ -47,19 +48,48 @@ XCThreshold = 0.4;
 areaThreshold = 3;
 
 % Load and refine simulated PSF
-% load('G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\PSF sim\PSF.mat')
-load('D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\PSF sim\PSF.mat')
+load('F:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\PSF sim\PSF.mat')
+% load('D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\PSF sim\PSF.mat')
 PSFs = PSF(90:110, 58:71); % PSF section, hard code this for now
+% PSFs = PSF(96:105, 62:67); % PSF section, hard code this for now
 % refPSF = imresize(PSF, [size(PSF, 1) * imgRefinementFactor(1), size(PSF, 2) * imgRefinementFactor(2)], 'bilinear');
 refPSF = imresize(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) * imgRefinementFactor(2)], 'bilinear');
+
 % [~, refPSF_center] = max(abs(refPSF), [], 'all');
 % refPSF = refPSF(190:210, 118:138);
 
 allCenters = {};
 
+%% Make video of the filtered IQ data with bubbles
+vo = VideoWriter([savepath, 'video_10_80']); % video object
+
+vo.Quality = 100;
+vo.FrameRate = 30;
+open(vo);
+
+vf = figure;
+% findfigs
+
+% The resizing to account for the XC padding is not perfect
+zOffset = size(refPSF, 1);
+if mod(zOffset, 2) ~= 0
+    zOffset = zOffset + 1;
+end
+xOffset = size(refPSF, 2);
+if mod(xOffset, 2) ~= 0
+    xOffset = xOffset + 1;
+end
+
+% test = tc(zOffset/2 : size(tc, 1) - zOffset/2, xOffset/2 : size(tc, 2) - xOffset/2);
+% need to do this more rigorously
+xCorrection = 3;
+zCorrection = -10;
+
 %% Process the data
 tic
 % for filenum = 1:numFiles
+fileGlobalIndex = 1;
+
 for filenum = 1:1
 %     load([datapath, 'IQ data\', filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
     load([datapath, 'IQ data gain -0.5\', filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
@@ -81,29 +111,69 @@ for filenum = 1:1
     [IQf] = applySVs1D(IQr, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
 %     disp('SVD filtered images put together')
 %     save([savepath, 'Filtered-Data-', num2str(filenum)], 'IQr', 'PP', 'EVs', 'V_sort', 'IQf', "-v6")
-    [centers, refIQs] = localizeBubbles2D_new(IQf, refPSF, range, imgRefinementFactor, XCThreshold, areaThreshold);
-%     save([savepath, 'IQf-', num2str(filenum)], 'IQf', "-v6")
 
-%     save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'centroidCoordinates', "-v6")
+    [centers, refIQs, XC] = localizeBubbles2D_new(IQf, refPSF, range, imgRefinementFactor, XCThreshold, areaThreshold);
+
+%     save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'refIQs', 'XC', "-v6")
+%     save([savepath, 'centers-', num2str(filenum)], 'centers', "-v6")
+    save([savepath, 'dataproc-', num2str(filenum)], 'centers', 'IQf', "-v6")
 
     allCenters{filenum} = centers;
     disp(strcat("Centroid finding done: file ", num2str(filenum)))
+
+    for f = 1:size(refIQs, 3)
+
+        td = abs(refIQs(:, :, f)); % temp, data for 1 frame
+        tc = centers(:, :, f); % temp, centers for 1 frame
+        
+        tcOffset = tc(zOffset/2 + zCorrection: size(tc, 1) - zOffset/2 + zCorrection, xOffset/2 + xCorrection : size(tc, 2) - xOffset/2 + xCorrection);
+        
+        figure(vf)
+        imagesc(td)
+        hold on
+        spy(tcOffset, 'ro') % Plot centers on top
+        hold off
+        
+        cp = getframe(vf);     % get the current plane
+        rgb = frame2im(cp);      % convert the frame to rgb data
+    
+        writeVideo(vo, rgb);
+    end
 %     toc
 end
 % save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'binaryThreshold', 'areaThreshold')
 toc
 
+close(vo); % Close VideoWriter
 %% Test plotting the centroids on top of the filtered IQ data
+% figure; imagesc(XC(:, :, 1)); hold on; spy(centers(:, :, 1), 'ro'); hold off
+
 figure;
 plotTestInd = 1;
 td = abs(refIQs(:, :, plotTestInd)); % test data
-tc % test centers
-tdrs = imresize(, [size(refIQs(:, :, plotTestInd), 1), size(refIQs(:, :, plotTestInd), 2)])
-imagesc()
+tc = centers(:, :, plotTestInd); % test centers
 
+% zOffset = size(XC, 1) - size(td, 1);
+zOffset = size(refPSF, 1);
+if mod(zOffset, 2) ~= 0
+    zOffset = zOffset + 1;
+end
+% xOffset = size(XC, 2) - size(td, 2);
+xOffset = size(refPSF, 2);
+if mod(xOffset, 2) ~= 0
+    xOffset = xOffset + 1;
+end
+
+% test = tc(zOffset/2 : size(tc, 1) - zOffset/2, xOffset/2 : size(tc, 2) - xOffset/2);
+% need to do this more rigorously
+xCorrection = 3;
+zCorrection = -10;
+tcOffset = tc(zOffset/2 + zCorrection: size(tc, 1) - zOffset/2 + zCorrection, xOffset/2 + xCorrection : size(tc, 2) - xOffset/2 + xCorrection);
+
+imagesc(td)
 % imagesc(abs(XC(:, :, plotTestInd)))
 hold on
-spy(, 'ro')
+spy(tcOffset, 'ro') % Plot centers on top
 hold off
 %% Plot the centroid density map
 
