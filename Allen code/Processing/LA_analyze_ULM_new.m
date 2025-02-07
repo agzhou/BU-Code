@@ -20,101 +20,159 @@ if isempty(pp)
 end
 
 %% Load parameters and make folder for saving the processed data
-datapath = 'G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\';
+% datapath = 'G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\';
+datapath = 'D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\';
 load([datapath, 'params.mat'])
-
-IQfolderName = 'IQ Data - Verasonics Recon\'; % 'IQ data\'
 saveFolderName = 'Processed Data\';
 mkdir([datapath, saveFolderName])
 savepath = [datapath, saveFolderName];
 
-filename_structure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
+filename_structure = [P.Trans.name, '-IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.PRF), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-'];
 %% Parameters for processing the data
 % Define various processing parameters
 % Singular value thresholds
-sv_threshold_lower = 20;
-sv_threshold_upper = 150;
+sv_threshold_lower = 10;
+sv_threshold_upper = 80;
 
-% % Region of interest
-xrange = 1:80;
-yrange = 1:80;
-zrange = 1:142;
-
-framerange = 1:200;
+% Region of interest
+zrange = 40:120;
+xrange = 1:128;
 % framerange = 1:size(IQf, 3);
-range = {xrange, yrange, zrange, framerange};
+% range = {zrange, xrange, framerange};
+range = {zrange, xrange};
 
-% % Image refinement and localization parameters
-imgRefinementFactor = [2, 2, 2]; % z, x pixel refinement factor
-binaryThreshold = 0.4;
-areaThreshold = 4;
-% 
+% Image refinement and localization parameters
+imgRefinementFactor = [10, 10]; % z, x pixel refinement factor
+XCThreshold = 0.4;
+areaThreshold = 3;
+
 % Load and refine simulated PSF
-load('G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\PSF sim\PSF.mat', 'PSF')
-% figure; imagesc(squeeze(abs(PSF(40, :, :)))')
-
+% load('G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\PSF sim\PSF.mat')
+load('D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\PSF sim\PSF.mat')
+PSFs = PSF(90:110, 58:71); % PSF section, hard code this for now
+% PSFs = PSF(96:105, 62:67); % PSF section, hard code this for now
 % refPSF = imresize(PSF, [size(PSF, 1) * imgRefinementFactor(1), size(PSF, 2) * imgRefinementFactor(2)], 'bilinear');
+refPSF = imresize(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) * imgRefinementFactor(2)], 'bilinear');
+
+% [~, refPSF_center] = max(abs(refPSF), [], 'all');
 % refPSF = refPSF(190:210, 118:138);
 
-% temporary non-refined PSF...
-refPSF = PSF(35:46, 35:46, 95:105);
-psfFig = figure; psfV = volshow(abs(refPSF));
-psfV.BackgroundColor = [1, 1, 1];
-% 
-allCentroids = {};
+allCenters = {};
 
 %% Process the data
 tic
 % for filenum = 1:numFiles
-for filenum = 25:29
-    load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
+for filenum = 1:1
+%     load([datapath, 'IQ data\', filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
+    load([datapath, 'IQ data gain -0.5\', filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
 %     IQr = LA_rollingFrames(IQ);                                                 % rolling method to get more effective frames
-    
-    IQ = squeeze(IData + 1i .* QData);   % Combine I and Q, which are saved separately. It's easier to save the big reconstructed data with savefast, which doesn't support complex values.
-    clear IData QData
-    
-%     if filenum == 1
-%         [zp, xp, nf] = size(IQr);
-%         range{end + 1} = 1:nf; % set frame range after rolling on the first file
-%         
-%     end
+    IQr = squeeze(sum(IQ, 3)); % coherent sum across angles
+    if filenum == 1
+        [zp, xp, nf] = size(IQr);
+        range{3} = 1:nf; % set frame range after rolling on the first file
+        
+    end
 
     % SVD proc part 1
 %     tic
-    [PP, EVs, V_sort] = getSVs2D(IQ);
-    disp('SVs decomposed')
+    [PP, EVs, V_sort] = getSVs1D(IQr);
+%     disp('SVs decomposed')
 %     toc
     % SVD proc part 2
 %     tic
-    [IQf] = applySVs2D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
-    disp('SVD filtered images put together')
-%     toc
-
+    [IQf] = applySVs1D(IQr, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
+%     disp('SVD filtered images put together')
 %     save([savepath, 'Filtered-Data-', num2str(filenum)], 'IQr', 'PP', 'EVs', 'V_sort', 'IQf', "-v6")
-    [centroidCoordinates] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, binaryThreshold, areaThreshold);
+    [centers, refIQs, XC] = localizeBubbles2D_new(IQf, refPSF, range, imgRefinementFactor, XCThreshold, areaThreshold);
 %     save([savepath, 'IQf-', num2str(filenum)], 'IQf', "-v6")
 
 %     save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'centroidCoordinates', "-v6")
 
-    allCentroids = [allCentroids; centroidCoordinates];
+    allCenters{filenum} = centers;
     disp(strcat("Centroid finding done: file ", num2str(filenum)))
 %     toc
 end
-save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'binaryThreshold', 'areaThreshold')
+% save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'binaryThreshold', 'areaThreshold')
 toc
-%% Plot the centroid density map
 
-xpts = [];
-ypts = [];
-zpts = [];
-for f = 1:length(allCentroids)
-    xpts = [xpts; allCentroids{f}(:, 1)];
-    ypts = [ypts; allCentroids{f}(:, 2)];
-    zpts = [zpts; allCentroids{f}(:, 3)];
+%% Test plotting the centroids on top of the filtered IQ data
+% figure; imagesc(XC(:, :, 1)); hold on; spy(centers(:, :, 1), 'ro'); hold off
+
+figure;
+plotTestInd = 1;
+td = abs(refIQs(:, :, plotTestInd)); % test data
+tc = centers(:, :, plotTestInd); % test centers
+% tdrs = imresize(td, [size(tc, 1), size(tc, 2)]); % test data resized
+% imagesc(tdrs)
+
+% [zpeak, xpeak] = find(XC(:, :, plotTestInd) ==max(XC(:, :, plotTestInd), [], 'all')); % Account for the padding that normxcorr2 adds.
+% 
+% zoffSet = zpeak-size(td,1);
+% xoffSet = xpeak-size(td,2);
+zOffset = size(XC, 1) - size(td, 1);
+if mod(zOffset, 2) ~= 0
+    zOffset = zOffset + 1;
+end
+xOffset = size(XC, 2) - size(td, 2);
+if mod(xOffset, 2) ~= 0
+    xOffset = xOffset + 1;
 end
 
-figure; scatter3(xpts, ypts, zpts)
+% test = tc(zOffset/2 : size(tc, 1) - zOffset/2, xOffset/2 : size(tc, 2) - xOffset/2);
+% need to do this more rigorously
+xCorrection = 3;
+zCorrection = -10;
+tcOffset = tc(zOffset/2 + zCorrection: size(tc, 1) - zOffset/2 + zCorrection, xOffset/2 + xCorrection : size(tc, 2) - xOffset/2 + xCorrection);
 
+imagesc(td)
+% imagesc(abs(XC(:, :, plotTestInd)))
+hold on
+spy(tcOffset, 'ro') % Plot centers on top
+hold off
+%% Plot the centroid density map
+
+centerSum = sum(allCenters{1}, 3);
+for ci = 2:length(allCenters)
+    centerSum = centerSum + sum(allCenters{ci}, 3);
+end
+
+%% Calculate bubble count
+bubbleCount = zeros(length(allCenters) * size(allCenters{1}, 3), 1); % numFiles/# buffers x # frames per buffer. Count of bubbles in each frame
+mbci = 1; % microbubble count index
+for ci = 1:length(allCenters)
+    bufTemp = allCenters{ci};
+
+    for f = 1:size(bufTemp, 3)
+        bubbleCount(mbci) = sum(bufTemp(:, :, f), 'all');
+        mbci = mbci + 1;
+    end
+end
+totalCount = sum(centerSum, 'all');
+
+figure; plot(1:mbci-1, bubbleCount)
+%%
+figure; imagesc(centerSum); colormap turbo
+
+%%
+test = centerSum;
+figure; imagesc(test); colormap turbo
+
+%% remove rectangular regions of the test plot
+d = drawrectangle
+rmvp = round(d.Position);
+test(rmvp(2) : rmvp(2) + rmvp(4), rmvp(1) : rmvp(1) + rmvp(3)) = 0;
+imagesc(test); colormap turbo
+%%
+test = centerSum; test(test > 40) = 40;
+figure; imagesc(test(117:end, :)); colormap hot
+% zpts = [];
+% xpts = [];
+% 
+% for f = 1:size(allCentroids, 1)
+%     zpts = [zpts; allCentroids{f}(:, 1)];
+%     xpts = [xpts; allCentroids{f}(:, 2)];
+% end
+% 
 % hPixFactor = 10; % increase the pixel count by this factor in each dimension
 % figure;
 % h = histogram2(zpts, xpts, [zp * hPixFactor, xp * hPixFactor], 'DisplayStyle','tile');
