@@ -33,6 +33,8 @@ activate
 %% Load parameters, create save path, choose some options for recon
 clearvars
 
+addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Reconstruction') % path for DAS_to_FMAS
+
 Mcr_datapath = 'G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\';
 load([Mcr_datapath, 'params.mat']) % load acquisition parameters
 
@@ -158,8 +160,10 @@ TX = rmfield(TX_acq, TX_fn(6:14));
 numElements = Trans.numelements./2; % the structure gives # row elements + # column elements
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% PData.PDelta = [Trans.spacing, Trans.spacing, 0.5]; % Spacing between pixels in x, y, z, in wavelengths
-PData.PDelta = [0.5, 0.5, 0.5]; % Spacing between pixels in x, y, z, in wavelengths
+PData.PDelta = [Trans.spacing, Trans.spacing, 0.5]; % Spacing between pixels in x, y, z, in wavelengths
+% PData.PDelta = [0.5, 0.5, 0.5]; % Spacing between pixels in x, y, z, in wavelengths
+% PData.PDelta = [1, 1, 1]; % Spacing between pixels in x, y, z, in wavelengths
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 PData.Coord = 'rectangular'; % rectangular coords, could change to polar or spherical
 % Set PData array dimensions --> # of rows, columns, sections (planes
@@ -326,7 +330,7 @@ for Mcr_filenum = 1:Mcr_numFiles
     
     toc
 
-    clear IData QData RcvData
+    clear IData QData RcvData IQ_FMAS
 end
 
 %% saving speed test
