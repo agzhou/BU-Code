@@ -3,6 +3,11 @@
 
 % function [img_dn] = NLMfilter_pixelwise(img, M, d)
 %%
+    if ~isreal(img)
+        warning('img input is not real, using magnitude')
+        img = abs(img);
+    end
+
     imgSize = size(img);
 
     img_dn = zeros(imgSize);
@@ -19,7 +24,7 @@
     %%%%%%%%%%%%%%%%%%%
 
     %%
-    for p = 1:imgSize(1) * imgSize(2) % go through every pixel "x_i". p is the vectorized pixel index
+    for p = 1:imgSize(1) * imgSize(2) % go through every pixel "x_i" in the input image. p is the vectorized pixel index
 %     for p = 1
         pixValue = imgv(p);
 

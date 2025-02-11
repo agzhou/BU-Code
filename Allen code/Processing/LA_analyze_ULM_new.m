@@ -113,11 +113,18 @@ for filenum = 1:1
 %     disp('SVD filtered images put together')
 %     save([savepath, 'Filtered-Data-', num2str(filenum)], 'IQr', 'PP', 'EVs', 'V_sort', 'IQf', "-v6")
 
-    [centers, refIQs, XC] = localizeBubbles2D_new(IQf, refPSF, range, imgRefinementFactor, XCThreshold, areaThreshold);
+    % Denoise with NLM filter
+    IQf_dn = zeros(size(IQf));
+    for fr = 1:size(IQf, 3)
+        IQf_dn(:, :, fr) = imnlmfilt(abs(IQf(:, :, fr)));
+    end
+    [centers, refIQs, XC] = localizeBubbles2D_new(IQf_dn, refPSF, range, imgRefinementFactor, XCThreshold, areaThreshold);
+
+%     [centers, refIQs, XC] = localizeBubbles2D_new(IQf, refPSF, range, imgRefinementFactor, XCThreshold, areaThreshold);
 
 %     save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'refIQs', 'XC', "-v6")
 %     save([savepath, 'centers-', num2str(filenum)], 'centers', "-v6")
-    save([savepath, 'dataproc-', num2str(filenum)], 'centers', 'IQf', "-v6")
+%     save([savepath, 'dataproc-', num2str(filenum)], 'centers', 'IQf', "-v6")
 
     allCenters{filenum} = centers;
     disp(strcat("Centroid finding done: file ", num2str(filenum)))
