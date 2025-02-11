@@ -119,7 +119,7 @@ for filenum = 1:numFiles
     for fr = 1:size(IQf, 3)
         IQf_dn(:, :, fr) = imnlmfilt(abs(IQf(:, :, fr)));
     end
-    [centers, refIQs, XC] = localizeBubbles2D_new(IQf_dn, refPSF, range, imgRefinementFactor, XCThreshold, areaThreshold);
+    [centers, refIQs, XC] = localizeBubbles2D(IQf_dn, refPSF, range, imgRefinementFactor, XCThreshold, areaThreshold);
 
 %     [centers, refIQs, XC] = localizeBubbles2D_new(IQf, refPSF, range, imgRefinementFactor, XCThreshold, areaThreshold);
 
