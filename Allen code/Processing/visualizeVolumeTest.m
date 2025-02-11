@@ -74,19 +74,24 @@ end
 close(vo);
 
 %% 2D video of all buffers with loop
+addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Processing')
 
-savepath = 'G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\Processed Data\';
+% savepath = 'G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\Processed Data\';
+savepath = 'F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\FMAS Processed Data\';
 mkdir(savepath)
 
+% datapath = 'G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\IQ Data - Verasonics Recon\';
 datapath = 'G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\IQ Data - Verasonics Recon\';
+
 numFiles = 96;
 
 % add a param loading line
+load('G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\params.mat')
 
 sv_threshold_lower = 20;
 sv_threshold_upper = 150;
 
-vo = VideoWriter([savepath, 'IQf_20_150_2D_xz_allbuffers']);
+vo = VideoWriter([savepath, 'FMAS_IQf_20_150_2D_xz_allbuffers']);
 
 vo.Quality = 100;
 vo.FrameRate = 100;
@@ -108,8 +113,8 @@ vf.Position(4) = ceil(vf.Position(3) * hwRatio);
 
 filename_structure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 
-for filenum = 1:numFiles
-% for filenum = 25:26
+% for filenum = 1:numFiles
+for filenum = 40:40
     load([datapath, filename_structure, num2str(filenum)])
     disp(strcat("File ", num2str(filenum), " loaded."))
 
@@ -133,7 +138,7 @@ for filenum = 1:numFiles
         writeVideo(vo, rgb);
     end
 
-    clear IQ IQf PP EVs V_sort
+%     clear IQ IQf PP EVs V_sort
 end
 close(vo);
 

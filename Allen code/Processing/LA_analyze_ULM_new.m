@@ -20,10 +20,10 @@ if isempty(pp)
 end
 
 %% Load parameters and make folder for saving the processed data
-% datapath = 'F:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\';
-datapath = 'D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\';
+datapath = 'F:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\';
+% datapath = 'D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\';
 load([datapath, 'params.mat'])
-saveFolderName = 'Processed Data\';
+saveFolderName = 'Processed Data with NLM\';
 mkdir([datapath, saveFolderName])
 savepath = [datapath, saveFolderName];
 extHDsavepath = 'K:\Allen data backup\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\Processed Data\';
@@ -48,8 +48,8 @@ XCThreshold = 0.4;
 areaThreshold = 3;
 
 % Load and refine simulated PSF
-% load('F:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\PSF sim\PSF.mat')
-load('D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\PSF sim\PSF.mat')
+load('F:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\PSF sim\PSF.mat')
+% load('D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\PSF sim\PSF.mat')
 PSFs = PSF(90:110, 58:71); % PSF section, hard code this for now
 % PSFs = PSF(96:105, 62:67); % PSF section, hard code this for now
 % refPSF = imresize(PSF, [size(PSF, 1) * imgRefinementFactor(1), size(PSF, 2) * imgRefinementFactor(2)], 'bilinear');
@@ -68,7 +68,8 @@ vo.FrameRate = 30;
 open(vo);
 
 vf = figure;
-% findfigs
+colormap gray
+findfigs
 
 % The resizing to account for the XC padding is not perfect
 zOffset = size(refPSF, 1);
@@ -87,11 +88,11 @@ zCorrection = -10;
 
 %% Process the data
 tic
-
+numFiles = 315;
 fileGlobalIndex = 1;
 
-% for filenum = 1:numFiles
-for filenum = 1:1
+for filenum = 1:numFiles
+% for filenum = 1:1
 %     load([datapath, 'IQ data\', filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
     load([datapath, 'IQ data gain -0.5\', filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
 %     IQr = LA_rollingFrames(IQ);                                                 % rolling method to get more effective frames
@@ -124,41 +125,42 @@ for filenum = 1:1
 
 %     save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'refIQs', 'XC', "-v6")
 %     save([savepath, 'centers-', num2str(filenum)], 'centers', "-v6")
-%     save([savepath, 'dataproc-', num2str(filenum)], 'centers', 'IQf', "-v6")
+    save([savepath, 'dataproc-', num2str(filenum)], 'centers', 'IQf', "-v6")
 
     allCenters{filenum} = centers;
     disp(strcat("Centroid finding done: file ", num2str(filenum)))
 
     % Write the frames to the video
-%     for f = 1:size(refIQs, 3)
-%         td = abs(refIQs(:, :, f)); % temp, data for 1 frame
-%         tc = centers(:, :, f); % temp, centers for 1 frame
-%         
-%         tcOffset = tc(zOffset/2 + zCorrection: size(tc, 1) - zOffset/2 + zCorrection, xOffset/2 + xCorrection : size(tc, 2) - xOffset/2 + xCorrection);
-%         
-%         figure(vf)
-%         imagesc(td)
-%         hold on
-%         spy(tcOffset, 'ro') % Plot centers on top
-%         hold off
-%         
-%         % add title
-%         title(strcat("Frame ", num2str(fileGlobalIndex)))
-% 
-%         cp = getframe(vf);     % get the current plane
-%         rgb = frame2im(cp);      % convert the frame to rgb data
-%     
-%         writeVideo(vo, rgb);
-%         
-%         fileGlobalIndex = fileGlobalIndex + 1;
-%     end
+    for f = 1:size(refIQs, 3)
+        td = abs(refIQs(:, :, f)); % temp, data for 1 frame
+        tc = centers(:, :, f); % temp, centers for 1 frame
+        
+        tcOffset = tc(zOffset/2 + zCorrection: size(tc, 1) - zOffset/2 + zCorrection, xOffset/2 + xCorrection : size(tc, 2) - xOffset/2 + xCorrection);
+        
+        figure(vf)
+%         findfigs %%%%%%%%%%
+        imagesc(td)
+        hold on
+        spy(tcOffset, 'ro') % Plot centers on top
+        hold off
+        
+        % add title
+        title(strcat("Frame ", num2str(fileGlobalIndex)))
 
-%     toc
+        cp = getframe(vf);     % get the current plane
+        rgb = frame2im(cp);      % convert the frame to rgb data
+    
+        writeVideo(vo, rgb);
+        
+        fileGlobalIndex = fileGlobalIndex + 1;
+    end
+
+    toc
 end
-% save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'binaryThreshold', 'areaThreshold')
+save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'XCThreshold', 'areaThreshold')
 toc
 
-% close(vo); % Close VideoWriter
+close(vo); % Close VideoWriter
 %% Test plotting the centroids on top of the filtered IQ data
 % figure; imagesc(XC(:, :, 1)); hold on; spy(centers(:, :, 1), 'ro'); hold off
 

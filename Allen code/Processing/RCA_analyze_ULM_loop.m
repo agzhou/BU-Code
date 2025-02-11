@@ -29,6 +29,7 @@ IQfolderName = 'IQ Data - Verasonics Recon\'; % 'IQ data\'
 saveFolderName = 'Processed Data\';
 mkdir([datapath, saveFolderName])
 savepath = [datapath, saveFolderName];
+% savepath = 'F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\FMAS Processed Data\';
 
 filename_structure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 %% Parameters for processing the data
