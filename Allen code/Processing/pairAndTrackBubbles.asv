@@ -2,6 +2,11 @@
 %%
 addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Processing\munkres')
 load('D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\params.mat')
+% [add a line to load proc_params.mat]
+
+if ~exist('allCenters', 'var')
+    load('D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\Processed Data\allCenters_02_10_2025_SVs10to80_0p4XCThreshold_10refinementfactor.mat')
+end
 %% Define some threshold parameters
 % res_assumption = 10; % assumption of how good the localization is (um)
 % maxDetectSpeed = (res_assumption / 1e6) / (1 / P.frameRate); % maximum bubble speed we can detect
@@ -43,61 +48,141 @@ for cai = 1:length(allCenters)           % cell array index
 end
 
 img_size = size(allCenters{1});
-clear bfi cai caiGlobal allCenters
-%%
-maxSpeedExpectedMMPerS = 100; % max expected flow speed [mm/s]
-timePerFrame = 1 / P.frameRate;
-maxDistPerFrameM = maxSpeedExpectedMMPerS * timePerFrame / 1000;
-maxPixelDistPerFrame = maxDistPerFrameM / (P.wl/2/imgRefinementFactor(1)); % HARD CODE THIS FOR TESTING NOW
+clear bfi cai caiGlobal allCenters xc zc
 
-pairedBubbles = cell(totalFrames - 1, 1);
-costs = zeros(totalFrames - 1, 1); % cost vector for each frame pairing
+%% Calculate bubble count
+bubbleCount = zeros(length(centerCoords), 1); % numFiles/# buffers x # frames per buffer. Count of bubbles in each frame
+centerCoords_corrected = centerCoords;
+% mbci = 1; % microbubble count index
+parfor fi = 1:length(centerCoords) % frame index
+% for fi = 1
+    bufTemp = centerCoords{fi};
+
+    % Some error that makes every pixel a bubble
+    if size(bufTemp, 1) >= img_size(1) * img_size(2)
+        centerCoords_corrected{fi} = NaN;
+        bubbleCount(fi) = 0;
+    else
+        bubbleCount(fi) = size(bufTemp, 1);
+    end
+%     bubbleCount(mbci) = sum(bufTemp(:, :, f), 'all');
+%     mbci = mbci + 1;
+end
+
+totalCount = sum(bubbleCount, 'all');
+
+% Plot the bubble count
+figure; plot(1:length(bubbleCount), bubbleCount, '.')
+title('Bubble count')
+xlabel('Frame number')
+ylabel('Bubble count')
+
+%% Max speed (distance per frame) threshold and initialize variables
+maxSpeedExpectedMMPerS = 100;   % max expected flow speed [mm/s]
+timePerFrame = 1 / P.frameRate; % time elapsed per frame [s]
+maxDistPerFrameM = (maxSpeedExpectedMMPerS / 1000) * timePerFrame;
+pixelsPerM = 2 / P.wl * imgRefinementFactor(1);
+% maxPixelDistPerFrame = maxDistPerFrameM / (P.wl/2/imgRefinementFactor(1)); % HARD CODE THIS FOR TESTING NOW
+maxPixelDistPerFrame = maxDistPerFrameM * pixelsPerM;
+
+pairedBubbles = cell(totalFrames - 1, 1);   % Initialize cell vector of paired bubble indices
+
 %% Calculate pairing
-testFig = figure;
+% testFig = figure;
+
+ubS = cell(totalFrames - 1, 1);             % unassigned bubbles from the source frames
+ubT = cell(totalFrames - 1, 1);             % unassigned bubbles from the target frames
+
 parfor f = 1:totalFrames - 1
-% for f = 3
-    currentFrame = centerCoords{f};
-    nextFrame = centerCoords{f + 1};
+% for f = 18
+    sourceFrame = centerCoords_corrected{f};
+    targetFrame = centerCoords_corrected{f + 1};
 
 
 
-    npC = size(currentFrame, 1); % number of points in the current frame
-    npN = size(nextFrame, 1);    % number of points in the next frame
-    D = NaN(npC, npN);
+    nbS = size(sourceFrame, 1);             % number of bubbles in the source frame
+    nbT = size(targetFrame, 1);             % number of bubbles in the target frame
+    D = NaN(nbS, nbT);
 
-    if npC > 1 && npN > 1
-        % Go through each current frame point and get the distance to each
-        % point in the next frame. Store in the distance matrix D.
-        for cpi = 1:npC % current point index
+    if nbS > 1 && nbT > 1
+        % Go through each source frame point and get the distance to each
+        % point in the target frame. Store in the distance matrix D.
+        for spi = 1:nbS % source point index
     %     for cpi = 1
-            currentPoint = currentFrame(cpi, :);
-            d = nextFrame - currentPoint;
-            D(cpi, :) = sqrt(sum((d .^ 2), 2));
+            sourcePoint = sourceFrame(spi, :);      % z and x coords of the source frame's point "spi"
+            d = targetFrame - sourcePoint;          % vectorized difference between the z and x coords of all the points in the target frame and point spi from the source frame
+            D(spi, :) = sqrt(sum((d .^ 2), 2));     % distance formula on the above
     
             D(D > maxPixelDistPerFrame) = Inf; 
         end
     
-        [assignment, cost] = munkres(D);  % Use the munkres.m function from Yi Cao (Matlab File Exchange)
-        costs(f) = cost;                  % update the overall cost vector
+%         [assignment, cost] = munkres(D);  % Use the munkres.m function from Yi Cao (Matlab File Exchange)
+%         costs(f) = cost;                  % update the overall cost vector
+%     
+%         [pzct, pxct] = find(assignment); % temporarily store the z and x coords from the paired point as stored in the "assignment" matrix
+%         pairedBubbles{f} = [pzct, pxct];
+
+        [assignment, unassignedrows, unassignedcolumns] = assignmunkres(D, 100000000000);
+        pairedBubbles{f} = assignment;
+        ubS{f} = unassignedrows;
+        ubT{f} = unassignedcolumns;
     
-        [pzct, pxct] = find(assignment); % temporarily store the z and x coords from the paired point as stored in the "assignment" matrix
-        pairedBubbles{f} = [pzct, pxct];
-    
-%         % Plot a line for each pair
-%       figure(testFig); scatter(currentFrame(:, 1), currentFrame(:, 2), 'ro')
-%       hold on; scatter(nextFrame(:, 1), nextFrame(:, 2), 'b*');
-%       title(strcat("Frame ", num2str(f)))
+        % Plot a line for each pair
+%         figure(testFig); scatter(sourceFrame(:, 1), sourceFrame(:, 2), 'ro')
+%         hold on; scatter(targetFrame(:, 1), targetFrame(:, 2), 'b*');
+%         title(strcat("Frame ", num2str(f)))
 %         for npb = 1:size(pairedBubbles{f}, 1)
 %             pairInd = pairedBubbles{f}(npb, :);
-%             ZVecTemp = [currentFrame(pairInd(1), 1), nextFrame(pairInd(2), 1)];
-%             XVecTemp = [currentFrame(pairInd(1), 2), nextFrame(pairInd(2), 2)];
+%             ZVecTemp = [sourceFrame(pairInd(1), 1), targetFrame(pairInd(2), 1)];
+%             XVecTemp = [sourceFrame(pairInd(1), 2), targetFrame(pairInd(2), 2)];
 %             line(ZVecTemp, XVecTemp, 'LineWidth', 1.5)
 %         end
+%         hold off
         
     end
 %     hold off
 end
 
+%% Remove the unpaired bubbles (jk pairedBubbles already only has the paired ones)
+% for n = 1:length(pairedBubbles) - 1
+% % for n = 1
+%     indicesToRemoveRaw = [ubT{n}; ubS{n + 1}];
+%     indicesToRemove = unique(indicesToRemoveRaw);
+% 
+% end
+%% Create tracks with persistence (NEEDS FIXING)
+pers = 2; % # of frames a track needs to persist through to keep it
+
+pairedAndTrackedBubbles = pairedBubbles;
+for n = 1:length(pairedBubbles) - pers
+% for n = 1:10
+    for pfc = 1:pers - 1 % persistence frame count
+        startIndex = pairedAndTrackedBubbles{n + pfc}(:, 2);    % indices of the paired "target" bubbles in frame n + 1 (pair n), which will be sorted in ascending order
+        endIndex = pairedAndTrackedBubbles{n + pfc + 1}(:, 1);  % indices of the paired "source" bubbles in frame n + 2 (pair n + 1), not necessarily in ascending order because it's aligned with the "target" indices in frame n + 1
+        [trackContinuesIndices, is, ie] = intersect(startIndex, endIndex); % find the common values in the start and end vectors, and the corresponding indices for each
+    %     pairedAndTrackedBubbles{n}(:, 2) = trackContinuesIndices;
+        
+        % Update the paired and tracked list????????????????????
+        pairedAndTrackedBubbles{n} = pairedAndTrackedBubbles{n}(is, :);
+        pairedAndTrackedBubbles{n + 1} = pairedAndTrackedBubbles{n + 1}(ie, :); % I think this preserves the order
+    end
+
+end
+
+%% Try to get the velocity map before doing persistence
+% zVelocity = cell(length(pairedBubbles) - 1, 1);
+% xVelocity = cell(length(pairedBubbles) - 1, 1);
+bVelocity = cell(length(pairedBubbles) - 1, 1); % bubble velocity - both components [z velocity, x velocity]
+% parfor n = 1:length(pairedBubbles) - 1
+for n = 1
+    coordsSF = centerCoords{n}(pairedBubbles{n}(:, 1), :); % coords for the source frame
+    coordsTF = centerCoords{n + 1}(pairedBubbles{n}(:, 2), :); % coords for the target frame
+
+    bVelocity{n} = (coordsTF - coordsSF) ./ timePerFrame; % THIS IS IN PIXELS , NOT DISTANCE!!!!!!!!!!!!!!!!! 
+    
+    
+
+end
 %% Plot density map with the paired bubbles only
 % bSum = zeros(size(allCenters{1}, 1), size(allCenters{1}, 2));
 bSum = zeros(img_size(1), img_size(2));
@@ -105,7 +190,7 @@ bSum = zeros(img_size(1), img_size(2));
 bSumFig = figure; colormap turbo
 % hold on
 figure(bSumFig)
-bsIm = imagesc(bSum);
+
 % bSumFig.XDataSource = 
 
 for f = 1:length(pairedBubbles)
@@ -131,27 +216,28 @@ for f = 1:length(pairedBubbles)
     end
 end
 hold off
-
+bsIm = imagesc(bSum);
 %% Plot pairing
 testFig = figure;
-parfor f = 1:totalFrames - 1
+% for f = 1:totalFrames - 1
+for f = 1
 % for f = 3
-    currentFrame = centerCoords{f};
-    nextFrame = centerCoords{f + 1};
+    sourceFrame = centerCoords{f};
+    targetFrame = centerCoords{f + 1};
 
-    pairedBubbles{f} = [pzct, pxct];
+%     pairedBubbles{f} = [pzct, pxct];
     
-%         % Plot a line for each pair
-%       figure(testFig); scatter(currentFrame(:, 1), currentFrame(:, 2), 'ro')
-%       hold on; scatter(nextFrame(:, 1), nextFrame(:, 2), 'b*');
-%       title(strcat("Frame ", num2str(f)))
-%         for npb = 1:size(pairedBubbles{f}, 1)
-%             pairInd = pairedBubbles{f}(npb, :);
-%             ZVecTemp = [currentFrame(pairInd(1), 1), nextFrame(pairInd(2), 1)];
-%             XVecTemp = [currentFrame(pairInd(1), 2), nextFrame(pairInd(2), 2)];
-%             line(ZVecTemp, XVecTemp, 'LineWidth', 1.5)
-%         end
-        
+    % Plot a line for each pair
+    figure(testFig); scatter(sourceFrame(:, 1), sourceFrame(:, 2), 'ro')
+    hold on; scatter(targetFrame(:, 1), targetFrame(:, 2), 'b*');
+    title(strcat("Frame ", num2str(f)))
+    for npb = 1:size(pairedBubbles{f}, 1)
+        pairInd = pairedBubbles{f}(npb, :);
+        ZVecTemp = [sourceFrame(pairInd(1), 1), targetFrame(pairInd(2), 1)];
+        XVecTemp = [sourceFrame(pairInd(1), 2), targetFrame(pairInd(2), 2)];
+        line(ZVecTemp, XVecTemp, 'LineWidth', 1.5)
     end
+        
 %     hold off
 end
+legend('Frame n', 'Frame n + 1')
