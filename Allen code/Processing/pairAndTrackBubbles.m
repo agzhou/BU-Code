@@ -55,7 +55,7 @@ clear bfi cai caiGlobal allCenters xc zc
 bubbleCount = zeros(length(centerCoords), 1); % numFiles/# buffers x # frames per buffer. Count of bubbles in each frame
 centerCoords_corrected = centerCoords;
 % mbci = 1; % microbubble count index
-parfor fi = 1:length(centerCoords) % frame index
+parfor fi = 1:length(centerCoords_corrected) % frame index
 % for fi = 1
     bufTemp = centerCoords{fi};
 
@@ -86,7 +86,7 @@ pixelsPerM = 2 / P.wl * imgRefinementFactor(1);
 % maxPixelDistPerFrame = maxDistPerFrameM / (P.wl/2/imgRefinementFactor(1)); % HARD CODE THIS FOR TESTING NOW
 maxPixelDistPerFrame = maxDistPerFrameM * pixelsPerM;
 
-pairedBubbles = cell(totalFrames - 1, 1);   % Initialize cell vector of paired bubble indices
+bubblePairs = cell(totalFrames - 1, 1);   % Initialize cell vector of paired bubble indices
 
 %% Calculate pairing
 % testFig = figure;
@@ -122,7 +122,7 @@ parfor f = 1:totalFrames - 1
 %         pairedBubbles{f} = [pzct, pxct];
 
         [assignment, unassignedrows, unassignedcolumns] = assignmunkres(D, 100000000000);
-        pairedBubbles{f} = assignment;
+        bubblePairs{f} = assignment;
         ubS{f} = unassignedrows;
         ubT{f} = unassignedcolumns;
     
@@ -152,8 +152,8 @@ end
 %% Create tracks with persistence (NEEDS FIXING)
 pers = 2; % # of frames a track needs to persist through to keep it
 
-pairedAndTrackedBubbles = pairedBubbles;
-for n = 1:length(pairedBubbles) - pers
+pairedAndTrackedBubbles = bubblePairs;
+for n = 1:length(bubblePairs) - pers
 % for n = 1:10
     for pfc = 1:pers - 1 % persistence frame count
         startIndex = pairedAndTrackedBubbles{n + pfc}(:, 2);    % indices of the paired "target" bubbles in frame n + 1 (pair n), which will be sorted in ascending order
@@ -170,12 +170,12 @@ end
 %% Try to get the velocity map before doing persistence
 % zVelocity = cell(length(pairedBubbles) - 1, 1);
 % xVelocity = cell(length(pairedBubbles) - 1, 1);
-bVelocity = cell(length(pairedBubbles) - 1, 1); % bubble velocity - both components [z velocity, x velocity]
+bVelocity = cell(length(bubblePairs) - 1, 1); % bubble velocity - both components [z velocity, x velocity]
 % parfor n = 1:length(pairedBubbles) - 1
-for n = 1:length(pairedBubbles) - 1
-    if ~isempty(pairedBubbles{n}) % if there are paired bubbles at frame n
-        coordsSF = centerCoords{n}(pairedBubbles{n}(:, 1), :); % coords for the source frame
-        coordsTF = centerCoords{n + 1}(pairedBubbles{n}(:, 2), :); % coords for the target frame
+for n = 1:length(bubblePairs) - 1
+    if ~isempty(bubblePairs{n}) % if there are paired bubbles at frame n
+        coordsSF = centerCoords_corrected{n}(bubblePairs{n}(:, 1), :); % coords for the source frame
+        coordsTF = centerCoords_corrected{n + 1}(bubblePairs{n}(:, 2), :); % coords for the target frame
     
         bVelocity{n} = (coordsTF - coordsSF) ./ timePerFrame; % THIS IS IN PIXELS per second, NOT DISTANCE per second!!!!!!!!!!!!!!!!! 
     else
@@ -193,21 +193,21 @@ figure(bSumFig)
 
 % bSumFig.XDataSource = 
 
-for f = 1:length(pairedBubbles)
+for f = 1:length(bubblePairs)
 % for f = 1:10000
     disp(num2str(f))
-    if ~isempty(pairedBubbles{f})
-        coordsCF = centerCoords{f}; % coords for the current frame
-        coordsNF = centerCoords{f + 1}; % coords for the current frame
+    if ~isempty(bubblePairs{f})
+        coordsCF = centerCoords_corrected{f}; % coords for the current frame
+        coordsNF = centerCoords_corrected{f + 1}; % coords for the current frame
     %     for npb = 1:size(pairedBubbles{f}, 1)
 
-        keepBubblesCF = pairedBubbles{f}(:, 1); % which bubbles (indices) to keep for the current frame. Could do it more efficiently or correctly
+        keepBubblesCF = bubblePairs{f}(:, 1); % which bubbles (indices) to keep for the current frame. Could do it more efficiently or correctly
         for kbcfi = keepBubblesCF' % index for each kept bubble in the current frame
             kbcfCoord = coordsCF(kbcfi, :);
             bSum(kbcfCoord(1), kbcfCoord(2)) = bSum(kbcfCoord(1), kbcfCoord(2)) + 1; % Update the count for that pixel
         end
 
-        keepBubblesNF = pairedBubbles{f}(:, 2); % which bubbles (indices) to keep for the next frame. Could do it more efficiently or correctly
+        keepBubblesNF = bubblePairs{f}(:, 2); % which bubbles (indices) to keep for the next frame. Could do it more efficiently or correctly
         for kbnfi = keepBubblesNF' % index for each kept bubble in the next frame
             kbnfCoord = coordsNF(kbnfi, :);
             bSum(kbnfCoord(1), kbnfCoord(2)) = bSum(kbnfCoord(1), kbnfCoord(2)) + 1; % Update the count for that pixel
@@ -218,7 +218,7 @@ end
 hold off
 bsIm = imagesc(bSum);
 
-%% Plot z velocity map
+%% Plot z velocity map without interpolation
 velocityMap = zeros(img_size(1), img_size(2));
 
 mymap = [zeros(256,2),linspace(1,0,256)';linspace(0,1,256)', zeros(256,2)];
@@ -226,13 +226,13 @@ mymap = [zeros(256,2),linspace(1,0,256)';linspace(0,1,256)', zeros(256,2)];
 vMapFig = figure; colormap(vMapFig, mymap)
 % hold on
 figure(vMapFig)
-for n = 1:length(pairedBubbles) - 1
+for n = 1:length(bubblePairs) - 1
 % for n = 1
     zVel = bVelocity{n}(:, 1);
     % Use the source coordinates as the point to plot velocity?
     % OR FILL IN THE LINE BETWEEN????
-    if ~isempty(pairedBubbles{n})
-        coords = centerCoords{n}(pairedBubbles{n}(:, 1), :); % coords for the source frame
+    if ~isempty(bubblePairs{n})
+        coords = centerCoords_corrected{n}(bubblePairs{n}(:, 1), :); % coords for the source frame
         for ci = 1:length(zVel) % coordinate index
             velocityMap(coords(ci, 1), coords(ci, 2)) = velocityMap(coords(ci, 1), coords(ci, 2)) + zVel(ci); % add the velocities to the existing values
         end
@@ -247,13 +247,13 @@ zVelocityMap = zeros(img_size(1), img_size(2));
 zvUpMap = NaN(img_size(1), img_size(2));
 zvDownMap = NaN(img_size(1), img_size(2));
 
-for n = 1:length(pairedBubbles) - 1
+for n = 1:length(bubblePairs) - 1
 % for n = 1
     zVel = bVelocity{n}(:, 1); % z component of velocity between frames n and n + 1 (maybe not exactly)
 
-    if ~isempty(pairedBubbles{n})
-        coordsS = centerCoords{n}(pairedBubbles{n}(:, 1), :);       % coords for the source frame
-        coordsT = centerCoords{n + 1}(pairedBubbles{n}(:, 2), :);   % coords for the target frame
+    if ~isempty(bubblePairs{n})
+        coordsS = centerCoords_corrected{n}(bubblePairs{n}(:, 1), :);       % coords for the source frame
+        coordsT = centerCoords_corrected{n + 1}(bubblePairs{n}(:, 2), :);   % coords for the target frame
         
         % linearly interpolate to fill in the pixels between the
         % coordinates of the paired bubbles
@@ -284,16 +284,19 @@ for n = 1:length(pairedBubbles) - 1
     end
 end
 %             zVelocityMap(coords(ci, 1), coords(ci, 2)) = zVelocityMap(coords(ci, 1), coords(ci, 2)) + zVel(ci); % add the velocities to the existing values
-%%
+%
+zvDownMap(isnan(zvDownMap)) = 0;
+zvUpMap(isnan(zvUpMap)) = 0;
 % Load Jianbo's colormaps
 [VzCmap, VzCmapDn, VzCmapUp, pdiCmapUp, PhtmCmap] = Colormaps_fUS;
 zvMapFig = figure;
 
 % hold on
-vCrange=[-1000, 1000];
+vCrange=[-10000, 10000];
 figure(zvMapFig)
 h1 = axes;
 imagesc(zvUpMap)
+% alpha(h1, double(abs(zvUpMap) > 1))
 colormap(zvMapFig, VzCmap)
 caxis(vCrange);
 axis tight
@@ -302,9 +305,11 @@ hold on
 
 h2 = axes;
 imagesc(zvDownMap)
-alpha(h2, 0.5)
+alpha(h2, double(abs(zvDownMap) > 1))
 colormap(zvMapFig, VzCmap)
+caxis(vCrange);
 axis tight
+colorbar
 axis off
 linkaxes([h1, h2]);
 
@@ -326,9 +331,9 @@ for n = 1:10000
     zVel = bVelocity{n}(:, 1);
     % Use the source coordinates as the point to plot velocity?
     % OR FILL IN THE LINE BETWEEN????
-    if ~isempty(pairedBubbles{n})
-        coordsS = centerCoords{n}(pairedBubbles{n}(:, 1), :); % coords for the source frame
-        coordsT = centerCoords{n + 1}(pairedBubbles{n}(:, 2), :); % coords for the target frame
+    if ~isempty(bubblePairs{n})
+        coordsS = centerCoords_corrected{n}(bubblePairs{n}(:, 1), :); % coords for the source frame
+        coordsT = centerCoords_corrected{n + 1}(bubblePairs{n}(:, 2), :); % coords for the target frame
 
         for ci = 1:length(zVel) % coordinate index
 %             velocityMap(coords(ci, 1), coords(ci, 2)) = velocityMap(coords(ci, 1), coords(ci, 2)) + zVel(ci); % add the velocities to the existing values
@@ -353,8 +358,8 @@ testFig = figure;
 % for f = 1:totalFrames - 1
 for f = 1
 % for f = 3
-    sourceFrame = centerCoords{f};
-    targetFrame = centerCoords{f + 1};
+    sourceFrame = centerCoords_corrected{f};
+    targetFrame = centerCoords_corrected{f + 1};
 
 %     pairedBubbles{f} = [pzct, pxct];
     
@@ -362,8 +367,8 @@ for f = 1
     figure(testFig); scatter(sourceFrame(:, 1), sourceFrame(:, 2), 'ro')
     hold on; scatter(targetFrame(:, 1), targetFrame(:, 2), 'b*');
     title(strcat("Frame ", num2str(f)))
-    for npb = 1:size(pairedBubbles{f}, 1)
-        pairInd = pairedBubbles{f}(npb, :);
+    for npb = 1:size(bubblePairs{f}, 1)
+        pairInd = bubblePairs{f}(npb, :);
         ZVecTemp = [sourceFrame(pairInd(1), 1), targetFrame(pairInd(2), 1)];
         XVecTemp = [sourceFrame(pairInd(1), 2), targetFrame(pairInd(2), 2)];
         line(ZVecTemp, XVecTemp, 'LineWidth', 1.5)

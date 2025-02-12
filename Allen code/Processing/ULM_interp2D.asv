@@ -1,0 +1,34 @@
+% Interpolate between two points [z, x] which represent the start and end
+% of a track between paired bubbles in consecutive frames
+% Need to round it in case the output is not a natural number
+function [zcInterp, xcInterp] = ULM_interp2D(sourceCoords, targetCoords)
+%     zcInterpStart = min(targetCoords(1), sourceCoords(1));
+%     zcInterpEnd = max(targetCoords(1), sourceCoords(1));
+% %     zcInterp = zcInterpStart : zcInterpEnd;
+%     
+%     xcInterpStart = min(targetCoords(2), sourceCoords(2));
+%     xcInterpEnd = max(targetCoords(2), sourceCoords(2));
+% %     xcInterp = xcInterpStart : xcInterpEnd;
+    
+    zcInterpStart = sourceCoords(1));
+    zcInterpEnd = targetCoords(1);
+    
+    xcInterpStart = min(targetCoords(2), sourceCoords(2));
+    xcInterpEnd = max(targetCoords(2), sourceCoords(2));
+%     xcInterp = xcInterpStart : xcInterpEnd;
+
+    numInterpPoints = max([zcInterpEnd - zcInterpStart + 1, xcInterpEnd - xcInterpStart + 1]);
+    zcInterp = linspace(zcInterpStart, zcInterpEnd, numInterpPoints)'; % do this so you get the right number of points
+    zcInterp = round(zcInterp);
+    xcInterp = linspace(xcInterpStart, xcInterpEnd, numInterpPoints)'; % do this so you get the right number of points
+    xcInterp = round(xcInterp);
+end
+
+%                 zcInterp = linspace(coordsS(pri, 1), coordsT(pri, 1), abs(coordsT(pri, 1) - coordsS(pri, 1)) + 1); 
+%                 zcInterpStart = min(coordsT(pri, 1), coordsS(pri, 1));
+%                 zcInterpEnd = max(coordsT(pri, 1), coordsS(pri, 1));
+%                 zcInterp = zcInterpStart : zcInterpEnd;
+% 
+%                 xcInterpStart = min(coordsT(pri, 2), coordsS(pri, 2));
+%                 xcInterpEnd = max(coordsT(pri, 2), coordsS(pri, 2));
+%                 xcInterp = xcInterpStart : xcInterpEnd;
