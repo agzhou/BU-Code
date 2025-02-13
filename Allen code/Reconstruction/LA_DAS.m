@@ -1,7 +1,15 @@
 % Linear Array Delay and Sum
-% IQ: DAS beamformed data
-% pixSpacing: [z pixel spacing (m), x pixel spacing (m)]
-function [IQ, pixSpacing] = LA_DAS(RcvData, P, zPixSpacing)
+% Input:
+%   RcvData: Raw data from a linear phased array [# z or time samples * #
+%   angles, # elements, # frames per buffer]
+%   P: Parameter structure from makeParameterStructure
+%   zPixSpacing: z pixel spacing [m]
+%   xPixSpacing: x pixel spacing [m]
+
+% Output:
+%   IQ: DAS beamformed data
+%   pixSpacing: [z pixel spacing (m), x pixel spacing (m)]
+function [IQ, pixSpacing] = LA_DAS(RcvData, P, zPixSpacing, xPixSpacing)
     %% changes
     % 9/12/24: now properly accounts for a nonzero startDepth
     % 11/7/24: now a function
@@ -139,18 +147,18 @@ function [IQ, pixSpacing] = LA_DAS(RcvData, P, zPixSpacing)
     % pixsizez = wl/2;
     pixsizez = zPixSpacing;
 %     pixsizex = wl;
-    pixsizex = Trans.spacingMm/1e3;
+    pixsizex = xPixSpacing;
+%     pixsizex = Trans.spacingMm/1e3;
+
     zsize = (endDepth - startDepth) * wl;    % region's z span in m
     xsize = numElements.*Trans.spacing * wl; % region's x span in m
-            znumpix = ceil(zsize / pixsizez);         % # rows
-    %         znumpix = 712;
-    %         xnumpix = ceil(xsize / pixsizex);         % # cols
+
+    znumpix = ceil(zsize / pixsizez);         % # rows
+    xnumpix = ceil(xsize / pixsizex);         % # cols
     
 %     znumpix = nzs_nopad; % Full z sample size
-    xnumpix = nxs_nopad;
-    
-    % znumpix = nzs; % Full z sample size
-    % xnumpix = nxs;
+%     xnumpix = nxs_nopad;
+
     pixSpacing = [pixsizez, pixsizex];
     %% plot raw waveform from one element
     % 
