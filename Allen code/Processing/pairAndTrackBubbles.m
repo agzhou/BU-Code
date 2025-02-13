@@ -150,7 +150,7 @@ end
 % 
 % end
 %% Create tracks with persistence
-pers = 2; % # of frames a track needs to persist through to keep it
+pers = 10; % # of frames a track needs to persist through to keep it
 
 bubblePairsPers = cell(length(bubblePairs), 2); % bubble pairs after the persistence condition
 % Separate the pairs of coordinates so we can change their sizes
@@ -162,7 +162,7 @@ for n = 1:length(bubblePairs)
     end
 end
 %
-tracks = cell(size(bubblePairsPers, 1), 1);
+tracks = cell(size(bubblePairsPers, 1) - pers, 1);
 for n = 1:length(bubblePairsPers) - pers
 % for n = 1:10
     bubblePairsPersTemp = bubblePairsPers;
@@ -249,16 +249,15 @@ for ti = 1:length(tracks)% track index
             startPointInd = tracksTemp{tli, 1};
             endPointInd = tracksTemp{tli, 2};
 
-            coordsSFTemp = centerCoords_corrected{ti + tli - 1}(startPointInd, :); % coords for the source frame
-            coordsTFTemp = centerCoords_corrected{ti + tli}(endPointInd, :); % coords for the target frame
+            coordsSFTemp = centerCoords_corrected{ti + tli - 1}(startPointInd, :);  % coords for the source frame
+            coordsTFTemp = centerCoords_corrected{ti + tli}(endPointInd, :);        % coords for the target frame
             bVelocityPers{ti, tli} = (coordsTFTemp - coordsSFTemp) ./ timePerFrame; % THIS IS IN PIXELS per second, NOT DISTANCE per second!!!!!!!!!!!!!!!!! 
         else
             bVelocityPers{ti, tli} = NaN;
         end
-    end 
-
+    end
 end
-
+clear ti tli tracksTemp startPointInd endPointInd coordsSFTemp coordsTFTemp
 %% Plot density map with the paired bubbles only
 % bSum = zeros(size(allCenters{1}, 1), size(allCenters{1}, 2));
 bSum = zeros(img_size(1), img_size(2));
@@ -392,70 +391,94 @@ linkaxes([h1, h2]);
 % clim([])
 
 %% Plot z velocity map after persistence with linear interpolation
-zVelocityMap = zeros(img_size(1), img_size(2));
-zvUpMap = NaN(img_size(1), img_size(2));
-zvDownMap = NaN(img_size(1), img_size(2));
+% zVelocityPersMap = zeros(img_size(1), img_size(2));
+zvUpPersMap = NaN(img_size(1), img_size(2));
+zvDownPersMap = NaN(img_size(1), img_size(2));
 
-for n = 1:length(bubblePairs) - 1
-% for n = 1
-    zVel = bVelocity{n}(:, 1); % z component of velocity between frames n and n + 1 (maybe not exactly)
+% Counters for proper averaging if there are overlapped pixels from
+% different tracks
+zvUpPersMapCounter = ones(img_size(1), img_size(2));
+zvDownPersMapCounter = ones(img_size(1), img_size(2));
 
-    if ~isempty(bubblePairs{n})
-        coordsS = centerCoords_corrected{n}(bubblePairs{n}(:, 1), :);       % coords for the source frame
-        coordsT = centerCoords_corrected{n + 1}(bubblePairs{n}(:, 2), :);   % coords for the target frame
-        
-        % linearly interpolate to fill in the pixels between the
-        % coordinates of the paired bubbles
-        for pri = 1:length(zVel) % pair index
-            zVelTemp = zVel(pri);
-            if zVelTemp > 0     % up z flow
-                [zcInterp, xcInterp] = ULM_interp2D(coordsS(pri, :), coordsT(pri, :));
-%                 zvUpMap([zcInterp, xcInterp]) = zvUpMap([zcInterp, xcInterp]) + zVelTemp;
-                for nip = 1:length(zcInterp) % number of interp points  
-                    if isnan(zvUpMap(zcInterp(nip), xcInterp(nip)))
-                        zvUpMap(zcInterp(nip), xcInterp(nip)) = zVelTemp; % If this is the first point entered at that pixel, use the value
-                    else
-                        zvUpMap(zcInterp(nip), xcInterp(nip)) = (zvUpMap(zcInterp(nip), xcInterp(nip)) + zVelTemp) / 2; % If it's not the first point entered at that pixel, average between the existing and new values
+for ti = 1:length(tracks) % track index
+% for ti = 1
+    tracksTemp = tracks{ti};
+    for pfi = 1:pers % persistence frame index
+        zVel = bVelocityPers{ti, pfi}(:, 1); % z component (the :, 1) of velocity between frames ti + pfi and ti + pfi + 1 (I think?)
+        if ~isnan(zVel)
+            % Get the coordinates that the velocity values correspond to
+            startPointInd = tracksTemp{pfi, 1};
+            endPointInd = tracksTemp{pfi, 2};
+            coordsSFTemp = centerCoords_corrected{ti + pfi - 1}(startPointInd, :);  % coords for the source frame
+            coordsTFTemp = centerCoords_corrected{ti + pfi}(endPointInd, :);        % coords for the target frame
+            
+            % Linearly interpolate to fill in the pixels between the
+            % coordinates of the paired bubbles.
+            % Go one by one through the zVel vector
+            for pri = 1:length(zVel)    % pair index
+                zVelTemp = zVel(pri);
+                if zVelTemp > 0         % up z flow
+                    [zcInterp, xcInterp] = ULM_interp2D(coordsSFTemp(pri, :), coordsTFTemp(pri, :));
+    %                 zvUpMap([zcInterp, xcInterp]) = zvUpMap([zcInterp, xcInterp]) + zVelTemp;
+                    for nip = 1:length(zcInterp) % number of interp points  
+                        if isnan(zvUpPersMap(zcInterp(nip), xcInterp(nip)))
+                            zvUpPersMap(zcInterp(nip), xcInterp(nip)) = zVelTemp; % If this is the first point entered at that pixel, use the value
+                        else
+    %                         zvUpPersMap(zcInterp(nip), xcInterp(nip)) = (zvUpPersMap(zcInterp(nip), xcInterp(nip)) + zVelTemp) / 2; % If it's not the first point entered at that pixel, average between the existing and new values
+                            zvUpPersMap(zcInterp(nip), xcInterp(nip)) = zvUpPersMap(zcInterp(nip), xcInterp(nip)) + zVelTemp; % If it's not the first point entered at that pixel, add the new value
+                            zvUpPersMapCounter(zcInterp(nip), xcInterp(nip)) = zvUpPersMapCounter(zcInterp(nip), xcInterp(nip)) + 1; % increment the counter so we can average later
+                        end
                     end
-                end
-            else                % down z flow
-                [zcInterp, xcInterp] = ULM_interp2D(coordsS(pri, :), coordsT(pri, :));
-%                 zvDownMap([zcInterp, xcInterp]) = zvDownMap([zcInterp, xcInterp]) + zVelTemp;
-                for nip = 1:length(zcInterp) % number of interp points  
-                    if isnan(zvDownMap(zcInterp(nip), xcInterp(nip)))
-                        zvDownMap(zcInterp(nip), xcInterp(nip)) = zVelTemp; % If this is the first point entered at that pixel, use the value
-                    else
-                        zvDownMap(zcInterp(nip), xcInterp(nip)) = (zvDownMap(zcInterp(nip), xcInterp(nip)) + zVelTemp) / 2; % If it's not the first point entered at that pixel, average between the existing and new values
+                else                % down z flow
+                    [zcInterp, xcInterp] = ULM_interp2D(coordsSFTemp(pri, :), coordsTFTemp(pri, :));
+    %                 zvDownMap([zcInterp, xcInterp]) = zvDownMap([zcInterp, xcInterp]) + zVelTemp;
+                    for nip = 1:length(zcInterp) % number of interp points  
+                        if isnan(zvDownPersMap(zcInterp(nip), xcInterp(nip)))
+                            zvDownPersMap(zcInterp(nip), xcInterp(nip)) = zVelTemp; % If this is the first point entered at that pixel, use the value
+                        else
+                            zvDownPersMap(zcInterp(nip), xcInterp(nip)) = zvDownPersMap(zcInterp(nip), xcInterp(nip)) + zVelTemp; % If it's not the first point entered at that pixel, add the new value
+                            zvDownPersMapCounter(zcInterp(nip), xcInterp(nip)) = zvDownPersMapCounter(zcInterp(nip), xcInterp(nip)) + 1; % increment the counter so we can average later
+    
+                        end
                     end
                 end
             end
         end
     end
 end
-%             zVelocityMap(coords(ci, 1), coords(ci, 2)) = zVelocityMap(coords(ci, 1), coords(ci, 2)) + zVel(ci); % add the velocities to the existing values
-%
-zvDownMap(isnan(zvDownMap)) = 0;
-zvUpMap(isnan(zvUpMap)) = 0;
+zvUpPersMap = zvUpPersMap ./ zvUpPersMapCounter;
+zvDownPersMap = zvDownPersMap ./ zvDownPersMapCounter;
+% Plot z velocity map after persistence
+clear zVel
+
+zvDownPersMap(isnan(zvDownPersMap)) = 0;
+zvUpPersMap(isnan(zvUpPersMap)) = 0;
+
+%%%%%%%%%%%%%%%% TEST %%%%%%%%%%%%%%%%%
+% zvDownPersMap(zvDownPersMapCounter == 1) = 0;
+% zvUpPersMap(zvUpPersMapCounter == 1) = 0;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % Load Jianbo's colormaps
 [VzCmap, VzCmapDn, VzCmapUp, pdiCmapUp, PhtmCmap] = Colormaps_fUS;
-zvMapFig = figure;
+zvMapPersFig = figure;
 
 % hold on
 vCrange= [-15000, 15000];
-figure(zvMapFig)
+figure(zvMapPersFig)
 h1 = axes;
-imagesc(zvUpMap)
+imagesc(zvUpPersMap)
 % alpha(h1, double(abs(zvUpMap) > 1))
-colormap(zvMapFig, VzCmap)
+colormap(zvMapPersFig, VzCmap)
 caxis(vCrange);
 axis tight
 colorbar
 hold on
 
 h2 = axes;
-imagesc(zvDownMap)
-alpha(h2, double(abs(zvDownMap) > 1))
-colormap(zvMapFig, VzCmap)
+imagesc(zvDownPersMap)
+alpha(h2, double(abs(zvDownPersMap) > 1))
+colormap(zvMapPersFig, VzCmap)
 caxis(vCrange);
 axis tight
 colorbar
