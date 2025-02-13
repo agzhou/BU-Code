@@ -149,25 +149,75 @@ end
 %     indicesToRemove = unique(indicesToRemoveRaw);
 % 
 % end
-%% Create tracks with persistence (NEEDS FIXING)
+%% Create tracks with persistence
 pers = 2; % # of frames a track needs to persist through to keep it
 
-pairedAndTrackedBubbles = bubblePairs;
-for n = 1:length(bubblePairs) - pers
+bubblePairsPers = cell(length(bubblePairs), 2); % bubble pairs after the persistence condition
+% Separate the pairs of coordinates so we can change their sizes
+% independently
+for n = 1:length(bubblePairs)
+    if ~isempty(bubblePairs{n})
+        bubblePairsPers{n, 1} = bubblePairs{n}(:, 1);
+        bubblePairsPers{n, 2} = bubblePairs{n}(:, 2);
+    end
+end
+%
+tracks = cell(size(bubblePairsPers, 1), 1);
+for n = 1:length(bubblePairsPers) - pers
 % for n = 1:10
+    bubblePairsPersTemp = bubblePairsPers;
     for pfc = 1:pers - 1 % persistence frame count
-        startIndex = pairedAndTrackedBubbles{n + pfc}(:, 2);    % indices of the paired "target" bubbles in frame n + 1 (pair n), which will be sorted in ascending order
-        endIndex = pairedAndTrackedBubbles{n + pfc + 1}(:, 1);  % indices of the paired "source" bubbles in frame n + 2 (pair n + 1), not necessarily in ascending order because it's aligned with the "target" indices in frame n + 1
+        startIndex = bubblePairsPersTemp{n + pfc - 1, 2};    % indices of the paired "target" bubbles in frame n + 1 (pair n), which will be sorted in ascending order
+        endIndex = bubblePairsPersTemp{n + pfc, 1};  % indices of the paired "source" bubbles in frame n + 2 (pair n + 1), not necessarily in ascending order because it's aligned with the "target" indices in frame n + 1
         [trackContinuesIndices, is, ie] = intersect(startIndex, endIndex); % find the common values in the start and end vectors, and the corresponding indices for each
     %     pairedAndTrackedBubbles{n}(:, 2) = trackContinuesIndices;
         
-        % Update the paired and tracked list????????????????????
-        pairedAndTrackedBubbles{n} = pairedAndTrackedBubbles{n}(is, :);
-        pairedAndTrackedBubbles{n + 1} = pairedAndTrackedBubbles{n + 1}(ie, :); % I think this preserves the order
+        % Update the paired and tracked list??
+        bubblePairsPersTemp{n + pfc - 1, 1} = bubblePairsPersTemp{n + pfc - 1, 1}(is);
+        bubblePairsPersTemp{n + pfc - 1, 2} = bubblePairsPersTemp{n + pfc - 1, 2}(is);
+        bubblePairsPersTemp{n + pfc, 1} = bubblePairsPersTemp{n + pfc, 1}(ie); % I think this preserves the order
+        bubblePairsPersTemp{n + pfc, 2} = bubblePairsPersTemp{n + pfc, 2}(ie); % Need to preserve the order, so set the next starting point????
     end
+    tracks{n} = bubblePairsPersTemp(n : n + pfc, :);
 end
 
-%% Try to get the velocity map before doing persistence
+% the old code
+% % for n = 1:length(bubblePairsPers) - pers
+% for n = 1:10
+%     for pfc = 1:pers - 1 % persistence frame count
+%         startIndex = bubblePairsPers{n + pfc}(:, 2);    % indices of the paired "target" bubbles in frame n + 1 (pair n), which will be sorted in ascending order
+%         endIndex = bubblePairsPers{n + pfc + 1}(:, 1);  % indices of the paired "source" bubbles in frame n + 2 (pair n + 1), not necessarily in ascending order because it's aligned with the "target" indices in frame n + 1
+%         [trackContinuesIndices, is, ie] = intersect(startIndex, endIndex); % find the common values in the start and end vectors, and the corresponding indices for each
+%     %     pairedAndTrackedBubbles{n}(:, 2) = trackContinuesIndices;
+%         
+%         % Update the paired and tracked list????????????????????
+%         bubblePairsPers{n} = bubblePairsPers{n}(is, :);
+%         bubblePairsPers{n + 1} = bubblePairsPers{n + 1}(ie, :); % I think this preserves the order
+%     end
+% end
+%% test on tracks
+figure;
+hold on
+% for ti = 1:length(tracks)% track index
+for ti = 1
+    tracksTemp = tracks{ti};
+    for tli = 1:size(tracksTemp, 1)% track length index
+        startPointInd = tracksTemp{tli, 1};
+        endPointInd = tracksTemp{tli, 2};
+
+        coordsSFTemp = centerCoords_corrected{ti + tli - 1}(startPointInd, :); % coords for the source frame
+        coordsTFTemp = centerCoords_corrected{ti + tli}(endPointInd, :); % coords for the target frame
+        
+        scatter(coordsSFTemp(:, 1), coordsSFTemp(:, 2), 'ro')
+        scatter(coordsTFTemp(:, 1), coordsTFTemp(:, 2), 'bx')
+%         for idk = size(startPointInd, 1)
+%             line([coordsSFTemp(idk, 1); coordsTFTemp(idk, 1)], [coordsSFTemp(idk, 2); coordsTFTemp(idk, 2)])
+%         end
+
+    end
+end
+% clear startPointInd endPointInd coordsSFTemp coordsTFTemp
+%% Velocity map before doing persistence
 % zVelocity = cell(length(pairedBubbles) - 1, 1);
 % xVelocity = cell(length(pairedBubbles) - 1, 1);
 bVelocity = cell(length(bubblePairs) - 1, 1); % bubble velocity - both components [z velocity, x velocity]
@@ -183,6 +233,23 @@ for n = 1:length(bubblePairs) - 1
     end
 
 end
+
+%% Velocity map after doing persistence
+
+bVelocity = cell(size(bubblePairsPers, 1) - 1, 1); % bubble velocity - both components [z velocity, x velocity]
+% parfor n = 1:length(pairedBubbles) - 1
+for n = 1:size(bubblePairsPers, 1) - 1
+    if ~any([isempty(bubblePairsPers{n, 1}), isempty(bubblePairsPers{n, 2})]) % if there are paired bubbles at frame n
+        coordsSF = centerCoords_corrected{n}(bubblePairsPers{n, 1}); % coords for the source frame
+        coordsTF = centerCoords_corrected{n + 1}(bubblePairsPers{n, 2}); % coords for the target frame
+    
+        bVelocity{n} = (coordsTF - coordsSF) ./ timePerFrame; % THIS IS IN PIXELS per second, NOT DISTANCE per second!!!!!!!!!!!!!!!!! 
+    else
+        bVelocity{n} = NaN;
+    end
+
+end
+
 %% Plot density map with the paired bubbles only
 % bSum = zeros(size(allCenters{1}, 1), size(allCenters{1}, 2));
 bSum = zeros(img_size(1), img_size(2));
@@ -292,7 +359,7 @@ zvUpMap(isnan(zvUpMap)) = 0;
 zvMapFig = figure;
 
 % hold on
-vCrange=[-10000, 10000];
+vCrange= [-15000, 15000];
 figure(zvMapFig)
 h1 = axes;
 imagesc(zvUpMap)
@@ -353,27 +420,28 @@ end
 
 % imagesc(velocityMap)
 % clim([])
-%% Plot pairing
-testFig = figure;
-% for f = 1:totalFrames - 1
-for f = 1
-% for f = 3
-    sourceFrame = centerCoords_corrected{f};
-    targetFrame = centerCoords_corrected{f + 1};
 
-%     pairedBubbles{f} = [pzct, pxct];
-    
-    % Plot a line for each pair
-    figure(testFig); scatter(sourceFrame(:, 1), sourceFrame(:, 2), 'ro')
-    hold on; scatter(targetFrame(:, 1), targetFrame(:, 2), 'b*');
-    title(strcat("Frame ", num2str(f)))
-    for npb = 1:size(bubblePairs{f}, 1)
-        pairInd = bubblePairs{f}(npb, :);
-        ZVecTemp = [sourceFrame(pairInd(1), 1), targetFrame(pairInd(2), 1)];
-        XVecTemp = [sourceFrame(pairInd(1), 2), targetFrame(pairInd(2), 2)];
-        line(ZVecTemp, XVecTemp, 'LineWidth', 1.5)
-    end
-        
-%     hold off
-end
-legend('Frame n', 'Frame n + 1')
+%% Plot pairing between two frames' centers (for testing)
+% testFig = figure;
+% % for f = 1:totalFrames - 1
+% for f = 1
+% % for f = 3
+%     sourceFrame = centerCoords_corrected{f};
+%     targetFrame = centerCoords_corrected{f + 1};
+% 
+% %     pairedBubbles{f} = [pzct, pxct];
+%     
+%     % Plot a line for each pair
+%     figure(testFig); scatter(sourceFrame(:, 1), sourceFrame(:, 2), 'ro')
+%     hold on; scatter(targetFrame(:, 1), targetFrame(:, 2), 'b*');
+%     title(strcat("Frame ", num2str(f)))
+%     for npb = 1:size(bubblePairs{f}, 1)
+%         pairInd = bubblePairs{f}(npb, :);
+%         ZVecTemp = [sourceFrame(pairInd(1), 1), targetFrame(pairInd(2), 1)];
+%         XVecTemp = [sourceFrame(pairInd(1), 2), targetFrame(pairInd(2), 2)];
+%         line(ZVecTemp, XVecTemp, 'LineWidth', 1.5)
+%     end
+%         
+% %     hold off
+% end
+% legend('Frame n', 'Frame n + 1')
