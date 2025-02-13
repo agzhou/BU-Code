@@ -150,27 +150,27 @@ end
 % 
 % end
 %% Create tracks with persistence
-pers = 10; % # of frames a track needs to persist through to keep it
+pers = 3; % # of frames a track needs to persist through to keep it
 
-bubblePairsPers = cell(length(bubblePairs), 2); % bubble pairs after the persistence condition
-% Separate the pairs of coordinates so we can change their sizes
-% independently
+% Separate the pairs of coordinates so we can change their sizes independently
+bubblePairsPers = cell(length(bubblePairs), 2); % bubble pairs with the pairs separated into another cell dimension
 for n = 1:length(bubblePairs)
     if ~isempty(bubblePairs{n})
         bubblePairsPers{n, 1} = bubblePairs{n}(:, 1);
         bubblePairsPers{n, 2} = bubblePairs{n}(:, 2);
     end
 end
-%
+
+% Store the bubble indices that contribute to each track of at least (pers) # of frames
 tracks = cell(size(bubblePairsPers, 1) - pers, 1);
-for n = 1:length(bubblePairsPers) - pers
-% for n = 1:10
+% for n = 1:length(bubblePairsPers) - pers
+for n = 1:1
     bubblePairsPersTemp = bubblePairsPers;
-    for pfc = 1:pers - 1 % persistence frame count
+%     for pfc = 1:pers - 1 % persistence frame count
+    for pfc = 1
         startIndex = bubblePairsPersTemp{n + pfc - 1, 2};    % indices of the paired "target" bubbles in frame n + 1 (pair n), which will be sorted in ascending order
         endIndex = bubblePairsPersTemp{n + pfc, 1};  % indices of the paired "source" bubbles in frame n + 2 (pair n + 1), not necessarily in ascending order because it's aligned with the "target" indices in frame n + 1
         [trackContinuesIndices, is, ie] = intersect(startIndex, endIndex); % find the common values in the start and end vectors, and the corresponding indices for each
-    %     pairedAndTrackedBubbles{n}(:, 2) = trackContinuesIndices;
         
         % Update the paired and tracked list??
         bubblePairsPersTemp{n + pfc - 1, 1} = bubblePairsPersTemp{n + pfc - 1, 1}(is);
