@@ -34,13 +34,11 @@ subfolderToSave = 'IQ data all half wl gain -0.5';
 mkdir(datapath, subfolderToSave)
 filename_structure_IQ = [probe_name, '-IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.PRF), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-'];
 
-zPixSpacing = P.wl/2;
-xPixSpacing = P.wl/2;
 
 for filenum = 1:numFiles
 % for filenum = 1:2
     load([datapath, filename_structure, num2str(filenum), '.mat'])
-    IQ = LA_DAS(RcvData, P, zPixSpacing, xPixSpacing);
+    IQ = LA_DAS(RcvData, P, P.wl/2, P.wl/2);
 %     IQ = LA_DAS(RcvData, P, P.wl/P.Receive(1).samplesPerWave / 2);
     disp(strcat("recon on buffer ", num2str(filenum), " done"))
 %     IQstack = cat(4, IQstack, IQ); % concatenate along the frame dimension
@@ -48,7 +46,7 @@ for filenum = 1:numFiles
     save([datapath, subfolderToSave, '\', filename_structure_IQ, num2str(filenum)], 'IQ', "-v6")
 end
 
-save([datapath, subfolderToSave, '\', 'pixSpacing'], 'zPixSpacing', 'xPixSpacing')
+save([datapath, subfolderToSave, '\', filename_structure_IQ, num2str(filenum)], 'IQ', "-v6")
 
 % %%
 % [zs, xs, na, nf] = size(IQstack);
