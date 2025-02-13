@@ -149,7 +149,7 @@ end
 %     indicesToRemove = unique(indicesToRemoveRaw);
 % 
 % end
-%% Create tracks with persistence (NEEDS FIXING)
+%% Create tracks with persistence
 pers = 2; % # of frames a track needs to persist through to keep it
 
 bubblePairsPers = cell(length(bubblePairs), 2); % bubble pairs after the persistence condition
@@ -161,7 +161,7 @@ for n = 1:length(bubblePairs)
         bubblePairsPers{n, 2} = bubblePairs{n}(:, 2);
     end
 end
-%%
+%
 tracks = cell(size(bubblePairsPers, 1), 1);
 for n = 1:length(bubblePairsPers) - pers
 % for n = 1:10
@@ -195,6 +195,9 @@ end
 %         bubblePairsPers{n + 1} = bubblePairsPers{n + 1}(ie, :); % I think this preserves the order
 %     end
 % end
+
+%% Combine tracks??????????
+
 %% test on tracks
 figure;
 hold on
@@ -210,9 +213,9 @@ for ti = 1
         
         scatter(coordsSFTemp(:, 1), coordsSFTemp(:, 2), 'ro')
         scatter(coordsTFTemp(:, 1), coordsTFTemp(:, 2), 'bx')
-        for idk = size(startPointInd, 1)
-            line([coordsSFTemp(idk, 1), coordsTFTemp(idk, 1)], [coordsSFTemp(idk, 1), coordsTFTemp(idk, 1)])
-        end
+%         for idk = size(startPointInd, 1)
+%             line([coordsSFTemp(idk, 1); coordsTFTemp(idk, 1)], [coordsSFTemp(idk, 2); coordsTFTemp(idk, 2)])
+%         end
 
     end
 end
@@ -236,17 +239,25 @@ end
 
 %% Velocity map after doing persistence
 
-bVelocity = cell(size(bubblePairsPers, 1) - 1, 1); % bubble velocity - both components [z velocity, x velocity]
+bVelocityPers = cell(size(tracks, 1) - 1, 1); % bubble velocity - both components [z velocity, x velocity]
 % parfor n = 1:length(pairedBubbles) - 1
-for n = 1:size(bubblePairsPers, 1) - 1
-    if ~any([isempty(bubblePairsPers{n, 1}), isempty(bubblePairsPers{n, 2})]) % if there are paired bubbles at frame n
-        coordsSF = centerCoords_corrected{n}(bubblePairsPers{n, 1}); % coords for the source frame
-        coordsTF = centerCoords_corrected{n + 1}(bubblePairsPers{n, 2}); % coords for the target frame
-    
-        bVelocity{n} = (coordsTF - coordsSF) ./ timePerFrame; % THIS IS IN PIXELS per second, NOT DISTANCE per second!!!!!!!!!!!!!!!!! 
-    else
-        bVelocity{n} = NaN;
-    end
+% for ti = 1:length(tracks)% track index
+for ti = 1
+%     if ~any([isempty(bubblePairsPers{n, 1}), isempty(bubblePairsPers{n, 2})]) % if there are paired bubbles at frame n
+        
+    tracksTemp = tracks{ti};
+    for tli = 1:size(tracksTemp, 1)% track length index
+        if ~isempty(tracksTemp{tli})
+            startPointInd = tracksTemp{tli, 1};
+            endPointInd = tracksTemp{tli, 2};
+
+            coordsSFTemp = centerCoords_corrected{ti + tli - 1}(startPointInd, :); % coords for the source frame
+            coordsTFTemp = centerCoords_corrected{ti + tli}(endPointInd, :); % coords for the target frame
+            bVelocityPers{n} = (coordsTFTemp - coordsSFTemp) ./ timePerFrame; % THIS IS IN PIXELS per second, NOT DISTANCE per second!!!!!!!!!!!!!!!!! 
+        else
+            bVelocityPers{n} = NaN;
+        end
+    end 
 
 end
 
