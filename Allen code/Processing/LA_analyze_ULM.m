@@ -169,6 +169,26 @@ toc
 save([savepath, 'allCenters.mat'], 'allCenters')
 
 close(vo); % Close VideoWriter
+
+%% For LOTUS: turn IQ to coherently summed IQ
+% Load parameters and make folder for saving the processed data
+datapath = 'F:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\IQ data all half wl gain -0.5\';
+load(['F:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\params.mat'])
+saveFolderName = 'Coherently summed IQ\';
+mkdir([datapath, saveFolderName])
+
+filename_structure = [P.Trans.name, '-IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.PRF), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-'];
+
+numFiles = 315;
+for filenum = 1:numFiles
+% for filenum = 1:1
+%     load([datapath, 'IQ data\', filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
+    load([datapath, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
+%     IQr = LA_rollingFrames(IQ);                                                 % rolling method to get more effective frames
+    IQ = squeeze(sum(IQ, 3)); % coherent sum across angles
+    save([datapath, saveFolderName, 'IQcs-', num2str(filenum)], 'IQ', "-v6")
+
+end
 %% Test plotting the centroids on top of the filtered IQ data
 % figure; imagesc(XC(:, :, 1)); hold on; spy(centers(:, :, 1), 'ro'); hold off
 
