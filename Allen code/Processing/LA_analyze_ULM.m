@@ -23,7 +23,7 @@ end
 datapath = 'F:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\';
 % datapath = 'D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\';
 load([datapath, 'params.mat'])
-saveFolderName = 'Processed Data with NLM\';
+saveFolderName = 'Processed Data with NLM and isotropic half wl spacing\';
 mkdir([datapath, saveFolderName])
 savepath = [datapath, saveFolderName];
 extHDsavepath = 'K:\Allen data backup\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\Processed Data\';
@@ -35,9 +35,10 @@ filename_structure = [P.Trans.name, '-IQ-', num2str(P.maxAngle), '-', num2str(P.
 sv_threshold_lower = 10;
 sv_threshold_upper = 80;
 
-% Region of interest
+% Region of interest (HARD CODING FOR NOW)
 zrange = 40:120;
-xrange = 1:128;
+% xrange = 1:128;
+xrange = 1:227;
 % framerange = 1:size(IQf, 3);
 % range = {zrange, xrange, framerange};
 range = {zrange, xrange};
@@ -48,11 +49,13 @@ XCThreshold = 0.4;
 areaThreshold = 3;
 
 % Load and refine simulated PSF
-load('F:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\PSF sim\PSF.mat')
-% load('D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\PSF sim\PSF.mat')
-PSFs = PSF(90:110, 58:71); % PSF section, hard code this for now
-% PSFs = PSF(96:105, 62:67); % PSF section, hard code this for now
-% refPSF = imresize(PSF, [size(PSF, 1) * imgRefinementFactor(1), size(PSF, 2) * imgRefinementFactor(2)], 'bilinear');
+% load('F:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\PSF sim\PSF.mat')
+% % load('D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\PSF sim\PSF.mat')
+% PSFs = PSF(90:110, 58:71); % PSF section, hard code this for now
+% refPSF = imresize(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) * imgRefinementFactor(2)], 'bilinear');
+
+load('F:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\PSF sim\PSF_halfwl.mat')
+PSFs = PSF(90:110, 108:120); % PSF section, hard code this for now
 refPSF = imresize(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) * imgRefinementFactor(2)], 'bilinear');
 
 % [~, refPSF_center] = max(abs(refPSF), [], 'all');
@@ -94,7 +97,7 @@ fileGlobalIndex = 1;
 for filenum = 1:numFiles
 % for filenum = 1:1
 %     load([datapath, 'IQ data\', filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
-    load([datapath, 'IQ data gain -0.5\', filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
+    load([datapath, 'IQ data all half wl gain -0.5\', filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
 %     IQr = LA_rollingFrames(IQ);                                                 % rolling method to get more effective frames
     IQr = squeeze(sum(IQ, 3)); % coherent sum across angles
     if filenum == 1
@@ -146,6 +149,9 @@ for filenum = 1:numFiles
         
         % add title
         title(strcat("Frame ", num2str(fileGlobalIndex)))
+
+        axis square
+        axis tight
 
         cp = getframe(vf);     % get the current plane
         rgb = frame2im(cp);      % convert the frame to rgb data
