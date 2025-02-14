@@ -166,6 +166,8 @@ end
 save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'XCThreshold', 'areaThreshold')
 toc
 
+save([savepath, 'allCenters.mat'], 'allCenters')
+
 close(vo); % Close VideoWriter
 %% Test plotting the centroids on top of the filtered IQ data
 % figure; imagesc(XC(:, :, 1)); hold on; spy(centers(:, :, 1), 'ro'); hold off
