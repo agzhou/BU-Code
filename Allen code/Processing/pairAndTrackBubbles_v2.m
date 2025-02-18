@@ -8,6 +8,10 @@ load('D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\param
 % Load localization processing parameters: proc_params.mat
 load([datapath, 'proc_params.mat'])
 
+% [add line to load the recon pixel spacing .mat file]
+% For now, hard coding and assuming equal z and x spacing
+pix_spacing = P.wl/2;
+
 % Find and load the localized centers file, which starts with 'allCenters'
 if ~exist('allCenters', 'var') % Only load if the variable doesn't already exist in the workspace
     allCenters_generalpath = fullfile(datapath, 'allCenters*.mat');
@@ -15,12 +19,12 @@ if ~exist('allCenters', 'var') % Only load if the variable doesn't already exist
     load([allCentersDir.folder, '\', allCentersDir.name])
 end
 
-
+clear allCenters_generalpath allCentersDir
 %% Turn the logical matrices into coordinates
-% load('D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\Processed Data\allCenters_02_05_2025_SVs10to80_files1to315.mat')
 totalFrames = length(allCenters) * size(allCenters{1}, 3);
 
-centerCoords = cell(totalFrames, 1);
+% Cell array with an entry for each frame. Each entry contains (# bubbles) of coordinate pairs (z, x) of the detected bubble centers
+centerCoords = cell(totalFrames, 1); 
 
 caiGlobal = 1;
 for cai = 1:length(allCenters)           % cell array index
@@ -33,12 +37,12 @@ for cai = 1:length(allCenters)           % cell array index
     
 end
 
-img_size = size(allCenters{1});
-clear bfi cai caiGlobal allCenters xc zc
+img_size = size(allCenters{1}); % Save image size if we want to clear allCenters
+clear bfi cai caiGlobal xc zc
 
 %% Calculate bubble count
-bubbleCount = zeros(length(centerCoords), 1); % numFiles/# buffers x # frames per buffer. Count of bubbles in each frame
-centerCoords_corrected = centerCoords;
+bubbleCount = zeros(length(centerCoords), 1);   % numFiles/# buffers x # frames per buffer. Count of bubbles in each frame
+centerCoords_corrected = centerCoords;          % Correct the centerCoords because some frames have every pixel identified as        a bubble
 % mbci = 1; % microbubble count index
 parfor fi = 1:length(centerCoords_corrected) % frame index
 % for fi = 1
@@ -64,12 +68,11 @@ xlabel('Frame number')
 ylabel('Bubble count')
 
 %% Max speed (distance per frame) threshold and initialize variables
-maxSpeedExpectedMMPerS = 50;   % max expected flow speed [mm/s]
-timePerFrame = 1 / P.frameRate; % time elapsed per frame [s]
-maxDistPerFrameM = (maxSpeedExpectedMMPerS / 1000) * timePerFrame;
-pixelsPerM = 2 / P.wl * imgRefinementFactor(1);
-% maxPixelDistPerFrame = maxDistPerFrameM / (P.wl/2/imgRefinementFactor(1)); % HARD CODE THIS FOR TESTING NOW
-maxPixelDistPerFrame = maxDistPerFrameM * pixelsPerM;
+maxSpeedExpectedMMPerS = 50;                                        % max expected flow speed [mm/s]
+timePerFrame = 1 / P.frameRate;                                     % time elapsed per frame [s]
+maxDistPerFrameM = (maxSpeedExpectedMMPerS / 1000) * timePerFrame;  % max distance traveled per frame [m], according to the max expected flow speed and frame rate
+pixelsPerM = 1 / pix_spacing * imgRefinementFactor(1);              % # of pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
+maxPixelDistPerFrame = maxDistPerFrameM * pixelsPerM;               % max distance traveled per frame in units of pixels
 
 bubblePairs = cell(totalFrames - 1, 1);   % Initialize cell vector of paired bubble indices
 
@@ -99,12 +102,6 @@ parfor f = 1:totalFrames - 1
     
             D(D > maxPixelDistPerFrame) = Inf; 
         end
-    
-%         [assignment, cost] = munkres(D);  % Use the munkres.m function from Yi Cao (Matlab File Exchange)
-%         costs(f) = cost;                  % update the overall cost vector
-%     
-%         [pzct, pxct] = find(assignment); % temporarily store the z and x coords from the paired point as stored in the "assignment" matrix
-%         pairedBubbles{f} = [pzct, pxct];
 
         [assignment, unassignedrows, unassignedcolumns] = assignmunkres(D, 100000000000);
         bubblePairs{f} = assignment;
@@ -129,7 +126,7 @@ end
 
 
 %% Create tracks with persistence
-pers = 10; % # of frames a track needs to persist through to keep it
+pers = 5; % # of frames a track needs to persist through to keep it
 
 % Separate the pairs of coordinates so we can change their sizes independently
 bubblePairsPers = cell(length(bubblePairs), 2); % bubble pairs with the pairs separated into another cell dimension
@@ -171,23 +168,31 @@ for n = 1:length(bubblePairsPers) - pers
     tracks{n} = bubblePairsPersTemp(n : n + pfc, :);
 end
 
-% the old code
-% % for n = 1:length(bubblePairsPers) - pers
-% for n = 1:10
-%     for pfc = 1:pers - 1 % persistence frame count
-%         startIndex = bubblePairsPers{n + pfc}(:, 2);    % indices of the paired "target" bubbles in frame n + 1 (pair n), which will be sorted in ascending order
-%         endIndex = bubblePairsPers{n + pfc + 1}(:, 1);  % indices of the paired "source" bubbles in frame n + 2 (pair n + 1), not necessarily in ascending order because it's aligned with the "target" indices in frame n + 1
-%         [trackContinuesIndices, is, ie] = intersect(startIndex, endIndex); % find the common values in the start and end vectors, and the corresponding indices for each
-%     %     pairedAndTrackedBubbles{n}(:, 2) = trackContinuesIndices;
-%         
-%         % Update the paired and tracked list????????????????????
-%         bubblePairsPers{n} = bubblePairsPers{n}(is, :);
-%         bubblePairsPers{n + 1} = bubblePairsPers{n + 1}(ie, :); % I think this preserves the order
-%     end
-% end
-
 %% Combine tracks??????????
 
+% turn tracks into a proper link of coordinates and indices - remove the
+% redundant cross-frame stuff
+tracksClean = cell(size(tracks));
+for n = 1:size(tracks, 1)
+% for n = 1:2
+    tracksTemp = tracks{n};
+    if ~isempty(tracksTemp)
+        stt = size(tracksTemp);
+        nbif = length(tracksTemp{1}); % # of paired bubbles in each frame of the track
+        tracksClean{n} = zeros((stt(1) + 1) * nbif, 4); % There are stt(1) + 1 frames represented in each entry of tracksTemp
+        for fn = 1:stt(1)
+            tracksClean{n}((fn) * nbif + 1 : (fn + 1) * nbif, 1) = tracksTemp{fn, 2};
+            tracksClean{n}((fn) * nbif + 1 : (fn + 1) * nbif, 2:3) = centerCoords_corrected{n + fn}(tracksTemp{fn, 2}, :);
+            tracksClean{n}((fn) * nbif + 1 : (fn + 1) * nbif, 4) = repmat(n + fn, nbif, 1); % add frame number
+        end
+        tracksClean{n}((0) * nbif + 1 : (1) * nbif, 1) = tracksTemp{1, 1};
+        tracksClean{n}((0) * nbif + 1 : (1) * nbif, 2:3) = centerCoords_corrected{n}(tracksTemp{1, 1}, :);
+        tracksClean{n}((0) * nbif + 1 : (1) * nbif, 4) = repmat(n, nbif, 1); % add frame number
+    else
+        tracksClean{n} = NaN;
+    end
+
+end
 %% test on tracks
 figure;
 hold on

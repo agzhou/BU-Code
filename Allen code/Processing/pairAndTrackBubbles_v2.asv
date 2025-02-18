@@ -1,45 +1,30 @@
 % Acknowledgement: using Jean-Yves Tinevez's simpletracker as a reference
-%%
+%% Add dependencies and load parameters + bubble center locations
 datapath = 'D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\Processed Data\with NLM\isotropic half wl pix spacing\';
 addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Processing\munkres')
 addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Previous lab code\A-US-ULM\SubFunctions\')
 load('D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\params.mat')
-% [add a line to load proc_params.mat]
+
+% Load localization processing parameters: proc_params.mat
 load([datapath, 'proc_params.mat'])
-allCenters_generalpath = fullfile(datapath, 'allCenters*.mat');
-allCentersDir = dir(allCenters_generalpath);
-load([allCentersDir.folder, '\', allCentersDir.name])
-% if ~exist('allCenters', 'var')
-%     load('D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\Processed Data\allCenters_02_10_2025_SVs10to80_0p4XCThreshold_10refinementfactor.mat')
-% end
-%% Define some threshold parameters
-% res_assumption = 10; % assumption of how good the localization is (um)
-% maxDetectSpeed = (res_assumption / 1e6) / (1 / P.frameRate); % maximum bubble speed we can detect
-% maxDistPerFrame = (res_assumption / 1e6); % maximum travel distance between frames (m)
 
-%%
-totalFrames = length(allCenters) * size(allCenters{1}, 3);
+% [add line to load the recon pixel spacing .mat file]
+% For now, hard coding and assuming equal z and x spacing
+pix_spacing = P.wl/2;
 
-% allCentersE = cell(totalFrames, 1); % elongated (take the frames from each buffer out individually)
-% 
-% caiGlobal = 1;
-% for cai = 1:length(allCenters) % cell array index
-%     for bfi = 1:size(allCenters{cai}, 3) % buffer frame index
-%         allCentersE{caiGlobal} = allCenters{cai}(:, :, bfi);
-%         caiGlobal = caiGlobal + 1;
-%     end
-%     
-% end
-% 
-% clear allCenters % save memory
+% Find and load the localized centers file, which starts with 'allCenters'
+if ~exist('allCenters', 'var') % Only load if the variable doesn't already exist in the workspace
+    allCenters_generalpath = fullfile(datapath, 'allCenters*.mat');
+    allCentersDir = dir(allCenters_generalpath);
+    load([allCentersDir.folder, '\', allCentersDir.name])
+end
 
-% figure; spy(currentFrame, 'ro')
-% hold on; spy(nextFrame, 'b*'); hold off
+clear allCenters_generalpath allCentersDir
 %% Turn the logical matrices into coordinates
-% load('D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\Processed Data\allCenters_02_05_2025_SVs10to80_files1to315.mat')
 totalFrames = length(allCenters) * size(allCenters{1}, 3);
 
-centerCoords = cell(totalFrames, 1);
+% Cell array with an entry for each frame. Each entry contains (# bubbles) of coordinate pairs (z, x) of the detected bubble centers
+centerCoords = cell(totalFrames, 1); 
 
 caiGlobal = 1;
 for cai = 1:length(allCenters)           % cell array index
@@ -52,12 +37,12 @@ for cai = 1:length(allCenters)           % cell array index
     
 end
 
-img_size = size(allCenters{1});
-clear bfi cai caiGlobal allCenters xc zc
+img_size = size(allCenters{1}); % Save image size if we want to clear allCenters
+clear bfi cai caiGlobal xc zc
 
 %% Calculate bubble count
-bubbleCount = zeros(length(centerCoords), 1); % numFiles/# buffers x # frames per buffer. Count of bubbles in each frame
-centerCoords_corrected = centerCoords;
+bubbleCount = zeros(length(centerCoords), 1);   % numFiles/# buffers x # frames per buffer. Count of bubbles in each frame
+centerCoords_corrected = centerCoords;          % Correct the centerCoords because some frames have every pixel identified as        a bubble
 % mbci = 1; % microbubble count index
 parfor fi = 1:length(centerCoords_corrected) % frame index
 % for fi = 1
@@ -83,12 +68,11 @@ xlabel('Frame number')
 ylabel('Bubble count')
 
 %% Max speed (distance per frame) threshold and initialize variables
-maxSpeedExpectedMMPerS = 50;   % max expected flow speed [mm/s]
-timePerFrame = 1 / P.frameRate; % time elapsed per frame [s]
-maxDistPerFrameM = (maxSpeedExpectedMMPerS / 1000) * timePerFrame;
-pixelsPerM = 2 / P.wl * imgRefinementFactor(1);
-% maxPixelDistPerFrame = maxDistPerFrameM / (P.wl/2/imgRefinementFactor(1)); % HARD CODE THIS FOR TESTING NOW
-maxPixelDistPerFrame = maxDistPerFrameM * pixelsPerM;
+maxSpeedExpectedMMPerS = 50;                                        % max expected flow speed [mm/s]
+timePerFrame = 1 / P.frameRate;                                     % time elapsed per frame [s]
+maxDistPerFrameM = (maxSpeedExpectedMMPerS / 1000) * timePerFrame;  % max distance traveled per frame [m], according to the max expected flow speed and frame rate
+pixelsPerM = 1 / pix_spacing * imgRefinementFactor(1);              % # of pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
+maxPixelDistPerFrame = maxDistPerFrameM * pixelsPerM;               % max distance traveled per frame in units of pixels
 
 bubblePairs = cell(totalFrames - 1, 1);   % Initialize cell vector of paired bubble indices
 
@@ -118,12 +102,6 @@ parfor f = 1:totalFrames - 1
     
             D(D > maxPixelDistPerFrame) = Inf; 
         end
-    
-%         [assignment, cost] = munkres(D);  % Use the munkres.m function from Yi Cao (Matlab File Exchange)
-%         costs(f) = cost;                  % update the overall cost vector
-%     
-%         [pzct, pxct] = find(assignment); % temporarily store the z and x coords from the paired point as stored in the "assignment" matrix
-%         pairedBubbles{f} = [pzct, pxct];
 
         [assignment, unassignedrows, unassignedcolumns] = assignmunkres(D, 100000000000);
         bubblePairs{f} = assignment;
@@ -146,15 +124,9 @@ parfor f = 1:totalFrames - 1
 %     hold off
 end
 
-%% Remove the unpaired bubbles (jk pairedBubbles already only has the paired ones)
-% for n = 1:length(pairedBubbles) - 1
-% % for n = 1
-%     indicesToRemoveRaw = [ubT{n}; ubS{n + 1}];
-%     indicesToRemove = unique(indicesToRemoveRaw);
-% 
-% end
+
 %% Create tracks with persistence
-pers = 10; % # of frames a track needs to persist through to keep it
+pers = 5; % # of frames a track needs to persist through to keep it
 
 % Separate the pairs of coordinates so we can change their sizes independently
 bubblePairsPers = cell(length(bubblePairs), 2); % bubble pairs with the pairs separated into another cell dimension
@@ -196,23 +168,24 @@ for n = 1:length(bubblePairsPers) - pers
     tracks{n} = bubblePairsPersTemp(n : n + pfc, :);
 end
 
-% the old code
-% % for n = 1:length(bubblePairsPers) - pers
-% for n = 1:10
-%     for pfc = 1:pers - 1 % persistence frame count
-%         startIndex = bubblePairsPers{n + pfc}(:, 2);    % indices of the paired "target" bubbles in frame n + 1 (pair n), which will be sorted in ascending order
-%         endIndex = bubblePairsPers{n + pfc + 1}(:, 1);  % indices of the paired "source" bubbles in frame n + 2 (pair n + 1), not necessarily in ascending order because it's aligned with the "target" indices in frame n + 1
-%         [trackContinuesIndices, is, ie] = intersect(startIndex, endIndex); % find the common values in the start and end vectors, and the corresponding indices for each
-%     %     pairedAndTrackedBubbles{n}(:, 2) = trackContinuesIndices;
-%         
-%         % Update the paired and tracked list????????????????????
-%         bubblePairsPers{n} = bubblePairsPers{n}(is, :);
-%         bubblePairsPers{n + 1} = bubblePairsPers{n + 1}(ie, :); % I think this preserves the order
-%     end
-% end
-
 %% Combine tracks??????????
 
+% turn tracks into a proper link of coordinates and indices - remove the
+% redundant cross-frame stuff
+tracksClean = cell(size(tracks));
+% for n = 1:size(tracks, 1)
+for n = 1
+    tracksTemp = tracks{n};
+    stt = size(tracksTemp);
+    nbif = length(tracksTemp{1}); % # of paired bubbles in each frame of the track
+    tracksClean{n} = zeros((stt(1) + 1) * nbif, 4); % There are stt(1)
+    for fn = 1:stt(1)
+        tracksClean{n}((fn) * nbif + 1 : (fn + 1) * nbif, 1) = tracksTemp{fn, 2};
+%         tracksClean{n}(fn + 1, 2:3) = centerCoords_corrected{n}(tracksTemp(fn, 2), :);
+        tracksClean{n}((fn) * nbif + 1 : (fn + 1) * nbif, 4) = repmat(fn + 1, nbif, 1); % add frame number
+    end
+
+end
 %% test on tracks
 figure;
 hold on
@@ -235,22 +208,6 @@ for ti = 1
     end
 end
 % clear startPointInd endPointInd coordsSFTemp coordsTFTemp
-%% Velocity map before doing persistence
-% zVelocity = cell(length(pairedBubbles) - 1, 1);
-% xVelocity = cell(length(pairedBubbles) - 1, 1);
-bVelocity = cell(length(bubblePairs) - 1, 1); % bubble velocity - both components [z velocity, x velocity]
-% parfor n = 1:length(pairedBubbles) - 1
-for n = 1:length(bubblePairs) - 1
-    if ~isempty(bubblePairs{n}) % if there are paired bubbles at frame n
-        coordsSF = centerCoords_corrected{n}(bubblePairs{n}(:, 1), :); % coords for the source frame
-        coordsTF = centerCoords_corrected{n + 1}(bubblePairs{n}(:, 2), :); % coords for the target frame
-    
-        bVelocity{n} = (coordsTF - coordsSF) ./ timePerFrame; % THIS IS IN PIXELS per second, NOT DISTANCE per second!!!!!!!!!!!!!!!!! 
-    else
-        bVelocity{n} = NaN;
-    end
-
-end
 
 %% Velocity map after doing persistence
 
@@ -330,79 +287,6 @@ for n = 1:length(bubblePairs) - 1
 end
 
 imagesc(velocityMap)
-% clim([])
-
-%% Plot z velocity map before persistence with linear interpolation
-zVelocityMap = zeros(img_size(1), img_size(2));
-zvUpMap = NaN(img_size(1), img_size(2));
-zvDownMap = NaN(img_size(1), img_size(2));
-
-for n = 1:length(bubblePairs) - 1
-% for n = 1
-    zVel = bVelocity{n}(:, 1); % z component of velocity between frames n and n + 1 (maybe not exactly)
-
-    if ~isempty(bubblePairs{n})
-        coordsS = centerCoords_corrected{n}(bubblePairs{n}(:, 1), :);       % coords for the source frame
-        coordsT = centerCoords_corrected{n + 1}(bubblePairs{n}(:, 2), :);   % coords for the target frame
-        
-        % linearly interpolate to fill in the pixels between the
-        % coordinates of the paired bubbles
-        for pri = 1:length(zVel) % pair index
-            zVelTemp = zVel(pri);
-            if zVelTemp > 0     % up z flow
-                [zcInterp, xcInterp] = ULM_interp2D(coordsS(pri, :), coordsT(pri, :));
-%                 zvUpMap([zcInterp, xcInterp]) = zvUpMap([zcInterp, xcInterp]) + zVelTemp;
-                for nip = 1:length(zcInterp) % number of interp points  
-                    if isnan(zvUpMap(zcInterp(nip), xcInterp(nip)))
-                        zvUpMap(zcInterp(nip), xcInterp(nip)) = zVelTemp; % If this is the first point entered at that pixel, use the value
-                    else
-                        zvUpMap(zcInterp(nip), xcInterp(nip)) = (zvUpMap(zcInterp(nip), xcInterp(nip)) + zVelTemp) / 2; % If it's not the first point entered at that pixel, average between the existing and new values
-                    end
-                end
-            else                % down z flow
-                [zcInterp, xcInterp] = ULM_interp2D(coordsS(pri, :), coordsT(pri, :));
-%                 zvDownMap([zcInterp, xcInterp]) = zvDownMap([zcInterp, xcInterp]) + zVelTemp;
-                for nip = 1:length(zcInterp) % number of interp points  
-                    if isnan(zvDownMap(zcInterp(nip), xcInterp(nip)))
-                        zvDownMap(zcInterp(nip), xcInterp(nip)) = zVelTemp; % If this is the first point entered at that pixel, use the value
-                    else
-                        zvDownMap(zcInterp(nip), xcInterp(nip)) = (zvDownMap(zcInterp(nip), xcInterp(nip)) + zVelTemp) / 2; % If it's not the first point entered at that pixel, average between the existing and new values
-                    end
-                end
-            end
-        end
-    end
-end
-%             zVelocityMap(coords(ci, 1), coords(ci, 2)) = zVelocityMap(coords(ci, 1), coords(ci, 2)) + zVel(ci); % add the velocities to the existing values
-%
-zvDownMap(isnan(zvDownMap)) = 0;
-zvUpMap(isnan(zvUpMap)) = 0;
-% Load Jianbo's colormaps
-[VzCmap, VzCmapDn, VzCmapUp, pdiCmapUp, PhtmCmap] = Colormaps_fUS;
-zvMapFig = figure;
-
-% hold on
-vCrange= [-15000, 15000];
-figure(zvMapFig)
-h1 = axes;
-imagesc(zvUpMap)
-% alpha(h1, double(abs(zvUpMap) > 1))
-colormap(zvMapFig, VzCmap)
-caxis(vCrange);
-axis tight
-colorbar
-hold on
-
-h2 = axes;
-imagesc(zvDownMap)
-alpha(h2, double(abs(zvDownMap) > 1))
-colormap(zvMapFig, VzCmap)
-caxis(vCrange);
-axis tight
-colorbar
-axis off
-linkaxes([h1, h2]);
-
 % clim([])
 
 %% Plot z velocity map after persistence with linear interpolation
@@ -501,67 +385,3 @@ axis off
 linkaxes([h1, h2]);
 
 % clim([])
-
-%% Plot z velocity map with lines?
-velocityMap = zeros(img_size(1), img_size(2));
-
-mymap = [zeros(256,2),linspace(1,0,256)';linspace(0,1,256)', zeros(256,2)];
-
-vMapFig = figure;
-% colormap(vMapFig, mymap)
-% imagesc(velocityMap);
-hold on
-% hold on
-figure(vMapFig)
-% for n = 1:length(pairedBubbles) - 1
-for n = 1:10000
-    zVel = bVelocity{n}(:, 1);
-    % Use the source coordinates as the point to plot velocity?
-    % OR FILL IN THE LINE BETWEEN????
-    if ~isempty(bubblePairs{n})
-        coordsS = centerCoords_corrected{n}(bubblePairs{n}(:, 1), :); % coords for the source frame
-        coordsT = centerCoords_corrected{n + 1}(bubblePairs{n}(:, 2), :); % coords for the target frame
-
-        for ci = 1:length(zVel) % coordinate index
-%             velocityMap(coords(ci, 1), coords(ci, 2)) = velocityMap(coords(ci, 1), coords(ci, 2)) + zVel(ci); % add the velocities to the existing values
-            if zVel(ci) > 0
-%                 colorUpTemp = [1, 0, 0] * abs(zVel(ci)) ./ 90000;
-                colorUpTemp = [1, 0, 0];
-                line([coordsS(ci, 2), coordsT(ci, 2)], [coordsS(ci, 1), coordsT(ci, 1)], 'Color', colorUpTemp)
-            else
-%                 colorDownTemp = [0, 0, 1] * abs(zVel(ci)) ./ 90000;
-                colorDownTemp = [0, 0, 1];
-                line([coordsS(ci, 2), coordsT(ci, 2)], [coordsS(ci, 1), coordsT(ci, 1)], 'Color', colorDownTemp)
-
-            end
-        end
-    end
-end
-
-% imagesc(velocityMap)
-% clim([])
-
-%% Plot pairing between two frames' centers (for testing)
-% testFig = figure;
-% % for f = 1:totalFrames - 1
-% for f = 1
-% % for f = 3
-%     sourceFrame = centerCoords_corrected{f};
-%     targetFrame = centerCoords_corrected{f + 1};
-% 
-% %     pairedBubbles{f} = [pzct, pxct];
-%     
-%     % Plot a line for each pair
-%     figure(testFig); scatter(sourceFrame(:, 1), sourceFrame(:, 2), 'ro')
-%     hold on; scatter(targetFrame(:, 1), targetFrame(:, 2), 'b*');
-%     title(strcat("Frame ", num2str(f)))
-%     for npb = 1:size(bubblePairs{f}, 1)
-%         pairInd = bubblePairs{f}(npb, :);
-%         ZVecTemp = [sourceFrame(pairInd(1), 1), targetFrame(pairInd(2), 1)];
-%         XVecTemp = [sourceFrame(pairInd(1), 2), targetFrame(pairInd(2), 2)];
-%         line(ZVecTemp, XVecTemp, 'LineWidth', 1.5)
-%     end
-%         
-% %     hold off
-% end
-% legend('Frame n', 'Frame n + 1')
