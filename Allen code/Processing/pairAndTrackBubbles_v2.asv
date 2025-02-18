@@ -197,26 +197,92 @@ for n = 1:size(tracks, 1)
 end
 clear n tracksTemp nbif stt
 
-%% Combine cleaned tracks
-tracksCombined = cell(size(tracksClean));
-% for n = 1:size(tracksClean, 1)
-for n = 1
-    tracksntemp = tracksClean{n}; % tracks in frame n
-    tcTemp = zeros(1, 4);
-%     for np = 1:pers                         % go through all the possible overlaps in frames
-    for np = 1
-        tracksnptemp = tracksClean{n + np};  % tracks in frame n + np
+%% Velocity map after doing persistence, on the cleaned tracks
 
-%         for nfi = 1:
-        for nfi = 1 % frame number inside tracknptemp
-
+bVelocity = cell(size(tracksClean, 1), 1);  % bubble velocity - for each entry in the cell array, [# points x 4] where it has[z position, x position, z velocity, x velocity] in units of pixels and pixels/s
+bVelocityTest = cell(size(tracksClean, 1), pers);
+for ti = 1:length(tracksClean)              % track index
+% for ti = 1:1
+        
+    tracksTemp = tracksClean{ti};
+    nbiti = nbifAll(ti);                      % # of bubbles in the tracks starting in index ti
+    vmapTemp = [];
+    for fn = 1:pers % Go through all the frames in the tracks with origin frame ti
+%     for fn = 1
+        startPoints = tracksTemp((fn - 1) * nbiti + 1 : fn * nbiti, 2:3);
+        endPoints = tracksTemp((fn) * nbiti + 1: (fn + 1) * nbiti, 2:3);
+        vfn = (endPoints - startPoints) ./ timePerFrame;
+        bVelocityTest{ti, fn} = [startPoints, endPoints, vfn]; % each row is [z start coord, x start coord, z end coord, x end coord, z velocity, x velocity]
+        
+        for i = 1:nbiti % Go through each pair of coordinates used to calculate the velocity and add the interpolated points to the velocity + coordinamatrix
+%         for i = 1
+            [zcInterp, xcInterp] = ULM_interp2D(startPoints(i, :), endPoints(i, :));
+            vmapTempi = [zcInterp, xcInterp, repmat(vfn(i, :), length(zcInterp), 1)];
+            vmapTemp = [vmapTemp; vmapTempi];
         end
-
     end
+    bVelocity{ti} = vmapTemp;
+end
+clear ti fn tracksTemp startPoints endPoints vfn zcInterp xcInterp i vmapTempi vmapTemp
 
-
+%% Combine cleaned tracks old
+tracksCombined = cell(size(tracksClean));
+% for n = 1:size(tracksClean, 1) % go through frames
+for n = 1
+    tracksntemp = tracksClean{n};            % tracks starting in frame n
+    nbifn = nbifAll(n);                      % # of bubbles in the tracks starting in frame n
+%     tcTemp = zeros(1, 4);
+    tcTemp = tracksntemp(1 : nbifn, :);
+%     for np = 1:pers             % go through all the possible overlaps in frames
+    for np = 1
+        tracksnptemp = tracksClean{n + np};  % tracks starting in frame n + np
+        nbifnp = nbifAll(n + np);            % # of bubbles in the tracks starting in frame n + np
+%         for nfi = 1:pers
+    
+        for nfi = 1 % frame number inside tracknptemp
+            tracksntempfni = tracksntemp((nfi) * nbifn + 1 : (nfi + 1) * nbifn, :);
+            tracksnptempfni = tracksnptemp((nfi - 1) * nbifnp + 1 : nfi * nbifnp, :);
+%             tcTemp = [tcTemp; unique([tracksntempfni; tracksnptempfni], 'rows', 'stable')];
+            tcTempnp = [tcTempnp; unique([tracksntempfni; tracksnptempfni], 'rows', 'stable')];
+        end
+    end
 end
 % clear trackntemp tracknptemp tcTemp n np
+
+%% Combine cleaned tracks
+tracksCombined = cell(size(tracksClean));
+% for n = 1:size(tracksClean, 1) % go through frames
+for n = 1
+%     tracksntemp = tracksClean{n};            % tracks starting in frame n
+%     nbifn = nbifAll(n);                      % # of bubbles in the tracks starting in frame n
+%     tcTemp = zeros(1, 4);
+    for fn = n:n + pers           % go through all the possible overlaps in frames
+%     for fn = 1:20
+        tcTemp = [];
+%         tcTemp = tracksntemp((fn - 1) * nbifn + 1:fn * nbifn, :); % Accumulate the possible bubbles/coords for each global frame # fn
+        rangefn = n:fn;  % range of tracks which include frame # fn
+
+        for ti = rangefn % track index
+            trackstiTemp = tracksClean{ti};  % tracks in index ti
+            nbifti = nbifAll(ti);            % # of bubbles in the tracks starting in frame ti
+
+            tracksfnTemp = trackstiTemp((fn - ti) * nbifti + 1:(fn - ti + 1) * nbifti, :); % tracks of global frame # fn within tracks{ti}
+            tcTemp = [tcTemp; tracksfnTemp];
+        end
+
+        [uniqueTracksfnTemp, iat, ict] = unique(tcTemp, 'rows', 'stable');
+        tracksCombined{fn} = uniqueTracksfnTemp; %%%%
+
+%         for nfi = 1 % frame number inside tracknptemp
+%             tracksntempfni = tracksntemp((nfi) * nbifn + 1 : (nfi + 1) * nbifn, :);
+%             tracksnptempfni = tracksnptemp((nfi - 1) * nbifnp + 1 : nfi * nbifnp, :);
+% %             tcTemp = [tcTemp; unique([tracksntempfni; tracksnptempfni], 'rows', 'stable')];
+%             tcTempnp = [tcTempnp; unique([tracksntempfni; tracksnptempfni], 'rows', 'stable')];
+%         end
+    end
+end
+% clear trackntemp tracknptemp tcTemp n np
+
 %% test on tracks
 figure;
 hold on

@@ -99,21 +99,21 @@ for filenum = 1:numFiles
 %     load([datapath, 'IQ data\', filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
     load([datapath, 'IQ data all half wl gain -0.5\', filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
 %     IQr = LA_rollingFrames(IQ);                                                 % rolling method to get more effective frames
-    IQcs = squeeze(sum(IQ, 3)); % coherent sum across angles
+    IQ = squeeze(sum(IQ, 3)); % coherent sum across angles
     if filenum == 1
-        [zp, xp, nf] = size(IQcs);
+        [zp, xp, nf] = size(IQr);
         range{3} = 1:nf; % set frame range after rolling on the first file
         
     end
 
     % SVD proc part 1
 %     tic
-    [PP, EVs, V_sort] = getSVs1D(IQcs);
+    [PP, EVs, V_sort] = getSVs1D(IQr);
 %     disp('SVs decomposed')
 %     toc
     % SVD proc part 2
 %     tic
-    [IQf] = applySVs1D(IQcs, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
+    [IQf] = applySVs1D(IQr, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
 %     disp('SVD filtered images put together')
 %     save([savepath, 'Filtered-Data-', num2str(filenum)], 'IQr', 'PP', 'EVs', 'V_sort', 'IQf', "-v6")
 
