@@ -168,17 +168,19 @@ for n = 1:length(bubblePairsPers) - pers
     tracks{n} = bubblePairsPersTemp(n : n + pfc, :);
 end
 
-%% Combine tracks??????????
+%% Clean tracks
 
 % turn tracks into a proper link of coordinates and indices - remove the
 % redundant cross-frame stuff
 tracksClean = cell(size(tracks));
+nbifAll = zeros(size(tracks));
 for n = 1:size(tracks, 1)
 % for n = 1:2
     tracksTemp = tracks{n};
     if ~isempty(tracksTemp)
         stt = size(tracksTemp);
         nbif = length(tracksTemp{1}); % # of paired bubbles in each frame of the track
+        nbifAll(n) = nbif;
         tracksClean{n} = zeros((stt(1) + 1) * nbif, 4); % There are stt(1) + 1 frames represented in each entry of tracksTemp
         for fn = 1:stt(1)
             tracksClean{n}((fn) * nbif + 1 : (fn + 1) * nbif, 1) = tracksTemp{fn, 2};
@@ -193,6 +195,29 @@ for n = 1:size(tracks, 1)
     end
 
 end
+clear n tracksTemp nbif stt
+
+%% Combine cleaned tracks
+tracksCombined = cell(size(tracksClean));
+% for n = 1:size(tracksClean, 1)
+for n = 1
+    tracksntemp = tracksClean{n}; % tracks in frame n
+    nbifn = nbifAll(n); % # of bubbles in frame n
+    tcTemp = zeros(1, 4);
+%     for np = 1:pers                         % go through all the possible overlaps in frames
+    for np = 1
+        tracksnptemp = tracksClean{n + np};  % tracks in frame n + np
+        nbifnp = nbifAll(n + np); % # of bubbles in frame n + np
+%         for nfi = 1:
+        for nfi = 1 % frame number inside tracknptemp
+
+        end
+
+    end
+
+
+end
+% clear trackntemp tracknptemp tcTemp n np
 %% test on tracks
 figure;
 hold on
