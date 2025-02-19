@@ -84,7 +84,7 @@ ubS = cell(totalFrames - 1, 1);             % unassigned bubbles from the source
 ubT = cell(totalFrames - 1, 1);             % unassigned bubbles from the target frames
 
 parfor f = 1:totalFrames - 1
-% for f = 18
+% for f = 7
     sourceFrame = centerCoords_corrected{f};
     targetFrame = centerCoords_corrected{f + 1};
 
@@ -105,16 +105,16 @@ parfor f = 1:totalFrames - 1
         end
 
         [assignment, unassignedrows, unassignedcolumns] = assignmunkres(D, 100000000000);
-        bubblePairs{f} = assignment;
+        bubblePairs{f} = assignment; % assignment will always be sorted to make the second column in order
         ubS{f} = unassignedrows;
         ubT{f} = unassignedcolumns;
     
         % Plot a line for each pair
-%         figure(testFig); scatter(sourceFrame(:, 1), sourceFrame(:, 2), 'ro')
+%         figure; scatter(sourceFrame(:, 1), sourceFrame(:, 2), 'ro')
 %         hold on; scatter(targetFrame(:, 1), targetFrame(:, 2), 'b*');
 %         title(strcat("Frame ", num2str(f)))
-%         for npb = 1:size(pairedBubbles{f}, 1)
-%             pairInd = pairedBubbles{f}(npb, :);
+%         for npb = 1:size(bubblePairs{f}, 1)
+%             pairInd = bubblePairs{f}(npb, :);
 %             ZVecTemp = [sourceFrame(pairInd(1), 1), targetFrame(pairInd(2), 1)];
 %             XVecTemp = [sourceFrame(pairInd(1), 2), targetFrame(pairInd(2), 2)];
 %             line(ZVecTemp, XVecTemp, 'LineWidth', 1.5)
@@ -126,7 +126,7 @@ parfor f = 1:totalFrames - 1
 end
 
 clear f nbS nbT D spi assignment unassignedrows unassignedcolumns
-%% Create tracks with persistence
+%% Create tracks with persistence (might have a bug)
 pers = 5; % # of frames a track needs to persist through to keep it
 
 % Separate the pairs of coordinates so we can change their sizes independently
@@ -170,6 +170,53 @@ for n = 1:length(bubblePairsPers) - pers
 end
 
 clear bubblePairsPersTemp n pfc recpfc
+
+%% Create tracks with persistence - hopefully fixing the bug
+pers = 5; % # of frames a track needs to persist through to keep it
+
+% Separate the pairs of coordinates so we can change their sizes independently
+bubblePairsPers = cell(length(bubblePairs), 2); % bubble pairs with the pairs separated into another cell dimension
+for n = 1:length(bubblePairs)
+    if ~isempty(bubblePairs{n})
+        bubblePairsPers{n, 1} = bubblePairs{n}(:, 1);
+        bubblePairsPers{n, 2} = bubblePairs{n}(:, 2);
+    end
+end
+
+% Store the bubble indices that contribute to each track of at least (pers) # of frames
+tracks = cell(size(bubblePairsPers, 1) - pers, 1);
+% for n = 1:length(bubblePairsPers) - pers
+for n = 7
+    bubblePairsPersTemp = bubblePairsPers;
+    for pfc = 1:pers - 1 % persistence frame count
+%     for pfc = 1
+        startIndex = bubblePairsPersTemp{n + pfc - 1, 2};    % indices of the paired "target" bubbles in frame n + 1 (pair n), which will be sorted in ascending order
+        endIndex = bubblePairsPersTemp{n + pfc, 1};  % indices of the paired "source" bubbles in frame n + 2 (pair n + 1), not necessarily in ascending order because it's aligned with the "target" indices in frame n + 1
+        [trackContinuesIndices, is, ie] = intersect(startIndex, endIndex); % find the common values in the start and end vectors, and the corresponding indices for each
+        
+        % Update the paired and tracked list for this immediate set of pairs
+        bubblePairsPersTemp{n + pfc - 1, 1} = bubblePairsPersTemp{n + pfc - 1, 1}(is);
+        bubblePairsPersTemp{n + pfc - 1, 2} = bubblePairsPersTemp{n + pfc - 1, 2}(is);
+        bubblePairsPersTemp{n + pfc, 1} = bubblePairsPersTemp{n + pfc, 1}(ie); % I think this preserves the order
+        bubblePairsPersTemp{n + pfc, 2} = bubblePairsPersTemp{n + pfc, 2}(ie); % Need to preserve the order, so set the next starting point????
+        
+
+    end
+    % Go back and update the previous pairs too
+%         for recpfc = pfc - 1 : -1 : 1   % recursive persistence frame count
+    for recpfc = 1:pfc - 1   % recursive persistence frame count
+        recStartIndex = bubblePairsPersTemp{n + pfc - recpfc - 1, 2};    % indices of the paired "target" bubbles in frame n + 1 (pair n), which will be sorted in ascending order
+        recEndIndex = bubblePairsPersTemp{n + pfc - recpfc, 1};  % indices of the paired "source" bubbles in frame n + 2 (pair n + 1), not necessarily in ascending order because it's aligned with the "target" indices in frame n + 1
+        [recTrackContinuesIndices, ris, rie] = intersect(recStartIndex, recEndIndex); % find the common values in the start and end vectors, and the corresponding indices for each
+    
+        bubblePairsPersTemp{n + pfc - recpfc - 1, 1} = bubblePairsPersTemp{n + pfc - recpfc - 1, 1}(ris);
+        bubblePairsPersTemp{n + pfc - recpfc - 1, 2} = bubblePairsPersTemp{n + pfc - recpfc - 1, 2}(ris);
+    end
+    tracks{n} = bubblePairsPersTemp(n : n + pfc, :);
+end
+
+clear bubblePairsPersTemp n pfc recpfc
+
 %% Clean tracks
 
 % turn tracks into a proper link of coordinates and indices - remove the
@@ -529,15 +576,13 @@ zvDownMap = zeros(img_size(1), img_size(2));
 zvUpMapCounter = zeros(img_size(1), img_size(2));
 zvDownMapCounter = zeros(img_size(1), img_size(2));
 
-for ti = 1:size(bVelocityTestMSmoothed, 1)
-% for ti = 2
+% for ti = 1:size(bVelocityTestMSmoothed, 1)
+for ti = 7
 %     bvTemp = bVelocityTestMSmoothed{ti}; % get the ti-th entry
     bvTemp = bVelocityTestM{ti}; % get the ti-th entry
-    clear interpPts coordsStart coordsEnd zvTemp
     if ~isempty(bvTemp) % only do stuff if the bubble velocity cell array entry is not empty
-%         disp(ti)
         for bpi = 1:size(bvTemp, 1) % bubble pair index
-            clear interpPts coordsStart coordsEnd zvTemp
+%             clear interpPts coordsStart coordsEnd zvTemp
 %             interpPts = [];
 %         for bpi = 2
             % Initialize temporary start and end coordinate matrices.
@@ -553,7 +598,8 @@ for ti = 1:size(bVelocityTestMSmoothed, 1)
             end
 
             zvTemp = squeeze(bvTemp(bpi, 5, :));
-            interpPts = ULM_interp2D_linear(coordsStart, coordsEnd, zvTemp); % Get interpolated points with the corresponding z velocity value. each row is [z coord, x coord, z velocity]
+%             interpPts = ULM_interp2D_linear(coordsStart, coordsEnd, zvTemp); % Get interpolated points with the corresponding z velocity value. each row is [z coord, x coord, z velocity]
+            interpPts = ULM_interp2D_linear(coordsStart, coordsEnd, zvTemp, ti); % Get interpolated points with the corresponding z velocity value. each row is [z coord, x coord, z velocity]
             
             for ipi = 1:size(interpPts, 1) % interpolated point index
                 interpPtsTemp = interpPts(ipi, :);
@@ -567,9 +613,16 @@ for ti = 1:size(bVelocityTestMSmoothed, 1)
                 end
             end
         end
-        
+%     else
+%         interpPts = [];
+%         coordsStart = [];
+%         coordsEnd = [];
+%         zvTemp = [];
+%         bvTemp = [];
+%         zVelTemp = [];
+%         interpPtsTemp = [];
     end
-    clear bvTemp
+%     clear bvTemp
 end
 zvUpMask = zvUpMapCounter > 0;
 zvDownMask = zvDownMapCounter > 0;

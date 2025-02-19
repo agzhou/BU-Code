@@ -126,52 +126,8 @@ parfor f = 1:totalFrames - 1
 end
 
 clear f nbS nbT D spi assignment unassignedrows unassignedcolumns
-%% Create tracks with persistence (might have a bug)
-pers = 5; % # of frames a track needs to persist through to keep it
 
-% Separate the pairs of coordinates so we can change their sizes independently
-bubblePairsPers = cell(length(bubblePairs), 2); % bubble pairs with the pairs separated into another cell dimension
-for n = 1:length(bubblePairs)
-    if ~isempty(bubblePairs{n})
-        bubblePairsPers{n, 1} = bubblePairs{n}(:, 1);
-        bubblePairsPers{n, 2} = bubblePairs{n}(:, 2);
-    end
-end
-
-% Store the bubble indices that contribute to each track of at least (pers) # of frames
-tracks = cell(size(bubblePairsPers, 1) - pers, 1);
-for n = 1:length(bubblePairsPers) - pers
-% for n = 1:1
-    bubblePairsPersTemp = bubblePairsPers;
-    for pfc = 1:pers - 1 % persistence frame count
-%     for pfc = 1
-        startIndex = bubblePairsPersTemp{n + pfc - 1, 2};    % indices of the paired "target" bubbles in frame n + 1 (pair n), which will be sorted in ascending order
-        endIndex = bubblePairsPersTemp{n + pfc, 1};  % indices of the paired "source" bubbles in frame n + 2 (pair n + 1), not necessarily in ascending order because it's aligned with the "target" indices in frame n + 1
-        [trackContinuesIndices, is, ie] = intersect(startIndex, endIndex); % find the common values in the start and end vectors, and the corresponding indices for each
-        
-        % Update the paired and tracked list for this immediate set of pairs
-        bubblePairsPersTemp{n + pfc - 1, 1} = bubblePairsPersTemp{n + pfc - 1, 1}(is);
-        bubblePairsPersTemp{n + pfc - 1, 2} = bubblePairsPersTemp{n + pfc - 1, 2}(is);
-        bubblePairsPersTemp{n + pfc, 1} = bubblePairsPersTemp{n + pfc, 1}(ie); % I think this preserves the order
-        bubblePairsPersTemp{n + pfc, 2} = bubblePairsPersTemp{n + pfc, 2}(ie); % Need to preserve the order, so set the next starting point????
-        
-        % Go back and update the previous pairs too
-%         for recpfc = pfc - 1 : -1 : 1   % recursive persistence frame count
-        for recpfc = 1:pfc - 1   % recursive persistence frame count
-            recStartIndex = bubblePairsPersTemp{n + pfc - recpfc - 1, 2};    % indices of the paired "target" bubbles in frame n + 1 (pair n), which will be sorted in ascending order
-            recEndIndex = bubblePairsPersTemp{n + pfc - recpfc, 1};  % indices of the paired "source" bubbles in frame n + 2 (pair n + 1), not necessarily in ascending order because it's aligned with the "target" indices in frame n + 1
-            [recTrackContinuesIndices, ris, rie] = intersect(recStartIndex, recEndIndex); % find the common values in the start and end vectors, and the corresponding indices for each
-        
-            bubblePairsPersTemp{n + pfc - recpfc - 1, 1} = bubblePairsPersTemp{n + pfc - recpfc - 1, 1}(ris);
-            bubblePairsPersTemp{n + pfc - recpfc - 1, 2} = bubblePairsPersTemp{n + pfc - recpfc - 1, 2}(ris);
-        end
-    end
-    tracks{n} = bubblePairsPersTemp(n : n + pfc, :);
-end
-
-clear bubblePairsPersTemp n pfc recpfc
-
-%% Create tracks with persistence - hopefully fixing the bug
+%% Create tracks with persistence
 pers = 5; % # of frames a track needs to persist through to keep it
 
 tic
@@ -357,29 +313,6 @@ for ti = 1
     end
 end
 % clear startPointInd endPointInd coordsSFTemp coordsTFTemp
-
-%% Velocity map after doing persistence
-
-bVelocityPers = cell(size(tracks, 1), pers); % bubble velocity - both components [z velocity, x velocity]
-for ti = 1:length(tracks)% track index
-% for ti = 1
-        
-    tracksTemp = tracks{ti};
-    for tli = 1:size(tracksTemp, 1)% track length index
-        if ~isempty(tracksTemp{tli})
-            startPointInd = tracksTemp{tli, 1};
-            endPointInd = tracksTemp{tli, 2};
-
-            coordsSFTemp = centerCoords_corrected{ti + tli - 1}(startPointInd, :);  % coords for the source frame
-            coordsTFTemp = centerCoords_corrected{ti + tli}(endPointInd, :);        % coords for the target frame
-            vTemp = (coordsTFTemp - coordsSFTemp) ./ timePerFrame; % THIS IS IN PIXELS per second, NOT DISTANCE per second!!!!!!!!!!!!!!!!!
-            bVelocityPers{ti, tli} = vTemp;
-        else
-            bVelocityPers{ti, tli} = NaN;
-        end
-    end
-end
-clear ti tli tracksTemp startPointInd endPointInd coordsSFTemp coordsTFTemp vTemp
 
 %% Refine the velocity map - (maybe remove tracks where the position is oscillating over time)
 bVelocityTestMSmoothed = bVelocityTestM;
