@@ -67,6 +67,7 @@ title('Bubble count')
 xlabel('Frame number')
 ylabel('Bubble count')
 
+clear fi bufTemp
 %% Max speed (distance per frame) threshold and initialize variables
 maxSpeedExpectedMMPerS = 50;                                        % max expected flow speed [mm/s]
 timePerFrame = 1 / P.frameRate;                                     % time elapsed per frame [s]
@@ -124,7 +125,7 @@ parfor f = 1:totalFrames - 1
 %     hold off
 end
 
-
+clear f nbS nbT D spi assignment unassignedrows unassignedcolumns
 %% Create tracks with persistence
 pers = 5; % # of frames a track needs to persist through to keep it
 
@@ -168,6 +169,7 @@ for n = 1:length(bubblePairsPers) - pers
     tracks{n} = bubblePairsPersTemp(n : n + pfc, :);
 end
 
+clear bubblePairsPersTemp n pfc recpfc
 %% Clean tracks
 
 % turn tracks into a proper link of coordinates and indices - remove the
@@ -201,19 +203,21 @@ clear n tracksTemp nbif stt
 
 bVelocity = cell(size(tracksClean, 1), 1);  % bubble velocity - for each entry in the cell array, [# points x 4] where it has[z position, x position, z velocity, x velocity] in units of pixels and pixels/s
 bVelocityTest = cell(size(tracksClean, 1), pers);
+bVelocityTestM = cell(size(tracksClean, 1), 1);
 for ti = 1:length(tracksClean)              % track index
-% for ti = 1:1
+% for ti = 1:2
         
     tracksTemp = tracksClean{ti};
     nbiti = nbifAll(ti);                      % # of bubbles in the tracks starting in index ti
     vmapTemp = [];
     for fn = 1:pers % Go through all the frames in the tracks with origin frame ti
-%     for fn = 1
+%     for fn = 1:2
         startPoints = tracksTemp((fn - 1) * nbiti + 1 : fn * nbiti, 2:3);
-        endPoints = tracksTemp((fn) * nbiti + 1: (fn + 1) * nbiti, 2:3);
+        endPoints = tracksTemp((fn) * nbiti + 1 : (fn + 1) * nbiti, 2:3);
         vfn = (endPoints - startPoints) ./ timePerFrame;        % velocity = displacement/time
         bVelocityTest{ti, fn} = [startPoints, endPoints, vfn];  % each row is [z start coord, x start coord, z end coord, x end coord, z velocity, x velocity]
-        
+        bVelocityTestM{ti}(:, :, fn) = [startPoints, endPoints, vfn];
+
         for i = 1:nbiti % Go through each pair of coordinates used to calculate the velocity and add the interpolated points to the velocity + interpolated points at which to plot that velocity's matrix
 %         for i = 1
             [zcInterp, xcInterp] = ULM_interp2D(startPoints(i, :), endPoints(i, :));
@@ -223,8 +227,8 @@ for ti = 1:length(tracksClean)              % track index
     end
     bVelocity{ti} = vmapTemp;
 end
-clear ti fn tracksTemp startPoints endPoints vfn zcInterp xcInterp i vmapTempi vmapTemp
 
+% clear ti fn tracksTemp startPoints endPoints vfn zcInterp xcInterp i vmapTempi vmapTemp
 %% Combine cleaned tracks old
 tracksCombined = cell(size(tracksClean));
 % for n = 1:size(tracksClean, 1) % go through frames
@@ -320,13 +324,43 @@ for ti = 1:length(tracks)% track index
 
             coordsSFTemp = centerCoords_corrected{ti + tli - 1}(startPointInd, :);  % coords for the source frame
             coordsTFTemp = centerCoords_corrected{ti + tli}(endPointInd, :);        % coords for the target frame
-            bVelocityPers{ti, tli} = (coordsTFTemp - coordsSFTemp) ./ timePerFrame; % THIS IS IN PIXELS per second, NOT DISTANCE per second!!!!!!!!!!!!!!!!! 
+            vTemp = (coordsTFTemp - coordsSFTemp) ./ timePerFrame; % THIS IS IN PIXELS per second, NOT DISTANCE per second!!!!!!!!!!!!!!!!!
+            bVelocityPers{ti, tli} = vTemp;
         else
             bVelocityPers{ti, tli} = NaN;
         end
     end
 end
-clear ti tli tracksTemp startPointInd endPointInd coordsSFTemp coordsTFTemp
+clear ti tli tracksTemp startPointInd endPointInd coordsSFTemp coordsTFTemp vTemp
+
+%% Refine the velocity map - remove tracks where the position is oscillating over time
+bVelocityTestMSmoothed = bVelocityTestM;
+for n = 1:size(bVelocityTestM, 1)
+% for n = 1
+    vt = bVelocityTestM{n};
+    vtSmoothed = vt;
+    for tn = 1:size(vt, 1) % track number
+%     for tn = 1
+        tnzVel = squeeze(vt(tn, 5, :)); % get the z velocity at each point in track tn
+        tnzVelSmoothed = movmean(tnzVel, 3);
+        vtSmoothed(tn, 5, :) = tnzVelSmoothed;
+
+        tnxVel = squeeze(vt(tn, 6, :)); % get the x velocity at each point in track tn
+        tnxVelSmoothed = movmean(tnxVel, 3);
+        vtSmoothed(tn, 6, :) = tnxVelSmoothed;
+        
+    end
+    bVelocityTestMSmoothed{n} = vtSmoothed;
+end
+clear n tn vt vtSmoothed tnzVel tnzVelSmoothed vtSmoothed tnxVel tnxVelSmoothed
+% % test
+% testMap = zeros(img_size(1), img_size(2));
+% bv1 = bVelocity{1, 1};
+% for i = size(bv1, 1)
+%     bv1temp = bv1(i, :);
+%     testMap(bv1temp(1), bv1temp(2)) = testMap(bv1temp(1), bv1temp(2)) + bv1temp(3);
+% end
+% figure; imagesc(testMap)
 %% Plot density map with the paired bubbles only
 % bSum = zeros(size(allCenters{1}, 1), size(allCenters{1}, 2));
 bSum = zeros(img_size(1), img_size(2));
@@ -396,12 +430,14 @@ zvDownPersMap = NaN(img_size(1), img_size(2));
 zvUpPersMapCounter = ones(img_size(1), img_size(2));
 zvDownPersMapCounter = ones(img_size(1), img_size(2));
 
-for ti = 1:length(tracks) % track index
-% for ti = 1
+% for ti = 1:length(tracks) % track index
+for ti = 1000:15000
+% for ti = 1:15517
     tracksTemp = tracks{ti};
     for pfi = 1:pers % persistence frame index
         zVel = bVelocityPers{ti, pfi}(:, 1); % z component (the :, 1) of velocity between frames ti + pfi and ti + pfi + 1 (I think?)
         if ~isnan(zVel)
+%         if ~isnan(zVel) & (size(zVel, 1) > 1) % TEST
             % Get the coordinates that the velocity values correspond to
             startPointInd = tracksTemp{pfi, 1};
             endPointInd = tracksTemp{pfi, 2};
@@ -475,6 +511,101 @@ h2 = axes;
 imagesc(zvDownPersMap)
 alpha(h2, double(abs(zvDownPersMap) > 1))
 colormap(zvMapPersFig, VzCmap)
+caxis(vCrange);
+axis tight
+colorbar
+axis off
+linkaxes([h1, h2]);
+
+% clim([])
+
+%% Plot z velocity map after persistence with linear interpolation, on the cleaned and refined velocity data
+% zVelocityPersMap = zeros(img_size(1), img_size(2));
+zvUpMap = zeros(img_size(1), img_size(2));
+zvDownMap = zeros(img_size(1), img_size(2));
+
+% Counters for proper averaging if there are overlapped pixels from
+% different tracks
+zvUpMapCounter = zeros(img_size(1), img_size(2));
+zvDownMapCounter = zeros(img_size(1), img_size(2));
+
+% for ti = 1:size(bVelocityTestMSmoothed, 1)
+for ti = 7
+%     bvTemp = bVelocityTestMSmoothed{ti}; % get the ti-th entry
+    bvTemp = bVelocityTestM{ti}; % get the ti-th entry
+    if ~isempty(bvTemp) % only do stuff if the bubble velocity cell array entry is not empty
+        for bpi = 1:size(bvTemp, 1) % bubble pair index
+%             clear interpPts coordsStart coordsEnd zvTemp
+%             interpPts = [];
+%         for bpi = 2
+            % Initialize temporary start and end coordinate matrices.
+            % Each have dimensions [# persistence frames, 2] where each row is [z coord, x coord].
+            coordsStart = NaN(pers, 2);
+            coordsEnd = NaN(pers, 2);
+
+            % Go through the # of persistence frames and get the
+            % coordinates at each frame pfi for the bubble track bpi
+            for pfi = 1:pers % persistence frame index
+                coordsStart(pfi, :) = bvTemp(bpi, 1:2, pfi);
+                coordsEnd(pfi, :) = bvTemp(bpi, 3:4, pfi);
+            end
+
+            zvTemp = squeeze(bvTemp(bpi, 5, :));
+%             interpPts = ULM_interp2D_linear(coordsStart, coordsEnd, zvTemp); % Get interpolated points with the corresponding z velocity value. each row is [z coord, x coord, z velocity]
+            interpPts = ULM_interp2D_linear(coordsStart, coordsEnd, zvTemp, ti); % Get interpolated points with the corresponding z velocity value. each row is [z coord, x coord, z velocity]
+            
+            for ipi = 1:size(interpPts, 1) % interpolated point index
+                interpPtsTemp = interpPts(ipi, :);
+                zVelTemp = interpPtsTemp(3);
+                if zVelTemp > 0         % up z flow
+                    zvUpMap(interpPtsTemp(1), interpPtsTemp(2)) = zvUpMap(interpPtsTemp(1), interpPtsTemp(2)) + zVelTemp;
+                    zvUpMapCounter(interpPtsTemp(1), interpPtsTemp(2)) = zvUpMapCounter(interpPtsTemp(1), interpPtsTemp(2)) + 1;
+                else
+                    zvDownMap(interpPtsTemp(1), interpPtsTemp(2)) = zvDownMap(interpPtsTemp(1), interpPtsTemp(2)) + zVelTemp;
+                    zvDownMapCounter(interpPtsTemp(1), interpPtsTemp(2)) = zvDownMapCounter(interpPtsTemp(1), interpPtsTemp(2)) + 1;
+                end
+            end
+        end
+%     else
+%         interpPts = [];
+%         coordsStart = [];
+%         coordsEnd = [];
+%         zvTemp = [];
+%         bvTemp = [];
+%         zVelTemp = [];
+%         interpPtsTemp = [];
+    end
+%     clear bvTemp
+end
+zvUpMask = zvUpMapCounter > 0;
+zvDownMask = zvDownMapCounter > 0;
+zvUpMap(zvUpMask) = zvUpMap(zvUpMask) ./ zvUpMapCounter(zvUpMask);
+zvDownMap(zvDownMask) = zvDownMap(zvDownMask) ./ zvDownMapCounter(zvDownMask);
+%
+
+% Plot z velocity map after persistence
+clear zVelTemp
+
+% Load Jianbo's colormaps
+[VzCmap, VzCmapDn, VzCmapUp, pdiCmapUp, PhtmCmap] = Colormaps_fUS;
+zvMapFig = figure;
+
+% hold on
+vCrange= [-8800, 8800];
+figure(zvMapFig)
+h1 = axes;
+imagesc(zvUpMap)
+% alpha(h1, double(abs(zvUpMap) > 1))
+colormap(zvMapFig, VzCmap)
+caxis(vCrange);
+axis tight
+colorbar
+hold on
+
+h2 = axes;
+imagesc(zvDownMap)
+alpha(h2, double(abs(zvDownMap) > 1))
+colormap(zvMapFig, VzCmap)
 caxis(vCrange);
 axis tight
 colorbar
