@@ -426,7 +426,7 @@ clear zVelTemp
 zvMapFig = figure;
 
 % % hold on
-vCrange= [-maxSpeedExpectedMMPerS, maxSpeedExpectedMMPerS] .* 0.8;
+vCrange= [-maxSpeedExpectedMMPerS, 8800];
 % vCrange= [-8800, 8800];
 % vCrange= [-15000, 15000];
 figure(zvMapFig)
@@ -445,9 +445,8 @@ alpha(h2, double(abs(zvDownMap) > 1))
 colormap(zvMapFig, VzCmap)
 caxis(vCrange);
 axis tight
-cb = colorbar;
+colorbar
 axis off
 linkaxes([h1, h2]);
-ylabel(cb, 'z velocity (mm/s)') % label colorbar
 
 % clim([])
