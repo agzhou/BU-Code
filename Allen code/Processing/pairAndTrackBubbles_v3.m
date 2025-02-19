@@ -62,7 +62,8 @@ end
 totalCount = sum(bubbleCount, 'all');
 
 % Plot the bubble count
-figure; plot(1:length(bubbleCount), bubbleCount, '.')
+% figure; plot(1:length(bubbleCount), bubbleCount, '.')
+figure; plot(1:length(bubbleCount), bubbleCount)
 title('Bubble count')
 xlabel('Frame number')
 ylabel('Bubble count')
@@ -412,23 +413,28 @@ for ti = 1:size(bVelocityTestMSmoothed, 1)
     end
 %     clear bvTemp
 end
+clear zVelTemp zvUpMask zvDownMask ti bpi pfi ipi interpPtsTemp zvTemp coordsStart coordsEnd bvTemp
+
+% Take the average for pixels with overlapping tracks
 zvUpMask = zvUpMapCounter > 0;
 zvDownMask = zvDownMapCounter > 0;
 zvUpMap(zvUpMask) = zvUpMap(zvUpMask) ./ zvUpMapCounter(zvUpMask);
 zvDownMap(zvDownMask) = zvDownMap(zvDownMask) ./ zvDownMapCounter(zvDownMask);
-%
 
-% Plot z velocity map after persistence
-clear zVelTemp
+% Compression test
+% zvUpMap = zvUpMap .^ 1/3;
+% zvDownMap = -1 .* abs(zvDownMap).^1/3;
 
 % Load Jianbo's colormaps
 [VzCmap, VzCmapDn, VzCmapUp, pdiCmapUp, PhtmCmap] = Colormaps_fUS;
 zvMapFig = figure;
 
+% Plot with two linked axes (one for up Z, other for down Z)
 % % hold on
-vCrange= [-maxSpeedExpectedMMPerS, maxSpeedExpectedMMPerS] .* 0.8;
-% vCrange= [-8800, 8800];
-% vCrange= [-15000, 15000];
+vCrange = [-maxSpeedExpectedMMPerS, maxSpeedExpectedMMPerS];
+% vCrange = [-5, 5];
+% vCrange = [-8800, 8800];
+% vCrange = [-15000, 15000];
 figure(zvMapFig)
 h1 = axes;
 imagesc(zvUpMap)
