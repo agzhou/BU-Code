@@ -323,8 +323,76 @@ end
 %% Kalman filter attempt
 numDims = 2;
 numStates = numDims * 2; % In 2D: axial position (z), lateral position (x), axial displacement (dz), lateral displacement (dx)
+
+% Define the matrices that map the state transition, and the state ->
+% observation transformation
+Fk = [1, 0, 1, 0; ...
+      0, 1, 0, 1; ...
+      0, 0, 1, 0; ...
+      0, 0, 0, 1];
+Hk = [1, 0, 0, 0; ...
+      0, 1, 0, 0];
+
+%%%%%%%% these covariance matrices are from the Song et al. 2020 paper %%%%%%%%%
 Qk = diag(ones(numStates, 1));      % Covariance matrix of the system noise
 Rk = diag(ones(numDims, 1)) .* 2;   % Covariance matrix of the observation noise
+
+% for n = size(bVelocityTestMSmoothedMMS)
+for n = 1
+    tln = bVelocityTestMSmoothedMMS{n}; % Track list n
+    for tn = 1:size(tln, 1) % Track number tn
+%     for tn = 2
+%         track = tln(tn, :, :);
+        track = squeeze(tln(tn, :, :))'; % Get the track
+
+        % Initialize variables for the state vector and covariance matrix
+        xk = cell(size(track, 1), 1);
+        Pk = cell(size(track, 1));
+
+        % Initial values
+%         xk{1} = [track(1, 1:2), 0, 0]'; % Initial state vector
+        xk{1} = [track(1, 1:2), track(1, 5:6)]'; % Initial state vector
+        %%%%%% WHAT INITIAL DISPLACEMENT/VELOCITY SHOULD I USE??? %%%%%%
+        Pk{1} = eye(length(x0));      % Initial covariance matrix
+        %%%%%% WHAT INITIAL COVARIANCES SHOULD I USE??? %%%%%%
+
+        for k = 2:size(track, 1) % Go through each step of the track
+%             xk{k} = Fk * xk{k - 1} + Qk;
+            % Prediction
+            xkp = Fk * xk{k - 1}; 
+            Pkp = Fk * Pk{k - 1} * Fk + Qk;
+
+            % Observation
+            yk = [track(k, 1:2)]';
+
+            % Update
+            Kku = Pkp * Hk' * inv(Hk * Pkp * Hk' + Rk); % Kalman gain matrix
+            Iku = yk - Hk * xkp; % Innovation vector (difference between the observed state and the predicted state transformed into an observation at step k)
+            xku = xkp + Kku * Iku; % Updated (weighted) estimate for the state at step k
+            Pku = (eye(length(xku)) - Kku * Hk) * Pkp; % Updated covariance matrix at step k
+
+            % Store the updated state and covariance
+            xk{k} = xku;
+            Pk{k} = Pku;
+        end
+
+%         % plot test to compare for a single track
+%         figure
+%         hold on
+%         xkcoordmat = [];
+%         for i = 1:length(xk)
+%             xki = xk{i};
+%             xkcoordmat = [xkcoordmat; [xki(1), xki(2)]];
+%         end
+%         plot(xkcoordmat(:, 1), xkcoordmat(:, 2))
+%         plot(track(:, 1), track(:, 2))
+%         clear i xki
+%         legend('Kalman filtered', 'Original')
+%         hold off
+    end
+end
+
+
 %% Plot density map with the paired bubbles only
 % bSum = zeros(size(allCenters{1}, 1), size(allCenters{1}, 2));
 bSum = zeros(img_size(1), img_size(2));
@@ -434,7 +502,7 @@ zvDownMap(zvDownMask) = zvDownMap(zvDownMask) ./ zvDownMapCounter(zvDownMask);
 
 % Plot bubble density
 bubbleDensityMap = (zvUpMapCounter + zvDownMapCounter);
-figure; imagesc(bubbleDensityMap .^ 0.2); colormap hot
+% figure; imagesc(bubbleDensityMap .^ 0.2); colormap hot
 
 % Make a small PSF, adapting Jianbo's code
 FWHM_X=10; % lateral resolution, FWHM-Amplitude, um
@@ -445,10 +513,14 @@ xPSF0=-30:30; zPSF0=xPSF0; % pixels
 [xPSF,zPSF]=meshgrid(xPSF0,zPSF0);
 % PRSSinfo.sysPSF=exp(-((xPSF/(Sigma_X/PRSSinfo.lPix)).^2+(zPSF/(Sigma_Z/PRSSinfo.lPix)).^2)/2);
 smallPSF=exp(-((xPSF/(Sigma_X * (pixelsPerM / 1e6))).^2+(zPSF/(Sigma_Z * (pixelsPerM / 1e6))).^2)/2);
-figure; imagesc(smallPSF)
+% figure; imagesc(smallPSF)
 
 bubbleDensityMapConv = conv2(bubbleDensityMap, smallPSF);
-figure; imagesc(bubbleDensityMapConv .^ 0.3); colormap hot
+% figure; imagesc(bubbleDensityMapConv .^ 0.3); colormap hot
+
+% Velocity map convolution with small PSF
+zvUpMap = conv2(zvUpMap, smallPSF);
+zvDownMap = conv2(zvDownMap, smallPSF);
 
 % Load Jianbo's colormaps
 [VzCmap, VzCmapDn, VzCmapUp, pdiCmapUp, PhtmCmap] = Colormaps_fUS;

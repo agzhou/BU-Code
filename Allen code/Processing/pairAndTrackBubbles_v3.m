@@ -337,10 +337,62 @@ Hk = [1, 0, 0, 0; ...
 Qk = diag(ones(numStates, 1));      % Covariance matrix of the system noise
 Rk = diag(ones(numDims, 1)) .* 2;   % Covariance matrix of the observation noise
 
-for n = size(bVelocityTestMSmoothed)
-    % Initial state
-    x0 = 
+% for n = size(bVelocityTestMSmoothedMMS)
+for n = 1
+    tln = bVelocityTestMSmoothedMMS{n}; % Track list n
+    for tn = 1:size(tln, 1) % Track number tn
+%     for tn = 2
+%         track = tln(tn, :, :);
+        track = squeeze(tln(tn, :, :))'; % Get the track
+
+        % Initialize variables for the state vector and covariance matrix
+        xk = cell(size(track, 1), 1);
+        Pk = cell(size(track, 1));
+
+        % Initial values
+%         xk{1} = [track(1, 1:2), 0, 0]'; % Initial state vector
+        xk{1} = [track(1, 1:2), track(1, 5:6)]'; % Initial state vector
+        %%%%%% WHAT INITIAL DISPLACEMENT/VELOCITY SHOULD I USE??? %%%%%%
+        Pk{1} = eye(length(x0));                 % Initial covariance matrix
+        %%%%%% WHAT INITIAL COVARIANCES SHOULD I USE??? %%%%%%
+
+        for k = 2:size(track, 1) % Go through each step of the track
+%             xk{k} = Fk * xk{k - 1} + Qk;
+            % Prediction
+            xkp = Fk * xk{k - 1}; 
+            Pkp = Fk * Pk{k - 1} * Fk + Qk;
+
+            % Observation
+            yk = [track(k, 1:2)]';
+
+            % Update
+            Kku = Pkp * Hk' * inv(Hk * Pkp * Hk' + Rk); % Kalman gain matrix
+            Iku = yk - Hk * xkp; % Innovation vector (difference between the observed state and the predicted state transformed into an observation at step k)
+            xku = xkp + Kku * Iku; % Updated (weighted) estimate for the state at step k
+            Pku = (eye(length(xku)) - Kku * Hk) * Pkp; % Updated covariance matrix at step k
+
+            % Store the updated state and covariance
+            xk{k} = xku;
+            Pk{k} = Pku;
+        end
+
+        % plot test to compare for a single track
+        figure
+        hold on
+        xkcoordmat = [];
+        for i = 1:length(xk)
+            xki = xk{i};
+            xkcoordmat = [xkcoordmat; [xki(1), xki(2)]];
+        end
+        plot(xkcoordmat(:, 1), xkcoordmat(:, 2))
+        plot(track(:, 1), track(:, 2))
+        clear i xki
+        legend('Kalman filtered', 'Original')
+        hold off
+    end
 end
+
+
 %% Plot density map with the paired bubbles only
 % bSum = zeros(size(allCenters{1}, 1), size(allCenters{1}, 2));
 bSum = zeros(img_size(1), img_size(2));
