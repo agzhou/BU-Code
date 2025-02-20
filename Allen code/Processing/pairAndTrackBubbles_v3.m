@@ -319,6 +319,28 @@ bVelocityTestMSmoothedMMS = bVelocityTestMSmoothed;
 for n = 1:size(bVelocityTestMSmoothedMMS, 1)
     bVelocityTestMSmoothedMMS{n}(:, 5:6, :) = bVelocityTestMSmoothed{n}(:, 5:6, :) ./ pixelsPerM * 1e3;
 end
+
+%% Kalman filter attempt
+numDims = 2;
+numStates = numDims * 2; % In 2D: axial position (z), lateral position (x), axial displacement (dz), lateral displacement (dx)
+
+% Define the matrices that map the state transition, and the state ->
+% observation transformation
+Fk = [1, 0, 1, 0; ...
+      0, 1, 0, 1; ...
+      0, 0, 1, 0; ...
+      0, 0, 0, 1];
+Hk = [1, 0, 0, 0; ...
+      0, 1, 0, 0];
+
+%%%%%%%% these covariance matrices are from the Song et al. 2020 paper %%%%%%%%%
+Qk = diag(ones(numStates, 1));      % Covariance matrix of the system noise
+Rk = diag(ones(numDims, 1)) .* 2;   % Covariance matrix of the observation noise
+
+for n = size(bVelocityTestMSmoothed)
+    % Initial state
+    x0 = 
+end
 %% Plot density map with the paired bubbles only
 % bSum = zeros(size(allCenters{1}, 1), size(allCenters{1}, 2));
 bSum = zeros(img_size(1), img_size(2));
@@ -387,9 +409,10 @@ for ti = 1:size(bVelocityTestMSmoothed, 1)
             end
 
             zvTemp = squeeze(bvTemp(bpi, 5, :));
-%             interpPts = ULM_interp2D_linear(coordsStart, coordsEnd, zvTemp); % Get interpolated points with the corresponding z velocity value. each row is [z coord, x coord, z velocity]
-            interpPts = ULM_interp2D_linear(coordsStart, coordsEnd, zvTemp, ti); % Get interpolated points with the corresponding z velocity value. each row is [z coord, x coord, z velocity]
-            
+            interpPts = ULM_interp2D_linear(coordsStart, coordsEnd, zvTemp); % Get interpolated points with the corresponding z velocity value. each row is [z coord, x coord, z velocity]
+%             interpPts = ULM_interp2D_linear(coordsStart, coordsEnd, zvTemp, ti); % Get interpolated points with the corresponding z velocity value. each row is [z coord, x coord, z velocity]
+%             interpPts = ULM_interp2D_spline(coordsStart, coordsEnd, zvTemp, ti);
+
             for ipi = 1:size(interpPts, 1) % interpolated point index
                 interpPtsTemp = interpPts(ipi, :);
                 zVelTemp = interpPtsTemp(3);
@@ -424,6 +447,28 @@ zvDownMap(zvDownMask) = zvDownMap(zvDownMask) ./ zvDownMapCounter(zvDownMask);
 % Compression test
 % zvUpMap = zvUpMap .^ 1/3;
 % zvDownMap = -1 .* abs(zvDownMap).^1/3;
+
+% Plot bubble density
+bubbleDensityMap = (zvUpMapCounter + zvDownMapCounter);
+% figure; imagesc(bubbleDensityMap .^ 0.2); colormap hot
+
+% Make a small PSF, adapting Jianbo's code
+FWHM_X=10; % lateral resolution, FWHM-Amplitude, um
+FWHM_Z=10;  % axial resolution, FWHM-Amplitude, um
+Sigma_X=FWHM_X/(2*sqrt(2*log(2)));
+Sigma_Z=FWHM_Z/(2*sqrt(2*log(2)));
+xPSF0=-30:30; zPSF0=xPSF0; % pixels
+[xPSF,zPSF]=meshgrid(xPSF0,zPSF0);
+% PRSSinfo.sysPSF=exp(-((xPSF/(Sigma_X/PRSSinfo.lPix)).^2+(zPSF/(Sigma_Z/PRSSinfo.lPix)).^2)/2);
+smallPSF=exp(-((xPSF/(Sigma_X * (pixelsPerM / 1e6))).^2+(zPSF/(Sigma_Z * (pixelsPerM / 1e6))).^2)/2);
+% figure; imagesc(smallPSF)
+
+bubbleDensityMapConv = conv2(bubbleDensityMap, smallPSF);
+% figure; imagesc(bubbleDensityMapConv .^ 0.3); colormap hot
+
+% Velocity map convolution with small PSF
+zvUpMap = conv2(zvUpMap, smallPSF);
+zvDownMap = conv2(zvDownMap, smallPSF);
 
 % Load Jianbo's colormaps
 [VzCmap, VzCmapDn, VzCmapUp, pdiCmapUp, PhtmCmap] = Colormaps_fUS;
