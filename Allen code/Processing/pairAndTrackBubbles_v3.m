@@ -324,6 +324,13 @@ end
 numDims = 2;
 numStates = numDims * 2; % In 2D: axial position (z), lateral position (x), axial displacement (dz), lateral displacement (dx)
 
+if pers < 3
+    error('The Kalman filter needs at least 3 points in the track')
+end
+
+% Initialize the filtered output variable
+bVelocityTestMSmoothedKFMMS = bVelocityTestMSmoothedMMS;
+
 % Define the matrices that map the state transition, and the state ->
 % observation transformation
 Fk = [1, 0, 1, 0; ...
@@ -340,23 +347,33 @@ Rk = diag(ones(numDims, 1)) .* 2;   % Covariance matrix of the observation noise
 % for n = size(bVelocityTestMSmoothedMMS)
 for n = 1
     tln = bVelocityTestMSmoothedMMS{n}; % Track list n
-    for tn = 1:size(tln, 1) % Track number tn
-%     for tn = 2
+%     for tn = 1:size(tln, 1) % Track number tn
+    for tn = 1
 %         track = tln(tn, :, :);
         track = squeeze(tln(tn, :, :))'; % Get the track
-
+        track = [track; [track(end, 3:4), 0, 0, 0, 0]];
         % Initialize variables for the state vector and covariance matrix
         xk = cell(size(track, 1), 1);
         Pk = cell(size(track, 1));
 
         % Initial values
 %         xk{1} = [track(1, 1:2), 0, 0]'; % Initial state vector
-        xk{1} = [track(1, 1:2), track(1, 5:6)]'; % Initial state vector
+        xk{1} = [track(1, 1:2), 0, 0]'; % Initial state vector
         %%%%%% WHAT INITIAL DISPLACEMENT/VELOCITY SHOULD I USE??? %%%%%%
-        Pk{1} = eye(length(x0));                 % Initial covariance matrix
+%         Pk{1} = eye(length(x0));                 % Initial covariance matrix
+        Pk{1} = [1, 0, 0, 0; ...
+                 0, 1, 0, 0; ...
+                 0, 0, 0, 0; ...
+                 0, 0, 0, 0];
         %%%%%% WHAT INITIAL COVARIANCES SHOULD I USE??? %%%%%%
 
-        for k = 2:size(track, 1) % Go through each step of the track
+        xk{2} = [track(2, 1:2), track(1, 5:6)]';
+        Pk{2} = [1, 0, 0, 0; ...
+                 0, 1, 0, 0; ...
+                 0, 0, 10, 0; ...
+                 0, 0, 0, 10];
+
+        for k = 3:size(track, 1) % Go through each step of the track
 %             xk{k} = Fk * xk{k - 1} + Qk;
             % Prediction
             xkp = Fk * xk{k - 1}; 
@@ -375,20 +392,20 @@ for n = 1
             xk{k} = xku;
             Pk{k} = Pku;
         end
-
-        % plot test to compare for a single track
-        figure
-        hold on
-        xkcoordmat = [];
-        for i = 1:length(xk)
-            xki = xk{i};
-            xkcoordmat = [xkcoordmat; [xki(1), xki(2)]];
-        end
-        plot(xkcoordmat(:, 1), xkcoordmat(:, 2))
-        plot(track(:, 1), track(:, 2))
-        clear i xki
-        legend('Kalman filtered', 'Original')
-        hold off
+        bVelocityTestMSmoothedKFMMS{n}(tn, 1:2)
+%         % plot test to compare for a single track
+%         figure
+%         hold on
+%         xkcoordmat = [];
+%         for i = 1:length(xk)
+%             xki = xk{i};
+%             xkcoordmat = [xkcoordmat; [xki(1), xki(2)]];
+%         end
+%         plot(xkcoordmat(:, 1), xkcoordmat(:, 2), '-o')
+%         plot(track(:, 1), track(:, 2), '--x')
+%         clear i xki
+%         legend('Kalman filtered', 'Original')
+%         hold off
     end
 end
 
