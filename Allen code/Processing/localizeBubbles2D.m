@@ -13,7 +13,7 @@
 %         binary image
 %         Threshold on connected component areas to use
 
-function [centers, refIQs, XC] = localizeBubbles2D_new(IQf, refPSF, range, imgRefinementFactor, XCThreshold, areaThreshold)
+function [centers, refIQs, XC] = localizeBubbles2D(IQf, refPSF, range, imgRefinementFactor, XCThreshold)
     
     %% Use parallel processing for speed
     % https://www.mathworks.com/matlabcentral/answers/91744-how-can-i-check-if-matlabpool-is-running-when-using-parallel-computing-toolbox

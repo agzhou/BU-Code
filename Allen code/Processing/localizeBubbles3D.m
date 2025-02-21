@@ -14,7 +14,7 @@
 %         binary image
 %         Threshold on connected component areas to use
 
-function [centroidCoordinates] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, binaryThreshold, volumeThreshold)
+function [centers, refIQs, XC] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThreshold)
     
     %% Use parallel processing for speed
     % https://www.mathworks.com/matlabcentral/answers/91744-how-can-i-check-if-matlabpool-is-running-when-using-parallel-computing-toolbox
@@ -27,27 +27,31 @@ function [centroidCoordinates] = localizeBubbles3D(IQf, refPSF, range, imgRefine
     end
 
     %% Section the data to a ROI
-%     zrange = range{1};
-%     xrange = range{2};
-%     framerange = range{3};
-%     IQs = IQf(zrange, xrange, framerange); % IQ section
+    xrange = range{1};
+    yrange = range{2};
+    zrange = range{3};
+    framerange = range{4};
+    IQs = IQf(xrange, yrange, zrange, framerange); % IQ section
 
 %     IQs = IQf;
     
     %% image refinement/interpolation
-%     rfnX = imgRefinementFactor(1); % refinement pixel increase factor
-%     rfnY = imgRefinementFactor(2);
-%     rfnZ = imgRefinementFactor(3);
-%     
-%     refIQs = zeros(size(IQs, 1) * rfnX, size(IQs, 2) * rfnY, size(IQs, 3) * rfnZ, size(IQs, 4)); % refined IQ section
-% 
-%     % go through all frames and refine
-%     parfor f = 1:size(IQs, 4)
-% %     for f = 1
-%         I_temp = IQs(:, :, :, f);
-%         refIQs(:, :, :, f) = imresize3(I_temp/max(I_temp, [], 'all') .* 256 .* 5, [size(IQf, 1) * rfnX, size(IQf, 2) * rfnY, size(IQf, 3) * rfnZ], 'linear');
-%     end
-    refIQs = IQf;
+    rfnX = imgRefinementFactor(1); % refinement pixel increase factor
+    rfnY = imgRefinementFactor(2);
+    rfnZ = imgRefinementFactor(3);
+    
+    if ~all(imgRefinementFactor == 1)
+        refIQs = zeros(size(IQs, 1) * rfnX, size(IQs, 2) * rfnY, size(IQs, 3) * rfnZ, size(IQs, 4)); % refined IQ section
+    
+        % go through all frames and refine
+        parfor f = 1:size(IQs, 4)
+    %     for f = 1
+            I_temp = IQs(:, :, :, f);
+            refIQs(:, :, :, f) = imresize3(I_temp, [size(I_temp, 1) * rfnX, size(I_temp, 2) * rfnY, size(I_temp, 3) * rfnZ], 'linear');
+        end
+    else
+        refIQs = IQf;
+    end
     
     %% and cross correlation
 
@@ -58,41 +62,11 @@ function [centroidCoordinates] = localizeBubbles3D(IQf, refPSF, range, imgRefine
         XC(:, :, :, f) = normxcorr3(abs(refPSF), abs(refIQs(:, :, :, f)));
     end
 
-    %% binary image conversion of all frames
+    %% remove data from XC beneath a threshold and find local maxima
     
-    mask = XC > binaryThreshold;
-    bi = zeros(size(XC)); bi(mask) = 1; % binary image with white above the threshold
-
-    %% Centroid finding
-    nf = size(bi, 4);        % # frames in the binary image stack
-    centroids = cell(nf, 1); % initialize
-%     volumeThreshold = ;
-    
-    parfor f = 1:nf
-%     for f = 1:nf
-        cf = bi(:, :, :, f); % current frame
-        CC = bwconncomp(cf); % connected components (connected regions of 1 in a binary image)
-    
-        s = regionprops3(CC, cf, 'Volume', 'WeightedCentroid'); % Get the weighted centroids and area of each connected component. It outputs as a table
-    
-        % Remove connected regions without enough pixels (probably noise)
-        for si = size(s, 1):-1:1
-            if s(si, :).Volume <= volumeThreshold
-                s = s(1:si - 1, :);
-            end
-        end
-    
-        centroidsCurrentFrame = zeros(size(s, 1), 3); % initialize centroid array. Dimensions: # centroids x 2 (x location, y location, z location)
-    
-        % go through the s structure and get the .WeightedCentroid data
-        for cn = 1:size(s, 1)
-            centroidsCurrentFrame(cn, :) = s(cn, :).WeightedCentroid;
-        end
-        
-        centroids{f} = centroidsCurrentFrame; % put back into overall variable
-    
-    end
-    centroidCoordinates = centroids;
+    XCt = XC; % XC Thresholded
+    XCt(XCt < XCThreshold) = 0;
+    centers = imregionalmax(XCt, 6); % Center of each isolated blob (logical matrix)
     
     %% attempt to graph centroids
 

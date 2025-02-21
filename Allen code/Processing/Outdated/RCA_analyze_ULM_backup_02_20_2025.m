@@ -26,7 +26,7 @@ load([datapath, 'params.mat'])
 numFiles = 96; % define # of files manually for now
 
 IQfolderName = 'IQ Data - Verasonics Recon\'; % 'IQ data\'
-saveFolderName = 'Processed Data\';
+saveFolderName = 'Processed Data 02-21-2025\';
 mkdir([datapath, saveFolderName])
 savepath = [datapath, saveFolderName];
 % savepath = 'F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\FMAS Processed Data\';
@@ -43,13 +43,14 @@ xrange = 1:80;
 yrange = 1:80;
 zrange = 1:142;
 
-framerange = 1:200;
+% framerange = 1:200;
 % framerange = 1:size(IQf, 3);
-range = {xrange, yrange, zrange, framerange};
+% range = {xrange, yrange, zrange, framerange};
+range = {xrange, yrange, zrange};
 
 % % Image refinement and localization parameters
 imgRefinementFactor = [2, 2, 2]; % z, x pixel refinement factor
-binaryThreshold = 0.4;
+XCThreshold = 0.4;
 volumeThreshold = 4;
 % 
 % Load and refine simulated PSF
@@ -94,7 +95,7 @@ for filenum = 25:25
 %     toc
 
 %     save([savepath, 'Filtered-Data-', num2str(filenum)], 'IQr', 'PP', 'EVs', 'V_sort', 'IQf', "-v6")
-    [centroidCoordinates] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, binaryThreshold, volumeThreshold);
+    [centroidCoordinates] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThreshold, volumeThreshold);
 %     save([savepath, 'IQf-', num2str(filenum)], 'IQf', "-v6")
 
 % %     save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'centroidCoordinates', "-v6")
@@ -216,9 +217,9 @@ xrange = 1:128;
 framerange = 1:size(IQf, 3);
 range = {zrange, xrange, framerange};
 imgRefinementFactor = [2, 2];
-binaryThreshold = 0.6;
+XCThreshold = 0.6;
 volumeThreshold = 3;
-[centroidCoordinates] = localizeBubbles(IQf, PSF, range, imgRefinementFactor, binaryThreshold, volumeThreshold);
+[centroidCoordinates] = localizeBubbles(IQf, PSF, range, imgRefinementFactor, XCThreshold, volumeThreshold);
 
 
 
