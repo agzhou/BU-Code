@@ -129,7 +129,7 @@ end
 clear f nbS nbT D spi assignment unassignedrows unassignedcolumns
 
 %% Create tracks with persistence
-pers = 8; % # of frames a track needs to persist through to keep it
+pers = 5; % # of frames a track needs to persist through to keep it
 
 tic
 % Separate the pairs of coordinates so we can change their sizes independently
@@ -320,7 +320,7 @@ for n = 1:size(bVelocityTestMSmoothedMMS, 1)
     bVelocityTestMSmoothedMMS{n}(:, 5:6, :) = bVelocityTestMSmoothed{n}(:, 5:6, :) ./ pixelsPerM * 1e3;
 end
 
-%% Kalman filter attempt
+%% Kalman filter attempt 1
 numDims = 2;
 numStates = numDims * 2; % In 2D: axial position (z), lateral position (x), axial displacement (dz), lateral displacement (dx)
 
@@ -330,6 +330,7 @@ end
 
 % Initialize the filtered output variable
 bVelocityTestMSmoothedKFMMS = bVelocityTestMSmoothedMMS;
+vMMStoPixelDispPerFrame = timePerFrame / 1e3 * pixelsPerM;
 
 % Define the matrices that map the state transition, and the state ->
 % observation transformation
@@ -344,40 +345,41 @@ Hk = [1, 0, 0, 0; ...
 Qk = diag(ones(numStates, 1));      % Covariance matrix of the system noise
 Rk = diag(ones(numDims, 1)) .* 2;   % Covariance matrix of the observation noise
 
-% for n = size(bVelocityTestMSmoothedMMS)
+% for n = 1:size(bVelocityTestMSmoothedMMS, 1)
 for n = 1
     tln = bVelocityTestMSmoothedMMS{n}; % Track list n
-%     for tn = 1:size(tln, 1) % Track number tn
-    for tn = 1
+    for tn = 1:size(tln, 1) % Track number tn
+%     for tn = 1
 %         track = tln(tn, :, :);
         track = squeeze(tln(tn, :, :))'; % Get the track
-
+        track = [track; [track(end, 3:4), 0, 0, 0, 0]];
         % Initialize variables for the state vector and covariance matrix
-        xk = cell(size(track, 1), 1);
-        Pk = cell(size(track, 1));
+        xk = NaN(numStates, size(track, 1));
+        Pk = NaN(numStates, numStates, size(track, 1));
 
         % Initial values
-%         xk{1} = [track(1, 1:2), 0, 0]'; % Initial state vector
-        xk{1} = [track(1, 1:2), 0, 0]'; % Initial state vector
+        xk(:, 1) = [track(1, 1:2), 0, 0]'; % Initial state vector
+%         xk(:, 1) = [track(1, 1:2), track(1, 5:6) .* vMMStoPixelDispPerFrame]'; % Initial state vector
         %%%%%% WHAT INITIAL DISPLACEMENT/VELOCITY SHOULD I USE??? %%%%%%
 %         Pk{1} = eye(length(x0));                 % Initial covariance matrix
-        Pk{1} = [1, 0, 0, 0; ...
+        Pk(:, :, 1) = [1, 0, 0, 0; ...
                  0, 1, 0, 0; ...
                  0, 0, 0, 0; ...
                  0, 0, 0, 0];
         %%%%%% WHAT INITIAL COVARIANCES SHOULD I USE??? %%%%%%
 
-        xk{2} = [track(2, 1:2), track(1, 5:6)]';
-        Pk{2} = [1, 0, 0, 0; ...
+        xk(:, 2) = [track(2, 1:2), track(1, 5:6) .* vMMStoPixelDispPerFrame]';
+%         xk(:, 2) = [track(2, 1:2), track(1, 5:6)]';
+        Pk(:, :, 2) = [1, 0, 0, 0; ...
                  0, 1, 0, 0; ...
-                 0, 0, 10, 0; ...
-                 0, 0, 0, 10];
+                 0, 0, 10^4, 0; ...
+                 0, 0, 0, 10^4];
 
         for k = 3:size(track, 1) % Go through each step of the track
 %             xk{k} = Fk * xk{k - 1} + Qk;
             % Prediction
-            xkp = Fk * xk{k - 1}; 
-            Pkp = Fk * Pk{k - 1} * Fk + Qk;
+            xkp = Fk * xk(:, k - 1); 
+            Pkp = Fk * Pk(:, :, k - 1) * Fk + Qk;
 
             % Observation
             yk = [track(k, 1:2)]';
@@ -389,19 +391,108 @@ for n = 1
             Pku = (eye(length(xku)) - Kku * Hk) * Pkp; % Updated covariance matrix at step k
 
             % Store the updated state and covariance
-            xk{k} = xku;
-            Pk{k} = Pku;
+            xk(:, k) = xku;
+            Pk(:, :, k) = Pku;
         end
-        bVelocityTestMSmoothedKFMMS{n}(tn, 1:2)
-%         % plot test to compare for a single track
+        bVelocityTestMSmoothedKFMMS{n}(tn, 1:2, :) = xk(1:2, 1:end-1);
+        bVelocityTestMSmoothedKFMMS{n}(tn, 3:4, :) = xk(1:2, 2:end);
+%         bVelocityTestMSmoothedKFMMS{n}(tn, 5:6, :) = xk(3:4, 2:end);
+        bVelocityTestMSmoothedKFMMS{n}(tn, 5:6, :) = (xk(1:2, 2:end) - xk(1:2, 1:end-1)); % ./ timePerFrame;
+
+        % plot test to compare for a single track
+        figure
+        hold on
+        plot(xk(1, :), xk(2, :), '-o')
+        plot(track(:, 1), track(:, 2), '--x')
+        clear i xki
+        legend('Kalman filtered', 'Original')
+        hold off
+    end
+end
+
+%% Kalman filter attempt 2
+numDims = 2;
+numStates = numDims * 2; % In 2D: axial position (z), lateral position (x), axial displacement (dz), lateral displacement (dx)
+
+if pers < 3
+    error('The Kalman filter needs at least 3 points in the track')
+end
+
+% Initialize the filtered output variable
+bVelocityTestMSmoothedKFMMS = bVelocityTestMSmoothedMMS;
+vMMStoPixelDispPerFrame = timePerFrame / 1e3 * pixelsPerM;
+
+% Define the matrices that map the state transition, and the state ->
+% observation transformation
+Fk = [1, 0, 1, 0; ...
+      0, 1, 0, 1; ...
+      0, 0, 1, 0; ...
+      0, 0, 0, 1];
+Hk = [1, 0, 0, 0; ...
+      0, 1, 0, 0];
+
+%%%%%%%% these covariance matrices are from the Song et al. 2020 paper %%%%%%%%%
+Qk = diag(ones(numStates, 1));      % Covariance matrix of the system noise
+Rk = diag(ones(numDims, 1)) .* 2;   % Covariance matrix of the observation noise
+
+for n = 1:size(bVelocityTestMSmoothedMMS, 1)
+% for n = 1
+    tln = bVelocityTestMSmoothedMMS{n}; % Track list n
+    for tn = 1:size(tln, 1) % Track number tn
+%     for tn = 1
+%         track = tln(tn, :, :);
+        track = squeeze(tln(tn, :, :))'; % Get the track
+        track = [track; [track(end, 3:4), 0, 0, 0, 0]];
+        % Initialize variables for the state vector and covariance matrix
+        xk = NaN(numStates, size(track, 1));
+        Pk = NaN(numStates, numStates, size(track, 1));
+
+        % Initial values
+%         xk(:, 1) = [track(1, 1:2), 0, 0]'; % Initial state vector
+        xk(:, 1) = [track(1, 1:2), track(1, 5:6) .* vMMStoPixelDispPerFrame]'; % Initial state vector
+        %%%%%% WHAT INITIAL DISPLACEMENT/VELOCITY SHOULD I USE??? %%%%%%
+%         Pk{1} = eye(length(x0));                 % Initial covariance matrix
+        Pk(:, :, 1) = [1, 0, 0, 0; ...
+                 0, 1, 0, 0; ...
+                 0, 0, 10, 0; ...
+                 0, 0, 0, 10];
+        %%%%%% WHAT INITIAL COVARIANCES SHOULD I USE??? %%%%%%
+
+%         xk(:, 2) = [track(2, 1:2), track(1, 5:6) .* vMMStoPixelDispPerFrame]';
+% %         xk(:, 2) = [track(2, 1:2), track(1, 5:6)]';
+%         Pk(:, :, 2) = [1, 0, 0, 0; ...
+%                  0, 1, 0, 0; ...
+%                  0, 0, 10^4, 0; ...
+%                  0, 0, 0, 10^4];
+
+        for k = 2:size(track, 1) % Go through each step of the track
+%             xk{k} = Fk * xk{k - 1} + Qk;
+            % Prediction
+            xkp = Fk * xk(:, k - 1); 
+            Pkp = Fk * Pk(:, :, k - 1) * Fk + Qk;
+
+            % Observation
+            yk = [track(k, 1:2)]';
+
+            % Update
+            Kku = Pkp * Hk' * inv(Hk * Pkp * Hk' + Rk); % Kalman gain matrix
+            Iku = yk - Hk * xkp; % Innovation vector (difference between the observed state and the predicted state transformed into an observation at step k)
+            xku = xkp + Kku * Iku; % Updated (weighted) estimate for the state at step k
+            Pku = (eye(length(xku)) - Kku * Hk) * Pkp; % Updated covariance matrix at step k
+
+            % Store the updated state and covariance
+            xk(:, k) = xku;
+            Pk(:, :, k) = Pku;
+        end
+        bVelocityTestMSmoothedKFMMS{n}(tn, 1:2, :) = xk(1:2, 1:end-1);
+        bVelocityTestMSmoothedKFMMS{n}(tn, 3:4, :) = xk(1:2, 2:end);
+%         bVelocityTestMSmoothedKFMMS{n}(tn, 5:6, :) = xk(3:4, 2:end);
+        bVelocityTestMSmoothedKFMMS{n}(tn, 5:6, :) = (xk(1:2, 2:end) - xk(1:2, 1:end-1)); % ./ timePerFrame;
+
+        % plot test to compare for a single track
 %         figure
 %         hold on
-%         xkcoordmat = [];
-%         for i = 1:length(xk)
-%             xki = xk{i};
-%             xkcoordmat = [xkcoordmat; [xki(1), xki(2)]];
-%         end
-%         plot(xkcoordmat(:, 1), xkcoordmat(:, 2), '-o')
+%         plot(xk(1, :), xk(2, :), '-o')
 %         plot(track(:, 1), track(:, 2), '--x')
 %         clear i xki
 %         legend('Kalman filtered', 'Original')
@@ -409,6 +500,135 @@ for n = 1
     end
 end
 
+%% Kalman filter attempt 3
+numDims = 2;
+numStates = numDims * 2; % In 2D: axial position (z), lateral position (x), axial displacement (dz), lateral displacement (dx)
+
+if pers < 3
+    error('The Kalman filter needs at least 3 points in the track')
+end
+
+% Initialize the filtered output variable
+bVelocityTestMSmoothedKFMMS = bVelocityTestMSmoothedMMS;
+vMMStoPixelDispPerFrame = timePerFrame / 1e3 * pixelsPerM;
+
+% Define the matrices that map the state transition, and the state ->
+% observation transformation
+Fk = [1, 0, 1, 0; ...
+      0, 1, 0, 1; ...
+      0, 0, 1, 0; ...
+      0, 0, 0, 1];
+Hk = [1, 0, 0, 0; ...
+      0, 1, 0, 0; ...
+      0, 0, 1, 0; ...
+      0, 0, 0, 1];
+
+%%%%%%%% these covariance matrices are from the Song et al. 2020 paper %%%%%%%%%
+Qk = diag(ones(numStates, 1)) .* 0.5;      % Covariance matrix of the system/process noise
+Rk = diag(ones(numStates, 1)) .* 4;   % Covariance matrix of the observation noise
+
+for n = 1:size(bVelocityTestMSmoothedKFMMS, 1)
+% for n = 1
+    tln = bVelocityTestMSmoothedKFMMS{n}; % Track list n
+    for tn = 1:size(tln, 1) % Track number tn
+%     for tn = 1
+%         track = tln(tn, :, :);
+        track = squeeze(tln(tn, :, :))'; % Get the track
+        track = [track; [track(end, 3:4), 0, 0, 0, 0]];
+        % Initialize variables for the state vector and covariance matrix
+        xk = NaN(numStates, size(track, 1));
+        Pk = NaN(numStates, numStates, size(track, 1));
+
+        % Initial values
+%         xk(:, 1) = [track(1, 1:2), 0, 0]'; % Initial state vector
+        xk(:, 1) = [track(1, 1:2), track(1, 5:6) .* vMMStoPixelDispPerFrame]'; % Initial state vector
+        %%%%%% WHAT INITIAL DISPLACEMENT/VELOCITY SHOULD I USE??? %%%%%%
+%         Pk{1} = eye(length(x0));                 % Initial covariance matrix
+        Pk(:, :, 1) = [1, 0, 0, 0; ...
+                 0, 1, 0, 0; ...
+                 0, 0, 10, 0; ...
+                 0, 0, 0, 10];
+        %%%%%% WHAT INITIAL COVARIANCES SHOULD I USE??? %%%%%%
+
+%         xk(:, 2) = [track(2, 1:2), track(1, 5:6) .* vMMStoPixelDispPerFrame]';
+% %         xk(:, 2) = [track(2, 1:2), track(1, 5:6)]';
+%         Pk(:, :, 2) = [1, 0, 0, 0; ...
+%                  0, 1, 0, 0; ...
+%                  0, 0, 10^4, 0; ...
+%                  0, 0, 0, 10^4];
+
+        for k = 2:size(track, 1) % Go through each step of the track
+%             xk{k} = Fk * xk{k - 1} + Qk;
+            % Prediction
+            xkp = Fk * xk(:, k - 1); 
+            Pkp = Fk * Pk(:, :, k - 1) * Fk + Qk;
+
+            % Observation
+            yk = [track(k, 1:2), track(k, 5:6) .* vMMStoPixelDispPerFrame]';
+
+            % Update
+            Kku = Pkp * Hk' * inv(Hk * Pkp * Hk' + Rk); % Kalman gain matrix
+            Iku = yk - Hk * xkp; % Innovation vector (difference between the observed state and the predicted state transformed into an observation at step k)
+            xku = xkp + Kku * Iku; % Updated (weighted) estimate for the state at step k
+            Pku = (eye(length(xku)) - Kku * Hk) * Pkp; % Updated covariance matrix at step k
+
+            % Store the updated state and covariance
+            xk(:, k) = xku;
+            Pk(:, :, k) = Pku;
+        end
+        bVelocityTestMSmoothedKFMMS{n}(tn, 1:2, :) = xk(1:2, 1:end-1);
+        bVelocityTestMSmoothedKFMMS{n}(tn, 3:4, :) = xk(1:2, 2:end);
+        bVelocityTestMSmoothedKFMMS{n}(tn, 5:6, :) = xk(3:4, 2:end) ./ vMMStoPixelDispPerFrame;
+%         bVelocityTestMSmoothedKFMMS{n}(tn, 5:6, :) = (xk(1:2, 2:end) - xk(1:2, 1:end-1)); % ./ timePerFrame;
+
+        % plot test to compare for a single track
+%         figure
+%         hold on
+%         plot(xk(1, :), xk(2, :), '-o')
+%         plot(track(:, 1), track(:, 2), '--x')
+%         clear i xki
+%         legend('Kalman filtered', 'Original')
+%         hold off
+    end
+end
+
+clear n tn tln k xk Pk yk Kku Iku xku Pku track
+%% Acceleration and direction constraints
+% aThresholdFactor = 0.5;
+aThresholdFactor = 2;
+vTrimmedMeanPercentage = 20;
+angleChangeThreshold = pi/2; % Angle change threshold [radians]
+
+bVelocityTestMSmoothedKFConstrainedMMS = bVelocityTestMSmoothedKFMMS;
+for n = 1:size(bVelocityTestMSmoothedKFConstrainedMMS, 1)
+% for n = 1
+    tln = bVelocityTestMSmoothedKFConstrainedMMS{n}; % Track list n
+    for tn = size(tln, 1):-1:1 % Track number tn
+%     for tn = 1
+        trackAlreadyDeleted = false;
+        track = squeeze(tln(tn, :, :))'; % Get the track
+        vTrack = track(:, 5:6); % Velocities of the track
+
+        % Acceleration constraint
+        vTrackTrimmedMean = trimmean(vTrack, vTrimmedMeanPercentage); % Exclude some percentage of the values when taking the mean. It goes across the first non-singleton dimension.
+        aThresholdMag = abs(aThresholdFactor .* vTrackTrimmedMean ./ timePerFrame);
+        aTrackMag = abs(diff(vTrack, 1) ./ timePerFrame); % Accelerations of the track
+        if any(aTrackMag > aThresholdMag, 'all') % Remove the track if the acceleration constraint is violated
+            bVelocityTestMSmoothedKFConstrainedMMS{n}(tn, :, :) = [];
+            trackAlreadyDeleted = true;
+        end
+
+        % Direction constraint
+        if ~trackAlreadyDeleted
+            angleTrack = atan2(vTrack(:, 2), vTrack(:, 1));
+            angleTrackChanges = diff(angleTrack);
+            if any(abs(angleTrackChanges) > angleChangeThreshold)
+                bVelocityTestMSmoothedKFConstrainedMMS{n}(tn, :, :) = [];
+            end
+        end
+
+    end
+end
 
 %% Plot density map with the paired bubbles only
 % bSum = zeros(size(allCenters{1}, 1), size(allCenters{1}, 2));
@@ -449,6 +669,7 @@ bsIm = imagesc(bSum);
 % zVelocityPersMap = zeros(img_size(1), img_size(2));
 zvUpMap = zeros(img_size(1), img_size(2));
 zvDownMap = zeros(img_size(1), img_size(2));
+plotPower = 1;
 
 % Counters for proper averaging if there are overlapped pixels from
 % different tracks
@@ -457,7 +678,9 @@ zvDownMapCounter = zeros(img_size(1), img_size(2));
 
 for ti = 1:size(bVelocityTestMSmoothed, 1)
 % for ti = 7
-    bvTemp = bVelocityTestMSmoothedMMS{ti}; % get the ti-th entry
+%     bvTemp = bVelocityTestMSmoothedKFConstrainedMMS{ti};
+    bvTemp = bVelocityTestMSmoothedKFMMS{ti};
+%     bvTemp = bVelocityTestMSmoothedMMS{ti}; % get the ti-th entry
 %     bvTemp = bVelocityTestMSmoothed{ti}; % get the ti-th entry
 %     bvTemp = bVelocityTestM{ti}; % get the ti-th entry
     if ~isempty(bvTemp) % only do stuff if the bubble velocity cell array entry is not empty
@@ -546,11 +769,14 @@ zvMapFig = figure;
 % Plot with two linked axes (one for up Z, other for down Z)
 % % hold on
 vCrange = [-maxSpeedExpectedMMPerS, maxSpeedExpectedMMPerS];
+% vCrange = [-maxSpeedExpectedMMPerS, maxSpeedExpectedMMPerS] .* 0.6;
 % vCrange = [-5, 5];
 % vCrange = [-8800, 8800];
 % vCrange = [-15000, 15000];
 figure(zvMapFig)
 h1 = axes;
+zvUpMap = zvUpMap .^ plotPower;
+% imagesc(zvUpMap .^ plotPower)
 imagesc(zvUpMap)
 % alpha(h1, double(abs(zvUpMap) > 1))
 colormap(zvMapFig, VzCmap)
@@ -560,6 +786,7 @@ colorbar
 hold on
 
 h2 = axes;
+zvDownMap = -1 .* (abs(zvDownMap) .^ plotPower);
 imagesc(zvDownMap)
 alpha(h2, double(abs(zvDownMap) > 1))
 colormap(zvMapFig, VzCmap)
