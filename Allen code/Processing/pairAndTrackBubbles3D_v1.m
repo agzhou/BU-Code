@@ -1,8 +1,9 @@
 % Acknowledgement: using Jean-Yves Tinevez's simpletracker as a reference
 %% Add dependencies and load parameters + bubble center locations
-datapath = 'D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\Processed Data\with NLM\';
-addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Previous lab code\A-US-ULM\SubFunctions\')
-load('D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\params.mat')
+datapath = 'F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\Processed Data 02-21-2025\';
+% addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Previous lab code\A-US-ULM\SubFunctions\')
+addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Previous lab code\A-US-ULM\SubFunctions')
+load('G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\params.mat')
 
 % Load localization processing parameters: proc_params.mat
 load([datapath, 'proc_params.mat'])
@@ -12,32 +13,43 @@ load([datapath, 'proc_params.mat'])
 pix_spacing = P.wl/2;
 
 % Find and load the localized centers file, which starts with 'allCenters'
-if ~exist('allCenters', 'var') % Only load if the variable doesn't already exist in the workspace
-    allCenters_generalpath = fullfile(datapath, 'allCenters*.mat');
-    allCentersDir = dir(allCenters_generalpath);
-    load([allCentersDir.folder, '\', allCentersDir.name])
-end
-
-clear allCenters_generalpath allCentersDir
-%% Turn the logical matrices into coordinates
-totalFrames = length(allCenters) * size(allCenters{1}, 3);
+% if ~exist('allCenters', 'var') % Only load if the variable doesn't already exist in the workspace
+%     allCenters_generalpath = fullfile(datapath, 'allCenters*.mat');
+%     allCentersDir = dir(allCenters_generalpath);
+%     load([allCentersDir.folder, '\', allCentersDir.name])
+% end
+% clear allCenters_generalpath allCentersDir
+%% Turn the individual center files into one cell array and turn the logical matrices into coordinates
+numFiles = 96;
+totalFrames = numFiles * P.numFramesPerBuffer;
+% allCenters = cell(numFiles, 1);
 
 % Cell array with an entry for each frame. Each entry contains (# bubbles) of coordinate pairs (z, x) of the detected bubble centers
 centerCoords = cell(totalFrames, 1); 
 
-caiGlobal = 1;
-for cai = 1:length(allCenters)           % cell array index
-    for bfi = 1:size(allCenters{cai}, 3) % buffer frame index
-        [zc, xc] = find(allCenters{cai}(:, :, bfi));
-        centerCoords{caiGlobal} = [zc, xc];
-%         centerCoords{caiGlobal}  = find(allCenters{cai}(:, :, bfi));
-        caiGlobal = caiGlobal + 1;
+%%
+% tic
+% caiGlobal = 1;
+% for n = 1:numFiles          % cell array index
+for n = 1:numFiles
+    tic
+    load([datapath, 'centers-', num2str(n)])
+%     allCenters{n} = centers;
+    for bfi = 1:size(centers, 4) % buffer frame index
+        [xc, yc, zc] = find(centers(:, :, :, bfi));
+        tsl = size(centers, 1) * size(centers, 2) * size(centers, 3); % troubleshooting length
+        if ~((length(xc) == tsl) & (length(yc) == tsl) & (length(zc) == tsl))
+            centerCoords{(n - 1) * P.numFramesPerBuffer + bfi} = [xc, yc, zc];
+        end
+%         caiGlobal = caiGlobal + 1;
     end
-    
+    disp(strcat("Center coords for file ", num2str(n), " stored."))
+    toc
 end
+% toc
 
-img_size = size(allCenters{1}); % Save image size if we want to clear allCenters
-clear bfi cai caiGlobal xc zc
+img_size = size(centers); % Save image size if we want to clear allCenters
+% clear bfi cai caiGlobal xc zc centers
 
 %% Calculate bubble count
 bubbleCount = zeros(length(centerCoords), 1);   % numFiles/# buffers x # frames per buffer. Count of bubbles in each frame
