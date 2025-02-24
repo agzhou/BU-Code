@@ -30,14 +30,18 @@ centerCoords = cell(totalFrames, 1);
 %%
 % tic
 % caiGlobal = 1;
-% for n = 1:numFiles          % cell array index
-for n = 1:numFiles
+for n = 1:numFiles   % Go through each center file (for each buffer)
+% for n = 30
     tic
     load([datapath, 'centers-', num2str(n)])
-%     allCenters{n} = centers;
+    tsl = size(centers, 1) * size(centers, 2) * size(centers, 3); % troubleshooting length to account for all ones in the centers matrix
+
     for bfi = 1:size(centers, 4) % buffer frame index
-        [xc, yc, zc] = find(centers(:, :, :, bfi));
-        tsl = size(centers, 1) * size(centers, 2) * size(centers, 3); % troubleshooting length
+%     for bfi = 1
+        centersTemp = squeeze(centers(:, :, :, bfi));
+        indTemp = find(centersTemp);
+        [xc, yc, zc] = ind2sub(size(centersTemp), indTemp);
+
         if ~((length(xc) == tsl) & (length(yc) == tsl) & (length(zc) == tsl))
             centerCoords{(n - 1) * P.numFramesPerBuffer + bfi} = [xc, yc, zc];
         end
@@ -60,7 +64,7 @@ parfor fi = 1:length(centerCoords_corrected) % frame index
     bufTemp = centerCoords{fi};
 
     % Some error that makes every pixel a bubble
-    if size(bufTemp, 1) >= img_size(1) * img_size(2)
+    if size(bufTemp, 1) >= img_size(1) * img_size(2) * img_size(3)
         centerCoords_corrected{fi} = NaN;
         bubbleCount(fi) = 0;
     else
