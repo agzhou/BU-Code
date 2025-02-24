@@ -1,9 +1,11 @@
 % Acknowledgement: using Jean-Yves Tinevez's simpletracker as a reference
 %% Add dependencies and load parameters + bubble center locations
-datapath = 'F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\Processed Data 02-21-2025\';
-% addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Previous lab code\A-US-ULM\SubFunctions\')
-addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Previous lab code\A-US-ULM\SubFunctions')
-load('G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\params.mat')
+% datapath = 'F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\Processed Data 02-21-2025\';
+datapath = 'D:\Allen\Data\01-29-2025 AZ001 ULM RC15gV\run 1 left eye\Processed Data 02-21-2025\';
+addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Previous lab code\A-US-ULM\SubFunctions\')
+% addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Previous lab code\A-US-ULM\SubFunctions')
+% load('G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\params.mat')
+load('D:\Allen\Data\01-29-2025 AZ001 ULM RC15gV\run 1 left eye\params.mat')
 
 % Load localization processing parameters: proc_params.mat
 load([datapath, 'proc_params.mat'])
@@ -30,20 +32,18 @@ centerCoords = cell(totalFrames, 1);
 %%
 % tic
 % caiGlobal = 1;
-% for n = 1:numFiles          % cell array index
-% for n = 1:numFiles
-for n = 30
+for n = 1:numFiles   % Go through each center file (for each buffer)
+% for n = 30
     tic
     load([datapath, 'centers-', num2str(n)])
-%     allCenters{n} = centers;
-%     for bfi = 1:size(centers, 4) % buffer frame index
-    for bfi = 1
-%         [xc, yc, zc] = find(squeeze(centers(:, :, :, bfi)));
+    tsl = size(centers, 1) * size(centers, 2) * size(centers, 3); % troubleshooting length to account for all ones in the centers matrix
+
+    for bfi = 1:size(centers, 4) % buffer frame index
+%     for bfi = 1
         centersTemp = squeeze(centers(:, :, :, bfi));
         indTemp = find(centersTemp);
         [xc, yc, zc] = ind2sub(size(centersTemp), indTemp);
 
-        tsl = size(centers, 1) * size(centers, 2) * size(centers, 3); % troubleshooting length
         if ~((length(xc) == tsl) & (length(yc) == tsl) & (length(zc) == tsl))
             centerCoords{(n - 1) * P.numFramesPerBuffer + bfi} = [xc, yc, zc];
         end
@@ -87,7 +87,7 @@ ylabel('Bubble count')
 
 clear fi bufTemp
 %% Max speed (distance per frame) threshold and initialize variables
-maxSpeedExpectedMMPerS = 50;                                        % max expected flow speed [mm/s]
+maxSpeedExpectedMMPerS = 200;                                        % max expected flow speed [mm/s]
 timePerFrame = 1 / P.frameRate;                                     % time elapsed per frame [s]
 totalFrames = size(centerCoords, 1);
 maxDistPerFrameM = (maxSpeedExpectedMMPerS / 1000) * timePerFrame;  % max distance traveled per frame [m], according to the max expected flow speed and frame rate
@@ -198,7 +198,7 @@ clear bubblePairsPersTemp n pfc recpfc
 % turn tracks into a proper link of coordinates and indices - remove the
 % redundant cross-frame stuff
 tracksClean = cell(size(tracks));
-nbifAll = zeros(size(tracks));
+nbifAll = zeros(size(tracks)); % # bubbles in frame, all
 for n = 1:size(tracks, 1)
 % for n = 1:2
     tracksTemp = tracks{n};
@@ -206,15 +206,15 @@ for n = 1:size(tracks, 1)
         stt = size(tracksTemp);
         nbif = length(tracksTemp{1}); % # of paired bubbles in each frame of the track
         nbifAll(n) = nbif;
-        tracksClean{n} = zeros((stt(1) + 1) * nbif, 4); % There are stt(1) + 1 frames represented in each entry of tracksTemp
+        tracksClean{n} = zeros((stt(1) + 1) * nbif, 5); % There are stt(1) + 1 frames represented in each entry of tracksTemp
         for fn = 1:stt(1)
             tracksClean{n}((fn) * nbif + 1 : (fn + 1) * nbif, 1) = tracksTemp{fn, 2};
-            tracksClean{n}((fn) * nbif + 1 : (fn + 1) * nbif, 2:3) = centerCoords_corrected{n + fn}(tracksTemp{fn, 2}, :);
-            tracksClean{n}((fn) * nbif + 1 : (fn + 1) * nbif, 4) = repmat(n + fn, nbif, 1); % add frame number
+            tracksClean{n}((fn) * nbif + 1 : (fn + 1) * nbif, 2:4) = centerCoords_corrected{n + fn}(tracksTemp{fn, 2}, :);
+            tracksClean{n}((fn) * nbif + 1 : (fn + 1) * nbif, 5) = repmat(n + fn, nbif, 1); % add frame number
         end
         tracksClean{n}((0) * nbif + 1 : (1) * nbif, 1) = tracksTemp{1, 1};
-        tracksClean{n}((0) * nbif + 1 : (1) * nbif, 2:3) = centerCoords_corrected{n}(tracksTemp{1, 1}, :);
-        tracksClean{n}((0) * nbif + 1 : (1) * nbif, 4) = repmat(n, nbif, 1); % add frame number
+        tracksClean{n}((0) * nbif + 1 : (1) * nbif, 2:4) = centerCoords_corrected{n}(tracksTemp{1, 1}, :);
+        tracksClean{n}((0) * nbif + 1 : (1) * nbif, 5) = repmat(n, nbif, 1); % add frame number
     else
         tracksClean{n} = NaN;
     end

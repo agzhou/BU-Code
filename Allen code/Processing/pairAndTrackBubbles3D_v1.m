@@ -1,9 +1,11 @@
 % Acknowledgement: using Jean-Yves Tinevez's simpletracker as a reference
 %% Add dependencies and load parameters + bubble center locations
-datapath = 'F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\Processed Data 02-21-2025\';
-% addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Previous lab code\A-US-ULM\SubFunctions\')
-addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Previous lab code\A-US-ULM\SubFunctions')
-load('G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\params.mat')
+% datapath = 'F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\Processed Data 02-21-2025\';
+datapath = 'D:\Allen\Data\01-29-2025 AZ001 ULM RC15gV\run 1 left eye\Processed Data 02-21-2025\';
+addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Previous lab code\A-US-ULM\SubFunctions\')
+% addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Previous lab code\A-US-ULM\SubFunctions')
+% load('G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\params.mat')
+load('D:\Allen\Data\01-29-2025 AZ001 ULM RC15gV\run 1 left eye\params.mat')
 
 % Load localization processing parameters: proc_params.mat
 load([datapath, 'proc_params.mat'])
@@ -85,7 +87,7 @@ ylabel('Bubble count')
 
 clear fi bufTemp
 %% Max speed (distance per frame) threshold and initialize variables
-maxSpeedExpectedMMPerS = 50;                                        % max expected flow speed [mm/s]
+maxSpeedExpectedMMPerS = 200;                                        % max expected flow speed [mm/s]
 timePerFrame = 1 / P.frameRate;                                     % time elapsed per frame [s]
 totalFrames = size(centerCoords, 1);
 maxDistPerFrameM = (maxSpeedExpectedMMPerS / 1000) * timePerFrame;  % max distance traveled per frame [m], according to the max expected flow speed and frame rate
@@ -196,7 +198,7 @@ clear bubblePairsPersTemp n pfc recpfc
 % turn tracks into a proper link of coordinates and indices - remove the
 % redundant cross-frame stuff
 tracksClean = cell(size(tracks));
-nbifAll = zeros(size(tracks));
+nbifAll = zeros(size(tracks)); % # bubbles in frame, all
 for n = 1:size(tracks, 1)
 % for n = 1:2
     tracksTemp = tracks{n};
@@ -204,15 +206,15 @@ for n = 1:size(tracks, 1)
         stt = size(tracksTemp);
         nbif = length(tracksTemp{1}); % # of paired bubbles in each frame of the track
         nbifAll(n) = nbif;
-        tracksClean{n} = zeros((stt(1) + 1) * nbif, 4); % There are stt(1) + 1 frames represented in each entry of tracksTemp
+        tracksClean{n} = zeros((stt(1) + 1) * nbif, 5); % There are stt(1) + 1 frames represented in each entry of tracksTemp
         for fn = 1:stt(1)
             tracksClean{n}((fn) * nbif + 1 : (fn + 1) * nbif, 1) = tracksTemp{fn, 2};
-            tracksClean{n}((fn) * nbif + 1 : (fn + 1) * nbif, 2:3) = centerCoords_corrected{n + fn}(tracksTemp{fn, 2}, :);
-            tracksClean{n}((fn) * nbif + 1 : (fn + 1) * nbif, 4) = repmat(n + fn, nbif, 1); % add frame number
+            tracksClean{n}((fn) * nbif + 1 : (fn + 1) * nbif, 2:4) = centerCoords_corrected{n + fn}(tracksTemp{fn, 2}, :);
+            tracksClean{n}((fn) * nbif + 1 : (fn + 1) * nbif, 5) = repmat(n + fn, nbif, 1); % add frame number
         end
         tracksClean{n}((0) * nbif + 1 : (1) * nbif, 1) = tracksTemp{1, 1};
-        tracksClean{n}((0) * nbif + 1 : (1) * nbif, 2:3) = centerCoords_corrected{n}(tracksTemp{1, 1}, :);
-        tracksClean{n}((0) * nbif + 1 : (1) * nbif, 4) = repmat(n, nbif, 1); % add frame number
+        tracksClean{n}((0) * nbif + 1 : (1) * nbif, 2:4) = centerCoords_corrected{n}(tracksTemp{1, 1}, :);
+        tracksClean{n}((0) * nbif + 1 : (1) * nbif, 5) = repmat(n, nbif, 1); % add frame number
     else
         tracksClean{n} = NaN;
     end
@@ -222,7 +224,7 @@ clear n tracksTemp nbif stt
 
 %% Velocity map after doing persistence, on the cleaned tracks
 
-bVelocity = cell(size(tracksClean, 1), 1);  % bubble velocity - for each entry in the cell array, [# points x 4] where it has[z position, x position, z velocity, x velocity] in units of pixels and pixels/s
+% bVelocity = cell(size(tracksClean, 1), 1);  % bubble velocity - for each entry in the cell array, [# points x 4] where it has[z position, x position, z velocity, x velocity] in units of pixels and pixels/s
 bVelocityTest = cell(size(tracksClean, 1), pers);
 bVelocityTestM = cell(size(tracksClean, 1), 1);
 for ti = 1:length(tracksClean)              % track index
@@ -230,23 +232,23 @@ for ti = 1:length(tracksClean)              % track index
         
     tracksTemp = tracksClean{ti};
     nbiti = nbifAll(ti);                      % # of bubbles in the tracks starting in index ti
-    vmapTemp = [];
+%     vmapTemp = [];
     for fn = 1:pers % Go through all the frames in the tracks with origin frame ti
 %     for fn = 1:2
-        startPoints = tracksTemp((fn - 1) * nbiti + 1 : fn * nbiti, 2:3);
-        endPoints = tracksTemp((fn) * nbiti + 1 : (fn + 1) * nbiti, 2:3);
+        startPoints = tracksTemp((fn - 1) * nbiti + 1 : fn * nbiti, 2:4);
+        endPoints = tracksTemp((fn) * nbiti + 1 : (fn + 1) * nbiti, 2:4);
         vfn = (endPoints - startPoints) ./ timePerFrame;        % velocity = displacement/time
-        bVelocityTest{ti, fn} = [startPoints, endPoints, vfn];  % each row is [z start coord, x start coord, z end coord, x end coord, z velocity, x velocity]
+        bVelocityTest{ti, fn} = [startPoints, endPoints, vfn];  % each row is [x start coord, y start coord, z start coord, x end coord, y end coord, z end coord, x velocity, y velocity, z velocity]
         bVelocityTestM{ti}(:, :, fn) = [startPoints, endPoints, vfn];
 
-        for i = 1:nbiti % Go through each pair of coordinates used to calculate the velocity and add the interpolated points to the velocity + interpolated points at which to plot that velocity's matrix
-%         for i = 1
-            [zcInterp, xcInterp] = ULM_interp2D(startPoints(i, :), endPoints(i, :));
-            vmapTempi = [zcInterp, xcInterp, repmat(vfn(i, :), length(zcInterp), 1)];
-            vmapTemp = [vmapTemp; vmapTempi];
-        end
+%         for i = 1:nbiti % Go through each pair of coordinates used to calculate the velocity and add the interpolated points to the velocity + interpolated points at which to plot that velocity's matrix
+% %         for i = 1
+%             [zcInterp, xcInterp] = ULM_interp2D(startPoints(i, :), endPoints(i, :));
+%             vmapTempi = [zcInterp, xcInterp, repmat(vfn(i, :), length(zcInterp), 1)];
+%             vmapTemp = [vmapTemp; vmapTempi];
+%         end
     end
-    bVelocity{ti} = vmapTemp;
+%     bVelocity{ti} = vmapTemp;
 end
 
 clear ti fn tracksTemp startPoints endPoints vfn zcInterp xcInterp i vmapTempi vmapTemp
@@ -317,13 +319,17 @@ for n = 1:size(bVelocityTestM, 1)
     vtSmoothed = vt;
     for tn = 1:size(vt, 1) % track number
 %     for tn = 1
-        tnzVel = squeeze(vt(tn, 5, :)); % get the z velocity at each point in track tn
-        tnzVelSmoothed = movmean(tnzVel, mmws);
-        vtSmoothed(tn, 5, :) = tnzVelSmoothed;
-
-        tnxVel = squeeze(vt(tn, 6, :)); % get the x velocity at each point in track tn
+        tnxVel = squeeze(vt(tn, 7, :)); % get the x velocity at each point in track tn
         tnxVelSmoothed = movmean(tnxVel, mmws);
-        vtSmoothed(tn, 6, :) = tnxVelSmoothed;
+        vtSmoothed(tn, 7, :) = tnxVelSmoothed;
+
+        tnyVel = squeeze(vt(tn, 8, :)); % get the y velocity at each point in track tn
+        tnyVelSmoothed = movmean(tnyVel, mmws);
+        vtSmoothed(tn, 8, :) = tnyVelSmoothed;
+
+        tnzVel = squeeze(vt(tn, 9, :)); % get the z velocity at each point in track tn
+        tnzVelSmoothed = movmean(tnzVel, mmws);
+        vtSmoothed(tn, 9, :) = tnzVelSmoothed;
         
     end
     bVelocityTestMSmoothed{n} = vtSmoothed;
@@ -333,7 +339,7 @@ clear n tn vt vtSmoothed tnzVel tnzVelSmoothed vtSmoothed tnxVel tnxVelSmoothed
 % scale the smoothed velocity into mm/s
 bVelocityTestMSmoothedMMS = bVelocityTestMSmoothed;
 for n = 1:size(bVelocityTestMSmoothedMMS, 1)
-    bVelocityTestMSmoothedMMS{n}(:, 5:6, :) = bVelocityTestMSmoothed{n}(:, 5:6, :) ./ pixelsPerM * 1e3;
+    bVelocityTestMSmoothedMMS{n}(:, 7:9, :) = bVelocityTestMSmoothed{n}(:, 7:9, :) ./ pixelsPerM * 1e3;
 end
 
 %% Kalman filter attempt 1
