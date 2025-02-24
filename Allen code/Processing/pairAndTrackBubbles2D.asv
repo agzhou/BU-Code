@@ -1,9 +1,14 @@
 % Acknowledgement: using Jean-Yves Tinevez's simpletracker as a reference
 %% Add dependencies and load parameters + bubble center locations
-datapath = 'D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\Processed Data\with NLM\isotropic half wl pix spacing\';
-addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Processing\munkres')
+% Get data path of the localized bubble centers
+datapath = uigetdir('D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\Processed Data\with NLM\', 'Data path');
+datapath = [datapath, '\'];
+
+[params_filename, params_pathname, FILTERINDEX] = uigetfile('*.mat', 'Select the params file', 'D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\params.mat')
+load([params_pathname, ])
+
+% Add Jianbo's functions to the path for the Colormaps_fUS function
 addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Previous lab code\A-US-ULM\SubFunctions\')
-load('D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\params.mat')
 
 % Load localization processing parameters: proc_params.mat
 load([datapath, 'proc_params.mat'])
@@ -72,6 +77,7 @@ clear fi bufTemp
 %% Max speed (distance per frame) threshold and initialize variables
 maxSpeedExpectedMMPerS = 50;                                        % max expected flow speed [mm/s]
 timePerFrame = 1 / P.frameRate;                                     % time elapsed per frame [s]
+totalFrames = size(centerCoords, 1);
 maxDistPerFrameM = (maxSpeedExpectedMMPerS / 1000) * timePerFrame;  % max distance traveled per frame [m], according to the max expected flow speed and frame rate
 pixelsPerM = 1 / pix_spacing * imgRefinementFactor(1);              % # of pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
 maxPixelDistPerFrame = maxDistPerFrameM * pixelsPerM;               % max distance traveled per frame in units of pixels
@@ -293,7 +299,7 @@ end
 % clear startPointInd endPointInd coordsSFTemp coordsTFTemp
 
 %% Refine the velocity map - (maybe remove tracks where the position is oscillating over time)
-mmws = 5; % moving mean window size
+mmws = 3; % moving mean window size
 bVelocityTestMSmoothed = bVelocityTestM;
 for n = 1:size(bVelocityTestM, 1)
 % for n = 1
@@ -541,9 +547,10 @@ for n = 1:size(bVelocityTestMSmoothedKFMMS, 1)
 
         % Initial values
 %         xk(:, 1) = [track(1, 1:2), 0, 0]'; % Initial state vector
-        xk(:, 1) = [track(1, 1:2), track(1, 5:6) .* vMMStoPixelDispPerFrame]'; % Initial state vector
         %%%%%% WHAT INITIAL DISPLACEMENT/VELOCITY SHOULD I USE??? %%%%%%
 %         Pk{1} = eye(length(x0));                 % Initial covariance matrix
+        xk(:, 1) = [track(1, 1:2), track(1, 5:6) .* vMMStoPixelDispPerFrame]'; % Initial state vector
+
         Pk(:, :, 1) = [1, 0, 0, 0; ...
                  0, 1, 0, 0; ...
                  0, 0, 10, 0; ...
@@ -678,8 +685,8 @@ zvDownMapCounter = zeros(img_size(1), img_size(2));
 
 for ti = 1:size(bVelocityTestMSmoothed, 1)
 % for ti = 7
-%     bvTemp = bVelocityTestMSmoothedKFConstrainedMMS{ti};
-    bvTemp = bVelocityTestMSmoothedKFMMS{ti};
+    bvTemp = bVelocityTestMSmoothedKFConstrainedMMS{ti};
+%     bvTemp = bVelocityTestMSmoothedKFMMS{ti};
 %     bvTemp = bVelocityTestMSmoothedMMS{ti}; % get the ti-th entry
 %     bvTemp = bVelocityTestMSmoothed{ti}; % get the ti-th entry
 %     bvTemp = bVelocityTestM{ti}; % get the ti-th entry
