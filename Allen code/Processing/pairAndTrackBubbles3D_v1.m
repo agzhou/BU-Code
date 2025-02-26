@@ -1,11 +1,11 @@
 % Acknowledgement: using Jean-Yves Tinevez's simpletracker as a reference
 %% Add dependencies and load parameters + bubble center locations
-% datapath = 'F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\Processed Data 02-21-2025\';
-datapath = 'D:\Allen\Data\01-29-2025 AZ001 ULM RC15gV\run 1 left eye\Processed Data 02-21-2025\';
-addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Previous lab code\A-US-ULM\SubFunctions\')
-% addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Previous lab code\A-US-ULM\SubFunctions')
-% load('G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\params.mat')
-load('D:\Allen\Data\01-29-2025 AZ001 ULM RC15gV\run 1 left eye\params.mat')
+% datapath = 'D:\Allen\Data\01-29-2025 AZ001 ULM RC15gV\run 1 left eye\Processed Data 02-21-2025\';
+datapath = 'F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\Processed Data 02-24-2025\';
+% addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Previous lab code\A-US-ULM\SubFunctions\')
+addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Previous lab code\A-US-ULM\SubFunctions')
+% load('D:\Allen\Data\01-29-2025 AZ001 ULM RC15gV\run 1 left eye\params.mat')
+load('G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\params.mat')
 
 % Load localization processing parameters: proc_params.mat
 load([datapath, 'proc_params.mat'])
@@ -86,8 +86,10 @@ xlabel('Frame number')
 ylabel('Bubble count')
 
 clear fi bufTemp
+
 %% Max speed (distance per frame) threshold and initialize variables
-maxSpeedExpectedMMPerS = 200;                                        % max expected flow speed [mm/s]
+startFrame = 4001;                                                  % Frame to start processing at
+maxSpeedExpectedMMPerS = 100;                                       % max expected flow speed [mm/s]
 timePerFrame = 1 / P.frameRate;                                     % time elapsed per frame [s]
 totalFrames = size(centerCoords, 1);
 maxDistPerFrameM = (maxSpeedExpectedMMPerS / 1000) * timePerFrame;  % max distance traveled per frame [m], according to the max expected flow speed and frame rate
@@ -102,7 +104,7 @@ bubblePairs = cell(totalFrames - 1, 1);   % Initialize cell vector of paired bub
 ubS = cell(totalFrames - 1, 1);             % unassigned bubbles from the source frames
 ubT = cell(totalFrames - 1, 1);             % unassigned bubbles from the target frames
 
-parfor f = 1:totalFrames - 1
+parfor f = startFrame:totalFrames - 1
 % for f = 7
     sourceFrame = centerCoords_corrected{f};
     targetFrame = centerCoords_corrected{f + 1};
@@ -152,7 +154,7 @@ pers = 5; % # of frames a track needs to persist through to keep it
 tic
 % Separate the pairs of coordinates so we can change their sizes independently
 bubblePairsPers = cell(length(bubblePairs), 2); % bubble pairs with the pairs separated into another cell dimension
-for n = 1:length(bubblePairs)
+for n = startFrame:length(bubblePairs)
     if ~isempty(bubblePairs{n})
         bubblePairsPers{n, 1} = bubblePairs{n}(:, 1);
         bubblePairsPers{n, 2} = bubblePairs{n}(:, 2);
@@ -199,7 +201,7 @@ clear bubblePairsPersTemp n pfc recpfc
 % redundant cross-frame stuff
 tracksClean = cell(size(tracks));
 nbifAll = zeros(size(tracks)); % # bubbles in frame, all
-for n = 1:size(tracks, 1)
+for n = startFrame:size(tracks, 1)
 % for n = 1:2
     tracksTemp = tracks{n};
     if ~isempty(tracksTemp)
@@ -227,7 +229,7 @@ clear n tracksTemp nbif stt
 % bVelocity = cell(size(tracksClean, 1), 1);  % bubble velocity - for each entry in the cell array, [# points x 4] where it has[z position, x position, z velocity, x velocity] in units of pixels and pixels/s
 bVelocityTest = cell(size(tracksClean, 1), pers);
 bVelocityTestM = cell(size(tracksClean, 1), 1);
-for ti = 1:length(tracksClean)              % track index
+for ti = startFrame:length(tracksClean)              % track index
 % for ti = 1:2
         
     tracksTemp = tracksClean{ti};
