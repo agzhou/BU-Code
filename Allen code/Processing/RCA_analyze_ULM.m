@@ -26,7 +26,7 @@ load([datapath, 'params.mat'])
 numFiles = 96; % define # of files manually for now
 
 IQfolderName = 'IQ Data - Verasonics Recon\'; % 'IQ data\'
-saveFolderName = 'Processed Data 02-21-2025\';
+saveFolderName = 'Processed Data 02-24-2025\';
 % savepath = [datapath, saveFolderName];
 % mkdir([datapath, saveFolderName])
 savepath = ['F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\', saveFolderName];
@@ -43,9 +43,9 @@ sv_threshold_lower = 20;
 sv_threshold_upper = 150;
 
 % % Region of interest
-xrange = int8(1:80);
-yrange = int8(1:80);
-zrange = int8(36:142);
+xrange = int16(1:80);
+yrange = int16(1:80);
+zrange = int16(36:142);
 
 % framerange = 1:200;
 % framerange = 1:size(IQf, 3);
@@ -56,24 +56,26 @@ range = {xrange, yrange, zrange};
 irfc = 2;
 % imgRefinementFactor = [2, 2, 2]; % z, x pixel refinement factor
 imgRefinementFactor = ones(1, 3) .* irfc;
-XCThreshold = 0.4;
+XCThresholdFactor = 0.2;
  
 % Load and refine simulated PSF
 if ~exist('PSF', 'var')
-load('G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\PSF sim\PSF.mat', 'PSF')
-% figure; imagesc(squeeze(abs(PSF(40, :, :)))')
+    load('G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\PSF sim\PSF.mat', 'PSF')
+    % figure; imagesc(squeeze(abs(PSF(40, :, :)))')
 end
 
 % PSFs = PSF(190:210, 118:138, :); % PSF section
 PSFs = PSF(20:60, 20:60, 90:110); % PSF section
 refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) * imgRefinementFactor(2), size(PSFs, 3) * imgRefinementFactor(3)]);
+% volumeViewer(abs(refPSF))
 
-allCenters = {};
+% allCenters = {};
 
 %% Process the data
-tic
+% tic
 % for filenum = 1:numFiles
-for filenum = 51:numFiles
+for filenum = 55:numFiles
+    tic
     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
 %     IQr = LA_rollingFrames(IQ);                                                 % rolling method to get more effective frames
     
@@ -82,7 +84,7 @@ for filenum = 51:numFiles
     
 %     if filenum == 1
         [xp, yp, zp, nf] = size(IQ);
-        range{4} = int8(1:nf); % set frame range after rolling on the first file
+        range{4} = int16(1:nf); % set frame range after rolling on the first file
 %     end
 
     % SVD proc part 1
@@ -99,19 +101,19 @@ for filenum = 51:numFiles
 
 %     save([savepath, 'Filtered-Data-', num2str(filenum)], 'IQr', 'PP', 'EVs', 'V_sort', 'IQf', "-v6")
 %     [centers, refIQs, XC] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThreshold);
-    [centers, ~, ~] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThreshold);
+    [centers, ~, ~, XCThresholdAdaptive] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
 %     save([savepath, 'IQf-', num2str(filenum)], 'IQf', "-v6")
 
 %     save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'centroidCoordinates', "-v6")
-    savefast([savepath, 'centers-', num2str(filenum)], 'centers')
+    savefast([savepath, 'centers-', num2str(filenum)], 'centers', 'XCThresholdAdaptive')
 
 %     allCenters = [allCenters; centers];
     disp(strcat("Centroid finding done: file ", num2str(filenum)))
-%     toc
+    toc
 end
-save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'XCThreshold')
+save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'XCThresholdFactor')
 % save([savepath, 'allCenters'], 'allCenters', "-v7.3")
-toc
+% toc
 %% Plot the centroid density map
 
 xpts = [];
