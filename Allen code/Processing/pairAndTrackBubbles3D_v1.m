@@ -530,8 +530,8 @@ for n = 1:size(bVelocityTestMSmoothedMMS, 1)
 end
 
 %% Kalman filter attempt 3
-numDims = 2;
-numStates = numDims * 2; % In 2D: axial position (z), lateral position (x), axial displacement (dz), lateral displacement (dx)
+numDims = 3;
+numStates = numDims * 2; % In 3D: x position, y position, z position, x displacement, y displacement, z displacement
 
 if pers < 3
     error('The Kalman filter needs at least 3 points in the track')
@@ -543,27 +543,31 @@ vMMStoPixelDispPerFrame = timePerFrame / 1e3 * pixelsPerM;
 
 % Define the matrices that map the state transition, and the state ->
 % observation transformation
-Fk = [1, 0, 1, 0; ...
-      0, 1, 0, 1; ...
-      0, 0, 1, 0; ...
-      0, 0, 0, 1];
-Hk = [1, 0, 0, 0; ...
-      0, 1, 0, 0; ...
-      0, 0, 1, 0; ...
-      0, 0, 0, 1];
+Fk = [1, 0, 0, 1, 0, 0; ...
+      0, 1, 0, 0, 1, 0; ...
+      0, 0, 1, 0, 0, 1; ...
+      0, 0, 0, 1, 0, 0; ...
+      0, 0, 0, 0, 1, 0; ...
+      0, 0, 0, 0, 0, 1];
+Hk = [1, 0, 0, 0, 0, 0; ...
+      0, 1, 0, 0, 0, 0; ...
+      0, 0, 1, 0, 0, 0; ...
+      0, 0, 0, 1, 0, 0; ...
+      0, 0, 0, 0, 1, 0; ...
+      0, 0, 0, 0, 0, 1];
 
 %%%%%%%% these covariance matrices are from the Song et al. 2020 paper %%%%%%%%%
 Qk = diag(ones(numStates, 1)) .* 0.5;      % Covariance matrix of the system/process noise
 Rk = diag(ones(numStates, 1)) .* 4;   % Covariance matrix of the observation noise
 
-for n = 1:size(bVelocityTestMSmoothedKFMMS, 1)
-% for n = 1
+for n = startFrame:size(bVelocityTestMSmoothedKFMMS, 1)
+% for n = startFrame
     tln = bVelocityTestMSmoothedKFMMS{n}; % Track list n
     for tn = 1:size(tln, 1) % Track number tn
 %     for tn = 1
 %         track = tln(tn, :, :);
         track = squeeze(tln(tn, :, :))'; % Get the track
-        track = [track; [track(end, 3:4), 0, 0, 0, 0]];
+        track = [track; [track(end, 4:6), 0, 0, 0, 0, 0, 0]];
         % Initialize variables for the state vector and covariance matrix
         xk = NaN(numStates, size(track, 1));
         Pk = NaN(numStates, numStates, size(track, 1));
@@ -572,12 +576,14 @@ for n = 1:size(bVelocityTestMSmoothedKFMMS, 1)
 %         xk(:, 1) = [track(1, 1:2), 0, 0]'; % Initial state vector
         %%%%%% WHAT INITIAL DISPLACEMENT/VELOCITY SHOULD I USE??? %%%%%%
 %         Pk{1} = eye(length(x0));                 % Initial covariance matrix
-        xk(:, 1) = [track(1, 1:2), track(1, 5:6) .* vMMStoPixelDispPerFrame]'; % Initial state vector
+        xk(:, 1) = [track(1, 1:3), track(1, 7:9) .* vMMStoPixelDispPerFrame]'; % Initial state vector
 
-        Pk(:, :, 1) = [1, 0, 0, 0; ...
-                 0, 1, 0, 0; ...
-                 0, 0, 10, 0; ...
-                 0, 0, 0, 10];
+        Pk(:, :, 1) = [1, 0, 0, 0, 0, 0; ...
+                       0, 1, 0, 0, 0, 0; ...
+                       0, 0, 1, 0, 0, 0; ...
+                       0, 0, 0, 10, 0, 0; ...
+                       0, 0, 0, 0, 10, 0; ...
+                       0, 0, 0, 0, 0, 10];
         %%%%%% WHAT INITIAL COVARIANCES SHOULD I USE??? %%%%%%
 
 %         xk(:, 2) = [track(2, 1:2), track(1, 5:6) .* vMMStoPixelDispPerFrame]';
@@ -594,7 +600,7 @@ for n = 1:size(bVelocityTestMSmoothedKFMMS, 1)
             Pkp = Fk * Pk(:, :, k - 1) * Fk + Qk;
 
             % Observation
-            yk = [track(k, 1:2), track(k, 5:6) .* vMMStoPixelDispPerFrame]';
+            yk = [track(k, 1:3), track(k, 7:9) .* vMMStoPixelDispPerFrame]';
 
             % Update
             Kku = Pkp * Hk' * inv(Hk * Pkp * Hk' + Rk); % Kalman gain matrix
@@ -606,9 +612,9 @@ for n = 1:size(bVelocityTestMSmoothedKFMMS, 1)
             xk(:, k) = xku;
             Pk(:, :, k) = Pku;
         end
-        bVelocityTestMSmoothedKFMMS{n}(tn, 1:2, :) = xk(1:2, 1:end-1);
-        bVelocityTestMSmoothedKFMMS{n}(tn, 3:4, :) = xk(1:2, 2:end);
-        bVelocityTestMSmoothedKFMMS{n}(tn, 5:6, :) = xk(3:4, 2:end) ./ vMMStoPixelDispPerFrame;
+        bVelocityTestMSmoothedKFMMS{n}(tn, 1:3, :) = round(xk(1:3, 1:end-1));
+        bVelocityTestMSmoothedKFMMS{n}(tn, 4:6, :) = round(xk(1:3, 2:end));
+        bVelocityTestMSmoothedKFMMS{n}(tn, 7:9, :) = xk(4:6, 2:end) ./ vMMStoPixelDispPerFrame;
 %         bVelocityTestMSmoothedKFMMS{n}(tn, 5:6, :) = (xk(1:2, 2:end) - xk(1:2, 1:end-1)); % ./ timePerFrame;
 
         % plot test to compare for a single track
@@ -637,7 +643,7 @@ for n = 1:size(bVelocityTestMSmoothedKFConstrainedMMS, 1)
 %     for tn = 1
         trackAlreadyDeleted = false;
         track = squeeze(tln(tn, :, :))'; % Get the track
-        vTrack = track(:, 5:6); % Velocities of the track
+        vTrack = track(:, 7:9); % Velocities of the track
 
         % Acceleration constraint
         vTrackTrimmedMean = trimmean(vTrack, vTrimmedMeanPercentage); % Exclude some percentage of the values when taking the mean. It goes across the first non-singleton dimension.
@@ -678,56 +684,48 @@ end
 
 clear n tn iti trackTemp tempBuf
 
-%% Plot z velocity map after persistence with linear interpolation, on the cleaned and refined velocity data
-% zVelocityPersMap = zeros(img_size(1), img_size(2));
-zvUpMap = zeros(img_size(1), img_size(2));
-zvDownMap = zeros(img_size(1), img_size(2));
+%% Plot speed map after persistence with linear interpolation, on the cleaned and refined velocity data
+speedMap = zeros(img_size(1), img_size(2), img_size(3));
 plotPower = 1;
 
 % Counters for proper averaging if there are overlapped pixels from
 % different tracks
-zvUpMapCounter = zeros(img_size(1), img_size(2));
-zvDownMapCounter = zeros(img_size(1), img_size(2));
+speedMapCounter = zeros(img_size(1), img_size(2), img_size(3));
 
-for ti = 1:size(bVelocityTestMSmoothed, 1)
-% for ti = 7
-    bvTemp = bVelocityTestMSmoothedKFConstrainedMMS{ti};
-%     bvTemp = bVelocityTestMSmoothedKFMMS{ti};
+for ti = startFrame:size(bVelocityTestMSmoothed, 1)
+% for ti = startFrame
+%     bvTemp = bVelocityTestMSmoothedKFConstrainedMMS{ti};
+    bvTemp = bVelocityTestMSmoothedKFMMS{ti};
 %     bvTemp = bVelocityTestMSmoothedMMS{ti}; % get the ti-th entry
 %     bvTemp = bVelocityTestMSmoothed{ti}; % get the ti-th entry
 %     bvTemp = bVelocityTestM{ti}; % get the ti-th entry
     if ~isempty(bvTemp) % only do stuff if the bubble velocity cell array entry is not empty
         for bpi = 1:size(bvTemp, 1) % bubble pair index
-%             clear interpPts coordsStart coordsEnd zvTemp
-%             interpPts = [];
-%         for bpi = 2
             % Initialize temporary start and end coordinate matrices.
             % Each have dimensions [# persistence frames, 2] where each row is [z coord, x coord].
-            coordsStart = NaN(pers, 2);
-            coordsEnd = NaN(pers, 2);
+            coordsStart = NaN(pers, 3);
+            coordsEnd = NaN(pers, 3);
 
             % Go through the # of persistence frames and get the
             % coordinates at each frame pfi for the bubble track bpi
             for pfi = 1:pers % persistence frame index
-                coordsStart(pfi, :) = bvTemp(bpi, 1:2, pfi);
-                coordsEnd(pfi, :) = bvTemp(bpi, 3:4, pfi);
+                coordsStart(pfi, :) = bvTemp(bpi, 1:3, pfi);
+                coordsEnd(pfi, :) = bvTemp(bpi, 4:6, pfi);
             end
 
-            zvTemp = squeeze(bvTemp(bpi, 5, :));
-            interpPts = ULM_interp2D_linear(coordsStart, coordsEnd, zvTemp); % Get interpolated points with the corresponding z velocity value. each row is [z coord, x coord, z velocity]
+            vTemp = squeeze(bvTemp(bpi, 7:9, :)); % Velocity components
+            speedTemp = sqrt(vTemp(:, 1).^2 + vTemp(:, 2).^2 + vTemp(:, 3).^2); % Speed
+
+            interpPts = ULM_interp3D_linear(coordsStart, coordsEnd, speedTemp); % Get interpolated points with the corresponding z velocity value. each row is [z coord, x coord, z velocity]
 %             interpPts = ULM_interp2D_linear(coordsStart, coordsEnd, zvTemp, ti); % Get interpolated points with the corresponding z velocity value. each row is [z coord, x coord, z velocity]
 %             interpPts = ULM_interp2D_spline(coordsStart, coordsEnd, zvTemp, ti);
 
             for ipi = 1:size(interpPts, 1) % interpolated point index
                 interpPtsTemp = interpPts(ipi, :);
-                zVelTemp = interpPtsTemp(3);
-                if zVelTemp > 0         % up z flow
-                    zvUpMap(interpPtsTemp(1), interpPtsTemp(2)) = zvUpMap(interpPtsTemp(1), interpPtsTemp(2)) + zVelTemp;
-                    zvUpMapCounter(interpPtsTemp(1), interpPtsTemp(2)) = zvUpMapCounter(interpPtsTemp(1), interpPtsTemp(2)) + 1;
-                else
-                    zvDownMap(interpPtsTemp(1), interpPtsTemp(2)) = zvDownMap(interpPtsTemp(1), interpPtsTemp(2)) + zVelTemp;
-                    zvDownMapCounter(interpPtsTemp(1), interpPtsTemp(2)) = zvDownMapCounter(interpPtsTemp(1), interpPtsTemp(2)) + 1;
-                end
+                speedValTemp = interpPtsTemp(4);
+                
+                speedMap(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) = speedMap(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) + speedValTemp;
+                speedMapCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) = speedMapCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) + 1;
             end
         end
 %     else
@@ -741,14 +739,12 @@ for ti = 1:size(bVelocityTestMSmoothed, 1)
     end
 %     clear bvTemp
 end
-clear zVelTemp zvUpMask zvDownMask ti bpi pfi ipi interpPtsTemp zvTemp coordsStart coordsEnd bvTemp
+clear speedValTemp ti bpi pfi ipi interpPtsTemp speedTemp coordsStart coordsEnd bvTemp
 
 % Take the average for pixels with overlapping tracks
-zvUpMask = zvUpMapCounter > 0;
-zvDownMask = zvDownMapCounter > 0;
-zvUpMap(zvUpMask) = zvUpMap(zvUpMask) ./ zvUpMapCounter(zvUpMask);
-zvDownMap(zvDownMask) = zvDownMap(zvDownMask) ./ zvDownMapCounter(zvDownMask);
-
+speedMask = speedMapCounter > 0;
+speedMap(speedMask) = speedMap(speedMask) ./ speedMapCounter(speedMask);
+%%
 % Compression test
 % zvUpMap = zvUpMap .^ 1/3;
 % zvDownMap = -1 .* abs(zvDownMap).^1/3;
@@ -758,22 +754,23 @@ bubbleDensityMap = (zvUpMapCounter + zvDownMapCounter);
 % figure; imagesc(bubbleDensityMap .^ 0.2); colormap hot
 
 % Make a small PSF, adapting Jianbo's code
-FWHM_X=10; % lateral resolution, FWHM-Amplitude, um
-FWHM_Z=10;  % axial resolution, FWHM-Amplitude, um
+FWHM_X=10; % x resolution, FWHM-Amplitude, um
+FWHM_Y=10; % y resolution, FWHM-Amplitude, um
+FWHM_Z=10;  % z resolution, FWHM-Amplitude, um
 Sigma_X=FWHM_X/(2*sqrt(2*log(2)));
+Sigma_Y=FWHM_Y/(2*sqrt(2*log(2)));
 Sigma_Z=FWHM_Z/(2*sqrt(2*log(2)));
-xPSF0=-30:30; zPSF0=xPSF0; % pixels
-[xPSF,zPSF]=meshgrid(xPSF0,zPSF0);
+xPSF0=-30:30; yPSF0 = xPSF0; zPSF0=xPSF0; % pixels
+[xPSF,yPSF, zPSF]=meshgrid(xPSF0,yPSF0,zPSF0);
 % PRSSinfo.sysPSF=exp(-((xPSF/(Sigma_X/PRSSinfo.lPix)).^2+(zPSF/(Sigma_Z/PRSSinfo.lPix)).^2)/2);
-smallPSF=exp(-((xPSF/(Sigma_X * (pixelsPerM / 1e6))).^2+(zPSF/(Sigma_Z * (pixelsPerM / 1e6))).^2)/2);
-% figure; imagesc(smallPSF)
+smallPSF=exp(-((xPSF/(Sigma_X * (pixelsPerM / 1e6))).^2 + (yPSF/(Sigma_Y * (pixelsPerM / 1e6))).^2 + (zPSF/(Sigma_Z * (pixelsPerM / 1e6))).^2)/2);
+% volumeViewer(smallPSF)
 
 bubbleDensityMapConv = conv2(bubbleDensityMap, smallPSF);
 % figure; imagesc(bubbleDensityMapConv .^ 0.3); colormap hot
 
 % Velocity map convolution with small PSF
-zvUpMap = conv2(zvUpMap, smallPSF);
-zvDownMap = conv2(zvDownMap, smallPSF);
+speedMapConv = convn(speedMap, smallPSF);
 
 % Load Jianbo's colormaps
 [VzCmap, VzCmapDn, VzCmapUp, pdiCmapUp, PhtmCmap] = Colormaps_fUS;
