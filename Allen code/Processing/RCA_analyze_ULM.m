@@ -21,12 +21,14 @@ end
 
 %% Load parameters and make folder for saving the processed data
 datapath = 'G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\';
-load([datapath, 'params.mat'])
+if ~exist('P', 'var')
+    load([datapath, 'params.mat'])
+end
 
 numFiles = 96; % define # of files manually for now
 
 IQfolderName = 'IQ Data - Verasonics Recon\'; % 'IQ data\'
-saveFolderName = 'Processed Data 02-24-2025\';
+saveFolderName = 'Processed Data 02-25-2025\';
 % savepath = [datapath, saveFolderName];
 % mkdir([datapath, saveFolderName])
 savepath = ['F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\', saveFolderName];
@@ -53,9 +55,15 @@ zrange = int16(36:142);
 range = {xrange, yrange, zrange};
 
 % % Image refinement and localization parameters
-irfc = 2;
+irfc = 10;
 % imgRefinementFactor = [2, 2, 2]; % z, x pixel refinement factor
 imgRefinementFactor = ones(1, 3) .* irfc;
+
+xpix_spacing = P.Trans.spacingMm / 1e3;
+ypix_spacing = P.Trans.spacingMm / 1e3;
+zpix_spacing = P.wl / 2;
+% imgRefinementFactor = [irfc * xpix_spacing/zpix_spacing, irfc * ypix_spacing/zpix_spacing, irfc];
+
 XCThresholdFactor = 0.2;
  
 % Load and refine simulated PSF
@@ -65,16 +73,18 @@ if ~exist('PSF', 'var')
 end
 
 % PSFs = PSF(190:210, 118:138, :); % PSF section
-PSFs = PSF(20:60, 20:60, 90:110); % PSF section
+PSFs = PSF(30:50, 30:50, 92:110); % PSF section
 refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) * imgRefinementFactor(2), size(PSFs, 3) * imgRefinementFactor(3)]);
 % volumeViewer(abs(refPSF))
 
 % allCenters = {};
-
+%% resampling size test
+% s = size(IQ);
+% test = zeros([s(1:3) .* 4, s(4)]);
 %% Process the data
 % tic
 % for filenum = 1:numFiles
-for filenum = 55:numFiles
+for filenum = 30:numFiles
     tic
     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
 %     IQr = LA_rollingFrames(IQ);                                                 % rolling method to get more effective frames
@@ -101,11 +111,13 @@ for filenum = 55:numFiles
 
 %     save([savepath, 'Filtered-Data-', num2str(filenum)], 'IQr', 'PP', 'EVs', 'V_sort', 'IQf', "-v6")
 %     [centers, refIQs, XC] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThreshold);
-    [centers, ~, ~, XCThresholdAdaptive] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
+%     [centers, ~, ~, XCThresholdAdaptive] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
+    [coords, img_size, XCThresholdsAdaptive] = localizeBubbles3D_framewise(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
 %     save([savepath, 'IQf-', num2str(filenum)], 'IQf', "-v6")
 
 %     save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'centroidCoordinates', "-v6")
-    savefast([savepath, 'centers-', num2str(filenum)], 'centers', 'XCThresholdAdaptive')
+%     savefast([savepath, 'centers-', num2str(filenum)], 'centers', 'XCThresholdAdaptive')
+    savefast([savepath, 'coords-', num2str(filenum)], 'coords', 'img_size', 'XCThresholdsAdaptive')
 
 %     allCenters = [allCenters; centers];
     disp(strcat("Centroid finding done: file ", num2str(filenum)))

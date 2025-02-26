@@ -29,7 +29,6 @@ totalFrames = numFiles * P.numFramesPerBuffer;
 % Cell array with an entry for each frame. Each entry contains (# bubbles) of coordinate pairs (z, x) of the detected bubble centers
 centerCoords = cell(totalFrames, 1); 
 
-%%
 % tic
 % caiGlobal = 1;
 for n = 1:numFiles   % Go through each center file (for each buffer)
@@ -104,6 +103,7 @@ bubblePairs = cell(totalFrames - 1, 1);   % Initialize cell vector of paired bub
 ubS = cell(totalFrames - 1, 1);             % unassigned bubbles from the source frames
 ubT = cell(totalFrames - 1, 1);             % unassigned bubbles from the target frames
 
+tic
 parfor f = startFrame:totalFrames - 1
 % for f = 7
     sourceFrame = centerCoords_corrected{f};
@@ -145,11 +145,13 @@ parfor f = startFrame:totalFrames - 1
     end
 %     hold off
 end
+toc
+disp('Pairing done')
 
 clear f nbS nbT D spi assignment unassignedrows unassignedcolumns
 
 %% Create tracks with persistence
-pers = 5; % # of frames a track needs to persist through to keep it
+pers = 3; % # of frames a track needs to persist through to keep it
 
 tic
 % Separate the pairs of coordinates so we can change their sizes independently
@@ -178,7 +180,6 @@ for n = 1:length(bubblePairsPers) - pers
         bubblePairsPersTemp{n + pfc, 1} = bubblePairsPersTemp{n + pfc, 1}(ie); % I think this preserves the order
         bubblePairsPersTemp{n + pfc, 2} = bubblePairsPersTemp{n + pfc, 2}(ie); % Need to preserve the order, so set the next starting point????
         
-
     end
     % Go back and update the previous pairs too
 %         for recpfc = pfc - 1 : -1 : 1   % recursive persistence frame count
@@ -192,8 +193,9 @@ for n = 1:length(bubblePairsPers) - pers
     end
     tracks{n} = bubblePairsPersTemp(n : n + pfc, :);
 end
+disp('Tracks with persistence created')
 toc
-clear bubblePairsPersTemp n pfc recpfc
+clear bubblePairsPersTemp n pfc recpfc ris rie recTrackContinuesIndices recStartIndex recEndIndex trackContinuesIndices is ie startIndex endIndex
 
 %% Clean tracks
 
@@ -229,6 +231,7 @@ clear n tracksTemp nbif stt
 % bVelocity = cell(size(tracksClean, 1), 1);  % bubble velocity - for each entry in the cell array, [# points x 4] where it has[z position, x position, z velocity, x velocity] in units of pixels and pixels/s
 bVelocityTest = cell(size(tracksClean, 1), pers);
 bVelocityTestM = cell(size(tracksClean, 1), 1);
+tic
 for ti = startFrame:length(tracksClean)              % track index
 % for ti = 1:2
         
@@ -252,8 +255,10 @@ for ti = startFrame:length(tracksClean)              % track index
     end
 %     bVelocity{ti} = vmapTemp;
 end
+toc
+disp('Velocity map created')
 
-clear ti fn tracksTemp startPoints endPoints vfn zcInterp xcInterp i vmapTempi vmapTemp
+clear ti fn tracksTemp startPoints endPoints vfn zcInterp xcInterp i vmapTempi vmapTemp nbiti
 
 %% Combine cleaned tracks
 tracksCombined = cell(size(tracksClean));
@@ -315,7 +320,7 @@ end
 %% Refine the velocity map - (maybe remove tracks where the position is oscillating over time)
 mmws = 3; % moving mean window size
 bVelocityTestMSmoothed = bVelocityTestM;
-for n = 1:size(bVelocityTestM, 1)
+for n = startFrame:size(bVelocityTestM, 1)
 % for n = 1
     vt = bVelocityTestM{n};
     vtSmoothed = vt;
@@ -336,11 +341,11 @@ for n = 1:size(bVelocityTestM, 1)
     end
     bVelocityTestMSmoothed{n} = vtSmoothed;
 end
-clear n tn vt vtSmoothed tnzVel tnzVelSmoothed vtSmoothed tnxVel tnxVelSmoothed
+clear n tn vt vtSmoothed tnzVel tnzVelSmoothed vtSmoothed tnxVel tnxVelSmoothed tnyVel tnyVelSmoothed 
 
 % scale the smoothed velocity into mm/s
 bVelocityTestMSmoothedMMS = bVelocityTestMSmoothed;
-for n = 1:size(bVelocityTestMSmoothedMMS, 1)
+for n = startFrame:size(bVelocityTestMSmoothedMMS, 1)
     bVelocityTestMSmoothedMMS{n}(:, 7:9, :) = bVelocityTestMSmoothed{n}(:, 7:9, :) ./ pixelsPerM * 1e3;
 end
 
@@ -655,40 +660,23 @@ for n = 1:size(bVelocityTestMSmoothedKFConstrainedMMS, 1)
     end
 end
 
-%% Plot density map with the paired bubbles only
-% bSum = zeros(size(allCenters{1}, 1), size(allCenters{1}, 2));
-bSum = zeros(img_size(1), img_size(2));
+%% Plot density map with the paired bubbles after persistence
+bSum = zeros(img_size(1), img_size(2), img_size(3));
 
-bSumFig = figure; colormap turbo
-% hold on
-figure(bSumFig)
-
-% bSumFig.XDataSource = 
-
-for f = 1:length(bubblePairs)
-% for f = 1:10000
-    disp(num2str(f))
-    if ~isempty(bubblePairs{f})
-        coordsCF = centerCoords_corrected{f}; % coords for the current frame
-        coordsNF = centerCoords_corrected{f + 1}; % coords for the current frame
-    %     for npb = 1:size(pairedBubbles{f}, 1)
-
-        keepBubblesCF = bubblePairs{f}(:, 1); % which bubbles (indices) to keep for the current frame. Could do it more efficiently or correctly
-        for kbcfi = keepBubblesCF' % index for each kept bubble in the current frame
-            kbcfCoord = coordsCF(kbcfi, :);
-            bSum(kbcfCoord(1), kbcfCoord(2)) = bSum(kbcfCoord(1), kbcfCoord(2)) + 1; % Update the count for that pixel
+for n = startFrame:length(bVelocityTestM)
+% for n = startFrame
+    tempBuf = bVelocityTestM{n};
+    for tn = 1:size(tempBuf, 1) % track number
+%     for tn = 1
+        trackTemp = squeeze(tempBuf(tn, :, :))';
+        bSum(trackTemp(1, 1), trackTemp(1, 2), trackTemp(1, 3)) = bSum(trackTemp(1, 1), trackTemp(1, 2), trackTemp(1, 3)) + 1;
+        for iti = 1:size(trackTemp, 1) % inside track index
+            bSum(trackTemp(iti, 4), trackTemp(iti, 5), trackTemp(iti, 6)) = bSum(trackTemp(iti, 4), trackTemp(iti, 5), trackTemp(iti, 6)) + 1;
         end
-
-        keepBubblesNF = bubblePairs{f}(:, 2); % which bubbles (indices) to keep for the next frame. Could do it more efficiently or correctly
-        for kbnfi = keepBubblesNF' % index for each kept bubble in the next frame
-            kbnfCoord = coordsNF(kbnfi, :);
-            bSum(kbnfCoord(1), kbnfCoord(2)) = bSum(kbnfCoord(1), kbnfCoord(2)) + 1; % Update the count for that pixel
-        end
-
     end
 end
-hold off
-bsIm = imagesc(bSum);
+
+clear n tn iti trackTemp tempBuf
 
 %% Plot z velocity map after persistence with linear interpolation, on the cleaned and refined velocity data
 % zVelocityPersMap = zeros(img_size(1), img_size(2));

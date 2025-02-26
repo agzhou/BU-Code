@@ -21,12 +21,14 @@ end
 
 %% Load parameters and make folder for saving the processed data
 datapath = 'G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\';
-load([datapath, 'params.mat'])
+if ~exist('P', 'var')
+    load([datapath, 'params.mat'])
+end
 
 numFiles = 96; % define # of files manually for now
 
 IQfolderName = 'IQ Data - Verasonics Recon\'; % 'IQ data\'
-saveFolderName = 'Processed Data 02-24-2025\';
+saveFolderName = 'Processed Data 02-25-2025\';
 % savepath = [datapath, saveFolderName];
 % mkdir([datapath, saveFolderName])
 savepath = ['F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\', saveFolderName];
@@ -53,7 +55,7 @@ zrange = int16(36:142);
 range = {xrange, yrange, zrange};
 
 % % Image refinement and localization parameters
-irfc = 2;
+irfc = 10;
 % imgRefinementFactor = [2, 2, 2]; % z, x pixel refinement factor
 imgRefinementFactor = ones(1, 3) .* irfc;
 XCThresholdFactor = 0.2;
@@ -65,16 +67,19 @@ if ~exist('PSF', 'var')
 end
 
 % PSFs = PSF(190:210, 118:138, :); % PSF section
-PSFs = PSF(20:60, 20:60, 90:110); % PSF section
+PSFs = PSF(30:50, 30:50, 90:110); % PSF section
 refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) * imgRefinementFactor(2), size(PSFs, 3) * imgRefinementFactor(3)]);
 % volumeViewer(abs(refPSF))
 
 % allCenters = {};
-
+%% resampling size test
+% s = size(IQ);
+% test = zeros([s(1:3) .* 4, s(4)]);
 %% Process the data
-tic
+% tic
 % for filenum = 1:numFiles
 for filenum = 30
+    tic
     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
 %     IQr = LA_rollingFrames(IQ);                                                 % rolling method to get more effective frames
     
@@ -108,11 +113,11 @@ for filenum = 30
 
 %     allCenters = [allCenters; centers];
     disp(strcat("Centroid finding done: file ", num2str(filenum)))
-%     toc
+    toc
 end
 save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'XCThresholdFactor')
 % save([savepath, 'allCenters'], 'allCenters', "-v7.3")
-toc
+% toc
 %% Plot the centroid density map
 
 xpts = [];
