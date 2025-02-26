@@ -38,10 +38,11 @@ mkdir(savepath)
 filename_structure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 
 addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Processing\normxcorr3.m')
+addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Processing\toolbox_nlmeans_version2')
 %% Parameters for processing the data
 % Define various processing parameters
 % Singular value thresholds
-sv_threshold_lower = 20;
+sv_threshold_lower = 10;
 sv_threshold_upper = 150;
 
 % % Region of interest
@@ -55,7 +56,7 @@ zrange = int16(36:142);
 range = {xrange, yrange, zrange};
 
 % % Image refinement and localization parameters
-irfc = 10;
+irfc = 2;
 % imgRefinementFactor = [2, 2, 2]; % z, x pixel refinement factor
 imgRefinementFactor = ones(1, 3) .* irfc;
 
@@ -84,7 +85,7 @@ refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) 
 %% Process the data
 % tic
 % for filenum = 1:numFiles
-for filenum = 30:numFiles
+for filenum = 30
     tic
     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
 %     IQr = LA_rollingFrames(IQ);                                                 % rolling method to get more effective frames
@@ -106,18 +107,21 @@ for filenum = 30:numFiles
 %     tic
     [IQf] = applySVs2D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
     disp('SVD filtered images put together')
+
+    test = squeeze(abs(IQf(:, :, :, 1)) ./ max(abs(IQf(:, :, :, 1)), [], 'all'));
+    IQf_dn = NLMF(test);
 %     toc
     clear PP EVs V_sort
 
 %     save([savepath, 'Filtered-Data-', num2str(filenum)], 'IQr', 'PP', 'EVs', 'V_sort', 'IQf', "-v6")
 %     [centers, refIQs, XC] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThreshold);
-%     [centers, ~, ~, XCThresholdAdaptive] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
-    [coords, img_size, XCThresholdsAdaptive] = localizeBubbles3D_framewise(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
+    [centers, ~, ~, XCThresholdAdaptive] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
+%     [coords, img_size, XCThresholdsAdaptive] = localizeBubbles3D_framewise(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
 %     save([savepath, 'IQf-', num2str(filenum)], 'IQf', "-v6")
 
 %     save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'centroidCoordinates', "-v6")
-%     savefast([savepath, 'centers-', num2str(filenum)], 'centers', 'XCThresholdAdaptive')
-    savefast([savepath, 'coords-', num2str(filenum)], 'coords', 'img_size', 'XCThresholdsAdaptive')
+    savefast([savepath, 'centers-', num2str(filenum)], 'centers', 'XCThresholdAdaptive')
+%     savefast([savepath, 'coords-', num2str(filenum)], 'coords', 'img_size', 'XCThresholdsAdaptive')
 
 %     allCenters = [allCenters; centers];
     disp(strcat("Centroid finding done: file ", num2str(filenum)))
