@@ -1,4 +1,6 @@
-A = rand(500, 500, 500);
+Asize = 1000;
+A = rand(Asize, Asize, Asize);
+PSFs = rand(20, 20, 20);
 tic
 test = normxcorr3(PSFs, A);
 toc
