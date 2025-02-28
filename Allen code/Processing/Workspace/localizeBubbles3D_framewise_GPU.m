@@ -14,7 +14,7 @@
 %         binary image
 %         Threshold on connected component areas to use
 
-function [coords, img_size, XCThresholdsAdaptive] = localizeBubbles3D_framewise(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor)
+function [coords, XCThresholdsAdaptive] = localizeBubbles3D_framewise_GPU(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor)
     
     %% Use parallel processing for speed
     % https://www.mathworks.com/matlabcentral/answers/91744-how-can-i-check-if-matlabpool-is-running-when-using-parallel-computing-toolbox
@@ -42,28 +42,29 @@ function [coords, img_size, XCThresholdsAdaptive] = localizeBubbles3D_framewise(
     XCThresholdsAdaptive = zeros(length(framerange), 1);
     coords = cell(length(framerange), 1);
 
+    refPSF_gpu = gpuArray(abs(refPSF));
     tic
-    for f = framerange
+%     parfor f = framerange
+    parfor f = 1:2
+%     for f = 1
         % image refinement/interpolation
         if ~all(imgRefinementFactor == 1)
             I_temp = squeeze(IQs(:, :, :, f));
             refIQs = imresize3(I_temp, [size(I_temp, 1) * rfnX, size(I_temp, 2) * rfnY, size(I_temp, 3) * rfnZ], 'linear');
         else
-            refIQs = IQf;
+            refIQs = IQs;
         end
         
+        refIQs_gpu = gpuArray(abs(refIQs));
+
         % and cross correlation
         %   normxcorr3 from file exchange
         %   (https://www.mathworks.com/matlabcentral/fileexchange/73946-normxcorr3-fast-3d-ncc)
-        XC = normxcorr3(abs(refPSF), abs(refIQs));
+        XC = normxcorr3(refPSF_gpu, refIQs_gpu);
 %         clear refIQs
-
-%         if f == framerange(1)
-%             img_size = size(XC); % store image size
-%         end
     
         % remove data from XC beneath a threshold and find local maxima
-        XCt = XC; % XC Thresholded
+        XCt = abs(gather(XC)); % XC Thresholded
         XCThresholdAdaptive = XCThresholdFactor * max(XCt, [], 'all');
         XCThresholdsAdaptive(f) = XCThresholdAdaptive;
     %     XCt(XCt < XCThreshold) = 0;

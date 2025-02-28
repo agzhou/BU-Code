@@ -14,7 +14,7 @@
 %         binary image
 %         Threshold on connected component areas to use
 
-function [centers, refIQs, XC, XCThresholdAdaptive] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor)
+function [centers, refIQs, XC, XCThresholdAdaptive] = localizeBubbles3D_GPU(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor)
     
     %% Use parallel processing for speed
     % https://www.mathworks.com/matlabcentral/answers/91744-how-can-i-check-if-matlabpool-is-running-when-using-parallel-computing-toolbox
@@ -46,8 +46,10 @@ function [centers, refIQs, XC, XCThresholdAdaptive] = localizeBubbles3D(IQf, ref
         % go through all frames and refine
         parfor f = 1:size(IQs, 4)
     %     for f = 1
+            tic
             I_temp = IQs(:, :, :, f);
             refIQs(:, :, :, f) = imresize3(I_temp, [size(I_temp, 1) * rfnX, size(I_temp, 2) * rfnY, size(I_temp, 3) * rfnZ], 'linear');
+            toc
         end
     else
         refIQs = IQs;
@@ -57,14 +59,23 @@ function [centers, refIQs, XC, XCThresholdAdaptive] = localizeBubbles3D(IQf, ref
 
     % normxcorr3 from file exchange
     % (https://www.mathworks.com/matlabcentral/fileexchange/73946-normxcorr3-fast-3d-ncc)
-    XC = normxcorr3(abs(refPSF), abs(refIQs(:, :, :, 1))); % Cross correlate the filtered/refined images and the simulated PSF
+    refIQs_temp = gpuArray(abs(refIQs(:, :, :, 1)));
+    refPSF_gpu = gpuArray(abs(refPSF));
+    tic
+    XC = normxcorr3(refPSF, abs(refIQs_temp)); % Cross correlate the filtered/refined images and the simulated PSF
+    toc
+    tic
     parfor f = 2:size(refIQs, 4)
-        XC(:, :, :, f) = normxcorr3(abs(refPSF), abs(refIQs(:, :, :, f)));
+%         tic
+        refIQs_temp = gpuArray(abs(refIQs(:, :, :, f)));
+        XC(:, :, :, f) = normxcorr3(refPSF_gpu, refIQs_temp);
+%         toc
     end
+    toc
 
     %% remove data from XC beneath a threshold and find local maxima
     
-    XCt = XC; % XC Thresholded
+    XCt = abs(gather(XC)); % XC Thresholded
     XCThresholdAdaptive = XCThresholdFactor * max(XC, [], 'all');
 %     XCt(XCt < XCThreshold) = 0;
     XCt(XCt < XCThresholdAdaptive) = 0;

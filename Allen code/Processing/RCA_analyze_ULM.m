@@ -108,23 +108,17 @@ for filenum = 30
     [IQf] = applySVs2D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
     disp('SVD filtered images put together')
 
-    % Testing
-    test = squeeze(abs(IQf(:, :, :, 1)) ./ max(abs(IQf(:, :, :, 1)), [], 'all'));
-    IQf_dn = NLMF(test);
-    IQf_dn_rfn = imresize3(IQf_dn, [size(IQf_dn, 1) * imgRefinementFactor(1), size(IQf_dn, 2) * imgRefinementFactor(2), size(IQf_dn, 3) * imgRefinementFactor(3)]);
-    testXC = normxcorr3(abs(refPSF), IQf_dn_rfn);
-%     toc
     clear PP EVs V_sort
 
 %     save([savepath, 'Filtered-Data-', num2str(filenum)], 'IQr', 'PP', 'EVs', 'V_sort', 'IQf', "-v6")
 %     [centers, refIQs, XC] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThreshold);
-    [centers, ~, ~, XCThresholdAdaptive] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
-%     [coords, img_size, XCThresholdsAdaptive] = localizeBubbles3D_framewise(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
+%     [centers, ~, ~, XCThresholdAdaptive] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
+    [coords, img_size, XCThresholdsAdaptive] = localizeBubbles3D_chunk(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
 %     save([savepath, 'IQf-', num2str(filenum)], 'IQf', "-v6")
 
 %     save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'centroidCoordinates', "-v6")
-    savefast([savepath, 'centers-', num2str(filenum)], 'centers', 'XCThresholdAdaptive')
-%     savefast([savepath, 'coords-', num2str(filenum)], 'coords', 'img_size', 'XCThresholdsAdaptive')
+%     savefast([savepath, 'centers-', num2str(filenum)], 'centers', 'XCThresholdAdaptive')
+    savefast([savepath, 'coords-', num2str(filenum)], 'coords', 'img_size', 'XCThresholdsAdaptive')
 
 %     allCenters = [allCenters; centers];
     disp(strcat("Centroid finding done: file ", num2str(filenum)))

@@ -1,4 +1,4 @@
-Asize = 1000;
+Asize = 100;
 A = rand(Asize, Asize, Asize);
 PSFs = rand(20, 20, 20);
 tic
