@@ -59,6 +59,7 @@ if ~exist('allCenters', 'var') % Only load if the variable doesn't already exist
     load([allCenters_filename, allCenters_pathname])
 end
 
+% Prompt for parameter user input
 parameterPrompt = {'z pixel spacing [um]', 'x pixel spacing [um]', 'Maximum expected flow speed [mm/s]', 'Persistence frames', 'Moving window size [frames]', 'Acceleration constraint factor', 'Trimmed mean percentage', 'Direction constraint'};
 parameterDefaults = {num2str(P.wl/2 * 1e6), num2str(P.Trans.spacingMm * 1e3), '50', '5', '3', '2', '20', 'pi/2'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
@@ -87,10 +88,10 @@ end
 img_size = size(allCenters{1}); % Save image size (helps if we want to clear allCenters)
 clear bfi cai caiGlobal xc zc
 
-%% 3. Calculate bubble count
+%% 3. Calculate bubble count and correct for frames that have bubbles at every pixel
 bubbleCount = zeros(length(centerCoords), 1);   % numFiles/# buffers x # frames per buffer. Count of bubbles in each frame
 centerCoords_corrected = centerCoords;          % Correct the centerCoords because some frames have every pixel identified as a bubble
-% mbci = 1; % microbubble count index
+
 parfor fi = 1:length(centerCoords_corrected)    % frame index - go through every frame
     bufTemp = centerCoords{fi};                 % Temporary variable - the coordinates of the detected bubbles at frame fi
 
@@ -101,8 +102,6 @@ parfor fi = 1:length(centerCoords_corrected)    % frame index - go through every
     else
         bubbleCount(fi) = size(bufTemp, 1);
     end
-%     bubbleCount(mbci) = sum(bufTemp(:, :, f), 'all');
-%     mbci = mbci + 1;
 end
 
 totalCount = sum(bubbleCount, 'all');           % Total bubble count across the experiment
@@ -117,12 +116,12 @@ ylabel('Bubble count')
 clear fi bufTemp
 
 %% 4. Define max speed (distance per frame) threshold and initialize variables
-maxSpeedExpectedMMPerS = str2double(parameterUserInput{3});                       % max expected flow speed [mm/s]
+maxSpeedExpectedMMPerS = str2double(parameterUserInput{3});           % max expected flow speed [mm/s]
 timePerFrame = 1 / P.frameRate;                                       % time elapsed per frame [s]
-totalFrames = size(centerCoords, 1);                                  % total number of                                                 frames
+% totalFrames = size(centerCoords, 1);                                % total number of frames
 maxDistPerFrameM = (maxSpeedExpectedMMPerS / 1000) * timePerFrame;    % max distance traveled per frame [m], according to the max expected flow speed and frame rate
-zpixelsPerM = 1 / (zpix_spacing / 1e6) * imgRefinementFactor(1);              % # of z pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
-xpixelsPerM = 1 / (xpix_spacing / 1e6) * imgRefinementFactor(2);              % # of x pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
+zpixelsPerM = 1 / (zpix_spacing / 1e6) * imgRefinementFactor(1);      % # of z pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
+xpixelsPerM = 1 / (xpix_spacing / 1e6) * imgRefinementFactor(2);      % # of x pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
 maxzPixelDistPerFrame = maxDistPerFrameM * zpixelsPerM;               % max z distance traveled per frame in units of pixels
 maxxPixelDistPerFrame = maxDistPerFrameM * xpixelsPerM;               % max x distance traveled per frame in units of pixels
 
@@ -134,6 +133,7 @@ bubblePairs = cell(totalFrames - 1, 1);   % Initialize cell vector of paired bub
 ubS = cell(totalFrames - 1, 1);             % unassigned bubbles from the source frames
 ubT = cell(totalFrames - 1, 1);             % unassigned bubbles from the target frames
 
+tic
 parfor f = 1:totalFrames - 1                % Go through every frame
 % for f = 7
     sourceFrame = centerCoords_corrected{f};     % Get the coordinates for the source frame (f)
@@ -153,7 +153,7 @@ parfor f = 1:totalFrames - 1                % Go through every frame
             d(:, 2) = d(:, 2) ./ xpixelsPerM;       % Convert the x distance differences into natural distance units [m]
             D(spi, :) = sqrt(sum((d .^ 2), 2));     % distance formula on the above
     
-            D(D > maxDistPerFrameM) = Inf; 
+            D(D > maxDistPerFrameM) = Inf;          % Set the elements above the distance per frame threshold to Inf so they aren't considered for pairing
         end
 
         [assignment, unassignedrows, unassignedcolumns] = assignmunkres(D, 100000000000); % Pair with the Munkres algorithm, which minimizes the total cost (total paired distance)
@@ -176,6 +176,8 @@ parfor f = 1:totalFrames - 1                % Go through every frame
     end
 %     hold off
 end
+toc
+disp('Pairing done')
 
 clear f nbS nbT D spi assignment unassignedrows unassignedcolumns
 

@@ -122,10 +122,10 @@ ylabel('Bubble count')
 clear fi bufTemp
 
 %% 4. Define max speed (distance per frame) threshold and initialize variables
-startFramePrompt = {'Start frame'}; % User input for the frame to start processing at
+startFramePrompt = {'Start frame'};
 startFrameDefault = {'4001'};
 startFrameUserInput = inputdlg(startFramePrompt, 'Choose start frame #', 1, startFrameDefault);
-startFrame = str2double(startFrameUserInput{1});                      % Frame to start processing at
+startFrame = 4001;                                                    % Frame to start processing at
 maxSpeedExpectedMMPerS = str2double(parameterUserInput{5});           % max expected flow speed [mm/s]
 timePerFrame = 1 / P.frameRate;                                       % time elapsed per frame [s]
 maxDistPerFrameM = (maxSpeedExpectedMMPerS / 1000) * timePerFrame;    % max distance traveled per frame [m], according to the max expected flow speed and frame rate
@@ -141,57 +141,68 @@ maxzPixelDistPerFrame = maxDistPerFrameM * zpixelsPerM;               % max z di
 bubblePairs = cell(totalFrames - 1, 1);   % Initialize cell vector of paired bubble indices
 
 %% 5. Calculate pairing
+% testFig = figure;
 
 ubS = cell(totalFrames - 1, 1);             % unassigned bubbles from the source frames
 ubT = cell(totalFrames - 1, 1);             % unassigned bubbles from the target frames
 
 tic
-parfor f = startFrame:totalFrames - 1       % Go through frames
+parfor f = startFrame:totalFrames - 1
 % for f = 7
-    sourceFrame = centerCoords_corrected{f};     % Get the coordinates for the source frame (f)
-    targetFrame = centerCoords_corrected{f + 1}; % Get the coordinates for the target frame (f + 1)
+    sourceFrame = centerCoords_corrected{f};
+    targetFrame = centerCoords_corrected{f + 1};
 
     nbS = size(sourceFrame, 1);             % number of bubbles in the source frame
     nbT = size(targetFrame, 1);             % number of bubbles in the target frame
-    D = NaN(nbS, nbT);                      % Initialize the distance matrix comparing source and target points' distances
+    D = NaN(nbS, nbT);
 
-    if nbS > 1 && nbT > 1                   % Only go through the pairing if the source and target frames have at least one bubble
+    if nbS > 1 && nbT > 1
         % Go through each source frame point and get the distance to each
         % point in the target frame. Store in the distance matrix D.
         for spi = 1:nbS % source point index
     %     for cpi = 1
-            sourcePoint = sourceFrame(spi, :);      % x, y, and z coords of the source frame's point "spi"
-            d = targetFrame - sourcePoint;          % vectorized difference between the x, y, and z coords of all the points in the target frame and point spi from the source frame
-            d(:, 1) = d(:, 1) ./ xpixelsPerM;       % Convert the x distance differences into natural distance units [m]
-            d(:, 2) = d(:, 2) ./ ypixelsPerM;       % Convert the y distance differences into natural distance units [m]
-            d(:, 3) = d(:, 3) ./ zpixelsPerM;       % Convert the z distance differences into natural distance units [m]
+            sourcePoint = sourceFrame(spi, :);      % z and x coords of the source frame's point "spi"
+            d = targetFrame - sourcePoint;          % vectorized difference between the z and x coords of all the points in the target frame and point spi from the source frame
             D(spi, :) = sqrt(sum((d .^ 2), 2));     % distance formula on the above
     
-            D(D > maxPixelDistPerFrame) = Inf;      % Set the elements above the distance per frame threshold to Inf so they aren't considered for pairing
+            D(D > maxPixelDistPerFrame) = Inf; 
         end
 
-        [assignment, unassignedrows, unassignedcolumns] = assignmunkres(D, 100000000000); % Pair with the Munkres algorithm, which minimizes the total cost (total paired distance)
+        [assignment, unassignedrows, unassignedcolumns] = assignmunkres(D, 100000000000);
         bubblePairs{f} = assignment; % assignment will always be sorted to make the second column in order
         ubS{f} = unassignedrows;
         ubT{f} = unassignedcolumns;
+    
+        % Plot a line for each pair
+%         figure; scatter(sourceFrame(:, 1), sourceFrame(:, 2), 'ro')
+%         hold on; scatter(targetFrame(:, 1), targetFrame(:, 2), 'b*');
+%         title(strcat("Frame ", num2str(f)))
+%         for npb = 1:size(bubblePairs{f}, 1)
+%             pairInd = bubblePairs{f}(npb, :);
+%             ZVecTemp = [sourceFrame(pairInd(1), 1), targetFrame(pairInd(2), 1)];
+%             XVecTemp = [sourceFrame(pairInd(1), 2), targetFrame(pairInd(2), 2)];
+%             line(ZVecTemp, XVecTemp, 'LineWidth', 1.5)
+%         end
+%         hold off
         
     end
+%     hold off
 end
 toc
 disp('Pairing done')
 
 clear f nbS nbT D spi assignment unassignedrows unassignedcolumns
 
-%% 6. Create tracks with persistence
-pers = str2double(parameterUserInput{6}); % # of frames a track needs to persist through to keep it
+%% Create tracks with persistence
+pers = 2; % # of frames a track needs to persist through to keep it
 
 tic
 % Separate the pairs of coordinates so we can change their sizes independently
 bubblePairsPers = cell(length(bubblePairs), 2); % bubble pairs with the pairs separated into another cell dimension
 for n = startFrame:length(bubblePairs)
     if ~isempty(bubblePairs{n})
-        bubblePairsPers{n, 1} = bubblePairs{n}(:, 1); % Store the info for the source frame
-        bubblePairsPers{n, 2} = bubblePairs{n}(:, 2); % Store the info for the target frame
+        bubblePairsPers{n, 1} = bubblePairs{n}(:, 1);
+        bubblePairsPers{n, 2} = bubblePairs{n}(:, 2);
     end
 end
 
