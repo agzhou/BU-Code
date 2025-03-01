@@ -49,7 +49,6 @@ addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Previous lab code
 
 % [add line to load the recon pixel spacing .mat file]
 % For now, hard coding and assuming equal z and x spacing
-pix_spacing = P.wl/2;
 
 % Choose and load the localized centers file
 if ~exist('allCenters', 'var') % Only load if the variable doesn't already exist in the workspace
@@ -59,6 +58,13 @@ if ~exist('allCenters', 'var') % Only load if the variable doesn't already exist
     [allCenters_filename, allCenters_pathname, ~] = uigetfile('*.mat', 'Select the allCenters file', 'D:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\Processed Data\with NLM\allCenters_02_10_2025_SVs10to80_0p4XCThreshold_10refinementfactor.mat');
     load([allCenters_filename, allCenters_pathname])
 end
+
+parameterPrompt = {'z pixel spacing [um]', 'x pixel spacing [um]', 'Maximum expected flow speed [mm/s]', 'Persistence frames', 'Moving window size [frames]', 'Acceleration constraint factor', 'Trimmed mean percentage', 'Direction constraint'};
+parameterDefaults = {num2str(P.wl/2 * 1e6), num2str(P.Trans.spacingMm * 1e3), '50', '5', '3', '2', '20', 'pi/2'};
+parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
+
+zpix_spacing = str2double(parameterUserInput{1});
+xpix_spacing = str2double(parameterUserInput{2});
 
 clear allCenters_generalpath allCentersDir
 
@@ -109,44 +115,48 @@ xlabel('Frame number')
 ylabel('Bubble count')
 
 clear fi bufTemp
+
 %% 4. Define max speed (distance per frame) threshold and initialize variables
-maxSpeedExpectedMMPerS = 50;                                        % max expected flow speed [mm/s]
-timePerFrame = 1 / P.frameRate;                                     % time elapsed per frame [s]
-totalFrames = size(centerCoords, 1);
-maxDistPerFrameM = (maxSpeedExpectedMMPerS / 1000) * timePerFrame;  % max distance traveled per frame [m], according to the max expected flow speed and frame rate
-pixelsPerM = 1 / pix_spacing * imgRefinementFactor(1);              % # of pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
-maxPixelDistPerFrame = maxDistPerFrameM * pixelsPerM;               % max distance traveled per frame in units of pixels
+maxSpeedExpectedMMPerS = str2double(parameterUserInput{3});                       % max expected flow speed [mm/s]
+timePerFrame = 1 / P.frameRate;                                       % time elapsed per frame [s]
+totalFrames = size(centerCoords, 1);                                  % total number of                                                 frames
+maxDistPerFrameM = (maxSpeedExpectedMMPerS / 1000) * timePerFrame;    % max distance traveled per frame [m], according to the max expected flow speed and frame rate
+zpixelsPerM = 1 / (zpix_spacing / 1e6) * imgRefinementFactor(1);              % # of z pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
+xpixelsPerM = 1 / (xpix_spacing / 1e6) * imgRefinementFactor(2);              % # of x pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
+maxzPixelDistPerFrame = maxDistPerFrameM * zpixelsPerM;               % max z distance traveled per frame in units of pixels
+maxxPixelDistPerFrame = maxDistPerFrameM * xpixelsPerM;               % max x distance traveled per frame in units of pixels
 
 bubblePairs = cell(totalFrames - 1, 1);   % Initialize cell vector of paired bubble indices
 
-%% Calculate pairing
+%% 5. Calculate pairing
 % testFig = figure;
 
 ubS = cell(totalFrames - 1, 1);             % unassigned bubbles from the source frames
 ubT = cell(totalFrames - 1, 1);             % unassigned bubbles from the target frames
 
-parfor f = 1:totalFrames - 1
+parfor f = 1:totalFrames - 1                % Go through every frame
 % for f = 7
-    sourceFrame = centerCoords_corrected{f};
-    targetFrame = centerCoords_corrected{f + 1};
+    sourceFrame = centerCoords_corrected{f};     % Get the coordinates for the source frame (f)
+    targetFrame = centerCoords_corrected{f + 1}; % Get the coordinates for the target frame (f + 1)
 
     nbS = size(sourceFrame, 1);             % number of bubbles in the source frame
     nbT = size(targetFrame, 1);             % number of bubbles in the target frame
-    D = NaN(nbS, nbT);
+    D = NaN(nbS, nbT);                      % Initialize the distance matrix comparing source and target points' distances
 
-    if nbS > 1 && nbT > 1
+    if nbS > 1 && nbT > 1                   % Only go through the pairing if the source and target frames have at least one bubble
         % Go through each source frame point and get the distance to each
         % point in the target frame. Store in the distance matrix D.
         for spi = 1:nbS % source point index
-    %     for cpi = 1
             sourcePoint = sourceFrame(spi, :);      % z and x coords of the source frame's point "spi"
             d = targetFrame - sourcePoint;          % vectorized difference between the z and x coords of all the points in the target frame and point spi from the source frame
+            d(:, 1) = d(:, 1) ./ zpixelsPerM;       % Convert the z distance differences into natural distance units [m]
+            d(:, 2) = d(:, 2) ./ xpixelsPerM;       % Convert the x distance differences into natural distance units [m]
             D(spi, :) = sqrt(sum((d .^ 2), 2));     % distance formula on the above
     
-            D(D > maxPixelDistPerFrame) = Inf; 
+            D(D > maxDistPerFrameM) = Inf; 
         end
 
-        [assignment, unassignedrows, unassignedcolumns] = assignmunkres(D, 100000000000);
+        [assignment, unassignedrows, unassignedcolumns] = assignmunkres(D, 100000000000); % Pair with the Munkres algorithm, which minimizes the total cost (total paired distance)
         bubblePairs{f} = assignment; % assignment will always be sorted to make the second column in order
         ubS{f} = unassignedrows;
         ubT{f} = unassignedcolumns;
@@ -169,26 +179,24 @@ end
 
 clear f nbS nbT D spi assignment unassignedrows unassignedcolumns
 
-%% Create tracks with persistence
-pers = 5; % # of frames a track needs to persist through to keep it
+%% 6. Create tracks with the frame persistence condition
+pers = str2double(parameterUserInput{4}); % # of frames a track needs to persist through to keep it
 
 tic
 % Separate the pairs of coordinates so we can change their sizes independently
 bubblePairsPers = cell(length(bubblePairs), 2); % bubble pairs with the pairs separated into another cell dimension
 for n = 1:length(bubblePairs)
     if ~isempty(bubblePairs{n})
-        bubblePairsPers{n, 1} = bubblePairs{n}(:, 1);
-        bubblePairsPers{n, 2} = bubblePairs{n}(:, 2);
+        bubblePairsPers{n, 1} = bubblePairs{n}(:, 1); % Store the info for the source frame
+        bubblePairsPers{n, 2} = bubblePairs{n}(:, 2); % Store the info for the target frame
     end
 end
 
 % Store the bubble indices that contribute to each track of at least (pers) # of frames
 tracks = cell(size(bubblePairsPers, 1) - pers, 1);
 for n = 1:length(bubblePairsPers) - pers
-% for n = 7
     bubblePairsPersTemp = bubblePairsPers;
     for pfc = 1:pers - 1 % persistence frame count
-%     for pfc = 1
         startIndex = bubblePairsPersTemp{n + pfc - 1, 2};    % indices of the paired "target" bubbles in frame n + 1 (pair n), which will be sorted in ascending order
         endIndex = bubblePairsPersTemp{n + pfc, 1};  % indices of the paired "source" bubbles in frame n + 2 (pair n + 1), not necessarily in ascending order because it's aligned with the "target" indices in frame n + 1
         [trackContinuesIndices, is, ie] = intersect(startIndex, endIndex, 'stable'); % find the common values in the start and end vectors, and the corresponding indices for each
@@ -277,7 +285,7 @@ end
 clear ti fn tracksTemp startPoints endPoints vfn zcInterp xcInterp i vmapTempi vmapTemp
 
 %% Refine the velocity map
-mmws = 3; % moving mean window size
+mmws = str2double(parameterUserInput{5}); % moving mean window size [frames]
 bVelocityTestMSmoothed = bVelocityTestM;
 for n = 1:size(bVelocityTestM, 1)
 % for n = 1
@@ -301,7 +309,8 @@ clear n tn vt vtSmoothed tnzVel tnzVelSmoothed vtSmoothed tnxVel tnxVelSmoothed
 % scale the smoothed velocity into mm/s
 bVelocityTestMSmoothedMMS = bVelocityTestMSmoothed;
 for n = 1:size(bVelocityTestMSmoothedMMS, 1)
-    bVelocityTestMSmoothedMMS{n}(:, 5:6, :) = bVelocityTestMSmoothed{n}(:, 5:6, :) ./ pixelsPerM * 1e3;
+    bVelocityTestMSmoothedMMS{n}(:, 5, :) = bVelocityTestMSmoothed{n}(:, 5, :) ./ zpixelsPerM * 1e3;
+    bVelocityTestMSmoothedMMS{n}(:, 6, :) = bVelocityTestMSmoothed{n}(:, 6, :) ./ xpixelsPerM * 1e3;
 end
 
 %% Kalman filter version 1 (observation is only the positions)
@@ -483,19 +492,17 @@ end
 clear n tn tln k xk Pk yk Kku Iku xku Pku track
 %% Acceleration and direction constraints
 % aThresholdFactor = 0.5;
-aThresholdFactor = 2;
-vTrimmedMeanPercentage = 20;
-angleChangeThreshold = pi/2; % Angle change threshold [radians]
+aThresholdFactor = str2double(parameterUserInput{6});        % Acceleration change threshold factor
+vTrimmedMeanPercentage = str2double(parameterUserInput{7});  % Trimmed mean percentage for the acceleration change threshold [%]
+angleChangeThreshold = str2double(parameterUserInput{8});    % Angle change threshold [radians]
 
 bVelocityTestMSmoothedKFConstrainedMMS = bVelocityTestMSmoothedKFMMS;
 for n = 1:size(bVelocityTestMSmoothedKFConstrainedMMS, 1)
-% for n = 1
     tln = bVelocityTestMSmoothedKFConstrainedMMS{n}; % Track list n
-    for tn = size(tln, 1):-1:1 % Track number tn
-%     for tn = 1
-        trackAlreadyDeleted = false;
-        track = squeeze(tln(tn, :, :))'; % Get the track
-        vTrack = track(:, 5:6); % Velocities of the track
+    for tn = size(tln, 1):-1:1              % Go through each track number tn
+        trackAlreadyDeleted = false;        % Reset the flag
+        track = squeeze(tln(tn, :, :))';    % Get the track
+        vTrack = track(:, 5:6);             % Velocities of the track
 
         % Acceleration constraint
         vTrackTrimmedMean = trimmean(vTrack, vTrimmedMeanPercentage); % Exclude some percentage of the values when taking the mean. It goes across the first non-singleton dimension.
@@ -507,51 +514,50 @@ for n = 1:size(bVelocityTestMSmoothedKFConstrainedMMS, 1)
         end
 
         % Direction constraint
-        if ~trackAlreadyDeleted
-            angleTrack = atan2(vTrack(:, 2), vTrack(:, 1));
-            angleTrackChanges = diff(angleTrack);
-            if any(abs(angleTrackChanges) > angleChangeThreshold)
+        if ~trackAlreadyDeleted % Don't need to go through the direction calculation if the track was already deleted for the acceleration constraint
+            angleTrack = atan2(vTrack(:, 2), vTrack(:, 1));         % Angle of each segment on the track
+            angleTrackChanges = diff(angleTrack);                   % Change in angle between segments on the track
+            if any(abs(angleTrackChanges) > angleChangeThreshold)   % Apply the threshold
                 bVelocityTestMSmoothedKFConstrainedMMS{n}(tn, :, :) = [];
             end
         end
-
     end
 end
 
 %% Plot density map with the paired bubbles only
-% bSum = zeros(size(allCenters{1}, 1), size(allCenters{1}, 2));
-bSum = zeros(img_size(1), img_size(2));
-
-bSumFig = figure; colormap turbo
-% hold on
-figure(bSumFig)
-
-% bSumFig.XDataSource = 
-
-for f = 1:length(bubblePairs)
-% for f = 1:10000
-    disp(num2str(f))
-    if ~isempty(bubblePairs{f})
-        coordsCF = centerCoords_corrected{f}; % coords for the current frame
-        coordsNF = centerCoords_corrected{f + 1}; % coords for the current frame
-    %     for npb = 1:size(pairedBubbles{f}, 1)
-
-        keepBubblesCF = bubblePairs{f}(:, 1); % which bubbles (indices) to keep for the current frame. Could do it more efficiently or correctly
-        for kbcfi = keepBubblesCF' % index for each kept bubble in the current frame
-            kbcfCoord = coordsCF(kbcfi, :);
-            bSum(kbcfCoord(1), kbcfCoord(2)) = bSum(kbcfCoord(1), kbcfCoord(2)) + 1; % Update the count for that pixel
-        end
-
-        keepBubblesNF = bubblePairs{f}(:, 2); % which bubbles (indices) to keep for the next frame. Could do it more efficiently or correctly
-        for kbnfi = keepBubblesNF' % index for each kept bubble in the next frame
-            kbnfCoord = coordsNF(kbnfi, :);
-            bSum(kbnfCoord(1), kbnfCoord(2)) = bSum(kbnfCoord(1), kbnfCoord(2)) + 1; % Update the count for that pixel
-        end
-
-    end
-end
-hold off
-bsIm = imagesc(bSum);
+% % bSum = zeros(size(allCenters{1}, 1), size(allCenters{1}, 2));
+% bSum = zeros(img_size(1), img_size(2));
+% 
+% bSumFig = figure; colormap turbo
+% % hold on
+% figure(bSumFig)
+% 
+% % bSumFig.XDataSource = 
+% 
+% for f = 1:length(bubblePairs)
+% % for f = 1:10000
+%     disp(num2str(f))
+%     if ~isempty(bubblePairs{f})
+%         coordsCF = centerCoords_corrected{f}; % coords for the current frame
+%         coordsNF = centerCoords_corrected{f + 1}; % coords for the current frame
+%     %     for npb = 1:size(pairedBubbles{f}, 1)
+% 
+%         keepBubblesCF = bubblePairs{f}(:, 1); % which bubbles (indices) to keep for the current frame. Could do it more efficiently or correctly
+%         for kbcfi = keepBubblesCF' % index for each kept bubble in the current frame
+%             kbcfCoord = coordsCF(kbcfi, :);
+%             bSum(kbcfCoord(1), kbcfCoord(2)) = bSum(kbcfCoord(1), kbcfCoord(2)) + 1; % Update the count for that pixel
+%         end
+% 
+%         keepBubblesNF = bubblePairs{f}(:, 2); % which bubbles (indices) to keep for the next frame. Could do it more efficiently or correctly
+%         for kbnfi = keepBubblesNF' % index for each kept bubble in the next frame
+%             kbnfCoord = coordsNF(kbnfi, :);
+%             bSum(kbnfCoord(1), kbnfCoord(2)) = bSum(kbnfCoord(1), kbnfCoord(2)) + 1; % Update the count for that pixel
+%         end
+% 
+%     end
+% end
+% hold off
+% bsIm = imagesc(bSum);
 
 %% Plot z velocity map after persistence with linear interpolation, on the cleaned and refined velocity data
 % zVelocityPersMap = zeros(img_size(1), img_size(2));
@@ -566,9 +572,9 @@ zvDownMapCounter = zeros(img_size(1), img_size(2));
 
 for ti = 1:size(bVelocityTestMSmoothed, 1)
 % for ti = 7
-    bvTemp = bVelocityTestMSmoothedKFConstrainedMMS{ti};
+%     bvTemp = bVelocityTestMSmoothedKFConstrainedMMS{ti};
 %     bvTemp = bVelocityTestMSmoothedKFMMS{ti};
-%     bvTemp = bVelocityTestMSmoothedMMS{ti}; % get the ti-th entry
+    bvTemp = bVelocityTestMSmoothedMMS{ti}; % get the ti-th entry
 %     bvTemp = bVelocityTestMSmoothed{ti}; % get the ti-th entry
 %     bvTemp = bVelocityTestM{ti}; % get the ti-th entry
     if ~isempty(bvTemp) % only do stuff if the bubble velocity cell array entry is not empty
@@ -640,7 +646,7 @@ Sigma_Z=FWHM_Z/(2*sqrt(2*log(2)));
 xPSF0=-30:30; zPSF0=xPSF0; % pixels
 [xPSF,zPSF]=meshgrid(xPSF0,zPSF0);
 % PRSSinfo.sysPSF=exp(-((xPSF/(Sigma_X/PRSSinfo.lPix)).^2+(zPSF/(Sigma_Z/PRSSinfo.lPix)).^2)/2);
-smallPSF=exp(-((xPSF/(Sigma_X * (pixelsPerM / 1e6))).^2+(zPSF/(Sigma_Z * (pixelsPerM / 1e6))).^2)/2);
+smallPSF=exp(-((xPSF/(Sigma_X * (xpixelsPerM / 1e6))).^2+(zPSF/(Sigma_Z * (zpixelsPerM / 1e6))).^2)/2);
 % figure; imagesc(smallPSF)
 
 bubbleDensityMapConv = conv2(bubbleDensityMap, smallPSF);
