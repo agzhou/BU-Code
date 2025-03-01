@@ -1,27 +1,59 @@
-% Acknowledgement: using Jean-Yves Tinevez's simpletracker as a reference
-%% Add dependencies and load parameters + bubble center locations
-% datapath = 'D:\Allen\Data\01-29-2025 AZ001 ULM RC15gV\run 1 left eye\Processed Data 02-21-2025\';
-% datapath = 'F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\Processed Data 02-24-2025\';
-datapath = 'F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\Processed Data 02-27-2025 in the hole\';
-% addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Previous lab code\A-US-ULM\SubFunctions\')
-addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Previous lab code\A-US-ULM\SubFunctions')
-% load('D:\Allen\Data\01-29-2025 AZ001 ULM RC15gV\run 1 left eye\params.mat')
-load('G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\params.mat')
+% Description: Part 2 of the ULM processing for a 2D array. This script
+%   takes the result of the bubble localization from 'RCA_analyze_ULM.m' ('centers-filenum.mat') and
+%   performs pairing and tracking, plus further image refinement for
+%   plotting purposes.
+
+%   centers is a a logical matrix of dimensions (# refined x pixels, # refined y
+%   pixels, # refined z pixels, # frames per file) with ones at the pixels where a bubble
+%   center was localized. There is one 'centers' for each file that the
+%   localization was performed on.
+
+%   This script turns that logical matrix into a cell array with their
+%   corresponding coordinates, then does pairing with the Hungarian method
+%   (assignmunkres). Tracks are created with a frame persistence condition (only keep a
+%   track if the same bubble is paired across p frames). Velocities are calculated on this data
+%   according to the change in bubble position and the time elapsed between frames. 
+%   The tracks are then smoothed and estimated with a Kalman filter, then further refined
+%   with acceleration and direction constraints (throw away a track if
+%   any acceleration or any direction change exceeds some threshold). The
+%   velocity maps are plotted by interpolating between points in a track,
+%   setting each interpolated point's velocity equal to that of the
+%   original value between the two points. Pixels with multiple tracks will
+%   take the average velocity value across all the tracks that intersect
+%   it.   
+
+% Dependencies:
+%   parpool (Parallel Computing Toolbox)
+%   assignmunkres (Sensor Fusion and Tracking Toolbox)
+%   trimmean (Statistics and Machine Learning Toolbox)
+%   ULM_interp3D_linear.m
+%   Colormaps_fUS (From Jianbo's code)
+
+% Acknowledgement: using Jianbo Tang's ULM code, the Song group's ULM papers, and Jean-Yves Tinevez's simpletracker as references
+clearvars
+%% Add dependencies and load parameters
+% Get data path of the localized bubble centers
+datapath = uigetdir('F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\Processed Data 02-24-2025\', 'Select the data path');
+datapath = [datapath, '\'];
+
+% Load localization processing parameters: proc_params.mat
+load([datapath, 'proc_params.mat'])
+
+% Choose and load the params file (from the acquisition)
+[params_filename, params_pathname, ~] = uigetfile('*.mat', 'Select the params file', 'G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\params.mat');
+load([params_pathname, params_filename])
+
+% Add Jianbo's functions to the path for the Colormaps_fUS function
+addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Previous lab code\A-US-ULM\SubFunctions\')
+
 
 % Load localization processing parameters: proc_params.mat
 load([datapath, 'proc_params.mat'])
 
 % [add line to load the recon pixel spacing .mat file]
-% For now, hard coding and assuming equal z and x spacing
+% For now, hard coding and assuming equal x, y, and z spacing
 pix_spacing = P.wl/2;
 
-% Find and load the localized centers file, which starts with 'allCenters'
-% if ~exist('allCenters', 'var') % Only load if the variable doesn't already exist in the workspace
-%     allCenters_generalpath = fullfile(datapath, 'allCenters*.mat');
-%     allCentersDir = dir(allCenters_generalpath);
-%     load([allCentersDir.folder, '\', allCentersDir.name])
-% end
-% clear allCenters_generalpath allCentersDir
 %% Turn the individual center files into one cell array and turn the logical matrices into coordinates
 numFiles = 96;
 totalFrames = numFiles * P.numFramesPerBuffer;

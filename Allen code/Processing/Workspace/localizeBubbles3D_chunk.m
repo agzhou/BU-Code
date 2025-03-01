@@ -122,7 +122,7 @@ function [coords, img_size, XCThresholdsAdaptive] = localizeBubbles3D_chunk(IQf,
         end
 %         toc
 
-%         clear xc yc zc indTemp tsl
+        clear xc yc zc indTemp tsl centers XC_chunk_t XC_chunk_rs XC_chunk refIQs_chunk_stack refIQs_chunk
 
     end
     toc

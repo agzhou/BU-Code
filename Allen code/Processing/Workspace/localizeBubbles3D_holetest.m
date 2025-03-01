@@ -14,7 +14,7 @@
 %         binary image
 %         Threshold on connected component areas to use
 
-function [centers, refIQs, XC, XCThresholdAdaptive] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor)
+function [centers, refIQs, XC, XCThresholdAdaptive] = localizeBubbles3D_holetest(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor)
     
     %% Use parallel processing for speed
     % https://www.mathworks.com/matlabcentral/answers/91744-how-can-i-check-if-matlabpool-is-running-when-using-parallel-computing-toolbox
@@ -27,13 +27,13 @@ function [centers, refIQs, XC, XCThresholdAdaptive] = localizeBubbles3D(IQf, ref
     end
 
     %% Section the data to a ROI
-    xrange = range{1};
-    yrange = range{2};
-    zrange = range{3};
-    framerange = range{4};
-    IQs = IQf(xrange, yrange, zrange, framerange); % IQ section
+%     xrange = range{1};
+%     yrange = range{2};
+%     zrange = range{3};
+%     framerange = range{4};
+%     IQs = IQf(xrange, yrange, zrange, framerange); % IQ section
 
-%     IQs = IQf;
+    IQs = IQf;
     
     %% image refinement/interpolation
     rfnX = imgRefinementFactor(1); % refinement pixel increase factor

@@ -42,13 +42,13 @@ addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Processing\t
 %% Parameters for processing the data
 % Define various processing parameters
 % Singular value thresholds
-sv_threshold_lower = 10;
+sv_threshold_lower = 4;
 sv_threshold_upper = 150;
 
 % % Region of interest
-xrange = int16(1:80);
-yrange = int16(1:80);
-zrange = int16(36:142);
+xrange = int16(51:61);
+yrange = int16(12:30);
+zrange = int16(70:100);
 
 % framerange = 1:200;
 % framerange = 1:size(IQf, 3);
@@ -73,8 +73,8 @@ if ~exist('PSF', 'var')
     % figure; imagesc(squeeze(abs(PSF(40, :, :)))')
 end
 
-% PSFs = PSF(190:210, 118:138, :); % PSF section
-PSFs = PSF(30:50, 30:50, 92:110); % PSF section
+% PSFs = PSF(30:50, 30:50, 92:110); % PSF section
+PSFs = PSF(38:43, 38:43, 98:105); % PSF section
 refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) * imgRefinementFactor(2), size(PSFs, 3) * imgRefinementFactor(3)]);
 % volumeViewer(abs(refPSF))
 
@@ -84,28 +84,31 @@ refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) 
 % test = zeros([s(1:3) .* 4, s(4)]);
 %% Process the data
 % tic
-% for filenum = 1:numFiles
-for filenum = 30
+for filenum = 1:numFiles
+% for filenum = 30
     tic
     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
 %     IQr = LA_rollingFrames(IQ);                                                 % rolling method to get more effective frames
     
     IQ = squeeze(IData + 1i .* QData);   % Combine I and Q, which are saved separately. It's easier to save the big reconstructed data with savefast, which doesn't support complex values. The data is already a coherent sum.
     clear IData QData
+
+    % Section in the hole
+    IQs = IQ(yrange, xrange, zrange, :);
     
 %     if filenum == 1
-        [xp, yp, zp, nf] = size(IQ);
+        [xp, yp, zp, nf] = size(IQs);
         range{4} = int16(1:nf); % set frame range after rolling on the first file
 %     end
 
     % SVD proc part 1
 %     tic
-    [PP, EVs, V_sort] = getSVs2D(IQ);
+    [PP, EVs, V_sort] = getSVs2D(IQs);
     disp('SVs decomposed')
 %     toc
     % SVD proc part 2
 %     tic
-    [IQf] = applySVs2D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
+    [IQf] = applySVs2D(IQs, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
     disp('SVD filtered images put together')
 
     clear PP EVs V_sort
@@ -113,7 +116,7 @@ for filenum = 30
 %     save([savepath, 'Filtered-Data-', num2str(filenum)], 'IQr', 'PP', 'EVs', 'V_sort', 'IQf', "-v6")
 
 %     [centers, refIQs, XC] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThreshold);
-    [centers, ~, ~, XCThresholdAdaptive] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
+    [centers, ~, ~, XCThresholdAdaptive] = localizeBubbles3D_holetest(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
 %     [coords, img_size, XCThresholdsAdaptive] = localizeBubbles3D_chunk(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
 
     %     save([savepath, 'IQf-', num2str(filenum)], 'IQf', "-v6")
