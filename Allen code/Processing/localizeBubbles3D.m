@@ -14,7 +14,7 @@
 %         binary image
 %         Threshold on connected component areas to use
 
-function [centers, refIQs, XC] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThreshold)
+function [centers, refIQs, XC, XCThresholdAdaptive] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor)
     
     %% Use parallel processing for speed
     % https://www.mathworks.com/matlabcentral/answers/91744-how-can-i-check-if-matlabpool-is-running-when-using-parallel-computing-toolbox
@@ -50,7 +50,7 @@ function [centers, refIQs, XC] = localizeBubbles3D(IQf, refPSF, range, imgRefine
             refIQs(:, :, :, f) = imresize3(I_temp, [size(I_temp, 1) * rfnX, size(I_temp, 2) * rfnY, size(I_temp, 3) * rfnZ], 'linear');
         end
     else
-        refIQs = IQf;
+        refIQs = IQs;
     end
     
     %% and cross correlation
@@ -65,7 +65,9 @@ function [centers, refIQs, XC] = localizeBubbles3D(IQf, refPSF, range, imgRefine
     %% remove data from XC beneath a threshold and find local maxima
     
     XCt = XC; % XC Thresholded
-    XCt(XCt < XCThreshold) = 0;
+    XCThresholdAdaptive = XCThresholdFactor * max(XC, [], 'all');
+%     XCt(XCt < XCThreshold) = 0;
+    XCt(XCt < XCThresholdAdaptive) = 0;
     centers = imregionalmax(XCt, 6); % Center of each isolated blob (logical matrix)
     
     %% attempt to graph centroids
