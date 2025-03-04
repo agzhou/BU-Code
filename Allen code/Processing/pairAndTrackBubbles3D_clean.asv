@@ -40,13 +40,14 @@ datapath = [datapath, '\'];
 % Load localization processing parameters: proc_params.mat
 load([datapath, 'proc_params.mat'])
 
-% Choose and load the params file (from the acquisition)
+% Choose and load the params.mat file (from the acquisition)
 [params_filename, params_pathname, ~] = uigetfile('*.mat', 'Select the params file', 'G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\params.mat');
 load([params_pathname, params_filename])
 
-% Add Jianbo's functions to the path for the Colormaps_fUS function
-addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Previous lab code\A-US-ULM\SubFunctions\')
-
+% Choose the path and add Jianbo's functions to the Matlab path for the Colormaps_fUS function
+oldcodePath = uigetdir('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Previous lab code\A-US-ULM\SubFunctions\', 'Select the old SubFunctions path');
+oldcodePath = [oldcodePath, '\'];
+addpath(oldcodePath)
 
 % Load localization processing parameters: proc_params.mat
 load([datapath, 'proc_params.mat'])
@@ -86,7 +87,7 @@ for n = 1:numFiles   % Go through each center file (for each buffer)
             centerCoords{(n - 1) * P.numFramesPerBuffer + bfi} = [xc, yc, zc];
         end
     end
-    disp(strcat("Center coords for file ", num2str(n), " stored."))
+    disp(strcat("Center coordinates for file ", num2str(n), " stored."))
     toc
 end
 % toc
@@ -101,7 +102,7 @@ centerCoords_corrected = centerCoords;          % Correct the centerCoords becau
 parfor fi = 1:length(centerCoords_corrected) % frame index - go through every frame
     bufTemp = centerCoords{fi};
 
-    % Some error that makes every pixel a bubble
+    % Correct for some error that makes every pixel a bubble
     if size(bufTemp, 1) >= img_size(1) * img_size(2) * img_size(3)
         centerCoords_corrected{fi} = NaN;
         bubbleCount(fi) = 0;
@@ -122,10 +123,10 @@ ylabel('Bubble count')
 clear fi bufTemp
 
 %% 4. Define max speed (distance per frame) threshold and initialize variables
-startFramePrompt = {'Start frame'};
-startFrameDefault = {'4001'};
+startFramePrompt = {'Start frame'}; % User input for the frame to start processing at
+startFrameDefault = {'1'};
 startFrameUserInput = inputdlg(startFramePrompt, 'Choose start frame #', 1, startFrameDefault);
-startFrame = 4001;                                                    % Frame to start processing at
+startFrame = str2double(startFrameUserInput{1});                      % Frame to start processing at
 maxSpeedExpectedMMPerS = str2double(parameterUserInput{5});           % max expected flow speed [mm/s]
 timePerFrame = 1 / P.frameRate;                                       % time elapsed per frame [s]
 maxDistPerFrameM = (maxSpeedExpectedMMPerS / 1000) * timePerFrame;    % max distance traveled per frame [m], according to the max expected flow speed and frame rate
@@ -141,440 +142,184 @@ maxzPixelDistPerFrame = maxDistPerFrameM * zpixelsPerM;               % max z di
 bubblePairs = cell(totalFrames - 1, 1);   % Initialize cell vector of paired bubble indices
 
 %% 5. Calculate pairing
-% testFig = figure;
 
 ubS = cell(totalFrames - 1, 1);             % unassigned bubbles from the source frames
 ubT = cell(totalFrames - 1, 1);             % unassigned bubbles from the target frames
 
 tic
-parfor f = startFrame:totalFrames - 1
-% for f = 7
-    sourceFrame = centerCoords_corrected{f};
-    targetFrame = centerCoords_corrected{f + 1};
+parfor f = startFrame:totalFrames - 1       % Go through frames
+    sourceFrame = centerCoords_corrected{f};     % Get the coordinates for the source frame (f)
+    targetFrame = centerCoords_corrected{f + 1}; % Get the coordinates for the target frame (f + 1)
 
     nbS = size(sourceFrame, 1);             % number of bubbles in the source frame
     nbT = size(targetFrame, 1);             % number of bubbles in the target frame
-    D = NaN(nbS, nbT);
+    D = NaN(nbS, nbT);                      % Initialize the distance matrix comparing source and target points' distances
 
-    if nbS > 1 && nbT > 1
+    if nbS > 1 && nbT > 1                   % Only go through the pairing if the source and target frames have at least one bubble
         % Go through each source frame point and get the distance to each
         % point in the target frame. Store in the distance matrix D.
         for spi = 1:nbS % source point index
-    %     for cpi = 1
-            sourcePoint = sourceFrame(spi, :);      % z and x coords of the source frame's point "spi"
-            d = targetFrame - sourcePoint;          % vectorized difference between the z and x coords of all the points in the target frame and point spi from the source frame
+            sourcePoint = sourceFrame(spi, :);      % x, y, and z coords of the source frame's point "spi"
+            d = targetFrame - sourcePoint;          % vectorized difference between the x, y, and z coords of all the points in the target frame and point spi from the source frame
+            d(:, 1) = d(:, 1) ./ xpixelsPerM;       % Convert the x distance differences into natural distance units [m]
+            d(:, 2) = d(:, 2) ./ ypixelsPerM;       % Convert the y distance differences into natural distance units [m]
+            d(:, 3) = d(:, 3) ./ zpixelsPerM;       % Convert the z distance differences into natural distance units [m]
             D(spi, :) = sqrt(sum((d .^ 2), 2));     % distance formula on the above
     
-            D(D > maxPixelDistPerFrame) = Inf; 
+            D(D > maxPixelDistPerFrame) = Inf;      % Set the elements above the distance per frame threshold to Inf so they aren't considered for pairing
         end
 
-        [assignment, unassignedrows, unassignedcolumns] = assignmunkres(D, 100000000000);
+        [assignment, unassignedrows, unassignedcolumns] = assignmunkres(D, 100000000000); % Pair with the Munkres algorithm, which minimizes the total cost (total paired distance)
         bubblePairs{f} = assignment; % assignment will always be sorted to make the second column in order
         ubS{f} = unassignedrows;
         ubT{f} = unassignedcolumns;
-    
-        % Plot a line for each pair
-%         figure; scatter(sourceFrame(:, 1), sourceFrame(:, 2), 'ro')
-%         hold on; scatter(targetFrame(:, 1), targetFrame(:, 2), 'b*');
-%         title(strcat("Frame ", num2str(f)))
-%         for npb = 1:size(bubblePairs{f}, 1)
-%             pairInd = bubblePairs{f}(npb, :);
-%             ZVecTemp = [sourceFrame(pairInd(1), 1), targetFrame(pairInd(2), 1)];
-%             XVecTemp = [sourceFrame(pairInd(1), 2), targetFrame(pairInd(2), 2)];
-%             line(ZVecTemp, XVecTemp, 'LineWidth', 1.5)
-%         end
-%         hold off
         
     end
-%     hold off
 end
 toc
 disp('Pairing done')
 
 clear f nbS nbT D spi assignment unassignedrows unassignedcolumns
 
-%% Create tracks with persistence
-pers = 2; % # of frames a track needs to persist through to keep it
+%% 6. Create tracks with persistence
+pers = str2double(parameterUserInput{6}); % # of frames a track needs to persist through to keep it
 
 tic
 % Separate the pairs of coordinates so we can change their sizes independently
 bubblePairsPers = cell(length(bubblePairs), 2); % bubble pairs with the pairs separated into another cell dimension
 for n = startFrame:length(bubblePairs)
     if ~isempty(bubblePairs{n})
-        bubblePairsPers{n, 1} = bubblePairs{n}(:, 1);
-        bubblePairsPers{n, 2} = bubblePairs{n}(:, 2);
+        bubblePairsPers{n, 1} = bubblePairs{n}(:, 1); % Store the info for the source frame
+        bubblePairsPers{n, 2} = bubblePairs{n}(:, 2); % Store the info for the target frame
     end
 end
 
 % Store the bubble indices that contribute to each track of at least (pers) # of frames
-tracks = cell(size(bubblePairsPers, 1) - pers, 1);
-for n = 1:length(bubblePairsPers) - pers
-% for n = 7
-    bubblePairsPersTemp = bubblePairsPers;
-    for pfc = 1:pers - 1 % persistence frame count
-%     for pfc = 1
-        startIndex = bubblePairsPersTemp{n + pfc - 1, 2};    % indices of the paired "target" bubbles in frame n + 1 (pair n), which will be sorted in ascending order
-        endIndex = bubblePairsPersTemp{n + pfc, 1};  % indices of the paired "source" bubbles in frame n + 2 (pair n + 1), not necessarily in ascending order because it's aligned with the "target" indices in frame n + 1
-        [trackContinuesIndices, is, ie] = intersect(startIndex, endIndex, 'stable'); % find the common values in the start and end vectors, and the corresponding indices for each
+tracks = cell(size(bubblePairsPers, 1) - pers, 1); % Initialize the tracks cell array
+
+for n = 1:length(bubblePairsPers) - pers                        % Go through each frame (and the following pers # of frames)
+    bubblePairsPersTemp = bubblePairsPers;                      % Create a temporary version of the bubble pairs so we can take the info and edit it for the current track (I could make it more efficient by only taking a section)
+    for pfc = 1:pers - 1                                        % persistence frame count
+        startIndex = bubblePairsPersTemp{n + pfc - 1, 2};       % indices of the paired "target" bubbles in frame n + 1 (pair n), which will be sorted in ascending order
+        endIndex = bubblePairsPersTemp{n + pfc, 1};             % indices of the paired "source" bubbles in frame n + 2 (pair n + 1), not necessarily in ascending order because it's aligned with the "target" indices in frame n + 1
+        % find the common values in the start and end vectors, and the corresponding indices for each
+        [trackContinuesIndices, is, ie] = intersect(startIndex, endIndex, 'stable'); 
         
         % Update the paired and tracked list for this immediate set of pairs
         bubblePairsPersTemp{n + pfc - 1, 1} = bubblePairsPersTemp{n + pfc - 1, 1}(is);
         bubblePairsPersTemp{n + pfc - 1, 2} = bubblePairsPersTemp{n + pfc - 1, 2}(is);
-        bubblePairsPersTemp{n + pfc, 1} = bubblePairsPersTemp{n + pfc, 1}(ie); % I think this preserves the order
-        bubblePairsPersTemp{n + pfc, 2} = bubblePairsPersTemp{n + pfc, 2}(ie); % Need to preserve the order, so set the next starting point????
+        bubblePairsPersTemp{n + pfc, 1} = bubblePairsPersTemp{n + pfc, 1}(ie);
+        bubblePairsPersTemp{n + pfc, 2} = bubblePairsPersTemp{n + pfc, 2}(ie);
         
     end
     % Go back and update the previous pairs too
-%         for recpfc = pfc - 1 : -1 : 1   % recursive persistence frame count
     for recpfc = 1:pfc - 1   % recursive persistence frame count
         recStartIndex = bubblePairsPersTemp{n + pfc - recpfc - 1, 2};    % indices of the paired "target" bubbles in frame n + 1 (pair n), which will be sorted in ascending order
-        recEndIndex = bubblePairsPersTemp{n + pfc - recpfc, 1};  % indices of the paired "source" bubbles in frame n + 2 (pair n + 1), not necessarily in ascending order because it's aligned with the "target" indices in frame n + 1
-        [recTrackContinuesIndices, ris, rie] = intersect(recStartIndex, recEndIndex, 'stable'); % find the common values in the start and end vectors, and the corresponding indices for each
+        recEndIndex = bubblePairsPersTemp{n + pfc - recpfc, 1};          % indices of the paired "source" bubbles in frame n + 2 (pair n + 1), not necessarily in ascending order because it's aligned with the "target" indices in frame n + 1
+        % find the common values in the start and end vectors, and the corresponding indices for each
+        [recTrackContinuesIndices, ris, rie] = intersect(recStartIndex, recEndIndex, 'stable');
     
+        % Trim/update the previous pairs
         bubblePairsPersTemp{n + pfc - recpfc - 1, 1} = bubblePairsPersTemp{n + pfc - recpfc - 1, 1}(ris);
         bubblePairsPersTemp{n + pfc - recpfc - 1, 2} = bubblePairsPersTemp{n + pfc - recpfc - 1, 2}(ris);
     end
-    tracks{n} = bubblePairsPersTemp(n : n + pfc, :);
+    tracks{n} = bubblePairsPersTemp(n : n + pfc, :); % Update the track
 end
 disp('Tracks with persistence created')
 toc
 clear bubblePairsPersTemp n pfc recpfc ris rie recTrackContinuesIndices recStartIndex recEndIndex trackContinuesIndices is ie startIndex endIndex
 
-%% Clean tracks
+%% 7. Clean tracks
 
-% turn tracks into a proper link of coordinates and indices - remove the
-% redundant cross-frame stuff
-tracksClean = cell(size(tracks));
-nbifAll = zeros(size(tracks)); % # bubbles in frame, all
-for n = startFrame:size(tracks, 1)
-% for n = 1:2
-    tracksTemp = tracks{n};
-    if ~isempty(tracksTemp)
-        stt = size(tracksTemp);
-        nbif = length(tracksTemp{1}); % # of paired bubbles in each frame of the track
-        nbifAll(n) = nbif;
+% Turn tracks into a proper link of coordinates and indices - remove the
+%   redundant cross-frame stuff.
+% Each element in tracksClean is a matrix with each row corresponding to a
+%   bubble within the track. Each row represents: 
+%   [bubble index within the respective frame, x coordinate, y coordinate, z coordinate, frame number]
+
+tracksClean = cell(size(tracks));   % Initialize the cleaned tracks cell array
+nbitAll = zeros(size(tracks));      % # bubbles in each track
+for n = startFrame:size(tracks, 1)  % Go through each track
+    tracksTemp = tracks{n};         % Get the track at index n
+    if ~isempty(tracksTemp)         % Only process if there are bubbles in the current track
+        stt = size(tracksTemp);     % Size of temp track [# persistence frames, 2]
+        nbif = length(tracksTemp{1}); % # of paired bubbles in each frame of the track (is the same for each entry in the track)
+        nbitAll(n) = nbif;          % Store the # bubbles in each frame of track n
         tracksClean{n} = zeros((stt(1) + 1) * nbif, 5); % There are stt(1) + 1 frames represented in each entry of tracksTemp
-        for fn = 1:stt(1)
-            tracksClean{n}((fn) * nbif + 1 : (fn + 1) * nbif, 1) = tracksTemp{fn, 2};
-            tracksClean{n}((fn) * nbif + 1 : (fn + 1) * nbif, 2:4) = centerCoords_corrected{n + fn}(tracksTemp{fn, 2}, :);
-            tracksClean{n}((fn) * nbif + 1 : (fn + 1) * nbif, 5) = repmat(n + fn, nbif, 1); % add frame number
+        for fn = 1:stt(1)           % Go through each frame in the track and store the data
+            tracksClean{n}((fn) * nbif + 1 : (fn + 1) * nbif, 1) = tracksTemp{fn, 2}; % Store bubble indices
+            tracksClean{n}((fn) * nbif + 1 : (fn + 1) * nbif, 2:4) = centerCoords_corrected{n + fn}(tracksTemp{fn, 2}, :); % Store bubble coordinates
+            tracksClean{n}((fn) * nbif + 1 : (fn + 1) * nbif, 5) = repmat(n + fn, nbif, 1); % Store frame numbers
         end
+        % Store the info for the first frame in the track
         tracksClean{n}((0) * nbif + 1 : (1) * nbif, 1) = tracksTemp{1, 1};
         tracksClean{n}((0) * nbif + 1 : (1) * nbif, 2:4) = centerCoords_corrected{n}(tracksTemp{1, 1}, :);
-        tracksClean{n}((0) * nbif + 1 : (1) * nbif, 5) = repmat(n, nbif, 1); % add frame number
+        tracksClean{n}((0) * nbif + 1 : (1) * nbif, 5) = repmat(n, nbif, 1);
     else
         tracksClean{n} = NaN;
     end
-
 end
+disp('Tracks cleaned')
 clear n tracksTemp nbif stt
 
-%% Velocity map after doing persistence, on the cleaned tracks
+%% 8. Create the velocity map
 
-% bVelocity = cell(size(tracksClean, 1), 1);  % bubble velocity - for each entry in the cell array, [# points x 4] where it has[z position, x position, z velocity, x velocity] in units of pixels and pixels/s
-bVelocityTest = cell(size(tracksClean, 1), pers);
-bVelocityTestM = cell(size(tracksClean, 1), 1);
+% bVelocityC = cell(size(tracksClean, 1), pers); % Optional cell array storage of the bubble data
+bVelocityM = cell(size(tracksClean, 1), 1); % Matrix storage of the bubble data. Each element in the cell is a [# bubbles per frame in the track, 9, # persistence frames] matrix. Each row corresponds to [bubble f x coord, bubble f y coord, bubble f z coord, bubble f+1 x coord, bubble f+1 y coord, bubble f+1 z coord, x velocity, y velocity, z velocity]
 tic
-for ti = startFrame:length(tracksClean)              % track index
-% for ti = 1:2
-        
-    tracksTemp = tracksClean{ti};
-    nbiti = nbifAll(ti);                      % # of bubbles in the tracks starting in index ti
-%     vmapTemp = [];
+for ti = startFrame:length(tracksClean)     % track index - go through each track
+    tracksTemp = tracksClean{ti};           % Get track ti
+    nbiti = nbitAll(ti);                    % # of bubbles in the tracks starting in index ti
     if nbiti > 0
-        for fn = 1:pers % Go through all the frames in the tracks with origin frame ti
-    %     for fn = 1:2
+        for fn = 1:pers                     % Go through all the frames in the tracks with origin frame ti
             startPoints = tracksTemp((fn - 1) * nbiti + 1 : fn * nbiti, 2:4);
             endPoints = tracksTemp((fn) * nbiti + 1 : (fn + 1) * nbiti, 2:4);
-            vfn = (endPoints - startPoints) ./ timePerFrame;        % velocity = displacement/time
-            bVelocityTest{ti, fn} = [startPoints, endPoints, vfn];  % each row is [x start coord, y start coord, z start coord, x end coord, y end coord, z end coord, x velocity, y velocity, z velocity]
-            bVelocityTestM{ti}(:, :, fn) = [startPoints, endPoints, vfn];
-    
-    %         for i = 1:nbiti % Go through each pair of coordinates used to calculate the velocity and add the interpolated points to the velocity + interpolated points at which to plot that velocity's matrix
-    % %         for i = 1
-    %             [zcInterp, xcInterp] = ULM_interp2D(startPoints(i, :), endPoints(i, :));
-    %             vmapTempi = [zcInterp, xcInterp, repmat(vfn(i, :), length(zcInterp), 1)];
-    %             vmapTemp = [vmapTemp; vmapTempi];
-    %         end
+            vfn = (endPoints - startPoints) ./ timePerFrame; % velocity = displacement/time
+%             bVelocityC{ti, fn} = [startPoints, endPoints, vfn];  % each row is [x start coord, y start coord, z start coord, x end coord, y end coord, z end coord, x velocity, y velocity, z velocity]
+            bVelocityM{ti}(:, :, fn) = [startPoints, endPoints, vfn];
         end
     end
-%     bVelocity{ti} = vmapTemp;
 end
 toc
 disp('Velocity map created')
+clear ti fn tracksTemp startPoints endPoints vfn nbiti
 
-clear ti fn tracksTemp startPoints endPoints vfn zcInterp xcInterp i vmapTempi vmapTemp nbiti
+%% 9. Refine the velocity map
+mmws = str2double(parameterUserInput{7}); % Moving mean window size [frames]
+bVelocityMSmoothed = bVelocityM;          % Initialize the velocity data, which will be smoothed across frames with a moving mean
 
-%% Combine cleaned tracks
-tracksCombined = cell(size(tracksClean));
-% for n = 1:size(tracksClean, 1) % go through frames
-for n = 1
-%     tracksntemp = tracksClean{n};            % tracks starting in frame n
-%     nbifn = nbifAll(n);                      % # of bubbles in the tracks starting in frame n
-%     tcTemp = zeros(1, 4);
-    for fn = n:n + pers           % go through all the possible overlaps in frames
-%     for fn = 1:20
-        tcTemp = [];
-%         tcTemp = tracksntemp((fn - 1) * nbifn + 1:fn * nbifn, :); % Accumulate the possible bubbles/coords for each global frame # fn
-        rangefn = n:fn;  % range of tracks which include frame # fn
+for n = startFrame:size(bVelocityM, 1) % Go through each track collection n
+    vt = bVelocityM{n};
+    vtSmoothed = vt;        % Temporary variable with the smoothed velocities for each track collection n
+    for tn = 1:size(vt, 1)  % track number (go through the path of each bubble over time)
+        tnxVel = squeeze(vt(tn, 7, :));         % get the x velocity at each point in track tn
+        tnxVelSmoothed = movmean(tnxVel, mmws); % moving mean
+        vtSmoothed(tn, 7, :) = tnxVelSmoothed;  % Store the smoothed velocity
 
-        for ti = rangefn % track index
-            trackstiTemp = tracksClean{ti};  % tracks in index ti
-            nbifti = nbifAll(ti);            % # of bubbles in the tracks starting in frame ti
-
-            tracksfnTemp = trackstiTemp((fn - ti) * nbifti + 1:(fn - ti + 1) * nbifti, :); % tracks of global frame # fn within tracks{ti}
-            tcTemp = [tcTemp; tracksfnTemp];
-        end
-
-        [uniqueTracksfnTemp, iat, ict] = unique(tcTemp, 'rows', 'stable');
-        tracksCombined{fn} = uniqueTracksfnTemp; %%%%
-
-%         for nfi = 1 % frame number inside tracknptemp
-%             tracksntempfni = tracksntemp((nfi) * nbifn + 1 : (nfi + 1) * nbifn, :);
-%             tracksnptempfni = tracksnptemp((nfi - 1) * nbifnp + 1 : nfi * nbifnp, :);
-% %             tcTemp = [tcTemp; unique([tracksntempfni; tracksnptempfni], 'rows', 'stable')];
-%             tcTempnp = [tcTempnp; unique([tracksntempfni; tracksnptempfni], 'rows', 'stable')];
-%         end
-    end
-end
-% clear trackntemp tracknptemp tcTemp n np
-
-%% test on tracks
-figure;
-hold on
-% for ti = 1:length(tracks)% track index
-for ti = 1
-    tracksTemp = tracks{ti};
-    for tli = 1:size(tracksTemp, 1)% track length index
-        startPointInd = tracksTemp{tli, 1};
-        endPointInd = tracksTemp{tli, 2};
-
-        coordsSFTemp = centerCoords_corrected{ti + tli - 1}(startPointInd, :); % coords for the source frame
-        coordsTFTemp = centerCoords_corrected{ti + tli}(endPointInd, :); % coords for the target frame
-        
-        scatter(coordsSFTemp(:, 1), coordsSFTemp(:, 2), 'ro')
-        scatter(coordsTFTemp(:, 1), coordsTFTemp(:, 2), 'bx')
-%         for idk = size(startPointInd, 1)
-%             line([coordsSFTemp(idk, 1); coordsTFTemp(idk, 1)], [coordsSFTemp(idk, 2); coordsTFTemp(idk, 2)])
-%         end
-
-    end
-end
-% clear startPointInd endPointInd coordsSFTemp coordsTFTemp
-
-%% Refine the velocity map - (maybe remove tracks where the position is oscillating over time)
-mmws = 3; % moving mean window size
-bVelocityTestMSmoothed = bVelocityTestM;
-for n = startFrame:size(bVelocityTestM, 1)
-% for n = 1
-    vt = bVelocityTestM{n};
-    vtSmoothed = vt;
-    for tn = 1:size(vt, 1) % track number
-%     for tn = 1
-        tnxVel = squeeze(vt(tn, 7, :)); % get the x velocity at each point in track tn
-        tnxVelSmoothed = movmean(tnxVel, mmws);
-        vtSmoothed(tn, 7, :) = tnxVelSmoothed;
-
-        tnyVel = squeeze(vt(tn, 8, :)); % get the y velocity at each point in track tn
+        tnyVel = squeeze(vt(tn, 8, :));         % get the y velocity at each point in track tn
         tnyVelSmoothed = movmean(tnyVel, mmws);
         vtSmoothed(tn, 8, :) = tnyVelSmoothed;
 
-        tnzVel = squeeze(vt(tn, 9, :)); % get the z velocity at each point in track tn
+        tnzVel = squeeze(vt(tn, 9, :));         % get the z velocity at each point in track tn
         tnzVelSmoothed = movmean(tnzVel, mmws);
         vtSmoothed(tn, 9, :) = tnzVelSmoothed;
         
     end
-    bVelocityTestMSmoothed{n} = vtSmoothed;
+    bVelocityMSmoothed{n} = vtSmoothed; % Store the smoothed velocity data for track collection n
 end
 clear n tn vt vtSmoothed tnzVel tnzVelSmoothed vtSmoothed tnxVel tnxVelSmoothed tnyVel tnyVelSmoothed 
 
-% scale the smoothed velocity into mm/s
-bVelocityTestMSmoothedMMS = bVelocityTestMSmoothed;
-for n = startFrame:size(bVelocityTestMSmoothedMMS, 1)
-    bVelocityTestMSmoothedMMS{n}(:, 7:9, :) = bVelocityTestMSmoothed{n}(:, 7:9, :) ./ pixelsPerM * 1e3;
+% Scale the smoothed velocity into [mm/s]
+bVelocityMSmoothedMMS = bVelocityMSmoothed;
+for n = startFrame:size(bVelocityMSmoothedMMS, 1)
+    bVelocityMSmoothedMMS{n}(:, 7, :) = bVelocityMSmoothed{n}(:, 7, :) ./ xpixelsPerM * 1e3;
+    bVelocityMSmoothedMMS{n}(:, 8, :) = bVelocityMSmoothed{n}(:, 8, :) ./ ypixelsPerM * 1e3;
+    bVelocityMSmoothedMMS{n}(:, 9, :) = bVelocityMSmoothed{n}(:, 9, :) ./ zpixelsPerM * 1e3;
 end
 
-%% Kalman filter attempt 1
-numDims = 2;
-numStates = numDims * 2; % In 2D: axial position (z), lateral position (x), axial displacement (dz), lateral displacement (dx)
+disp('Velocity map smoothed')
 
-if pers < 3
-    error('The Kalman filter needs at least 3 points in the track')
-end
-
-% Initialize the filtered output variable
-bVelocityTestMSmoothedKFMMS = bVelocityTestMSmoothedMMS;
-vMMStoPixelDispPerFrame = timePerFrame / 1e3 * pixelsPerM;
-
-% Define the matrices that map the state transition, and the state ->
-% observation transformation
-Fk = [1, 0, 1, 0; ...
-      0, 1, 0, 1; ...
-      0, 0, 1, 0; ...
-      0, 0, 0, 1];
-Hk = [1, 0, 0, 0; ...
-      0, 1, 0, 0];
-
-%%%%%%%% these covariance matrices are from the Song et al. 2020 paper %%%%%%%%%
-Qk = diag(ones(numStates, 1));      % Covariance matrix of the system noise
-Rk = diag(ones(numDims, 1)) .* 2;   % Covariance matrix of the observation noise
-
-% for n = 1:size(bVelocityTestMSmoothedMMS, 1)
-for n = 1
-    tln = bVelocityTestMSmoothedMMS{n}; % Track list n
-    for tn = 1:size(tln, 1) % Track number tn
-%     for tn = 1
-%         track = tln(tn, :, :);
-        track = squeeze(tln(tn, :, :))'; % Get the track
-        track = [track; [track(end, 3:4), 0, 0, 0, 0]];
-        % Initialize variables for the state vector and covariance matrix
-        xk = NaN(numStates, size(track, 1));
-        Pk = NaN(numStates, numStates, size(track, 1));
-
-        % Initial values
-        xk(:, 1) = [track(1, 1:2), 0, 0]'; % Initial state vector
-%         xk(:, 1) = [track(1, 1:2), track(1, 5:6) .* vMMStoPixelDispPerFrame]'; % Initial state vector
-        %%%%%% WHAT INITIAL DISPLACEMENT/VELOCITY SHOULD I USE??? %%%%%%
-%         Pk{1} = eye(length(x0));                 % Initial covariance matrix
-        Pk(:, :, 1) = [1, 0, 0, 0; ...
-                 0, 1, 0, 0; ...
-                 0, 0, 0, 0; ...
-                 0, 0, 0, 0];
-        %%%%%% WHAT INITIAL COVARIANCES SHOULD I USE??? %%%%%%
-
-        xk(:, 2) = [track(2, 1:2), track(1, 5:6) .* vMMStoPixelDispPerFrame]';
-%         xk(:, 2) = [track(2, 1:2), track(1, 5:6)]';
-        Pk(:, :, 2) = [1, 0, 0, 0; ...
-                 0, 1, 0, 0; ...
-                 0, 0, 10^4, 0; ...
-                 0, 0, 0, 10^4];
-
-        for k = 3:size(track, 1) % Go through each step of the track
-%             xk{k} = Fk * xk{k - 1} + Qk;
-            % Prediction
-            xkp = Fk * xk(:, k - 1); 
-            Pkp = Fk * Pk(:, :, k - 1) * Fk + Qk;
-
-            % Observation
-            yk = [track(k, 1:2)]';
-
-            % Update
-            Kku = Pkp * Hk' * inv(Hk * Pkp * Hk' + Rk); % Kalman gain matrix
-            Iku = yk - Hk * xkp; % Innovation vector (difference between the observed state and the predicted state transformed into an observation at step k)
-            xku = xkp + Kku * Iku; % Updated (weighted) estimate for the state at step k
-            Pku = (eye(length(xku)) - Kku * Hk) * Pkp; % Updated covariance matrix at step k
-
-            % Store the updated state and covariance
-            xk(:, k) = xku;
-            Pk(:, :, k) = Pku;
-        end
-        bVelocityTestMSmoothedKFMMS{n}(tn, 1:2, :) = xk(1:2, 1:end-1);
-        bVelocityTestMSmoothedKFMMS{n}(tn, 3:4, :) = xk(1:2, 2:end);
-%         bVelocityTestMSmoothedKFMMS{n}(tn, 5:6, :) = xk(3:4, 2:end);
-        bVelocityTestMSmoothedKFMMS{n}(tn, 5:6, :) = (xk(1:2, 2:end) - xk(1:2, 1:end-1)); % ./ timePerFrame;
-
-        % plot test to compare for a single track
-        figure
-        hold on
-        plot(xk(1, :), xk(2, :), '-o')
-        plot(track(:, 1), track(:, 2), '--x')
-        clear i xki
-        legend('Kalman filtered', 'Original')
-        hold off
-    end
-end
-
-%% Kalman filter attempt 2
-numDims = 2;
-numStates = numDims * 2; % In 2D: axial position (z), lateral position (x), axial displacement (dz), lateral displacement (dx)
-
-if pers < 3
-    error('The Kalman filter needs at least 3 points in the track')
-end
-
-% Initialize the filtered output variable
-bVelocityTestMSmoothedKFMMS = bVelocityTestMSmoothedMMS;
-vMMStoPixelDispPerFrame = timePerFrame / 1e3 * pixelsPerM;
-
-% Define the matrices that map the state transition, and the state ->
-% observation transformation
-Fk = [1, 0, 1, 0; ...
-      0, 1, 0, 1; ...
-      0, 0, 1, 0; ...
-      0, 0, 0, 1];
-Hk = [1, 0, 0, 0; ...
-      0, 1, 0, 0];
-
-%%%%%%%% these covariance matrices are from the Song et al. 2020 paper %%%%%%%%%
-Qk = diag(ones(numStates, 1));      % Covariance matrix of the system noise
-Rk = diag(ones(numDims, 1)) .* 2;   % Covariance matrix of the observation noise
-
-for n = 1:size(bVelocityTestMSmoothedMMS, 1)
-% for n = 1
-    tln = bVelocityTestMSmoothedMMS{n}; % Track list n
-    for tn = 1:size(tln, 1) % Track number tn
-%     for tn = 1
-%         track = tln(tn, :, :);
-        track = squeeze(tln(tn, :, :))'; % Get the track
-        track = [track; [track(end, 3:4), 0, 0, 0, 0]];
-        % Initialize variables for the state vector and covariance matrix
-        xk = NaN(numStates, size(track, 1));
-        Pk = NaN(numStates, numStates, size(track, 1));
-
-        % Initial values
-%         xk(:, 1) = [track(1, 1:2), 0, 0]'; % Initial state vector
-        xk(:, 1) = [track(1, 1:2), track(1, 5:6) .* vMMStoPixelDispPerFrame]'; % Initial state vector
-        %%%%%% WHAT INITIAL DISPLACEMENT/VELOCITY SHOULD I USE??? %%%%%%
-%         Pk{1} = eye(length(x0));                 % Initial covariance matrix
-        Pk(:, :, 1) = [1, 0, 0, 0; ...
-                 0, 1, 0, 0; ...
-                 0, 0, 10, 0; ...
-                 0, 0, 0, 10];
-        %%%%%% WHAT INITIAL COVARIANCES SHOULD I USE??? %%%%%%
-
-%         xk(:, 2) = [track(2, 1:2), track(1, 5:6) .* vMMStoPixelDispPerFrame]';
-% %         xk(:, 2) = [track(2, 1:2), track(1, 5:6)]';
-%         Pk(:, :, 2) = [1, 0, 0, 0; ...
-%                  0, 1, 0, 0; ...
-%                  0, 0, 10^4, 0; ...
-%                  0, 0, 0, 10^4];
-
-        for k = 2:size(track, 1) % Go through each step of the track
-%             xk{k} = Fk * xk{k - 1} + Qk;
-            % Prediction
-            xkp = Fk * xk(:, k - 1); 
-            Pkp = Fk * Pk(:, :, k - 1) * Fk + Qk;
-
-            % Observation
-            yk = [track(k, 1:2)]';
-
-            % Update
-            Kku = Pkp * Hk' * inv(Hk * Pkp * Hk' + Rk); % Kalman gain matrix
-            Iku = yk - Hk * xkp; % Innovation vector (difference between the observed state and the predicted state transformed into an observation at step k)
-            xku = xkp + Kku * Iku; % Updated (weighted) estimate for the state at step k
-            Pku = (eye(length(xku)) - Kku * Hk) * Pkp; % Updated covariance matrix at step k
-
-            % Store the updated state and covariance
-            xk(:, k) = xku;
-            Pk(:, :, k) = Pku;
-        end
-        bVelocityTestMSmoothedKFMMS{n}(tn, 1:2, :) = xk(1:2, 1:end-1);
-        bVelocityTestMSmoothedKFMMS{n}(tn, 3:4, :) = xk(1:2, 2:end);
-%         bVelocityTestMSmoothedKFMMS{n}(tn, 5:6, :) = xk(3:4, 2:end);
-        bVelocityTestMSmoothedKFMMS{n}(tn, 5:6, :) = (xk(1:2, 2:end) - xk(1:2, 1:end-1)); % ./ timePerFrame;
-
-        % plot test to compare for a single track
-%         figure
-%         hold on
-%         plot(xk(1, :), xk(2, :), '-o')
-%         plot(track(:, 1), track(:, 2), '--x')
-%         clear i xki
-%         legend('Kalman filtered', 'Original')
-%         hold off
-    end
-end
-
-%% Kalman filter attempt 3
+%% 10. Kalman filter
 numDims = 3;
 numStates = numDims * 2; % In 3D: x position, y position, z position, x displacement, y displacement, z displacement
 
@@ -583,7 +328,7 @@ if pers < 3
 end
 
 % Initialize the filtered output variable
-bVelocityTestMSmoothedKFMMS = bVelocityTestMSmoothedMMS;
+bVelocityMSmoothedKFMMS = bVelocityMSmoothedMMS;
 vMMStoPixelDispPerFrame = timePerFrame / 1e3 * pixelsPerM;
 
 % Define the matrices that map the state transition, and the state ->
@@ -605,25 +350,22 @@ Hk = [1, 0, 0, 0, 0, 0; ...
 Qk = diag(ones(numStates, 1)) .* 0.5;      % Covariance matrix of the system/process noise
 Rk = diag(ones(numStates, 1)) .* 4;   % Covariance matrix of the observation noise
 
-for n = startFrame:size(bVelocityTestMSmoothedKFMMS, 1)
+tic
+for n = startFrame:size(bVelocityMSmoothedKFMMS, 1)
 % for n = startFrame
-    tln = bVelocityTestMSmoothedKFMMS{n}; % Track list n
+    tln = bVelocityMSmoothedKFMMS{n}; % Track list n
     for tn = 1:size(tln, 1) % Track number tn
 %     for tn = 1
-%         track = tln(tn, :, :);
         track = squeeze(tln(tn, :, :))'; % Get the track
         track = [track; [track(end, 4:6), 0, 0, 0, 0, 0, 0]];
         % Initialize variables for the state vector and covariance matrix
         xk = NaN(numStates, size(track, 1));
         Pk = NaN(numStates, numStates, size(track, 1));
 
-        % Initial values
-%         xk(:, 1) = [track(1, 1:2), 0, 0]'; % Initial state vector
-        %%%%%% WHAT INITIAL DISPLACEMENT/VELOCITY SHOULD I USE??? %%%%%%
-%         Pk{1} = eye(length(x0));                 % Initial covariance matrix
+        % Initial values                 
         xk(:, 1) = [track(1, 1:3), track(1, 7:9) .* vMMStoPixelDispPerFrame]'; % Initial state vector
 
-        Pk(:, :, 1) = [1, 0, 0, 0, 0, 0; ...
+        Pk(:, :, 1) = [1, 0, 0, 0, 0, 0; ... % Initial covariance matrix
                        0, 1, 0, 0, 0, 0; ...
                        0, 0, 1, 0, 0, 0; ...
                        0, 0, 0, 10, 0, 0; ...
@@ -639,7 +381,6 @@ for n = startFrame:size(bVelocityTestMSmoothedKFMMS, 1)
 %                  0, 0, 0, 10^4];
 
         for k = 2:size(track, 1) % Go through each step of the track
-%             xk{k} = Fk * xk{k - 1} + Qk;
             % Prediction
             xkp = Fk * xk(:, k - 1); 
             Pkp = Fk * Pk(:, :, k - 1) * Fk + Qk;
@@ -657,9 +398,9 @@ for n = startFrame:size(bVelocityTestMSmoothedKFMMS, 1)
             xk(:, k) = xku;
             Pk(:, :, k) = Pku;
         end
-        bVelocityTestMSmoothedKFMMS{n}(tn, 1:3, :) = round(xk(1:3, 1:end-1));
-        bVelocityTestMSmoothedKFMMS{n}(tn, 4:6, :) = round(xk(1:3, 2:end));
-        bVelocityTestMSmoothedKFMMS{n}(tn, 7:9, :) = xk(4:6, 2:end) ./ vMMStoPixelDispPerFrame;
+        bVelocityMSmoothedKFMMS{n}(tn, 1:3, :) = round(xk(1:3, 1:end-1));
+        bVelocityMSmoothedKFMMS{n}(tn, 4:6, :) = round(xk(1:3, 2:end));
+        bVelocityMSmoothedKFMMS{n}(tn, 7:9, :) = xk(4:6, 2:end) ./ vMMStoPixelDispPerFrame;
 %         bVelocityTestMSmoothedKFMMS{n}(tn, 5:6, :) = (xk(1:2, 2:end) - xk(1:2, 1:end-1)); % ./ timePerFrame;
 
         % plot test to compare for a single track
@@ -672,54 +413,60 @@ for n = startFrame:size(bVelocityTestMSmoothedKFMMS, 1)
 %         hold off
     end
 end
-
+toc
+disp('Kalman filter applied')
 clear n tn tln k xk Pk yk Kku Iku xku Pku track
-%% Acceleration and direction constraints
-% aThresholdFactor = 0.5;
-aThresholdFactor = 2;
-vTrimmedMeanPercentage = 20;
-angleChangeThreshold = pi/2; % Angle change threshold [radians]
 
-bVelocityTestMSmoothedKFConstrainedMMS = bVelocityTestMSmoothedKFMMS;
-for n = 1:size(bVelocityTestMSmoothedKFConstrainedMMS, 1)
-% for n = 1
-    tln = bVelocityTestMSmoothedKFConstrainedMMS{n}; % Track list n
-    for tn = size(tln, 1):-1:1 % Track number tn
-%     for tn = 1
-        trackAlreadyDeleted = false;
-        track = squeeze(tln(tn, :, :))'; % Get the track
-        vTrack = track(:, 7:9); % Velocities of the track
+%% 11. Acceleration and direction constraints
+aThresholdFactor = str2double(parameterUserInput{8});         % Acceleration change threshold factor
+vTrimmedMeanPercentage = str2double(parameterUserInput{9});   % Trimmed mean percentage for the acceleration change threshold [%]
+angleChangeThreshold = str2double(parameterUserInput{10});    % Angle change threshold [radians]
+
+bVelocityMSmoothedKFConstrainedMMS = bVelocityMSmoothedKFMMS; % Initialize the variable for the smoothed, Kalman filtered, constrained velocity map
+tic
+for n = 1:size(bVelocityMSmoothedKFConstrainedMMS, 1)
+    tln = bVelocityMSmoothedKFConstrainedMMS{n};    % Track list n
+    for tn = size(tln, 1):-1:1                      % Go through each track number tn
+        trackAlreadyDeleted = false;                % Reset the flag
+        track = squeeze(tln(tn, :, :))';            % Get the track
+        vTrack = track(:, 7:9);                     % Velocities of the track
 
         % Acceleration constraint
         vTrackTrimmedMean = trimmean(vTrack, vTrimmedMeanPercentage); % Exclude some percentage of the values when taking the mean. It goes across the first non-singleton dimension.
         aThresholdMag = abs(aThresholdFactor .* vTrackTrimmedMean ./ timePerFrame);
         aTrackMag = abs(diff(vTrack, 1) ./ timePerFrame); % Accelerations of the track
         if any(aTrackMag > aThresholdMag, 'all') % Remove the track if the acceleration constraint is violated
-            bVelocityTestMSmoothedKFConstrainedMMS{n}(tn, :, :) = [];
+            bVelocityMSmoothedKFConstrainedMMS{n}(tn, :, :) = [];
             trackAlreadyDeleted = true;
         end
 
         % Direction constraint
-        if ~trackAlreadyDeleted
-            angleTrack = atan2(vTrack(:, 2), vTrack(:, 1));
-            angleTrackChanges = diff(angleTrack);
-            if any(abs(angleTrackChanges) > angleChangeThreshold)
-                bVelocityTestMSmoothedKFConstrainedMMS{n}(tn, :, :) = [];
+        if ~trackAlreadyDeleted % Don't need to go through the direction calculation if the track was already deleted for the acceleration constraint
+            angleTrack = atan2(vTrack(:, 2), vTrack(:, 1));         % Angle of each segment on the track
+            angleTrackChanges = diff(angleTrack);                   % Change in angle between segments on the track
+            if any(abs(angleTrackChanges) > angleChangeThreshold)   % Apply the threshold
+                bVelocityMSmoothedKFConstrainedMMS{n}(tn, :, :) = [];
             end
         end
-
     end
 end
 
-%% Plot density map with the paired bubbles after persistence
-bSum = zeros(img_size(1), img_size(2), img_size(3));
+toc
+disp('Acceleration and direction constraints applied')
+clear n tln tn trackAlreadyDeleted track vTrack vTrackTrimmedMean aThresholdMag aTrackMag angleTrack angelTrackChanges
 
-for n = startFrame:length(bVelocityTestM)
-% for n = startFrame
-    tempBuf = bVelocityTestM{n};
-    for tn = 1:size(tempBuf, 1) % track number
-%     for tn = 1
+%% 12. Plot density map with the paired bubbles after persistence
+bSum = zeros(img_size(1), img_size(2), img_size(3)); % Initialize the bubble density map variable
+bSum = padarray(bSum, 50); % Pad array in case the Kalman filter puts some points outside the original region
+
+for n = startFrame:length(bVelocityM) % Go through each track collection and plot
+%     tempBuf = bVelocityM{n};
+%     tempBuf = bVelocityMSmoothedKFConstrainedMMS{n};
+    tempBuf = bVelocityMSmoothedKFMMS{n};
+    for tn = 1:size(tempBuf, 1) % Go through each track number tn
         trackTemp = squeeze(tempBuf(tn, :, :))';
+
+        % Add 1 to a pixel's count if the current track intersects it
         bSum(trackTemp(1, 1), trackTemp(1, 2), trackTemp(1, 3)) = bSum(trackTemp(1, 1), trackTemp(1, 2), trackTemp(1, 3)) + 1;
         for iti = 1:size(trackTemp, 1) % inside track index
             bSum(trackTemp(iti, 4), trackTemp(iti, 5), trackTemp(iti, 6)) = bSum(trackTemp(iti, 4), trackTemp(iti, 5), trackTemp(iti, 6)) + 1;
@@ -730,6 +477,7 @@ end
 clear n tn iti trackTemp tempBuf
 
 volumeViewer(bSum .^ 0.5)
+
 %% Plot speed map after persistence with linear interpolation, on the cleaned and refined velocity data
 speedMap = zeros(img_size(1), img_size(2), img_size(3));
 plotPower = 1;
@@ -738,10 +486,10 @@ plotPower = 1;
 % different tracks
 speedMapCounter = zeros(img_size(1), img_size(2), img_size(3));
 
-for ti = startFrame:size(bVelocityTestMSmoothed, 1)
+for ti = startFrame:size(bVelocityMSmoothed, 1)
 % for ti = startFrame
 %     bvTemp = bVelocityTestMSmoothedKFConstrainedMMS{ti};
-    bvTemp = bVelocityTestMSmoothedKFMMS{ti};
+    bvTemp = bVelocityMSmoothedKFMMS{ti};
 %     bvTemp = bVelocityTestMSmoothedMMS{ti}; % get the ti-th entry
 %     bvTemp = bVelocityTestMSmoothed{ti}; % get the ti-th entry
 %     bvTemp = bVelocityTestM{ti}; % get the ti-th entry
