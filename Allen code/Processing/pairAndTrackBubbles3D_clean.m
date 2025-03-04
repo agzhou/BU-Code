@@ -34,7 +34,7 @@ clearvars
 
 %% 1. Add dependencies and load parameters
 % Get data path of the localized bubble centers
-datapath = uigetdir('F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\Processed Data 02-24-2025\', 'Select the data path');
+datapath = uigetdir('F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\', 'Select the data path');
 datapath = [datapath, '\'];
 
 % Load localization processing parameters: proc_params.mat
@@ -166,7 +166,7 @@ parfor f = startFrame:totalFrames - 1       % Go through frames
             d(:, 3) = d(:, 3) ./ zpixelsPerM;       % Convert the z distance differences into natural distance units [m]
             D(spi, :) = sqrt(sum((d .^ 2), 2));     % distance formula on the above
     
-            D(D > maxPixelDistPerFrame) = Inf;      % Set the elements above the distance per frame threshold to Inf so they aren't considered for pairing
+            D(D > maxDistPerFrameM) = Inf;      % Set the elements above the distance per frame threshold to Inf so they aren't considered for pairing
         end
 
         [assignment, unassignedrows, unassignedcolumns] = assignmunkres(D, 100000000000); % Pair with the Munkres algorithm, which minimizes the total cost (total paired distance)

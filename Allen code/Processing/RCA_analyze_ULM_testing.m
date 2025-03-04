@@ -145,6 +145,6 @@ for filenum = 1:numFiles
     disp(strcat("Centroid finding done: file ", num2str(filenum)))
     toc
 end
-save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'XCThresholdFactor')
+save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'XCThresholdFactor', 'xpix_spacing', 'ypix_spacing', 'zpix_spacing')
 % save([savepath, 'allCenters'], 'allCenters', "-v7.3")
 % toc
