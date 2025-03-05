@@ -65,7 +65,7 @@ ypix_spacing = P.Trans.spacingMm / 1e3;
 zpix_spacing = P.wl / 2;
 % imgRefinementFactor = [irfc * xpix_spacing/zpix_spacing, irfc * ypix_spacing/zpix_spacing, irfc];
 
-XCThresholdFactor = 0.2;
+XCThresholdFactor = 0.15;
  
 % Load and refine simulated PSF
 if ~exist('PSF', 'var')
@@ -84,8 +84,8 @@ refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) 
 % test = zeros([s(1:3) .* 4, s(4)]);
 %% Process the data
 % tic
-% for filenum = 1:numFiles
-for filenum = 20
+for filenum = 1:numFiles
+% for filenum = 30
     tic
     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
 %     IQr = LA_rollingFrames(IQ);                                                 % rolling method to get more effective frames
@@ -145,6 +145,6 @@ for filenum = 20
     disp(strcat("Centroid finding done: file ", num2str(filenum)))
     toc
 end
-save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'XCThresholdFactor')
+save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'XCThresholdFactor', 'xpix_spacing', 'ypix_spacing', 'zpix_spacing')
 % save([savepath, 'allCenters'], 'allCenters', "-v7.3")
 % toc
