@@ -96,14 +96,14 @@ for filenum = 1:numFiles
 
 
     % SVD proc part 1
-% %     tic
-%     [PP, EVs, V_sort] = getSVs2D(IQ);
-%     disp('SVs decomposed')
-% %     toc
-%     % SVD proc part 2
-% %     tic
-%     [IQf] = applySVs2D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
-%     disp('SVD filtered images put together')
+%     tic
+    [PP, EVs, V_sort] = getSVs2D(IQ);
+    disp('SVs decomposed')
+%     toc
+    % SVD proc part 2
+%     tic
+    [IQf] = applySVs2D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
+    disp('SVD filtered images put together')
 
     % Framewise difference for extracting the bubble signal
     IQf = diff(IQ, 1, 4);

@@ -147,8 +147,8 @@ ubS = cell(totalFrames - 1, 1);             % unassigned bubbles from the source
 ubT = cell(totalFrames - 1, 1);             % unassigned bubbles from the target frames
 
 tic
-parfor f = startFrame:totalFrames - 1       % Go through frames
-% parfor f = startFrame:startFrame+100
+% parfor f = startFrame:totalFrames - 1       % Go through frames
+parfor f = startFrame:startFrame+100
     sourceFrame = centerCoords_corrected{f};     % Get the coordinates for the source frame (f)
     targetFrame = centerCoords_corrected{f + 1}; % Get the coordinates for the target frame (f + 1)
 
