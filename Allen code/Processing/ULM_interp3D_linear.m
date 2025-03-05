@@ -1,8 +1,8 @@
-% Interpolate between two points [z, x] which represent the start and end
-% of a track between paired bubbles in consecutive frames
-% Need to round it in case the output is not a natural number
+% Interpolate between two points [x, y, z] which represent the start and end
+% of a track between paired bubbles in consecutive frames.
+% Need to round it in case the output is not a natural number.
+
 function [pts] = ULM_interp3D_linear(sourceCoords, targetCoords, speedTemp)
-% function [pts] = ULM_interp2D_linear(sourceCoords, targetCoords, vTemp, ti)
     pts = [];
     for nvp = 1:size(speedTemp, 1)
         xcInterpStart = sourceCoords(nvp, 1);
