@@ -28,6 +28,7 @@
 %   trimmean (Statistics and Machine Learning Toolbox)
 %   ULM_interp3D_linear.m
 %   Colormaps_fUS (From Jianbo's code)
+%   smoothn.m (From Damien Garcia: https://www.mathworks.com/matlabcentral/fileexchange/25634-smoothn/)
 
 % Acknowledgement: using Jianbo Tang's ULM code, the Song group's ULM papers, and Jean-Yves Tinevez's simpletracker as references
 clearvars
@@ -56,6 +57,7 @@ load([datapath, 'proc_params.mat'])
 % For now, hard coding and assuming equal x, y, and z spacing
 pix_spacing = P.wl/2;
 
+%% 1.5
 % Prompt for parameter user input
 parameterPrompt = {'Number of files', 'x pixel spacing [um]', 'y pixel spacing [um]', 'z pixel spacing [um]', 'Maximum expected flow speed [mm/s]', 'Persistence frames', 'Moving window size [frames]', 'Acceleration constraint factor', 'Trimmed mean percentage', 'Direction constraint'};
 parameterDefaults = {'', num2str(P.Trans.spacingMm * 1e3), num2str(P.Trans.spacingMm * 1e3), num2str(P.wl/2 * 1e6), '50', '3', '3', '2', '20', 'pi/2'};
@@ -485,53 +487,88 @@ end
 
 clear n tn iti trackTemp tempBuf
 
-volumeViewer(bSum .^ 0.5)
+% volumeViewer(bSum .^ 0.5)
+
+figure; imagesc(squeeze(sum(bSum, 1).^ 0.5)'); colormap hot
 
 addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Processing\Jerman Enhancement Filter\')
 
+% test = vesselness3D(bSum .^ 0.5, 1:5, [xpix_spacing; ypix_spacing; zpix_spacing], 0.5, true);
+% 
+% bw = imbinarize(bSum .^ 1);
 %% Plot speed map after persistence with linear interpolation, on the cleaned and refined velocity data
 speedMap = zeros(img_size(1), img_size(2), img_size(3));
 plotPower = 1;
+
+addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Processing\smoothn.m\')
+addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Processing\inpaintn.m\')
 
 % Counters for proper averaging if there are overlapped pixels from
 % different tracks
 speedMapCounter = zeros(img_size(1), img_size(2), img_size(3));
 
+tic
 for ti = startFrame:size(bVelocityMSmoothed, 1)
 % for ti = startFrame
-%     bvTemp = bVelocityTestMSmoothedKFConstrainedMMS{ti};
-    bvTemp = bVelocityMSmoothedKFMMS{ti};
-%     bvTemp = bVelocityTestMSmoothedMMS{ti}; % get the ti-th entry
-%     bvTemp = bVelocityTestMSmoothed{ti}; % get the ti-th entry
-%     bvTemp = bVelocityTestM{ti}; % get the ti-th entry
+    bvTemp = bVelocityMSmoothedKFConstrainedMMS{ti};
+%     bvTemp = bVelocityMSmoothedKFMMS{ti};
+%     bvTemp = bVelocityMSmoothedMMS{ti}; % get the ti-th entry
+%     bvTemp = bVelocityMSmoothed{ti}; % get the ti-th entry
+%     bvTemp = bVelocityM{ti}; % get the ti-th entry
     if ~isempty(bvTemp) % only do stuff if the bubble velocity cell array entry is not empty
         for bpi = 1:size(bvTemp, 1) % bubble pair index
+
             % Initialize temporary start and end coordinate matrices.
-            % Each have dimensions [# persistence frames, 2] where each row is [z coord, x coord].
+            % Each have dimensions [# persistence frames, 3] where each row is [x coord, y coord, z coord].
             coordsStart = NaN(pers, 3);
             coordsEnd = NaN(pers, 3);
 
             % Go through the # of persistence frames and get the
-            % coordinates at each frame pfi for the bubble track bpi
+            % coordinates at each frame pfi for the bubble track bpi.
+            %   Each row corresponds to a persistence frame, and contains
+            %   [x, y, z] velocity.
             for pfi = 1:pers % persistence frame index
                 coordsStart(pfi, :) = bvTemp(bpi, 1:3, pfi);
                 coordsEnd(pfi, :) = bvTemp(bpi, 4:6, pfi);
             end
 
             vTemp = squeeze(bvTemp(bpi, 7:9, :)); % Velocity components
-            speedTemp = sqrt(vTemp(:, 1).^2 + vTemp(:, 2).^2 + vTemp(:, 3).^2); % Speed
+            speedTemp = sqrt(vTemp(:, 1).^2 + vTemp(:, 2).^2 + vTemp(:, 3).^2); % Speed vector: one value per persistence frame index
 
             interpPts = ULM_interp3D_linear(coordsStart, coordsEnd, speedTemp); % Get interpolated points with the corresponding z velocity value. each row is [z coord, x coord, z velocity]
 %             interpPts = ULM_interp2D_linear(coordsStart, coordsEnd, zvTemp, ti); % Get interpolated points with the corresponding z velocity value. each row is [z coord, x coord, z velocity]
 %             interpPts = ULM_interp2D_spline(coordsStart, coordsEnd, zvTemp, ti);
 
-            for ipi = 1:size(interpPts, 1) % interpolated point index
-                interpPtsTemp = interpPts(ipi, :);
-                speedValTemp = interpPtsTemp(4);
+            % Test for plotting
+            tempCoords = [coordsStart(1, :); coordsEnd];
+%             tf = figure;
+%             scatter3(tempCoords(:, 1), tempCoords(:, 2), tempCoords(:, 3));
+% %             hold on
+%             figure;
+%             scatter3(interpPts(:, 1), interpPts(:, 2), interpPts(:, 3));
+% %             hold off
+
+            smoothInput = {interpPts(:, 1), interpPts(:, 2), interpPts(:, 3)};  % Get a "grid" of points to smooth from the interp function
+            smoothedPtsC = smoothn(smoothInput, 10, 'robust');                      % Use Damien Garcia's nd smoothing code (https://www.mathworks.com/matlabcentral/fileexchange/25634-smoothn/)
+            sp = round([smoothedPtsC{1}, smoothedPtsC{2}, smoothedPtsC{3}]);    % Store the smoothed points and round
+%             figure; scatter3(sp(:, 1), sp(:, 2), sp(:, 3))
+%             ipp = inpaintn(interpPts(:, 1:3));
+%             ipp = inpaintn(tempCoords);
+            for ipi = 1:size(sp, 1) % interpolated point index
+                smoothedPtsTemp = sp(ipi, :);
+                speedValTemp = interpPts(ipi, 4);
                 
-                speedMap(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) = speedMap(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) + speedValTemp;
-                speedMapCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) = speedMapCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) + 1;
+                speedMap(smoothedPtsTemp(1), smoothedPtsTemp(2), smoothedPtsTemp(3)) = speedMap(smoothedPtsTemp(1), smoothedPtsTemp(2), smoothedPtsTemp(3)) + speedValTemp;
+                speedMapCounter(smoothedPtsTemp(1), smoothedPtsTemp(2), smoothedPtsTemp(3)) = speedMapCounter(smoothedPtsTemp(1), smoothedPtsTemp(2), smoothedPtsTemp(3)) + 1;
             end
+
+%             for ipi = 1:size(interpPts, 1) % interpolated point index
+%                 interpPtsTemp = interpPts(ipi, :);
+%                 speedValTemp = interpPtsTemp(4);
+%                 
+%                 speedMap(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) = speedMap(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) + speedValTemp;
+%                 speedMapCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) = speedMapCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) + 1;
+%             end
         end
 %     else
 %         interpPts = [];
@@ -542,74 +579,34 @@ for ti = startFrame:size(bVelocityMSmoothed, 1)
 %         zVelTemp = [];
 %         interpPtsTemp = [];
     end
+    disp(strcat("Frame ", num2str(ti), " stored."))
 %     clear bvTemp
 end
+toc
 clear speedValTemp ti bpi pfi ipi interpPtsTemp speedTemp coordsStart coordsEnd bvTemp
 
 % Take the average for pixels with overlapping tracks
 speedMask = speedMapCounter > 0;
 speedMap(speedMask) = speedMap(speedMask) ./ speedMapCounter(speedMask);
-%%
-% Compression test
-% zvUpMap = zvUpMap .^ 1/3;
-% zvDownMap = -1 .* abs(zvDownMap).^1/3;
+%
 
-% Plot bubble density
-bubbleDensityMap = (zvUpMapCounter + zvDownMapCounter);
-% figure; imagesc(bubbleDensityMap .^ 0.2); colormap hot
+% % Make a small PSF, adapting Jianbo's code
+% FWHM_X=10; % x resolution, FWHM-Amplitude, um
+% FWHM_Y=10; % y resolution, FWHM-Amplitude, um
+% FWHM_Z=10;  % z resolution, FWHM-Amplitude, um
+% Sigma_X=FWHM_X/(2*sqrt(2*log(2)));
+% Sigma_Y=FWHM_Y/(2*sqrt(2*log(2)));
+% Sigma_Z=FWHM_Z/(2*sqrt(2*log(2)));
+% xPSF0=-30:30; yPSF0 = xPSF0; zPSF0=xPSF0; % pixels
+% [xPSF,yPSF, zPSF]=meshgrid(xPSF0,yPSF0,zPSF0);
+% % PRSSinfo.sysPSF=exp(-((xPSF/(Sigma_X/PRSSinfo.lPix)).^2+(zPSF/(Sigma_Z/PRSSinfo.lPix)).^2)/2);
+% smallPSF=exp(-((xPSF/(Sigma_X * (pixelsPerM / 1e6))).^2 + (yPSF/(Sigma_Y * (pixelsPerM / 1e6))).^2 + (zPSF/(Sigma_Z * (pixelsPerM / 1e6))).^2)/2);
+% % volumeViewer(smallPSF)
+% 
+% % Velocity map convolution with small PSF
+% % speedMapConv = convn(speedMap, smallPSF);
+% 
+% % Load Jianbo's colormaps
+% [VzCmap, VzCmapDn, VzCmapUp, pdiCmapUp, PhtmCmap] = Colormaps_fUS;
 
-% Make a small PSF, adapting Jianbo's code
-FWHM_X=10; % x resolution, FWHM-Amplitude, um
-FWHM_Y=10; % y resolution, FWHM-Amplitude, um
-FWHM_Z=10;  % z resolution, FWHM-Amplitude, um
-Sigma_X=FWHM_X/(2*sqrt(2*log(2)));
-Sigma_Y=FWHM_Y/(2*sqrt(2*log(2)));
-Sigma_Z=FWHM_Z/(2*sqrt(2*log(2)));
-xPSF0=-30:30; yPSF0 = xPSF0; zPSF0=xPSF0; % pixels
-[xPSF,yPSF, zPSF]=meshgrid(xPSF0,yPSF0,zPSF0);
-% PRSSinfo.sysPSF=exp(-((xPSF/(Sigma_X/PRSSinfo.lPix)).^2+(zPSF/(Sigma_Z/PRSSinfo.lPix)).^2)/2);
-smallPSF=exp(-((xPSF/(Sigma_X * (pixelsPerM / 1e6))).^2 + (yPSF/(Sigma_Y * (pixelsPerM / 1e6))).^2 + (zPSF/(Sigma_Z * (pixelsPerM / 1e6))).^2)/2);
-% volumeViewer(smallPSF)
-
-bubbleDensityMapConv = conv2(bubbleDensityMap, smallPSF);
-% figure; imagesc(bubbleDensityMapConv .^ 0.3); colormap hot
-
-% Velocity map convolution with small PSF
-speedMapConv = convn(speedMap, smallPSF);
-
-% Load Jianbo's colormaps
-[VzCmap, VzCmapDn, VzCmapUp, pdiCmapUp, PhtmCmap] = Colormaps_fUS;
-zvMapFig = figure;
-
-% Plot with two linked axes (one for up Z, other for down Z)
-% % hold on
-vCrange = [-maxSpeedExpectedMMPerS, maxSpeedExpectedMMPerS];
-% vCrange = [-maxSpeedExpectedMMPerS, maxSpeedExpectedMMPerS] .* 0.6;
-% vCrange = [-5, 5];
-% vCrange = [-8800, 8800];
-% vCrange = [-15000, 15000];
-figure(zvMapFig)
-h1 = axes;
-zvUpMap = zvUpMap .^ plotPower;
-% imagesc(zvUpMap .^ plotPower)
-imagesc(zvUpMap)
-% alpha(h1, double(abs(zvUpMap) > 1))
-colormap(zvMapFig, VzCmap)
-caxis(vCrange);
-axis tight
-colorbar
-hold on
-
-h2 = axes;
-zvDownMap = -1 .* (abs(zvDownMap) .^ plotPower);
-imagesc(zvDownMap)
-alpha(h2, double(abs(zvDownMap) > 1))
-colormap(zvMapFig, VzCmap)
-caxis(vCrange);
-axis tight
-cb = colorbar;
-axis off
-linkaxes([h1, h2]);
-ylabel(cb, 'z velocity (mm/s)') % label colorbar
-
-% clim([])
+volumeViewer(speedMap)
