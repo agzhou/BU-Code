@@ -28,7 +28,7 @@ end
 numFiles = 96; % define # of files manually for now
 
 IQfolderName = 'IQ Data - Verasonics Recon\'; % 'IQ data\'
-saveFolderName = 'Processed Data 03-03-2025\';
+saveFolderName = 'Processed Data 03-07-2025 1 refinement\';
 % savepath = [datapath, saveFolderName];
 % mkdir([datapath, saveFolderName])
 savepath = ['F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\', saveFolderName];
@@ -56,7 +56,7 @@ zrange = int16(36:142);
 range = {xrange, yrange, zrange};
 
 % % Image refinement and localization parameters
-irfc = 2;
+irfc = 1;
 % imgRefinementFactor = [2, 2, 2]; % z, x pixel refinement factor
 imgRefinementFactor = ones(1, 3) .* irfc;
 
@@ -65,7 +65,7 @@ ypix_spacing = P.Trans.spacingMm / 1e3;
 zpix_spacing = P.wl / 2;
 % imgRefinementFactor = [irfc * xpix_spacing/zpix_spacing, irfc * ypix_spacing/zpix_spacing, irfc];
 
-XCThresholdFactor = 0.15;
+XCThresholdFactor = 0.25;
  
 % Load and refine simulated PSF
 if ~exist('PSF', 'var')
@@ -84,8 +84,8 @@ refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) 
 % test = zeros([s(1:3) .* 4, s(4)]);
 %% Process the data
 % tic
-for filenum = 1:numFiles
-% for filenum = 30
+% for filenum = 1:numFiles
+for filenum = 1:19
     tic
     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
 %     IQr = LA_rollingFrames(IQ);                                                 % rolling method to get more effective frames
@@ -93,8 +93,6 @@ for filenum = 1:numFiles
     IQ = squeeze(IData + 1i .* QData);   % Combine I and Q, which are saved separately. It's easier to save the big reconstructed data with savefast, which doesn't support complex values. The data is already a coherent sum.
     clear IData QData
     
-
-
     % SVD proc part 1
 %     tic
     [PP, EVs, V_sort] = getSVs2D(IQ);
@@ -106,7 +104,7 @@ for filenum = 1:numFiles
     disp('SVD filtered images put together')
 
     % Framewise difference for extracting the bubble signal
-    IQf = diff(IQ, 1, 4);
+%     IQf = diff(IQ, 1, 4);
 
     % set frame range
 %     if filenum == 1

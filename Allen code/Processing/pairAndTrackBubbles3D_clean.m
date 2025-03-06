@@ -150,7 +150,7 @@ ubT = cell(totalFrames - 1, 1);             % unassigned bubbles from the target
 
 tic
 parfor f = startFrame:totalFrames - 1       % Go through frames
-% parfor f = startFrame:startFrame+100
+% parfor f = startFrame:startFrame+10
     sourceFrame = centerCoords_corrected{f};     % Get the coordinates for the source frame (f)
     targetFrame = centerCoords_corrected{f + 1}; % Get the coordinates for the target frame (f + 1)
 
@@ -315,9 +315,11 @@ clear n tn vt vtSmoothed tnzVel tnzVelSmoothed vtSmoothed tnxVel tnxVelSmoothed 
 % Scale the smoothed velocity into [mm/s]
 bVelocityMSmoothedMMS = bVelocityMSmoothed;
 for n = startFrame:size(bVelocityMSmoothedMMS, 1)
-    bVelocityMSmoothedMMS{n}(:, 7, :) = bVelocityMSmoothed{n}(:, 7, :) ./ xpixelsPerM * 1e3;
-    bVelocityMSmoothedMMS{n}(:, 8, :) = bVelocityMSmoothed{n}(:, 8, :) ./ ypixelsPerM * 1e3;
-    bVelocityMSmoothedMMS{n}(:, 9, :) = bVelocityMSmoothed{n}(:, 9, :) ./ zpixelsPerM * 1e3;
+    if ~isempty(bVelocityMSmoothedMMS{n})
+        bVelocityMSmoothedMMS{n}(:, 7, :) = bVelocityMSmoothed{n}(:, 7, :) ./ xpixelsPerM * 1e3;
+        bVelocityMSmoothedMMS{n}(:, 8, :) = bVelocityMSmoothed{n}(:, 8, :) ./ ypixelsPerM * 1e3;
+        bVelocityMSmoothedMMS{n}(:, 9, :) = bVelocityMSmoothed{n}(:, 9, :) ./ zpixelsPerM * 1e3;
+    end
 end
 
 disp('Velocity map smoothed')
