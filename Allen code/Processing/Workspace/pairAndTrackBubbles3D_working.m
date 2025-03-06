@@ -411,6 +411,7 @@ for n = startFrame:size(bVelocityMSmoothedKFMMS, 1)
         xk(2, xk(2, :) > img_size(2)) = img_size(2);
         xk(3, xk(3, :) > img_size(3)) = img_size(3);
         
+        
         bVelocityMSmoothedKFMMS{n}(tn, 1:3, :) = round(xk(1:3, 1:end-1));
         bVelocityMSmoothedKFMMS{n}(tn, 4:6, :) = round(xk(1:3, 2:end));
 %         bVelocityMSmoothedKFMMS{n}(tn, 7:9, :) = xk(4:6, 2:end) ./ vMMStoPixelDispPerFrame;
