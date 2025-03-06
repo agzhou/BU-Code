@@ -332,7 +332,8 @@ end
 
 % Initialize the filtered output variable
 bVelocityMSmoothedKFMMS = bVelocityMSmoothedMMS;
-vMMStoPixelDispPerFrame = timePerFrame / 1e3 * pixelsPerM;
+% vMMStoPixelDispPerFrame = timePerFrame / 1e3 * pixelsPerM;
+vMMStoPixelDispPerFrame = timePerFrame / 1e3 * [xpixelsPerM, ypixelsPerM, zpixelsPerM];
 
 % Define the matrices that map the state transition, and the state ->
 % observation transformation
@@ -412,7 +413,8 @@ for n = startFrame:size(bVelocityMSmoothedKFMMS, 1)
         
         bVelocityMSmoothedKFMMS{n}(tn, 1:3, :) = round(xk(1:3, 1:end-1));
         bVelocityMSmoothedKFMMS{n}(tn, 4:6, :) = round(xk(1:3, 2:end));
-        bVelocityMSmoothedKFMMS{n}(tn, 7:9, :) = xk(4:6, 2:end) ./ vMMStoPixelDispPerFrame;
+%         bVelocityMSmoothedKFMMS{n}(tn, 7:9, :) = xk(4:6, 2:end) ./ vMMStoPixelDispPerFrame;
+        bVelocityMSmoothedKFMMS{n}(tn, 7:9, :) = xk(4:6, 2:end) ./ repmat(vMMStoPixelDispPerFrame', 1, pers);
 %         bVelocityTestMSmoothedKFMMS{n}(tn, 5:6, :) = (xk(1:2, 2:end) - xk(1:2, 1:end-1)); % ./ timePerFrame;
 
         % plot test to compare for a single track
@@ -468,33 +470,34 @@ disp('Acceleration and direction constraints applied')
 clear n tln tn trackAlreadyDeleted track vTrack vTrackTrimmedMean aThresholdMag aTrackMag angleTrack angelTrackChanges
 
 %% 12. Plot density map with the paired bubbles after persistence
-bSum = zeros(img_size(1), img_size(2), img_size(3)); % Initialize the bubble density map variable
+% bSum = zeros(img_size(1), img_size(2), img_size(3)); % Initialize the bubble density map variable
+% bSumSmoothedKF = zeros(img_size(1), img_size(2), img_size(3));
+% bSumSmoothedKFConstrained = zeros(img_size(1), img_size(2), img_size(3));
 % bSum = padarray(bSum, 50); % Pad array in case the Kalman filter puts some points outside the original region
 
-for n = startFrame:length(bVelocityM) % Go through each track collection and plot
-%     tempBuf = bVelocityM{n};
-    tempBuf = bVelocityMSmoothedKFConstrainedMMS{n};
-%     tempBuf = bVelocityMSmoothedKFMMS{n};
-    for tn = 1:size(tempBuf, 1) % Go through each track number tn
-        trackTemp = squeeze(tempBuf(tn, :, :))';
+[bSum] = densityMap3D(bVelocityM, img_size, startFrame);
+[bSumSmoothedKF] = densityMap3D(bVelocityMSmoothedKFMMS, img_size, startFrame);
+[bSumSmoothedKFConstrained] = densityMap3D(bVelocityMSmoothedKFConstrainedMMS, img_size, startFrame);
 
-        % Add 1 to a pixel's count if the current track intersects it
-        bSum(trackTemp(1, 1), trackTemp(1, 2), trackTemp(1, 3)) = bSum(trackTemp(1, 1), trackTemp(1, 2), trackTemp(1, 3)) + 1;
-        for iti = 1:size(trackTemp, 1) % inside track index
-            bSum(trackTemp(iti, 4), trackTemp(iti, 5), trackTemp(iti, 6)) = bSum(trackTemp(iti, 4), trackTemp(iti, 5), trackTemp(iti, 6)) + 1;
-        end
-    end
-end
 
 clear n tn iti trackTemp tempBuf
 
 volumeViewer(bSum .^ 0.5)
+volumeViewer(bSumSmoothedKF .^ 0.5)
+volumeViewer(bSumSmoothedKFConstrained .^ 0.5)
+
+% Set voxels with a bubble count of 2 or less = 0
+bSumSmoothedKFConstrainedTest = bSumSmoothedKFConstrained;
+bSumSmoothedKFConstrainedTest(bSumSmoothedKFConstrainedTest <= 2) = 0;
+volumeViewer(bSumSmoothedKFConstrainedTest .^ 0.5)
 
 % figure; imagesc(squeeze(sum(bSum, 1).^ 0.5)'); colormap hot
 
 addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Processing\Jerman Enhancement Filter\')
 
 % test = vesselness3D(bSum .^ 0.5, 1:5, [xpix_spacing; ypix_spacing; zpix_spacing], 0.5, true);
+% volumeViewer(test)
+
 % 
 % bw = imbinarize(bSum .^ 1);
 %% Plot speed map after persistence with linear interpolation, on the cleaned and refined velocity data
@@ -509,8 +512,8 @@ addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Proces
 speedMapCounter = zeros(img_size(1), img_size(2), img_size(3));
 
 tic
-for ti = startFrame:size(bVelocityMSmoothed, 1)
-% for ti = startFrame
+% for ti = startFrame:size(bVelocityMSmoothed, 1)
+for ti = startFrame
     bvTemp = bVelocityMSmoothedKFConstrainedMMS{ti};
 %     bvTemp = bVelocityMSmoothedKFMMS{ti};
 %     bvTemp = bVelocityMSmoothedMMS{ti}; % get the ti-th entry
@@ -536,7 +539,8 @@ for ti = startFrame:size(bVelocityMSmoothed, 1)
             vTemp = squeeze(bvTemp(bpi, 7:9, :)); % Velocity components
             speedTemp = sqrt(vTemp(:, 1).^2 + vTemp(:, 2).^2 + vTemp(:, 3).^2); % Speed vector: one value per persistence frame index
 
-            interpPts = ULM_interp3D_linear(coordsStart, coordsEnd, speedTemp); % Get interpolated points with the corresponding z velocity value. each row is [z coord, x coord, z velocity]
+            roundOrNot = false;
+            interpPts = ULM_interp3D_linear(coordsStart, coordsEnd, speedTemp, roundOrNot); % Get interpolated points with the corresponding z velocity value. each row is [z coord, x coord, z velocity]
 %             interpPts = ULM_interp2D_linear(coordsStart, coordsEnd, zvTemp, ti); % Get interpolated points with the corresponding z velocity value. each row is [z coord, x coord, z velocity]
 %             interpPts = ULM_interp2D_spline(coordsStart, coordsEnd, zvTemp, ti);
 
@@ -552,7 +556,9 @@ for ti = startFrame:size(bVelocityMSmoothed, 1)
             smoothInput = {interpPts(:, 1), interpPts(:, 2), interpPts(:, 3)};  % Get a "grid" of points to smooth from the interp function
             smoothedPtsC = smoothn(smoothInput, 10, 'robust');                      % Use Damien Garcia's nd smoothing code (https://www.mathworks.com/matlabcentral/fileexchange/25634-smoothn/)
             sp = round([smoothedPtsC{1}, smoothedPtsC{2}, smoothedPtsC{3}]);    % Store the smoothed points and round
+            spUR = [smoothedPtsC{1}, smoothedPtsC{2}, smoothedPtsC{3}];    % Store the unrounded smoothed points
 %             figure; scatter3(sp(:, 1), sp(:, 2), sp(:, 3))
+%             figure; scatter3(spUR(:, 1), spUR(:, 2), spUR(:, 3))
 %             ipp = inpaintn(interpPts(:, 1:3));
 %             ipp = inpaintn(tempCoords);
             for ipi = 1:size(sp, 1) % interpolated point index

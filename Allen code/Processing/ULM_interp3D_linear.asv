@@ -2,7 +2,7 @@
 % of a track between paired bubbles in consecutive frames.
 % Need to round it in case the output is not a natural number.
 
-function [pts] = ULM_interp3D_linear(sourceCoords, targetCoords, speedTemp, roundOrNot)
+function [pts] = ULM_interp3D_linear(sourceCoords, targetCoords, speedTemp, round)
     pts = [];
     for nvp = 1:size(speedTemp, 1)
         xcInterpStart = sourceCoords(nvp, 1);
@@ -25,7 +25,7 @@ function [pts] = ULM_interp3D_linear(sourceCoords, targetCoords, speedTemp, roun
 
         zcInterp = linspace(zcInterpStart, zcInterpEnd, numInterpPoints)'; % do this so you get the right number of points
         
-        if roundOrNot
+        if round
             xcInterp = round(xcInterp);
             ycInterp = round(ycInterp);
             zcInterp = round(zcInterp);
