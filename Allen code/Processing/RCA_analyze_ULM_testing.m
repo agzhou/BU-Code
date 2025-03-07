@@ -28,7 +28,7 @@ end
 numFiles = 96; % define # of files manually for now
 
 IQfolderName = 'IQ Data - Verasonics Recon\'; % 'IQ data\'
-saveFolderName = 'Processed Data 03-07-2025 1 refinement\';
+saveFolderName = 'Processed Data 03-06-2025 2 refinement inside maskhole\';
 % savepath = [datapath, saveFolderName];
 % mkdir([datapath, saveFolderName])
 savepath = ['F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\', saveFolderName];
@@ -56,7 +56,7 @@ zrange = int16(36:142);
 range = {xrange, yrange, zrange};
 
 % % Image refinement and localization parameters
-irfc = 1;
+irfc = 2;
 % imgRefinementFactor = [2, 2, 2]; % z, x pixel refinement factor
 imgRefinementFactor = ones(1, 3) .* irfc;
 
@@ -79,19 +79,43 @@ refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) 
 % volumeViewer(abs(refPSF))
 
 % allCenters = {};
+
+%% find indices for masking out a portion
+load('F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\Processed Data 03-06-2025 1 refinement higher XC threshold factor\holeMask_threshold10_onbubbledensityzsum.mat')
+
+% Get indices of the area outside the hole
+[Io, Jo] = find(~maskHole); %ind2sub(size(maskHole), maskHole);
+% [linear_ind] = find(~maskHole);
+% [Io, Jo] = ind2sub(size(maskHole), linear_ind);
+%     [ind] = sub2ind(size(maskHole), maskHole);
+%     IQh(~maskHole) = 0;
+%     IQh(I, J, :, :) = 0;
+
 %% resampling size test
 % s = size(IQ);
 % test = zeros([s(1:3) .* 4, s(4)]);
 %% Process the data
 % tic
 % for filenum = 1:numFiles
-for filenum = 1:19
+for filenum = 30
     tic
     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
 %     IQr = LA_rollingFrames(IQ);                                                 % rolling method to get more effective frames
     
     IQ = squeeze(IData + 1i .* QData);   % Combine I and Q, which are saved separately. It's easier to save the big reconstructed data with savefast, which doesn't support complex values. The data is already a coherent sum.
     clear IData QData
+
+    % Get the IQ only in the hole
+    IQh = IQ;
+    for e = 1:length(Io)
+%     for e = 1
+%         disp(IQh(I(e), J(e), :, :))
+        IQh(Io(e), Jo(e), :, :) = 0;
+    end
+
+%     volumeViewer(abs(IQh(:, :, :, 1)))
+%     figure; imagesc(squeeze(abs(IQ(40, :, :, 1)))')
+%     figure; imagesc(squeeze(abs(IQh(40, :, :, 1)))')
     
     % SVD proc part 1
 %     tic
@@ -102,6 +126,11 @@ for filenum = 1:19
 %     tic
     [IQf] = applySVs2D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
     disp('SVD filtered images put together')
+
+    % SVD filter on the hole portion separately
+    [PPh, EVsh, V_sorth] = getSVs2D(IQh);
+    [IQfh] = applySVs2D(IQh, PPh, EVsh, V_sorth, sv_threshold_lower, sv_threshold_upper);
+    volumeViewer(abs(IQfh(:, :, :, 1)))
 
     % Framewise difference for extracting the bubble signal
 %     IQf = diff(IQ, 1, 4);

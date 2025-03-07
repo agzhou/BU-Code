@@ -149,8 +149,8 @@ ubS = cell(totalFrames - 1, 1);             % unassigned bubbles from the source
 ubT = cell(totalFrames - 1, 1);             % unassigned bubbles from the target frames
 
 tic
-% parfor f = startFrame:totalFrames - 1       % Go through frames
-parfor f = startFrame:startFrame+5
+parfor f = startFrame:totalFrames - 1       % Go through frames
+% parfor f = startFrame:startFrame+5
     sourceFrame = centerCoords_corrected{f};     % Get the coordinates for the source frame (f)
     targetFrame = centerCoords_corrected{f + 1}; % Get the coordinates for the target frame (f + 1)
 
@@ -315,9 +315,11 @@ clear n tn vt vtSmoothed tnzVel tnzVelSmoothed vtSmoothed tnxVel tnxVelSmoothed 
 % Scale the smoothed velocity into [mm/s]
 bVelocityMSmoothedMMS = bVelocityMSmoothed;
 for n = startFrame:size(bVelocityMSmoothedMMS, 1)
-    bVelocityMSmoothedMMS{n}(:, 7, :) = bVelocityMSmoothed{n}(:, 7, :) ./ xpixelsPerM * 1e3;
-    bVelocityMSmoothedMMS{n}(:, 8, :) = bVelocityMSmoothed{n}(:, 8, :) ./ ypixelsPerM * 1e3;
-    bVelocityMSmoothedMMS{n}(:, 9, :) = bVelocityMSmoothed{n}(:, 9, :) ./ zpixelsPerM * 1e3;
+    if ~isempty(bVelocityMSmoothedMMS{n})
+        bVelocityMSmoothedMMS{n}(:, 7, :) = bVelocityMSmoothed{n}(:, 7, :) ./ xpixelsPerM * 1e3;
+        bVelocityMSmoothedMMS{n}(:, 8, :) = bVelocityMSmoothed{n}(:, 8, :) ./ ypixelsPerM * 1e3;
+        bVelocityMSmoothedMMS{n}(:, 9, :) = bVelocityMSmoothed{n}(:, 9, :) ./ zpixelsPerM * 1e3;
+    end
 end
 
 disp('Velocity map smoothed')
@@ -479,12 +481,16 @@ clear n tln tn trackAlreadyDeleted track vTrack vTrackTrimmedMean aThresholdMag 
 [bSumSmoothedKF] = densityMap3D(bVelocityMSmoothedKFMMS, img_size, startFrame);
 [bSumSmoothedKFConstrained] = densityMap3D(bVelocityMSmoothedKFConstrainedMMS, img_size, startFrame);
 
-
 clear n tn iti trackTemp tempBuf
 
 volumeViewer(bSum .^ 0.5)
 volumeViewer(bSumSmoothedKF .^ 0.5)
 volumeViewer(bSumSmoothedKFConstrained .^ 0.5)
+
+figure; imagesc(sum(bSumSmoothedKFConstrained .^ 0.5, 3))
+holeMaskThreshold = 10;
+maskHole = sum(bSumSmoothedKFConstrained .^ 0.5, 3) < holeMaskThreshold;
+figure; imagesc(maskHole)
 
 % Set voxels with a bubble count of 2 or less = 0
 bSumSmoothedKFConstrainedTest = bSumSmoothedKFConstrained;
