@@ -85,11 +85,14 @@ load('F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\Processed Data 03
 
 % Get indices of the area outside the hole
 [Io, Jo] = find(~maskHole); %ind2sub(size(maskHole), maskHole);
-[linear_ind] = find(~maskHole);
-[Io, Jo] = ind2sub(size(maskHole), linear_ind);
+[Ih, Jh] = find(maskHole); % Find indices of the hole
+[Iofliplr, Jofliplr] = find(~fliplr(maskHole));
+% [linear_ind] = find(~maskHole);
+% [Io, Jo] = ind2sub(size(maskHole), linear_ind);
 %     [ind] = sub2ind(size(maskHole), maskHole);
 %     IQh(~maskHole) = 0;
 %     IQh(I, J, :, :) = 0;
+
 %% resampling size test
 % s = size(IQ);
 % test = zeros([s(1:3) .* 4, s(4)]);
@@ -104,16 +107,19 @@ for filenum = 30
     IQ = squeeze(IData + 1i .* QData);   % Combine I and Q, which are saved separately. It's easier to save the big reconstructed data with savefast, which doesn't support complex values. The data is already a coherent sum.
     clear IData QData
 
+    % Get the IQ only in the hole
     IQh = IQ;
-
     for e = 1:length(Io)
 %     for e = 1
 %         disp(IQh(I(e), J(e), :, :))
         IQh(Io(e), Jo(e), :, :) = 0;
+%         IQh(Iofliplr(e), Jofliplr(e), :, :) = 0;
+%         IQh(Jo(e), Io(e), :, :) = 0;
     end
-    volumeViewer(abs(IQh(:, :, :, 1)))
-    figure; imagesc(squeeze(abs(IQ(40, :, :, 1)))')
-    figure; imagesc(squeeze(abs(IQh(40, :, :, 1)))')
+
+%     volumeViewer(abs(IQh(:, :, :, 1)))
+%     figure; imagesc(squeeze(abs(IQ(40, :, :, 1)))')
+    figure; imagesc(squeeze(abs(IQh(20, :, :, 1)))')
     
     % SVD proc part 1
 %     tic
@@ -125,6 +131,37 @@ for filenum = 30
     [IQf] = applySVs2D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
     disp('SVD filtered images put together')
 
+    % Find a mask with the filtered IQ on the whole volume
+    IQf_zsum = squeeze(sum(abs(IQf), 3)); % sum across z
+    max_IQf_zsum = NaN(size(IQf_zsum, 3), 1);
+    parfor f = 1:size(IQf_zsum, 3)
+        max_IQf_zsum(f) = max(IQf_zsum(:, :, f), [], 'all');
+    end
+    max_IQf_zsum_M = ones(size(IQf, 1), size(IQf, 2), length(max_IQf_zsum));
+    parfor f = 1:length(max_IQf_zsum)
+%         max_IQf_zsum_M(:, :, f) = max_IQf_zsum_M(:, :, f) .* max_IQf_zsum;
+        max_IQf_zsum_M(:, :, f) = max_IQf_zsum(f);
+    end
+    IQf_zsum_n = IQf_zsum ./ max_IQf_zsum_M; % normalize
+    figure; imagesc(IQf_zsum_n(:, :, 1))
+
+    IQf_zum_th = 0.3; % normalized threshold on the IQf z sum
+    IQf_zsum_mask = IQf_zsum_n < IQf_zum_th;
+
+    % SVD filter on the hole portion separately
+    [PPh, EVsh, V_sorth] = getSVs2D(IQh);
+    [IQfh] = applySVs2D(IQh, PPh, EVsh, V_sorth, sv_threshold_lower, sv_threshold_upper);
+
+    volumeViewer(abs(IQfh(:, :, :, 1)))
+    figure; imagesc(squeeze(abs(IQfh(20, :, :, 1)))')
+
+    % Testing
+    IQf_test = IQf;
+    for e = 1:length(Ih)
+        IQf_test(Ih(e), Jh(e), :, :) = IQf_test(Ih(e), Jh(e), :, :) .* 10;
+    end
+
+    volumeViewer(abs(IQf_test(:, :, :, 1)))
     % Framewise difference for extracting the bubble signal
 %     IQf = diff(IQ, 1, 4);
 
