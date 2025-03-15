@@ -28,7 +28,7 @@ end
 numFiles = 96; % define # of files manually for now
 
 IQfolderName = 'IQ Data - Verasonics Recon\'; % 'IQ data\'
-saveFolderName = 'Processed Data 03-06-2025 2 refinement inside maskhole\';
+saveFolderName = 'Processed Data 03-14-2025 2 refinement inside maskhole\';
 % savepath = [datapath, saveFolderName];
 % mkdir([datapath, saveFolderName])
 savepath = ['F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\', saveFolderName];
@@ -80,23 +80,12 @@ refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) 
 
 % allCenters = {};
 
-%% find indices for masking out a portion
-load('F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\Processed Data 03-06-2025 1 refinement higher XC threshold factor\holeMask_threshold10_onbubbledensityzsum.mat')
-
-% Get indices of the area outside the hole
-[Io, Jo] = find(~maskHole); %ind2sub(size(maskHole), maskHole);
-[Ih, Jh] = find(maskHole); % Find indices of the hole
-[Iofliplr, Jofliplr] = find(~fliplr(maskHole));
-% [linear_ind] = find(~maskHole);
-% [Io, Jo] = ind2sub(size(maskHole), linear_ind);
-%     [ind] = sub2ind(size(maskHole), maskHole);
-%     IQh(~maskHole) = 0;
-%     IQh(I, J, :, :) = 0;
-
 %% resampling size test
 % s = size(IQ);
 % test = zeros([s(1:3) .* 4, s(4)]);
 %% Process the data
+IQf_zum_th = 0.35; % normalized threshold on the IQf z sum
+
 % tic
 % for filenum = 1:numFiles
 for filenum = 30
@@ -106,20 +95,6 @@ for filenum = 30
     
     IQ = squeeze(IData + 1i .* QData);   % Combine I and Q, which are saved separately. It's easier to save the big reconstructed data with savefast, which doesn't support complex values. The data is already a coherent sum.
     clear IData QData
-
-    % Get the IQ only in the hole
-%     IQh = IQ;
-%     for e = 1:length(Io)
-% %     for e = 1
-% %         disp(IQh(I(e), J(e), :, :))
-%         IQh(Io(e), Jo(e), :, :) = 0;
-% %         IQh(Iofliplr(e), Jofliplr(e), :, :) = 0;
-% %         IQh(Jo(e), Io(e), :, :) = 0;
-%     end
-
-%     volumeViewer(abs(IQh(:, :, :, 1)))
-%     figure; imagesc(squeeze(abs(IQ(40, :, :, 1)))')
-%     figure; imagesc(squeeze(abs(IQh(20, :, :, 1)))')
     
     % SVD proc part 1
 %     tic
@@ -144,11 +119,10 @@ for filenum = 30
         max_IQf_zsum_M(:, :, f) = max_IQf_zsum(f);
     end
     IQf_zsum_n = IQf_zsum ./ max_IQf_zsum_M; % normalize
-    figure; imagesc(IQf_zsum_n(:, :, 1))
+%     figure; imagesc(IQf_zsum_n(:, :, 1))
 
-    IQf_zum_th = 0.35; % normalized threshold on the IQf z sum
     IQf_zsum_mask = IQf_zsum_n < IQf_zum_th;
-    figure; imagesc(IQf_zsum_mask(:, :, 1))
+%     figure; imagesc(IQf_zsum_mask(:, :, 1))
     % Could do the bwconncomp to remove little remnants inside the main
     % regions for this non robust thresholding
     
@@ -158,50 +132,41 @@ for filenum = 30
     IQf_zsum_mask_rm = permute(IQf_zsum_mask_rm, [1, 2, 4, 3]); % shift the z dimension to the correct dimension
     % Get the IQ only in the hole
     IQh = IQ; IQh(~IQf_zsum_mask_rm) = 0;
-    figure; imagesc(squeeze(abs(IQh(20, :, :, 1)))')
+%     figure; imagesc(squeeze(abs(IQh(20, :, :, 1)))')
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 
     % SVD filter on the hole portion separately
     [PPh, EVsh, V_sorth] = getSVs2D(IQh);
 
     [IQfh] = applySVs2D(IQh, PPh, EVsh, V_sorth, 1, 199);
-    IQhrf1 = imresize3(IQfh(:, :, :, 1), [size(IQfh(:, :, :, 1), 1) * imgRefinementFactor(1), size(IQfh(:, :, :, 1), 2) * imgRefinementFactor(2), size(IQfh(:, :, :, 1), 3) * imgRefinementFactor(3)]);
-    testXC = normxcorr3(abs(refPSF), abs(IQhrf1));
-    volumeViewer(testXC)
-    testXCscaled = testXC;
-    testXCscaled(testXCscaled > 0) = testXCscaled(testXCscaled > 0) .^ 0.3;
-    volumeViewer(testXCscaled)
-
-    XCt = testXC; % XC Thresholded
-    XCThresholdAdaptive = XCThresholdFactor * max(XCt, [], 'all');
-%     XCt(XCt < XCThreshold) = 0;
-    XCt(XCt < XCThresholdAdaptive) = 0;
-    centers = imregionalmax(XCt, 6);
+%     IQhrf1 = imresize3(IQfh(:, :, :, 1), [size(IQfh(:, :, :, 1), 1) * imgRefinementFactor(1), size(IQfh(:, :, :, 1), 2) * imgRefinementFactor(2), size(IQfh(:, :, :, 1), 3) * imgRefinementFactor(3)]);
+%     testXC = normxcorr3(abs(refPSF), abs(IQhrf1));
+%     volumeViewer(testXC)
+%     testXCscaled = testXC;
+%     testXCscaled(testXCscaled > 0) = testXCscaled(testXCscaled > 0) .^ 0.3;
+%     volumeViewer(testXCscaled)
+% 
+%     XCt = testXC; % XC Thresholded
+%     XCThresholdAdaptive = XCThresholdFactor * max(XCt, [], 'all');
+% %     XCt(XCt < XCThreshold) = 0;
+%     XCt(XCt < XCThresholdAdaptive) = 0;
+%     centers = imregionalmax(XCt, 6);
 
     [xp, yp, zp, nf] = size(IQfh);
     range{4} = int16(1:nf); 
     [centers, ~, ~, XCThresholdAdaptive] = localizeBubbles3D(IQfh, refPSF, range, imgRefinementFactor, XCThresholdFactor);
 
+%     volumeViewer(abs(IQfh(:, :, :, 1)))
+%     figure; imagesc(squeeze(abs(IQfh(20, :, :, 1)))')
+%     figure; imagesc(squeeze(abs(IQfh(20, :, :, 1)))' .^ 0.3)
 
-    volumeViewer(abs(IQfh(:, :, :, 1)))
-    figure; imagesc(squeeze(abs(IQfh(20, :, :, 1)))')
-    figure; imagesc(squeeze(abs(IQfh(20, :, :, 1)))' .^ 0.3)
-
-    % Testing
-    IQf_test = IQf;
-    for e = 1:length(Ih)
-        IQf_test(Ih(e), Jh(e), :, :) = IQf_test(Ih(e), Jh(e), :, :) .* 10;
-    end
-
-    volumeViewer(abs(IQf_test(:, :, :, 1)))
     % Framewise difference for extracting the bubble signal
 %     IQf = diff(IQ, 1, 4);
 
     % set frame range
 %     if filenum == 1
-        [xp, yp, zp, nf] = size(IQf);
-        range{4} = int16(1:nf); 
+%         [xp, yp, zp, nf] = size(IQf);
+%         range{4} = int16(1:nf); 
 %     end
     
     % Denoise
@@ -223,7 +188,7 @@ for filenum = 30
 %     clear PP EVs V_sort
 
 %     save([savepath, 'Filtered-Data-', num2str(filenum)], 'IQr', 'PP', 'EVs', 'V_sort', 'IQf', "-v6")
-    [centers, ~, ~, XCThresholdAdaptive] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
+%     [centers, ~, ~, XCThresholdAdaptive] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
 %     [coords, img_size, XCThresholdsAdaptive] = localizeBubbles3D_framewise(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
 %     save([savepath, 'IQf-', num2str(filenum)], 'IQf', "-v6")
 
