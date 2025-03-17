@@ -15,11 +15,11 @@ cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 activate
 % numElements = 80;
 
-savepath = "G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 0\";
+savepath = "G:\Allen\Data\03-17-2025 AZ02 ULM\RC15gV\run 0\";
 savepath = char(savepath);
 mkdir(savepath)
 
-ReconRegion = 5;
+ReconRegion = 1;
 
 % tagtest = Hardware.enableAcquisitionTimeTagging(1);
 supFrameIndex = 0;
@@ -28,7 +28,7 @@ runVSX = 1;
 simOrNot = 0;
 movePointsOrNot = 0;
 
-initialVoltage = 25; % V
+initialVoltage = 20; % V
 
 startDepthMM = 0; % start depth in mm
 endDepthMM = 10;
@@ -807,6 +807,7 @@ end
 makeParameterStructure;
 savefast([savepath, 'params.mat'], 'P')
 % saveRcvData(RcvData{1})
+save([savepath, 'workspace.mat'])
 
 %% **** Callback routines used by UIControls (UI) ****
 %% Time tag callback test

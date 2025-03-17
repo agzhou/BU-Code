@@ -9,14 +9,14 @@
 % Collects nbuf buffers of nf frames with some duty cycle for saving delays
 
 %% Specify system parameters
-clear
+clearvars
 
 cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 
 activate
 % numElements = 80;
 
-savepath = "G:\Allen\Data\01-24-2025 testing\RC15gV\run 3\";
+savepath = "G:\Allen\Data\03-17-2025 AZ02 ULM\RC15gV\run 2 right eye\";
 savepath = char(savepath);
 mkdir(savepath)
 
@@ -24,12 +24,12 @@ mkdir(savepath)
 bufferIndex = 0;
 
 runVSX = 1;
-simOrNot = 1;
+simMode = 0;
 movePointsOrNot = 0;
 
 initialVoltage = 20; % V
 
-startDepthMM = 2; % start depth in wavelengths
+startDepthMM = 2; % start depth in mm
 endDepthMM = 10;
 
 numChannels = 256; % enable channels
@@ -39,11 +39,13 @@ PRF = fps_target;
 
 frameRate = 500; % subframe (volume) rate (Hz)
 
-numFramesPerBuffer = 10;
+numFramesPerBuffer = 200;
 
 numBuffers = ceil(frameRate / numFramesPerBuffer);
 
-bufferDutyCycle = 1/5;
+bufferDutyCycle = 1/3;
+
+disp(num2str(numFramesPerBuffer / frameRate / bufferDutyCycle))
 
 na = 11; % # of acquisitions per frame (acquisition pairs)
 maxAngle = 5; % degrees
@@ -94,7 +96,7 @@ TimeTagEna = 2;
 
 
 %% Simulation things - Media structure (define scattering points and attenuation)
-Resource.Parameters.simulateMode = simOrNot; % run script in simulate mode. Set to 0 if not
+Resource.Parameters.simulateMode = simMode; % run script in simulate mode. Set to 0 if not
 
 % xd_mm = 5; % in mm
 % xd = xd_mm/wl/1e3;
@@ -486,8 +488,8 @@ else
     SeqControl(scInd).argument = timePerAcq;
 end
 
-timePerFrame = SeqControl(scInd).argument * na * 2; % Time to acquire one frame/volume (us)
-frameTimeGap = 1 / frameRate * 1e6 - timePerFrame;
+timePerFrame = SeqControl(scInd).argument * na * 2;     % Time to acquire all the acquisitions for one frame/volume based on PRF (us)
+frameTimeGap = 1 / frameRate * 1e6 - timePerFrame;      % Add delays to account for the frame/volume rate set above
 
 scInd = scInd + 1;
 
@@ -503,10 +505,10 @@ scInd = scInd + 1;
 SeqControl(scInd).command = 'timeToNextAcq';
 
 if frameTimeGap < timePerAcqLimits(1)
-    warning('Frame burst delay time too short, setting to minimum of 10 us')
+    warning('Frame delay time too short, setting to minimum of 10 us')
     SeqControl(scInd).argument = timePerAcqLimits(1); 
 elseif frameTimeGap > timePerAcqLimits(2)
-    warning('Frame burst delay time too long, setting to maximum of 4190000 us')
+    warning('Frame delay time too long, setting to maximum of 4190000 us')
     SeqControl(scInd).argument = timePerAcqLimits(2);
 else
     SeqControl(scInd).argument = frameTimeGap;
@@ -514,33 +516,35 @@ end
 
 % frame/volume rate noop
 scInd = scInd + 1;
-SeqControl(scInd).command = 'noop'; % no operation
-noop_time_us = SeqControl(scInd - 1).argument;
-SeqControl(scInd).argument = noop_time_us / 200 * 1e3; % (value*200nsec; max. value is 2^25 - 1 for 6.7 sec)
-SeqControl(scInd).condition = 'Hw&Sw'; % need to enable the noop in hardware
+SeqControl(scInd).command = 'noop';                     % no operation
+frame_noop_time_us = SeqControl(scInd - 1).argument;
+SeqControl(scInd).argument = frame_noop_time_us / 200 * 1e3;  % (value*200nsec; max. value is 2^25 - 1 for 6.7 sec)
+SeqControl(scInd).condition = 'Hw&Sw';                  % need to enable the noop in hardware
 
 % buffer rate
-timePerBuffer = SeqControl(scInd).argument * na * 2; % Time to acquire one frame/volume (us)
-frameTimeGap = 1 / frameRate * 1e6 - timePerFrame;
+
+% need to change this to be consistent with the if blocks above
+timePerBuffer = 1 / frameRate * numFramesPerBuffer * 1e6;                 % Time to acquire all the frames within one buffer (us)
+bufferTimeGap = timePerBuffer / bufferDutyCycle - timePerBuffer;          % Add delay to account for the buffer rate duty cycle set above
 
 scInd = scInd + 1;
 SeqControl(scInd).command = 'timeToNextAcq';
 
-if frameTimeGap < timePerAcqLimits(1)
-    warning('Frame burst delay time too short, setting to minimum of 10 us')
+if bufferTimeGap < timePerAcqLimits(1)
+    warning('Buffer delay time too short, setting to minimum of 10 us')
     SeqControl(scInd).argument = timePerAcqLimits(1); 
-elseif frameTimeGap > timePerAcqLimits(2)
-    warning('Frame burst delay time too long, setting to maximum of 4190000 us')
+elseif bufferTimeGap > timePerAcqLimits(2)
+    warning('Buffer delay time too long, setting to maximum of 4190000 us')
     SeqControl(scInd).argument = timePerAcqLimits(2);
 else
-    SeqControl(scInd).argument = frameTimeGap;
+    SeqControl(scInd).argument = bufferTimeGap;
 end
 
 % buffer rate noop
 scInd = scInd + 1;
 SeqControl(scInd).command = 'noop'; % jump to
-noop_time_us = SeqControl(scInd - 1).argument;
-SeqControl(scInd).argument = noop_time_us / 200 * 1e3; % (value*200nsec; max. value is 2^25 - 1 for 6.7 sec)
+buffer_noop_time_us = SeqControl(scInd - 1).argument;
+SeqControl(scInd).argument = buffer_noop_time_us / 200 * 1e3; % (value*200nsec; max. value is 2^25 - 1 for 6.7 sec)
 SeqControl(scInd).condition = 'Hw&Sw'; % need to enable the noop in hardware
 
 n = 0;
@@ -568,9 +572,12 @@ for nbuf = 1:numBuffers
         end
         scInd = scInd + 1; 
         SeqControl(scInd).command = 'transferToHost'; % Transfer every frame
-        Event(n).seqControl = [4, 5, scInd];
+%         Event(n).seqControl = [4, 5, scInd];
+        Event(n).seqControl = [4, scInd];
 
     end
+
+    Event(n).seqControl = [6, scInd];
     
     n = n + 1;
 
@@ -579,7 +586,7 @@ for nbuf = 1:numBuffers
     Event(n).rcv = 0; 
     Event(n).recon = 0;
     Event(n).process = nbuf; 
-    Event(n).seqControl = 0; 
+    Event(n).seqControl = 7; 
 
 end
 
@@ -633,6 +640,8 @@ end
 makeParameterStructure_ULM;
 savefast([savepath, 'params.mat'], 'P')
 % saveRcvData(RcvData{1})
+save([savepath, 'workspace.mat'])
+
 
 %% **** Callback routines used by UIControls (UI) ****
 %% Time tag callback test

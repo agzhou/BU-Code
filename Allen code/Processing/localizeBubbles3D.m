@@ -64,7 +64,7 @@ function [centers, refIQs, XC, XCThresholdAdaptive] = localizeBubbles3D(IQf, ref
 
     %% remove data from XC beneath a threshold and find local maxima
     
-    XCt = XC; % XC Thresholded
+    XCt = abs(XC); % XC Thresholded
     XCThresholdAdaptive = XCThresholdFactor * max(XCt, [], 'all');
 %     XCt(XCt < XCThreshold) = 0;
     XCt(XCt < XCThresholdAdaptive) = 0;

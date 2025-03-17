@@ -50,22 +50,22 @@ function [centers, refIQs, XC, XCThresholdAdaptive] = localizeBubbles3D(IQf, ref
             refIQs(:, :, :, f) = imresize3(I_temp, [size(I_temp, 1) * rfnX, size(I_temp, 2) * rfnY, size(I_temp, 3) * rfnZ], 'linear');
         end
     else
-        refIQs = IQf;
+        refIQs = IQs;
     end
     
     %% and cross correlation
 
     % normxcorr3 from file exchange
     % (https://www.mathworks.com/matlabcentral/fileexchange/73946-normxcorr3-fast-3d-ncc)
-    XC = normxcorr3(abs(refPSF), abs(refIQs(:, :, :, 1))); % Cross correlate the filtered/refined images and the simulated PSF
+    XC = normxcorr3(abs(refPSF), abs(refIQs(:, :, :, 1)), 'same'); % Cross correlate the filtered/refined images and the simulated PSF
     parfor f = 2:size(refIQs, 4)
-        XC(:, :, :, f) = normxcorr3(abs(refPSF), abs(refIQs(:, :, :, f)));
+        XC(:, :, :, f) = normxcorr3(abs(refPSF), abs(refIQs(:, :, :, f)), 'same');
     end
 
     %% remove data from XC beneath a threshold and find local maxima
     
-    XCt = XC; % XC Thresholded
-    XCThresholdAdaptive = XCThresholdFactor * max(XC, [], 'all');
+    XCt = abs(XC); % XC Thresholded
+    XCThresholdAdaptive = XCThresholdFactor * max(XCt, [], 'all');
 %     XCt(XCt < XCThreshold) = 0;
     XCt(XCt < XCThresholdAdaptive) = 0;
     centers = imregionalmax(XCt, 6); % Center of each isolated blob (logical matrix)

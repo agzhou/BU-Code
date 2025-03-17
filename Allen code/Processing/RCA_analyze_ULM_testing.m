@@ -78,17 +78,37 @@ PSFs = PSF(30:50, 30:50, 92:110); % PSF section
 refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) * imgRefinementFactor(2), size(PSFs, 3) * imgRefinementFactor(3)]);
 % volumeViewer(abs(refPSF))
 
-% allCenters = {};
+%% Video writer
 
-%% resampling size test
-% s = size(IQ);
-% test = zeros([s(1:3) .* 4, s(4)]);
+vo_ysum = VideoWriter([savepath, 'centers_ysum']);
+
+vo_ysum.Quality = 100;
+vo_ysum.FrameRate = 60;
+open(vo_ysum);
+
+vo_xsum = VideoWriter([savepath, 'centers_xsum']);
+
+vo_xsum.Quality = 100;
+vo_xsum.FrameRate = 60;
+open(vo_xsum);
+
+vo_zsum = VideoWriter([savepath, 'centers_xsum']);
+vo_zsum.Quality = 100;
+vo_zsum.FrameRate = 60;
+open(vo_zsum);
+
+vf_ysum = figure; colormap gray
+vf_xsum = figure; colormap gray
+vf_zsum = figure; colormap gray
+
+findfigs
+
+
 %% Process the data
 IQf_zum_th = 0.35; % normalized threshold on the IQf z sum
 
-% tic
-% for filenum = 1:numFiles
-for filenum = 30
+for filenum = 47:numFiles
+% for filenum = 30
     tic
     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
 %     IQr = LA_rollingFrames(IQ);                                                 % rolling method to get more effective frames
@@ -139,12 +159,14 @@ for filenum = 30
     [PPh, EVsh, V_sorth] = getSVs2D(IQh);
 
     [IQfh] = applySVs2D(IQh, PPh, EVsh, V_sorth, 1, 199);
+    disp('SVs applied in the hole')
+
 %     IQhrf1 = imresize3(IQfh(:, :, :, 1), [size(IQfh(:, :, :, 1), 1) * imgRefinementFactor(1), size(IQfh(:, :, :, 1), 2) * imgRefinementFactor(2), size(IQfh(:, :, :, 1), 3) * imgRefinementFactor(3)]);
 %     testXC = normxcorr3(abs(refPSF), abs(IQhrf1));
 %     volumeViewer(testXC)
-%     testXCscaled = testXC;
-%     testXCscaled(testXCscaled > 0) = testXCscaled(testXCscaled > 0) .^ 0.3;
-%     volumeViewer(testXCscaled)
+% %     testXCscaled = testXC;
+% %     testXCscaled(testXCscaled > 0) = testXCscaled(testXCscaled > 0) .^ 0.3;
+% %     volumeViewer(testXCscaled)
 % 
 %     XCt = testXC; % XC Thresholded
 %     XCThresholdAdaptive = XCThresholdFactor * max(XCt, [], 'all');
@@ -155,10 +177,45 @@ for filenum = 30
     [xp, yp, zp, nf] = size(IQfh);
     range{4} = int16(1:nf); 
     [centers, ~, ~, XCThresholdAdaptive] = localizeBubbles3D(IQfh, refPSF, range, imgRefinementFactor, XCThresholdFactor);
-
+    disp('Localization in the hole done')
 %     volumeViewer(abs(IQfh(:, :, :, 1)))
 %     figure; imagesc(squeeze(abs(IQfh(20, :, :, 1)))')
 %     figure; imagesc(squeeze(abs(IQfh(20, :, :, 1)))' .^ 0.3)
+
+%     figure; imagesc(squeeze(sum(centers(:, :, :, 1), 1)))
+%     figure; imagesc(squeeze(sum(centers(:, :, :, 2), 1)))
+    
+    % make 2D video for testing
+    for f = 1:size(centers, 4)
+        
+        v1f_ysum = sum(centers(:, :, :, f), 1);
+        figure(vf_ysum)
+        imagesc(squeeze(v1f_ysum)')
+        
+        cv = getframe(vf_ysum);     % get the current volume
+        rgb = frame2im(cv);      % convert the frame to rgb data
+    
+        writeVideo(vo_ysum, rgb);
+
+
+        v1f_xsum = sum(centers(:, :, :, f), 2);
+        figure(vf_xsum)
+        imagesc(squeeze(v1f_xsum)')
+        
+        cv = getframe(vf_xsum);     % get the current volume
+        rgb = frame2im(cv);      % convert the frame to rgb data
+    
+        writeVideo(vo_xsum, rgb);
+
+        v1f_zsum = sum(centers(:, :, :, f), 3);
+        figure(vf_zsum)
+        imagesc(squeeze(v1f_zsum)')
+        
+        cv = getframe(vf_zsum);     % get the current volume
+        rgb = frame2im(cv);      % convert the frame to rgb data
+    
+        writeVideo(vo_zsum, rgb);
+    end
 
     % Framewise difference for extracting the bubble signal
 %     IQf = diff(IQ, 1, 4);
@@ -193,13 +250,15 @@ for filenum = 30
 %     save([savepath, 'IQf-', num2str(filenum)], 'IQf', "-v6")
 
 %     save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'centroidCoordinates', "-v6")
-    savefast([savepath, 'centers-', num2str(filenum)], 'centers', 'XCThresholdAdaptive')
+%     savefast([savepath, 'centers-', num2str(filenum)], 'centers', 'XCThresholdAdaptive')
+    savefast([savepath, 'centers-', num2str(filenum)], 'centers', 'XCThresholdAdaptive', 'IQf_zsum_mask_rm')
 %     savefast([savepath, 'coords-', num2str(filenum)], 'coords', 'img_size', 'XCThresholdsAdaptive')
 
-%     allCenters = [allCenters; centers];
     disp(strcat("Centroid finding done: file ", num2str(filenum)))
     toc
 end
 save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'XCThresholdFactor', 'xpix_spacing', 'ypix_spacing', 'zpix_spacing')
-% save([savepath, 'allCenters'], 'allCenters', "-v7.3")
-% toc
+%%
+close(vo_ysum)
+close(vo_xsum)
+close(vo_zsum)

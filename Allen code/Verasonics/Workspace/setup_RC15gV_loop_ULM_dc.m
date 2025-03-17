@@ -9,14 +9,14 @@
 % Collects nbuf buffers of nf frames with some duty cycle for saving delays
 
 %% Specify system parameters
-clear
+clearvars
 
 cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 
 activate
 % numElements = 80;
 
-savepath = "G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 2 right eye\";
+savepath = "G:\Allen\Data\03-17-2025 AZ02 ULM\RC15gV\run 2 right eye\";
 savepath = char(savepath);
 mkdir(savepath)
 
@@ -640,6 +640,8 @@ end
 makeParameterStructure_ULM;
 savefast([savepath, 'params.mat'], 'P')
 % saveRcvData(RcvData{1})
+savefast([savepath, 'workspace.mat'])
+
 
 %% **** Callback routines used by UIControls (UI) ****
 %% Time tag callback test
