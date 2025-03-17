@@ -40,7 +40,8 @@ Mcr_savepath = [Mcr_datapath, 'IQ Data - Verasonics Recon\'];
 % Mcr_savepath = ['K:\Allen data backup\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\', 'IQ Data with pages - Verasonics Recon\']; 
 mkdir(Mcr_savepath)
 
-Mcr_numFiles = 5; % Manually define number of files for now
+Mcr_startFile = 6; % file to start on
+Mcr_numFiles = 225; % Manually define number of files for now
 Mcr_filenameStructure = ['RF-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 Mcr_IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 
@@ -281,7 +282,7 @@ save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"
 %% Run VSX automatically and make parameter structure for RF file naming
 
 
-for Mcr_filenum = 1:Mcr_numFiles
+for Mcr_filenum = Mcr_startFile:Mcr_numFiles
 % for Mcr_filenum = 1:2
     tic
 
