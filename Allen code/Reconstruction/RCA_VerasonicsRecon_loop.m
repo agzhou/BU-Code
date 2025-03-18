@@ -36,11 +36,12 @@ clearvars
 Mcr_datapath = 'G:\Allen\Data\03-17-2025 AZ02 ULM\RC15gV\run 2 right eye\';
 load([Mcr_datapath, 'params.mat']) % load acquisition parameters
 
-Mcr_savepath = [Mcr_datapath, 'IQ Data - Verasonics Recon\'];
+% Mcr_savepath = [Mcr_datapath, 'IQ Data - Verasonics Recon\'];
+Mcr_savepath = 'F:\Allen\Data\03-17-2025 AZ02 ULM\RC15gV\run 2 right eye\';
 % Mcr_savepath = ['K:\Allen data backup\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\', 'IQ Data with pages - Verasonics Recon\']; 
 mkdir(Mcr_savepath)
 
-Mcr_startFile = 6; % file to start on
+Mcr_startFile = 170; % file to start on
 Mcr_numFiles = 225; % Manually define number of files for now
 Mcr_filenameStructure = ['RF-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 Mcr_IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
@@ -315,7 +316,7 @@ for Mcr_filenum = Mcr_startFile:Mcr_numFiles
 
     clear IData QData RcvData
 end
-
+savefast([Mcr_savepath, 'PData'], 'PData') % Save the PData structure
 %% saving speed test
 % tic
 % test = IData{1};

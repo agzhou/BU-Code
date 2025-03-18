@@ -20,14 +20,29 @@ if isempty(pp)
 end
 
 %% Load parameters and make folder for saving the processed data
-datapath = 'G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\';
+
+% Load acquisition parameters: params.mat
 if ~exist('P', 'var')
-    load([datapath, 'params.mat'])
+    % Choose and load the params.mat file (from the acquisition)
+    [params_filename, params_pathname, ~] = uigetfile('*.mat', 'Select the params file', 'G:\Allen\Data\');
+    load([params_pathname, params_filename])
 end
 
-numFiles = 96; % define # of files manually for now
+% Get data path of the reconstructed IQ data
+datapath = uigetdir('G:\Allen\Data\', 'Select the IQ data path');
+datapath = [datapath, '\'];
 
-IQfolderName = 'IQ Data - Verasonics Recon\'; % 'IQ data\'
+% Prompt for parameter user input
+parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Image refinement factor - x', 'Image refinement factor - y', 'Image refinement factor - z', 'Moving window size [frames]', 'Acceleration constraint factor', 'Trimmed mean percentage', 'Direction constraint'};
+parameterDefaults = {'1', '', num2str(P.Trans.spacingMm * 1e3), num2str(P.Trans.spacingMm * 1e3), num2str(P.wl/2 * 1e6), '50', '3', '3', '2', '20', 'pi/2'};
+parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
+
+% define # of files manually for now
+startFile = parameterUserInput{1};
+endFile = parameterUserInput{2};
+numFiles = endFile - startFile; 
+
+% IQfolderName = 'IQ Data - Verasonics Recon\'; % 'IQ data\'
 saveFolderName = 'Processed Data 02-27-2025 in the hole\';
 % savepath = [datapath, saveFolderName];
 % mkdir([datapath, saveFolderName])
@@ -87,7 +102,8 @@ refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) 
 % for filenum = 1:numFiles
 for filenum = 30
     tic
-    load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
+%     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
+    load([datapath, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
 %     IQr = LA_rollingFrames(IQ);                                                 % rolling method to get more effective frames
     
     IQ = squeeze(IData + 1i .* QData);   % Combine I and Q, which are saved separately. It's easier to save the big reconstructed data with savefast, which doesn't support complex values. The data is already a coherent sum.
