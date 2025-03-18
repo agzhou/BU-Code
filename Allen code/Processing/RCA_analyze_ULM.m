@@ -32,21 +32,37 @@ end
 datapath = uigetdir('G:\Allen\Data\', 'Select the IQ data path');
 datapath = [datapath, '\'];
 
+% Load Verasonics reconstruction parameters: datapath\PData.mat
+if ~exist('PData', 'var')
+    load([datapath, 'PData.mat'])
+end
+
 % Prompt for parameter user input
-parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Image refinement factor - x', 'Image refinement factor - y', 'Image refinement factor - z', 'Moving window size [frames]', 'Acceleration constraint factor', 'Trimmed mean percentage', 'Direction constraint'};
-parameterDefaults = {'1', '', num2str(P.Trans.spacingMm * 1e3), num2str(P.Trans.spacingMm * 1e3), num2str(P.wl/2 * 1e6), '50', '3', '3', '2', '20', 'pi/2'};
+parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Image refinement factor - x', 'Image refinement factor - y', 'Image refinement factor - z', 'XC Adaptive Threshold Factor', 'x pixel spacing [um]', 'y pixel spacing [um]', 'z pixel spacing [um]'};
+parameterDefaults = {'1', '', '10', '150', '2', '2', '2', '0.2', num2str(PData.PDelta(1) * P.wl * 1e6), num2str(PData.PDelta(2) * P.wl * 1e6), num2str(PData.PDelta(3) * P.wl * 1e6)};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % define # of files manually for now
-startFile = parameterUserInput{1};
-endFile = parameterUserInput{2};
-numFiles = endFile - startFile; 
+% str2double(parameterUserInput{});
+startFile = str2double(parameterUserInput{1});
+endFile = str2double(parameterUserInput{2});
+numFiles = endFile - startFile;
+sv_threshold_lower = str2double(parameterUserInput{3});
+sv_threshold_upper = str2double(parameterUserInput{4});
+imgRefinementFactor = [str2double(parameterUserInput{5}), str2double(parameterUserInput{6}), str2double(parameterUserInput{7})];
+if any(floor(imgRefinementFactor) ~= imgRefinementFactor) || any(imgRefinementFactor < 1)
+    error('Image refinement factors must be whole numbers')
+end
+XCThresholdFactor = str2double(parameterUserInput{8});
+xpix_spacing = str2double(parameterUserInput{9});
+ypix_spacing = str2double(parameterUserInput{10});
+zpix_spacing = str2double(parameterUserInput{11});
 
 % IQfolderName = 'IQ Data - Verasonics Recon\'; % 'IQ data\'
-saveFolderName = 'Processed Data 02-27-2025 in the hole\';
+saveFolderName = 'Processed Data 03-17-2025\';
 % savepath = [datapath, saveFolderName];
 % mkdir([datapath, saveFolderName])
-savepath = ['F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\', saveFolderName];
+savepath = ['G:\Allen\Data\03-17-2025 AZ02 ULM\RC15gV\run 2 right eye\', saveFolderName];
 mkdir(savepath)
 % savepath = 'F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\FMAS Processed Data\';
 
@@ -57,8 +73,8 @@ addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Processing\t
 %% Parameters for processing the data
 % Define various processing parameters
 % Singular value thresholds
-sv_threshold_lower = 10;
-sv_threshold_upper = 150;
+% sv_threshold_lower = 10;
+% sv_threshold_upper = 150;
 
 % % Region of interest
 xrange = int16(1:80);
@@ -71,20 +87,20 @@ zrange = int16(36:142);
 range = {xrange, yrange, zrange};
 
 % % Image refinement and localization parameters
-irfc = 2;
+% irfc = 2;
 % imgRefinementFactor = [2, 2, 2]; % z, x pixel refinement factor
-imgRefinementFactor = ones(1, 3) .* irfc;
+% imgRefinementFactor = ones(1, 3) .* irfc;
 
-xpix_spacing = P.Trans.spacingMm / 1e3;
-ypix_spacing = P.Trans.spacingMm / 1e3;
-zpix_spacing = P.wl / 2;
+% xpix_spacing = P.Trans.spacingMm / 1e3;
+% ypix_spacing = P.Trans.spacingMm / 1e3;
+% zpix_spacing = P.wl / 2;
 % imgRefinementFactor = [irfc * xpix_spacing/zpix_spacing, irfc * ypix_spacing/zpix_spacing, irfc];
 
-XCThresholdFactor = 0.2;
+% XCThresholdFactor = 0.2;
  
 % Load and refine simulated PSF
 if ~exist('PSF', 'var')
-    load('G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\PSF sim\PSF.mat', 'PSF')
+    load('G:\Allen\Data\RC15gV PSF sim\PSF.mat', 'PSF')
     % figure; imagesc(squeeze(abs(PSF(40, :, :)))')
 end
 
@@ -100,7 +116,7 @@ refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) 
 %% Process the data
 % tic
 % for filenum = 1:numFiles
-for filenum = 30
+for filenum = 100
     tic
 %     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
     load([datapath, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
