@@ -20,18 +20,49 @@ if isempty(pp)
 end
 
 %% Load parameters and make folder for saving the processed data
-datapath = 'G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\';
+
+% Load acquisition parameters: params.mat
 if ~exist('P', 'var')
-    load([datapath, 'params.mat'])
+    % Choose and load the params.mat file (from the acquisition)
+    [params_filename, params_pathname, ~] = uigetfile('*.mat', 'Select the params file', 'G:\Allen\Data\');
+    load([params_pathname, params_filename])
 end
 
-numFiles = 96; % define # of files manually for now
+% Get data path of the reconstructed IQ data
+datapath = uigetdir('G:\Allen\Data\', 'Select the IQ data path');
+datapath = [datapath, '\'];
 
-IQfolderName = 'IQ Data - Verasonics Recon\'; % 'IQ data\'
-saveFolderName = 'Processed Data 02-27-2025 in the hole\';
+% Load Verasonics reconstruction parameters: datapath\PData.mat
+if ~exist('PData', 'var')
+    load([datapath, 'PData.mat'])
+end
+
+% Prompt for parameter user input
+parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Image refinement factor - x', 'Image refinement factor - y', 'Image refinement factor - z', 'XC Adaptive Threshold Factor', 'x pixel spacing [um]', 'y pixel spacing [um]', 'z pixel spacing [um]'};
+parameterDefaults = {'1', '', '10', '150', '2', '2', '2', '0.2', num2str(PData.PDelta(1) * P.wl * 1e6), num2str(PData.PDelta(2) * P.wl * 1e6), num2str(PData.PDelta(3) * P.wl * 1e6)};
+parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
+
+% define # of files manually for now
+% str2double(parameterUserInput{});
+startFile = str2double(parameterUserInput{1});
+endFile = str2double(parameterUserInput{2});
+numFiles = endFile - startFile + 1;
+sv_threshold_lower = str2double(parameterUserInput{3});
+sv_threshold_upper = str2double(parameterUserInput{4});
+imgRefinementFactor = [str2double(parameterUserInput{5}), str2double(parameterUserInput{6}), str2double(parameterUserInput{7})];
+if any(floor(imgRefinementFactor) ~= imgRefinementFactor) || any(imgRefinementFactor < 1)
+    error('Image refinement factors must be whole numbers')
+end
+XCThresholdFactor = str2double(parameterUserInput{8});
+xpix_spacing = str2double(parameterUserInput{9});
+ypix_spacing = str2double(parameterUserInput{10});
+zpix_spacing = str2double(parameterUserInput{11});
+
+% IQfolderName = 'IQ Data - Verasonics Recon\'; % 'IQ data\'
+saveFolderName = 'Processed Data 03-17-2025\';
 % savepath = [datapath, saveFolderName];
 % mkdir([datapath, saveFolderName])
-savepath = ['F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\', saveFolderName];
+savepath = ['G:\Allen\Data\03-17-2025 AZ02 ULM\RC15gV\run 2 right eye\', saveFolderName];
 mkdir(savepath)
 % savepath = 'F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\FMAS Processed Data\';
 
@@ -42,8 +73,8 @@ addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Processing\t
 %% Parameters for processing the data
 % Define various processing parameters
 % Singular value thresholds
-sv_threshold_lower = 10;
-sv_threshold_upper = 150;
+% sv_threshold_lower = 10;
+% sv_threshold_upper = 150;
 
 % % Region of interest
 xrange = int16(1:80);
@@ -56,20 +87,20 @@ zrange = int16(36:142);
 range = {xrange, yrange, zrange};
 
 % % Image refinement and localization parameters
-irfc = 2;
+% irfc = 2;
 % imgRefinementFactor = [2, 2, 2]; % z, x pixel refinement factor
-imgRefinementFactor = ones(1, 3) .* irfc;
+% imgRefinementFactor = ones(1, 3) .* irfc;
 
-xpix_spacing = P.Trans.spacingMm / 1e3;
-ypix_spacing = P.Trans.spacingMm / 1e3;
-zpix_spacing = P.wl / 2;
+% xpix_spacing = P.Trans.spacingMm / 1e3;
+% ypix_spacing = P.Trans.spacingMm / 1e3;
+% zpix_spacing = P.wl / 2;
 % imgRefinementFactor = [irfc * xpix_spacing/zpix_spacing, irfc * ypix_spacing/zpix_spacing, irfc];
 
-XCThresholdFactor = 0.2;
+% XCThresholdFactor = 0.2;
  
 % Load and refine simulated PSF
 if ~exist('PSF', 'var')
-    load('G:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\PSF sim\PSF.mat', 'PSF')
+    load('G:\Allen\Data\RC15gV PSF sim\PSF.mat', 'PSF')
     % figure; imagesc(squeeze(abs(PSF(40, :, :)))')
 end
 
@@ -84,10 +115,11 @@ refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) 
 % test = zeros([s(1:3) .* 4, s(4)]);
 %% Process the data
 % tic
-% for filenum = 1:numFiles
-for filenum = 30
+% for filenum = startFile:endFile
+for filenum = 201
     tic
-    load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
+%     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
+    load([datapath, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
 %     IQr = LA_rollingFrames(IQ);                                                 % rolling method to get more effective frames
     
     IQ = squeeze(IData + 1i .* QData);   % Combine I and Q, which are saved separately. It's easier to save the big reconstructed data with savefast, which doesn't support complex values. The data is already a coherent sum.
@@ -113,7 +145,9 @@ for filenum = 30
 %     save([savepath, 'Filtered-Data-', num2str(filenum)], 'IQr', 'PP', 'EVs', 'V_sort', 'IQf', "-v6")
 
 %     [centers, refIQs, XC] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThreshold);
-    [centers, ~, ~, XCThresholdAdaptive] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
+%     [centers, ~, ~, XCThresholdAdaptive] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
+    [centers, refIQs, XC, XCThresholdAdaptive] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
+
 %     [coords, img_size, XCThresholdsAdaptive] = localizeBubbles3D_chunk(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
 
     %     save([savepath, 'IQf-', num2str(filenum)], 'IQf', "-v6")
@@ -129,380 +163,3 @@ end
 save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'XCThresholdFactor')
 % save([savepath, 'allCenters'], 'allCenters', "-v7.3")
 % toc
-%% Plot the centroid density map
-
-xpts = [];
-ypts = [];
-zpts = [];
-for f = 1:length(allCenters)
-    xpts = [xpts; allCenters{f}(:, 1)];
-    ypts = [ypts; allCenters{f}(:, 2)];
-    zpts = [zpts; allCenters{f}(:, 3)];
-end
-
-figure; scatter3(xpts, ypts, zpts)
-
-% hPixFactor = 10; % increase the pixel count by this factor in each dimension
-% figure;
-% h = histogram2(zpts, xpts, [zp * hPixFactor, xp * hPixFactor], 'DisplayStyle','tile');
-% grid off
-% colormap hot
-
-
-
-
-
-
-
-
-
-
-
-%% for testing: Make video of the filtered IQ data
-vo = VideoWriter([savepath, 'IQf_10_500']);
-a = abs(IQf);
-a = a ./ max(a); % scale 0-1 so it can make a video
-
-vo.Quality = 100;
-vo.FrameRate = 120;
-open(vo);
-for f = 1:size(a, 3)
-    writeVideo(vo, a(:, :, f));
-end
-close(vo);
-
-
-
-
-
-
-
-%%
-
-% IQ_coherent_sum = squeeze(sum(IQ, 3));
-
-IQ_coherent_sum = squeeze(sum(IQstack, 3));
-% I_coherent_sum = abs(IQ_coherent_sum); % intensity
-% figure; imagesc(I_coherent_sum(:, :, 100))
-
-%% SVD proc part 1
-tic
-[PP, EVs, V_sort] = getSVs1D(IQ_coherent_sum);
-disp('SVs decomposed')
-toc
-%% SVD proc part 2
-sv_threshold_lower = 50;
-sv_threshold_upper = 5000;
-tic
-[IQ_f_50_5000] = applySVs1D(IQ_coherent_sum, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
-disp('SVD filtered images put together')
-toc
-%% Plot filtered data
-abs_IQ_f = abs(IQ_f_50_5000);
-figure; imagesc(abs_IQ_f(:, :, 1))
-figure; imagesc(abs_IQ_f(:, :, 100))
-figure; imagesc(abs_IQ_f(:, :, 500))
-figure; imagesc(abs_IQ_f(:, :, 1000))
-figure; imagesc(abs_IQ_f(:, :, 2000))
-
-%% Plot square of the singular values
-figure; plot(EVs, '-o')
-title('Eigenvalues')
-xlabel('EV #')
-ylabel('EV magnitude')
-
-figure; plot(log10(EVs), '-o')
-title('Eigenvalues log plot')
-xlabel('EV #')
-ylabel('log10(EV magnitude)')
-
-%% Make video
-vo = VideoWriter('G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\Processing\video_50_5000');
-a = abs(IQ_f_50_5000);
-a = a ./ max(a); % scale 0-1 so it can make a video
-
-vo.Quality = 100;
-vo.FrameRate = 60;
-open(vo);
-for f = 1:size(a, 3)
-    writeVideo(vo, a(:, :, f));
-end
-close(vo);
-
-%% Localize bubble function test
-IQf = IQ_f_50_5000;
-load('G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\PSF sim\IQ.mat', 'IQ_coherent_sum')
-PSF = IQ_coherent_sum;
-zrange = 40:120;
-xrange = 1:128;
-framerange = 1:size(IQf, 3);
-range = {zrange, xrange, framerange};
-imgRefinementFactor = [2, 2];
-XCThreshold = 0.6;
-volumeThreshold = 3;
-[centers] = localizeBubbles(IQf, PSF, range, imgRefinementFactor, XCThreshold, volumeThreshold);
-
-
-
-%% Bubble tracking attempt
-zrange = 40:120;
-xrange = 1:128;
-% frameRange = 1:10000; 
-frameRange = 1:size(IQ_f_50_5000, 3);
-
-IQs = IQ_f_50_5000(zrange, xrange, frameRange); % IQ section
-% figure; imagesc(abs(IQs(:, :, 1)))
-% figure; imagesc(abs(IQs(:, :, 2)))
-% test = img(:, :, 2) - img(:, :, 1);
-% figure; imagesc(test)
-
-d = diff(IQs, 1, 3); % take first order difference along the frame dimension, seems to get rid of some background
-d(:, :, end+1) = IQs(:, :, end) - IQs(:, :, end-2); % add another value so you get back to orig # frames
-% figure; imagesc(abs(d(:, :, 1)))
-% figure; imagesc(abs(d(:, :, 2)))
-
-%% image refinement?
-rfnZ = 2; % refinement pixel increase factor
-rfnX = 2;
-
-refIQs = zeros(size(IQs, 1) * rfnZ, size(IQs, 2) * rfnX, size(IQs, 3)); % refined IQ section
-% I = IQs(:, :, 1);
-
-tic
-% go through all frames and refine
-parfor f = 1:size(IQs, 3)
-% for f = 1:1
-% parfor f = 1:10
-    I_temp = IQs(:, :, f);
-    refIQs(:, :, f) = imresize(I_temp/max(I_temp, [], 'all') .* 256 .* 5, [size(I_temp, 1) * rfnZ, size(I_temp, 2) * rfnX], 'bilinear');
-end
-toc
-
-%% and cross correlation?
-% if ~exist('base', 'var', 'PSF')
-    load('G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\PSF sim\IQ.mat') % Load simulated PSF
-%     PSF = IQ_coherent_sum(90:110, 55:75);                             % Crop the PSF
-    refPSF = imresize(IQ_coherent_sum, [size(IQ_coherent_sum, 1) * rfnZ, size(IQ_coherent_sum, 2) * rfnX], 'bilinear');
-%     PSF = refPSF(198:205, 125:132);
-%     PSF = refPSF(160:240, 100:156);
-    PSF = refPSF(190:210, 118:138);
-% end
-
-% PSFn = PSF/max(PSF, [], 'all') .* 256 .* 5;
-% x = normxcorr2(abs(PSF), abs(refIQs));
-%%
-% XC = zeros(size(refIQs));
-XC = normxcorr2(abs(PSF), abs(refIQs(:, :, 1))); % Cross correlate the filtered/refined images and the simulated PSF
-parfor f = 2:size(refIQs, 3)
-% parfor f = 2:10
-    XC(:, :, f) = normxcorr2(abs(PSF), abs(refIQs(:, :, f)));
-end
-
-%% Make video
-% vo = VideoWriter('G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\Processing\diff_50_5000'); % video object
-vo = VideoWriter('G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\Processing\XC_50_5000_2'); % video object
-
-% va = abs(d);
-va = XC - min(XC, [], 'all');
-va = va ./ max(va, [], 'all');
-
-vo.Quality = 100;
-vo.FrameRate = 100;
-open(vo);
-for f = 1:size(va, 3)
-    writeVideo(vo, va(:, :, f));
-end
-close(vo);
-
-%% binary image conversion of all frames
-% a = abs(d);
-% a = abs(IQs);
-% a = abs(refIQs);
-a = XC;
-
-% figure; imagesc(a)
-% figure; plot(a(:))
-
-% threshold = 7e3;
-% threshold = 800;
-threshold = 0.4; % XC threshold, set it manually
-
-tic
-mask = a > threshold;
-bi = zeros(size(a)); bi(mask) = 1; % binary image with white above the threshold
-% binaryImage = figure; imagesc(bi); colormap gray
-toc
-%% Make video of binary image
-vo = VideoWriter('G:\Allen\Data\01-17-2025 AZ001 ULM\L22-14v\run 1 allen code left eye\Processing\biXC_50_5000_2'); % video object
-va = bi;
-va = va ./ max(va);
-
-vo.Quality = 100;
-vo.FrameRate = 100;
-open(vo);
-for f = 1:size(va, 3)
-    writeVideo(vo, va(:, :, f));
-end
-close(vo);
-%% Centroid finding
-nf = size(bi, 3);        % # frames in the binary image stack
-centroids = cell(nf, 1); % initialize
-volumeThreshold = 1;
-
-parfor f = 1:nf
-    cf = bi(:, :, f); % current frame
-    CC = bwconncomp(cf); % connected components (connected regions of 1 in a binary image)
-
-    s = regionprops(CC, cf, 'Area', 'WeightedCentroid'); % Get the weighted centroids and area of each connected component
-
-    % Remove connected regions without enough pixels (probably noise)
-    for si = numel(s):-1:1
-        if s(si).Area <= volumeThreshold
-            s = s(1:si - 1);
-        end
-    end
-
-    centroidsCurrentFrame = zeros(numel(s), 2); % initialize centroid array. Dimensions: # centroids x 2 (z location, x location)
-
-    % go through the s structure and get the .WeightedCentroid data
-    for cn = 1:numel(s)
-        centroidsCurrentFrame(cn, :) = s(cn).WeightedCentroid;
-    end
-    
-    centroids{f} = centroidsCurrentFrame; % put back into overall variable
-
-end
-
-%% attempt to graph centroids
-% centroidPlotFigure = figure;
-% hold on
-% for f = 1:nf
-%     scatter(centroids{f}(:, 1), centroids{f}(:, 2), '.')
-% end
-% hold off
-% 
-zpts = [];
-xpts = [];
-for f = 1:nf
-    zpts = [zpts; centroids{f}(:, 1)];
-    xpts = [xpts; centroids{f}(:, 2)];
-end
-
-hPixFactor = 10; % increase the pixel count by this factor in each dimension
-figure;
-h = histogram2(zpts, xpts, [size(a, 1) * hPixFactor, size(a, 2) * hPixFactor], 'DisplayStyle','tile');
-grid off
-colormap hot
-
-%%
-
-
-% %% binary image test
-% a = abs(d(:, :, 2));
-% % figure; imagesc(a)
-% % figure; plot(a(:))
-% 
-% threshold = 1e4;
-% 
-% mask = a > threshold;
-% bi = zeros(size(a)); bi(mask) = 1; % binary image with white above the threshold
-% binaryImage = figure; imagesc(bi); colormap gray
-% 
-% % figure; hold on
-% % plot(a(:), 'o')
-% % plot(bi(:), '^')
-% % hold off
-% 
-% %%
-% CC = bwconncomp(bi)
-% s = regionprops(CC, bi, 'WeightedCentroid')
-% centroids = zeros(numel(s), 2);
-% for cn = 1:numel(s)
-%     centroids(cn, :) = s(cn).WeightedCentroid;
-% end
-% 
-% radii = ones(size(centroids, 1), 1);
-% hold on
-% viscircles(centroids, radii)
-% hold off
-% % s2 = regionprops(bi,'Area','WeightedCentroid')
-
-%%
-taustep = P.SeqControl(1).argument ./ 1e6 .* 1e3 .* P_new.na .* (0:P_new.numSubFrames - 1); % in ms
-
-g1 = g1T_1D(IQ_f);
-
-% pt = [40, 44, 63]; % y, x, z
-% pt = [44, 40, 63];
-pt = [97, 66];
-
-figure; plot(taustep, abs(squeeze(g1(pt(1), pt(2), :))), '-o')
-xlabel('tau (ms)')
-ylabel('|g1|')
-title(strcat("|g1| at ", num2str(pt), " pixel")) % (z, x)
-
-mag_g1 = abs(g1);
-
-%% Filtered Power Doppler for CBV comparison
-IQ_cs_f_sq = IQ_f.^2;
-I_f_PowerDoppler = abs(squeeze(sum(IQ_cs_f_sq, 3)));
-figure; imagesc(I_f_PowerDoppler)
-title('Filtered Power Doppler - xz plane')
-xlabel('x pixels')
-ylabel('z pixels')
-%% Jianbo Power Doppler
-[PDI]=sIQ2PDI(IQ_f);
-
-figure; imagesc(PDI(:, :, 1))
-title('Power Doppler - positive frequencies')
-xlabel('x pixels')
-ylabel('z pixels')
-figure; imagesc(PDI(:, :, 2))
-title('Power Doppler - negative frequencies')
-xlabel('x pixels')
-ylabel('z pixels')
-figure; imagesc(PDI(:, :, 3))
-title('Power Doppler - all frequencies')
-xlabel('x pixels')
-ylabel('z pixels')
-
-%% same thing but rescaled
-dr_scaling = 0.3; % dynamic range scaling factor
-
-% figure; imagesc(PDI(:, :, 1).^dr_scaling)
-% title('Power Doppler - positive frequencies')
-% xlabel('x pixels')
-% ylabel('z pixels')
-%
-figure; imagesc(PDI(:, :, 2).^dr_scaling)
-title('Power Doppler - negative frequencies')
-xlabel('x pixels')
-ylabel('z pixels')
-%
-figure; imagesc(PDI(:, :, 3).^dr_scaling)
-title('Power Doppler - all frequencies')
-xlabel('x pixels')
-ylabel('z pixels')
-%%
-[CBF, CBV] = g1_to_CBi(g1, taustep, 2, 15, 4); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
-%% CBFi
-figure; imagesc(CBF)
-title('CBFi - xz plane')
-xlabel('x pixels')
-ylabel('z pixels')
-
-%% CBVi
-figure; imagesc(CBV)
-title('CBVi - xz plane')
-xlabel('x pixels')
-ylabel('z pixels')
-%%
-%%
-dr_scaling = 0.3; % dynamic range scaling factor
-
-figure; imagesc(CBV.^dr_scaling)
-
-title(strcat("CBVi - xz plane with exponential scaling factor = ", num2str(dr_scaling)))
-xlabel('x pixels')
-ylabel('z pixels')
-colormap gray
