@@ -29,7 +29,7 @@
 %   ULM_interp3D_linear.m
 %   Colormaps_fUS (From Jianbo's code)
 %   smoothn.m (From Damien Garcia: https://www.mathworks.com/matlabcentral/fileexchange/25634-smoothn/)
-
+%   densityMap3D.m      
 % Acknowledgement: using Jianbo Tang's ULM code, the Song group's ULM papers, and Jean-Yves Tinevez's simpletracker as references
 clearvars
 
@@ -67,6 +67,7 @@ pix_spacing = P.wl/2;
 
 %% 1.5 Prompt for parameter user input
 parameterPrompt = {'Start file number', 'End file number', 'x pixel spacing [um]', 'y pixel spacing [um]', 'z pixel spacing [um]', 'Maximum expected flow speed [mm/s]', 'Persistence frames', 'Moving window size [frames]', 'Acceleration constraint factor', 'Trimmed mean percentage', 'Direction constraint'};
+%%% NEED TO CHANGE THE PIX SPACING TO USE THE saved PData %%%
 parameterDefaults = {'', '', num2str(P.Trans.spacingMm * 1e3), num2str(P.Trans.spacingMm * 1e3), num2str(P.wl/2 * 1e6), '50', '3', '3', '2', '20', 'pi/2'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
@@ -98,7 +99,8 @@ for n = startFile:endFile   % Go through each center file (for each buffer)
         if ~((length(xc) == tsl) & (length(yc) == tsl) & (length(zc) == tsl))
             % THIS BELOW LINE MIGHT ONLY WORK IF 'n' STARTS AT
             % 1!!!!!!!!!!!!!!!!!!!!!
-            centerCoords{(n - 1) * P.numFramesPerBuffer + bfi} = [xc, yc, zc];
+%             centerCoords{(n - 1) * P.numFramesPerBuffer + bfi} = [xc, yc, zc];
+            centerCoords{(n - startFile) * P.numFramesPerBuffer + bfi} = [xc, yc, zc];
         end
     end
     disp(strcat("Center coordinates for file ", num2str(n), " stored."))
@@ -153,18 +155,74 @@ maxxPixelDistPerFrame = maxDistPerFrameM * xpixelsPerM;               % max x di
 maxyPixelDistPerFrame = maxDistPerFrameM * ypixelsPerM;               % max y distance traveled per frame in units of pixels
 maxzPixelDistPerFrame = maxDistPerFrameM * zpixelsPerM;               % max z distance traveled per frame in units of pixels
 
-bubblePairs = cell(totalFrames - 1, 1);   % Initialize cell vector of paired bubble indices
+% %% 5. Calculate pairing
+% bubblePairs = cell(totalFrames - 1, 1);   % Initialize cell vector of paired bubble indices
+% 
+% ubS = cell(totalFrames - 1, 1);             % unassigned bubbles from the source frames
+% ubT = cell(totalFrames - 1, 1);             % unassigned bubbles from the target frames
+% 
+% tic
+% % parfor f = startFrame:totalFrames - 1       % Go through frames
+% parfor f = startFrame:startFrame+50
+% % parfor f = startFrame:5000
+% % for f = startFrame:startFrame+0
+%     sourceFrame = centerCoords_corrected{f};     % Get the coordinates for the source frame (f)
+%     targetFrame = centerCoords_corrected{f + 1}; % Get the coordinates for the target frame (f + 1)
+% 
+%     nbS = size(sourceFrame, 1);             % number of bubbles in the source frame
+%     nbT = size(targetFrame, 1);             % number of bubbles in the target frame
+%     D = NaN(nbS, nbT);                      % Initialize the distance matrix comparing source and target points' distances
+% 
+%     if nbS > 1 && nbT > 1                   % Only go through the pairing if the source and target frames have at least one bubble
+%         % Go through each source frame point and get the distance to each
+%         % point in the target frame. Store in the distance matrix D.
+%         for spi = 1:nbS % source point index
+%             sourcePoint = sourceFrame(spi, :);      % x, y, and z coords of the source frame's point "spi"
+%             d = targetFrame - sourcePoint;          % vectorized difference between the x, y, and z coords of all the points in the target frame and point spi from the source frame
+%             d(:, 1) = d(:, 1) ./ xpixelsPerM;       % Convert the x distance differences into natural distance units [m]
+%             d(:, 2) = d(:, 2) ./ ypixelsPerM;       % Convert the y distance differences into natural distance units [m]
+%             d(:, 3) = d(:, 3) ./ zpixelsPerM;       % Convert the z distance differences into natural distance units [m]
+%             D(spi, :) = sqrt(sum((d .^ 2), 2));     % distance formula on the above
+%     
+%         end
+%         
+%         D(D > maxDistPerFrameM) = Inf;      % Set the elements above the distance per frame threshold to Inf so they aren't considered for pairing
+%         [assignment, unassignedrows, unassignedcolumns] = assignmunkres(D, 100); % Pair with the Munkres algorithm, which minimizes the total cost (total paired distance)
+%           bubblePairs{f} = assignment; % assignment will always be sorted to make the second column in order
+% 
+%         % Use Yi Cao's munkres for efficiency, which might break if there
+%         % are Infs?
+% %         [assignment, cost] = munkres(D);
+% %         indTemp = find(assignment);
+% %         [sourceInd, targetInd] = ind2sub(size(assignment), indTemp);
+% %         bubblePairs{f} = [sourceInd, targetInd]; % assignment will always be sorted to make the second column in order
+% 
+% %         ubS{f} = unassignedrows;
+% %         ubT{f} = unassignedcolumns;
+%         
+%     end
+% end
+% toc
+% disp('Pairing done')
+% 
+% clear f nbS nbT D spi assignment unassignedrows unassignedcolumns
 
 %% 5. Calculate pairing
+% ccc_copy = [centerCoords_corrected(1:end-1), centerCoords_corrected(2:end)]; % Copy of the centerCoords_corrected with the next file in the same row so it doesn't need to pass the whole cell array to each worker in the parpool
+ccc_copy_source = [centerCoords_corrected(1:end-1)]; % Copy of the centerCoords_corrected with the next file in the same row so it doesn't need to pass the whole cell array to each worker in the parpool
+ccc_copy_target = [centerCoords_corrected(2:end)];
+bubblePairs = cell(totalFrames - 1, 1);   % Initialize cell vector of paired bubble indices
 
 ubS = cell(totalFrames - 1, 1);             % unassigned bubbles from the source frames
 ubT = cell(totalFrames - 1, 1);             % unassigned bubbles from the target frames
 
 tic
 parfor f = startFrame:totalFrames - 1       % Go through frames
-% parfor f = startFrame:startFrame+5
-    sourceFrame = centerCoords_corrected{f};     % Get the coordinates for the source frame (f)
-    targetFrame = centerCoords_corrected{f + 1}; % Get the coordinates for the target frame (f + 1)
+% parfor f = startFrame:startFrame+100
+% parfor f = startFrame:5000
+% for f = startFrame:startFrame+0
+    sourceFrame = ccc_copy_source{f};     % Get the coordinates for the source frame (f)
+    targetFrame = ccc_copy_target{f}; % Get the coordinates for the target frame (f + 1)
 
     nbS = size(sourceFrame, 1);             % number of bubbles in the source frame
     nbT = size(targetFrame, 1);             % number of bubbles in the target frame
@@ -182,12 +240,20 @@ parfor f = startFrame:totalFrames - 1       % Go through frames
             D(spi, :) = sqrt(sum((d .^ 2), 2));     % distance formula on the above
     
         end
-        D(D > maxDistPerFrameM) = Inf;      % Set the elements above the distance per frame threshold to Inf so they aren't considered for pairing
+        
+%         D(D > maxDistPerFrameM) = Inf;      % Set the elements above the distance per frame threshold to Inf so they aren't considered for pairing
+%         [assignment, unassignedrows, unassignedcolumns] = assignmunkres(D, 100); % Pair with the Munkres algorithm, which minimizes the total cost (total paired distance)
+%           bubblePairs{f} = assignment; % assignment will always be sorted to make the second column in order
 
-        [assignment, unassignedrows, unassignedcolumns] = assignmunkres(D, 100); % Pair with the Munkres algorithm, which minimizes the total cost (total paired distance)
-        bubblePairs{f} = assignment; % assignment will always be sorted to make the second column in order
-        ubS{f} = unassignedrows;
-        ubT{f} = unassignedcolumns;
+        % Use Yi Cao's munkres for efficiency, which might break if there
+        % are Infs?
+        [assignment, cost] = munkres(D);
+        indTemp = find(assignment);
+        [sourceInd, targetInd] = ind2sub(size(assignment), indTemp);
+        bubblePairs{f} = [sourceInd, targetInd]; % assignment will always be sorted to make the second column in order
+
+%         ubS{f} = unassignedrows;
+%         ubT{f} = unassignedcolumns;
         
     end
 end
@@ -372,6 +438,7 @@ tic
 for n = startFrame:size(bVelocityMSmoothedKFMMS, 1)
 % for n = 7961
     tln = bVelocityMSmoothedKFMMS{n}; % Track list n
+    %%%% MAYBE MOVE THE BELOW LOOP INTO A FUNCTION WITH A PARFOR %%%
     for tn = 1:size(tln, 1) % Track number tn
         track = squeeze(tln(tn, :, :))'; % Get the track
         track = [track; [track(end, 4:6), 0, 0, 0, 0, 0, 0]];
@@ -510,15 +577,20 @@ bSumSmoothedKFConstrainedTest(bSumSmoothedKFConstrainedTest <= 2) = 0;
 volumeViewer(bSumSmoothedKFConstrainedTest .^ 0.5)
 
 % 2D sum plots
-% figure; imagesc(squeeze(sum(bSum, 1).^ 0.5)'); colormap hot
-figure; imagesc(squeeze(sum(bSum, 2).^ 0.5)'); colormap hot
+% figure; imagesc(squeeze(sum(bSum, 1).^ 0.5)'); colormap hot title('Sum
+% across y)
+figure; imagesc(squeeze(sum(bSum, 2).^ 0.5)'); colormap hot; title('Sum across x')
 figure; imagesc(squeeze(sum(bSum, 3).^ 0.5)'); colormap hot
 
 % 2D selected slice plots or max intensity projection from a small range of
 % slices
 % figure; imagesc(squeeze(bSum(80, :, :) .^ 0.5)'); colormap hot
-figure; imagesc(squeeze(max(bSum(60:100, :, :), [], 1) .^ 0.5)'); colormap hot
+yrange_plot_MIP = 60:100;
+figure; imagesc(squeeze(max(bSum(yrange_plot_MIP, :, :), [], 1) .^ 0.5)'); colormap hot
+title(["bSum Maximum Intensity Projection from y = ", num2str(yrange_plot_MIP(1)), " to ", num2str(yrange_plot_MIP(end))])
 
+figure; imagesc(squeeze(max(bSumSmoothedKFConstrained(yrange_plot_MIP, :, :), [], 1) .^ 0.5)'); colormap hot
+title(["bSumSmoothedKFConstrained Maximum Intensity Projection from y = ", num2str(yrange_plot_MIP(1)), " to ", num2str(yrange_plot_MIP(end))])
 
 addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Processing\Jerman Enhancement Filter\')
 
@@ -539,8 +611,8 @@ addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Proces
 speedMapCounter = zeros(img_size(1), img_size(2), img_size(3));
 
 tic
-% for ti = startFrame:size(bVelocityMSmoothed, 1)
-for ti = startFrame
+for ti = startFrame:size(bVelocityMSmoothed, 1)
+% for ti = startFrame
     bvTemp = bVelocityMSmoothedKFConstrainedMMS{ti};
 %     bvTemp = bVelocityMSmoothedKFMMS{ti};
 %     bvTemp = bVelocityMSmoothedMMS{ti}; % get the ti-th entry
@@ -613,7 +685,7 @@ for ti = startFrame
 %         zVelTemp = [];
 %         interpPtsTemp = [];
     end
-    disp(strcat("Frame ", num2str(ti), " stored."))
+%     disp(strcat("Frame ", num2str(ti), " stored."))
 %     clear bvTemp
 end
 toc
