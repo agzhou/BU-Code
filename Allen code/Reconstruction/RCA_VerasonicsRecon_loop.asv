@@ -51,7 +51,7 @@ parameterDefaults = {'1', ''};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 Mcr_startFile = str2double(parameterUserInput{1}); % File to start reconstructing from
-Mcr_endFile = str2double(parameterUserInput{2});   % File to stop reconstructing on
+Mcr_endFile = str2double(parameterUserInput{2});    
 
 Mcr_filenameStructure = ['RF-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 Mcr_IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];

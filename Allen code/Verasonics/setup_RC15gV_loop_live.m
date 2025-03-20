@@ -15,7 +15,7 @@ cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 activate
 % numElements = 80;
 
-savepath = "G:\Allen\Data\03-17-2025 AZ02 ULM\RC15gV\run 0\";
+savepath = "G:\Allen\Data\03-20-2025 AZ03 ULM\RC15gV\run 0\";
 savepath = char(savepath);
 mkdir(savepath)
 
@@ -804,10 +804,10 @@ end
 % save([savepath, 'params.mat'], 'angles', 'startDepth', 'startDepthMM', 'endDepth', 'endDepthMM', 'Event', 'fps_target', 'maxAcqLength_adjusted', 'maxAngle', 'Media', 'na', 'nf', 'Receive', 'Resource', 'SeqControl', 'TGC', 'Trans', 'TW', 'TX', 'wl', 'numElements', '-v7.3')
 % save([savepath, 'params.mat'], 'P')
 
-makeParameterStructure;
-savefast([savepath, 'params.mat'], 'P')
+% makeParameterStructure;
+% savefast([savepath, 'params.mat'], 'P')
 % saveRcvData(RcvData{1})
-save([savepath, 'workspace.mat'])
+% save([savepath, 'workspace.mat'])
 
 %% **** Callback routines used by UIControls (UI) ****
 %% Time tag callback test

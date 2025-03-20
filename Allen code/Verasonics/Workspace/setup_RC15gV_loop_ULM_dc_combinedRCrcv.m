@@ -16,7 +16,8 @@ cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 activate
 % numElements = 80;
 
-savepath = "G:\Allen\Data\03-17-2025 AZ02 ULM\RC15gV\run 2 right eye\";
+savepath = "G:\Allen\Data\03-20-2025 AZ03 ULM\RC15gV\run 2 right eye both rcv\";
+% savepath = "F:\BioMicro Senior Capstone\HF2\";
 savepath = char(savepath);
 mkdir(savepath)
 
@@ -31,6 +32,7 @@ initialVoltage = 20; % V
 
 startDepthMM = 2; % start depth in mm
 endDepthMM = 10;
+% endDepthMM = 30;
 
 numChannels = 256; % enable channels
 
@@ -47,8 +49,10 @@ bufferDutyCycle = 1/3;
 
 disp(num2str(numFramesPerBuffer / frameRate / bufferDutyCycle))
 
-na = 11; % # of acquisitions per frame (acquisition pairs)
-maxAngle = 5; % degrees
+% na = 11; % # of acquisitions per frame (acquisition pairs)
+% maxAngle = 5; % degrees
+na = 11;
+maxAngle = 58/2;
 angleRange = [-maxAngle, maxAngle].*pi/180; % Angle range in radians
 
 % Need at least 2 acquisitions to use multiple angles. 
@@ -271,7 +275,7 @@ TGC(1).Waveform = computeTGCWaveform(TGC); % Parameters can be adjusted later wi
 
 %% Receiver array object
 maxAcqLength = ceil(sqrt(endDepth^2 + 2*(numElements*Trans.spacing)^2)); % account for the longest distance an echo could travel
-Receive = repmat(struct('Apod', zeros(1, Trans.numelements), ... 
+Receive = repmat(struct('Apod', ones(1, Trans.numelements), ... 
                         'startDepth', startDepth, ...
                         'endDepth', maxAcqLength, ...
                         'TGC', 1, ...
@@ -640,7 +644,7 @@ end
 makeParameterStructure_ULM;
 savefast([savepath, 'params.mat'], 'P')
 % saveRcvData(RcvData{1})
-save([savepath, 'workspace.mat'])
+savefast([savepath, 'workspace.mat'])
 
 
 %% **** Callback routines used by UIControls (UI) ****

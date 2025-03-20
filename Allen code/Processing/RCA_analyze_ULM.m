@@ -39,7 +39,7 @@ end
 
 % Prompt for parameter user input
 parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Image refinement factor - x', 'Image refinement factor - y', 'Image refinement factor - z', 'XC Adaptive Threshold Factor', 'x pixel spacing [um]', 'y pixel spacing [um]', 'z pixel spacing [um]'};
-parameterDefaults = {'1', '', '10', '150', '2', '2', '2', '0.2', num2str(PData.PDelta(1) * P.wl * 1e6), num2str(PData.PDelta(2) * P.wl * 1e6), num2str(PData.PDelta(3) * P.wl * 1e6)};
+parameterDefaults = {'1', '', '10', '150', '2', '2', '2', '0.25', num2str(PData.PDelta(1) * P.wl * 1e6), num2str(PData.PDelta(2) * P.wl * 1e6), num2str(PData.PDelta(3) * P.wl * 1e6)};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % define # of files manually for now
@@ -59,7 +59,7 @@ ypix_spacing = str2double(parameterUserInput{10});
 zpix_spacing = str2double(parameterUserInput{11});
 
 % IQfolderName = 'IQ Data - Verasonics Recon\'; % 'IQ data\'
-saveFolderName = 'Processed Data 03-17-2025\';
+saveFolderName = 'Processed Data 03-19-2025\';
 % savepath = [datapath, saveFolderName];
 % mkdir([datapath, saveFolderName])
 savepath = ['G:\Allen\Data\03-17-2025 AZ02 ULM\RC15gV\run 2 right eye\', saveFolderName];
@@ -70,6 +70,7 @@ filename_structure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2s
 
 addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Processing\normxcorr3.m')
 addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Processing\toolbox_nlmeans_version2')
+
 %% Parameters for processing the data
 % Define various processing parameters
 % Singular value thresholds
@@ -115,8 +116,8 @@ refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) 
 % test = zeros([s(1:3) .* 4, s(4)]);
 %% Process the data
 % tic
-% for filenum = startFile:endFile
-for filenum = 201
+for filenum = startFile:endFile
+% for filenum = 61
     tic
 %     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
     load([datapath, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
@@ -142,11 +143,13 @@ for filenum = 201
 
     clear PP EVs V_sort
 
+%     IQd = diff(IQ, 1, 4); % Frame subtraction
+
 %     save([savepath, 'Filtered-Data-', num2str(filenum)], 'IQr', 'PP', 'EVs', 'V_sort', 'IQf', "-v6")
 
 %     [centers, refIQs, XC] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThreshold);
-%     [centers, ~, ~, XCThresholdAdaptive] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
-    [centers, refIQs, XC, XCThresholdAdaptive] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
+    [centers, ~, ~, XCThresholdAdaptive] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
+%     [centers, refIQs, XC, XCThresholdAdaptive] = localizeBubbles3D(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
 
 %     [coords, img_size, XCThresholdsAdaptive] = localizeBubbles3D_chunk(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
 
