@@ -68,7 +68,8 @@ pix_spacing = P.wl/2;
 %% 1.5 Prompt for parameter user input
 parameterPrompt = {'Start file number', 'End file number', 'x pixel spacing [um]', 'y pixel spacing [um]', 'z pixel spacing [um]', 'Maximum expected flow speed [mm/s]', 'Persistence frames', 'Moving window size [frames]', 'Acceleration constraint factor', 'Trimmed mean percentage', 'Direction constraint'};
 %%% NEED TO CHANGE THE PIX SPACING TO USE THE saved PData %%%
-parameterDefaults = {'', '', num2str(P.Trans.spacingMm * 1e3), num2str(P.Trans.spacingMm * 1e3), num2str(P.wl/2 * 1e6), '50', '3', '3', '2', '20', 'pi/2'};
+half_pi = pi/2;
+parameterDefaults = {'', '', num2str(P.Trans.spacingMm * 1e3), num2str(P.Trans.spacingMm * 1e3), num2str(P.wl/2 * 1e6), '50', '3', '3', '2', '20', num2str(half_pi)};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 startFile = str2double(parameterUserInput{1});
@@ -111,6 +112,7 @@ end
 img_size = size(centers); % Save image size if we want to clear allCenters
 % clear bfi cai caiGlobal xc zc centers
 clear centersTemp indTemp xc yc zc n bfi tsl
+
 %% 3. Calculate bubble count and correct for frames that have bubbles at every voxel
 bubbleCount = zeros(length(centerCoords), 1);   % numFiles/# buffers x # frames per buffer. Count of bubbles in each frame
 centerCoords_corrected = centerCoords;          % Correct the centerCoords because some frames have every pixel identified as        a bubble
@@ -143,7 +145,7 @@ startFramePrompt = {'Start frame'}; % User input for the frame to start processi
 startFrameDefault = {'1'};
 startFrameUserInput = inputdlg(startFramePrompt, 'Choose start frame #', 1, startFrameDefault);
 startFrame = str2double(startFrameUserInput{1});                      % Frame to start processing at
-maxSpeedExpectedMMPerS = str2double(parameterUserInput{5});           % max expected flow speed [mm/s]
+maxSpeedExpectedMMPerS = str2double(parameterUserInput{6});           % max expected flow speed [mm/s]
 timePerFrame = 1 / P.frameRate;                                       % time elapsed per frame [s]
 maxDistPerFrameM = (maxSpeedExpectedMMPerS / 1000) * timePerFrame;    % max distance traveled per frame [m], according to the max expected flow speed and frame rate
 % pixelsPerM = 1 / pix_spacing * imgRefinementFactor(1);              % # of pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
@@ -260,10 +262,10 @@ end
 toc
 disp('Pairing done')
 
-clear f nbS nbT D spi assignment unassignedrows unassignedcolumns
+clear f nbS nbT D spi assignment unassignedrows unassignedcolumns ccc_copy_source ccc_copy_target
 
 %% 6. Create tracks with persistence
-pers = str2double(parameterUserInput{6}); % # of frames a track needs to persist through to keep it
+pers = str2double(parameterUserInput{7}); % # of frames a track needs to persist through to keep it
 
 tic
 % Separate the pairs of coordinates so we can change their sizes independently
@@ -366,7 +368,7 @@ disp('Velocity map created')
 clear ti fn tracksTemp startPoints endPoints vfn nbiti
 
 %% 9. Refine the velocity map
-mmws = str2double(parameterUserInput{7}); % Moving mean window size [frames]
+mmws = str2double(parameterUserInput{8}); % Moving mean window size [frames]
 bVelocityMSmoothed = bVelocityM;          % Initialize the velocity data, which will be smoothed across frames with a moving mean
 
 for n = startFrame:size(bVelocityM, 1) % Go through each track collection n
@@ -513,56 +515,57 @@ disp('Kalman filter applied')
 clear n tn tln k xk Pk yk Kku Iku xku Pku track
 
 %% 11. Acceleration and direction constraints
-aThresholdFactor = str2double(parameterUserInput{8});         % Acceleration change threshold factor
-vTrimmedMeanPercentage = str2double(parameterUserInput{9});   % Trimmed mean percentage for the acceleration change threshold [%]
-angleChangeThreshold = str2double(parameterUserInput{10});    % Angle change threshold [radians]
+aThresholdFactor = str2double(parameterUserInput{9});         % Acceleration change threshold factor
+vTrimmedMeanPercentage = str2double(parameterUserInput{10});   % Trimmed mean percentage for the acceleration change threshold [%]
+angleChangeThreshold = str2double(parameterUserInput{11});    % Angle change threshold [radians]
 
-bVelocityMSmoothedKFConstrainedMMS = bVelocityMSmoothedKFMMS; % Initialize the variable for the smoothed, Kalman filtered, constrained velocity map
+% bVelocityMSmoothedKFConstrainedMMS = bVelocityMSmoothedKFMMS; % Initialize the variable for the smoothed, Kalman filtered, constrained velocity map
+% tic
+% for n = 1:size(bVelocityMSmoothedKFConstrainedMMS, 1)
+%     tln = bVelocityMSmoothedKFConstrainedMMS{n};    % Track list n
+%     for tn = size(tln, 1):-1:1                      % Go through each track number tn
+%         trackAlreadyDeleted = false;                % Reset the flag
+%         track = squeeze(tln(tn, :, :))';            % Get the track
+%         vTrack = track(:, 7:9);                     % Velocities of the track
+% 
+%         % Acceleration constraint
+%         vTrackTrimmedMean = trimmean(vTrack, vTrimmedMeanPercentage); % Exclude some percentage of the values when taking the mean. It goes across the first non-singleton dimension.
+%         aThresholdMag = abs(aThresholdFactor .* vTrackTrimmedMean ./ timePerFrame);
+%         aTrackMag = abs(diff(vTrack, 1) ./ timePerFrame); % Accelerations of the track
+%         if any(aTrackMag > aThresholdMag, 'all') % Remove the track if the acceleration constraint is violated
+%             bVelocityMSmoothedKFConstrainedMMS{n}(tn, :, :) = [];
+%             trackAlreadyDeleted = true;
+%         end
+% 
+%         % Direction constraint
+%         if ~trackAlreadyDeleted % Don't need to go through the direction calculation if the track was already deleted for the acceleration constraint
+%             angleTrack = atan2(vTrack(:, 2), vTrack(:, 1));         % Angle of each segment on the track
+%             angleTrackChanges = diff(angleTrack);                   % Change in angle between segments on the track
+%             if any(abs(angleTrackChanges) > angleChangeThreshold)   % Apply the threshold
+%                 bVelocityMSmoothedKFConstrainedMMS{n}(tn, :, :) = [];
+%             end
+%         end
+%     end
+% end
 tic
-for n = 1:size(bVelocityMSmoothedKFConstrainedMMS, 1)
-    tln = bVelocityMSmoothedKFConstrainedMMS{n};    % Track list n
-    for tn = size(tln, 1):-1:1                      % Go through each track number tn
-        trackAlreadyDeleted = false;                % Reset the flag
-        track = squeeze(tln(tn, :, :))';            % Get the track
-        vTrack = track(:, 7:9);                     % Velocities of the track
-
-        % Acceleration constraint
-        vTrackTrimmedMean = trimmean(vTrack, vTrimmedMeanPercentage); % Exclude some percentage of the values when taking the mean. It goes across the first non-singleton dimension.
-        aThresholdMag = abs(aThresholdFactor .* vTrackTrimmedMean ./ timePerFrame);
-        aTrackMag = abs(diff(vTrack, 1) ./ timePerFrame); % Accelerations of the track
-        if any(aTrackMag > aThresholdMag, 'all') % Remove the track if the acceleration constraint is violated
-            bVelocityMSmoothedKFConstrainedMMS{n}(tn, :, :) = [];
-            trackAlreadyDeleted = true;
-        end
-
-        % Direction constraint
-        if ~trackAlreadyDeleted % Don't need to go through the direction calculation if the track was already deleted for the acceleration constraint
-            angleTrack = atan2(vTrack(:, 2), vTrack(:, 1));         % Angle of each segment on the track
-            angleTrackChanges = diff(angleTrack);                   % Change in angle between segments on the track
-            if any(abs(angleTrackChanges) > angleChangeThreshold)   % Apply the threshold
-                bVelocityMSmoothedKFConstrainedMMS{n}(tn, :, :) = [];
-            end
-        end
-    end
-end
-
+bVelocityConstrained = applyConstraints(bVelocityM, vTrimmedMeanPercentage, aThresholdFactor, angleChangeThreshold, timePerFrame);
 toc
+
 disp('Acceleration and direction constraints applied')
 clear n tln tn trackAlreadyDeleted track vTrack vTrackTrimmedMean aThresholdMag aTrackMag angleTrack angelTrackChanges
 
 %% 12. Plot density map with the paired bubbles after persistence
-% bSum = zeros(img_size(1), img_size(2), img_size(3)); % Initialize the bubble density map variable
-% bSumSmoothedKF = zeros(img_size(1), img_size(2), img_size(3));
-% bSumSmoothedKFConstrained = zeros(img_size(1), img_size(2), img_size(3));
-% bSum = padarray(bSum, 50); % Pad array in case the Kalman filter puts some points outside the original region
 
 [bSum] = densityMap3D(bVelocityM, img_size, startFrame);
+[bSumConstrained] = densityMap3D(bVelocityConstrained, img_size, startFrame);
+
 [bSumSmoothedKF] = densityMap3D(bVelocityMSmoothedKFMMS, img_size, startFrame);
 [bSumSmoothedKFConstrained] = densityMap3D(bVelocityMSmoothedKFConstrainedMMS, img_size, startFrame);
 
 clear n tn iti trackTemp tempBuf
 
 volumeViewer(bSum .^ 0.5)
+volumeViewer(bSumConstrained .^ 0.5)
 volumeViewer(bSumSmoothedKF .^ 0.5)
 volumeViewer(bSumSmoothedKFConstrained .^ 0.5)
 
@@ -588,6 +591,10 @@ figure; imagesc(squeeze(sum(bSum, 3).^ 0.5)'); colormap hot; title('bSum sum acr
 yrange_plot_MIP = 60:100;
 figure; imagesc(squeeze(max(bSum(yrange_plot_MIP, :, :), [], 1) .^ 0.5)'); colormap hot
 title(["bSum Maximum Intensity Projection from y = ", num2str(yrange_plot_MIP(1)), " to ", num2str(yrange_plot_MIP(end))])
+
+% zrange_plot_MIP = 60:100;
+% figure; imagesc(squeeze(max(bSum(:, :, zrange_plot_MIP), [], 1) .^ 0.5)'); colormap hot
+% title(["bSum Maximum Intensity Projection from z = ", num2str(zrange_plot_MIP(1)), " to ", num2str(zrange_plot_MIP(end))])
 
 figure; imagesc(squeeze(max(bSumSmoothedKFConstrained(yrange_plot_MIP, :, :), [], 1) .^ 0.5)'); colormap hot
 title(["bSumSmoothedKFConstrained Maximum Intensity Projection from y = ", num2str(yrange_plot_MIP(1)), " to ", num2str(yrange_plot_MIP(end))])
@@ -716,3 +723,35 @@ speedMap(speedMask) = speedMap(speedMask) ./ speedMapCounter(speedMask);
 % [VzCmap, VzCmapDn, VzCmapUp, pdiCmapUp, PhtmCmap] = Colormaps_fUS;
 
 volumeViewer(speedMap)
+
+%% Helper functions
+
+function bVelocityConstrained = applyConstraints(bVelocity, vTrimmedMeanPercentage, aThresholdFactor, angleChangeThreshold, timePerFrame)
+    bVelocityConstrained = bVelocity; % Initialize the variable for the smoothed, Kalman filtered, constrained velocity map
+    for n = 1:size(bVelocityConstrained, 1)
+        tln = bVelocityConstrained{n};    % Track list n
+        for tn = size(tln, 1):-1:1                      % Go through each track number tn
+            trackAlreadyDeleted = false;                % Reset the flag
+            track = squeeze(tln(tn, :, :))';            % Get the track
+            vTrack = track(:, 7:9);                     % Velocities of the track
+    
+            % Acceleration constraint
+            vTrackTrimmedMean = trimmean(vTrack, vTrimmedMeanPercentage); % Exclude some percentage of the values when taking the mean. It goes across the first non-singleton dimension.
+            aThresholdMag = abs(aThresholdFactor .* vTrackTrimmedMean ./ timePerFrame);
+            aTrackMag = abs(diff(vTrack, 1) ./ timePerFrame); % Accelerations of the track
+            if any(aTrackMag > aThresholdMag, 'all') % Remove the track if the acceleration constraint is violated
+                bVelocityConstrained{n}(tn, :, :) = [];
+                trackAlreadyDeleted = true;
+            end
+    
+            % Direction constraint
+            if ~trackAlreadyDeleted % Don't need to go through the direction calculation if the track was already deleted for the acceleration constraint
+                angleTrack = atan2(vTrack(:, 2), vTrack(:, 1));         % Angle of each segment on the track
+                angleTrackChanges = diff(angleTrack);                   % Change in angle between segments on the track
+                if any(abs(angleTrackChanges) > angleChangeThreshold)   % Apply the threshold
+                    bVelocityConstrained{n}(tn, :, :) = [];
+                end
+            end
+        end
+    end
+end
