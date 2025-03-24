@@ -1,5 +1,7 @@
 % Note: savefast only works well with numerical arrays. see https://www.mathworks.com/matlabcentral/fileexchange/39721-save-mat-files-more-quickly
 
+%%%% NOTE: THIS FILE DOES NOT RUN BECAUSE runAcq WILL CALL FROM THE
+%%%% VERASONICS FOLDER %%%%
 
 % function saveRcvData(ReceiveData)
 function saveIQData(IQData)

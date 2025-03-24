@@ -26,11 +26,10 @@ na = str2double(parameterUserInput{5});
 maxAngle = str2double(parameterUserInput{6});
 probe_freq = str2double(parameterUserInput{7});
 simMode = str2double(parameterUserInput{8});
+saveData = str2double(parameterUserInput{8});
 
 supFrameIndex = 0;
-
 runVSX = 1;
-% simOrNot = 0;
 movePointsOrNot = 0; % Media movePoints on or off
 
 supFrameBurstRate = 0.5; % Defines spacing between end of superframe burst and the next burst after jumping
@@ -559,23 +558,16 @@ for nsupf = 1:numSupFrames
 %     Event(n).seqControl = [1, scInd, scInd-1];
         Event(n).seqControl = [1, scInd];
 
-%     Event(n).info = ['Frame ' num2str(nf) ': Doing IQ data thing................'];
-%     Event(n).tx = 0; 
-%     Event(n).rcv = 0; 
-%     Event(n).recon = 0; 
-%     Event(n).process = 2; 
-%     Event(n).seqControl = 0; 
-% 
-%     i = i + 1;
-
-%     n = n + 1;
-% 
-%     Event(n).info = 'Save data - ext proc func';
-%     Event(n).tx = 0; 
-%     Event(n).rcv = 0; 
-%     Event(n).recon = 0;
-%     Event(n).process = 1; 
-%     Event(n).seqControl = 0; 
+    if saveData
+        n = n + 1;
+    
+        Event(n).info = 'Save data - ext proc func';
+        Event(n).tx = 0; 
+        Event(n).rcv = 0; 
+        Event(n).recon = 0;
+        Event(n).process = 1; 
+        Event(n).seqControl = 0; 
+    end
 
 
     n = n + 1;

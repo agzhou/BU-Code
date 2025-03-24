@@ -1,7 +1,10 @@
 % Script to acquire data with the L22-14v ultrasound probe and display the
 % image live. Coherent plane wave compounding is used for the imaging.
 
-% Click run and input the intended save path
+% Click run and input the intended save path and pixel spacing values.
+
+% Last updated on 3/23/25 by Allen Zhou
+
 %% Specify system parameters
 clear
 
@@ -13,8 +16,8 @@ savepath = uigetdir('F:\', 'Select the save path');
 savepath = [savepath, '\'];
 mkdir(savepath)
 
-parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)'};
-parameterDefaults = {'5', '0', '10', '500', '21', '5', '15.625', '0'};
+parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save IQ data (0-no, 1-yes)'}; % 'Save RF data (0-no, 1-yes)', 
+parameterDefaults = {'5', '0', '10', '500', '21', '5', '15.625', '0', '0'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % Store the user inputs for parameters into the corresponding variables
@@ -26,11 +29,10 @@ na = str2double(parameterUserInput{5});
 maxAngle = str2double(parameterUserInput{6});
 probe_freq = str2double(parameterUserInput{7});
 simMode = str2double(parameterUserInput{8});
+saveIQDataFlag = str2double(parameterUserInput{9});
 
 supFrameIndex = 0;
-
 runVSX = 1;
-% simOrNot = 0;
 movePointsOrNot = 0; % Media movePoints on or off
 
 supFrameBurstRate = 0.5; % Defines spacing between end of superframe burst and the next burst after jumping
@@ -459,6 +461,11 @@ Process(2).Parameters = {'srcbuffer','receive',... % name of buffer to process.
                          'srcframenum',-1, ...
                          'dstbuffer','none'};
 
+Process(4).classname = 'External';
+Process(4).method = 'saveIQData'; % Function name
+Process(4).Parameters = {'srcbuffer', 'inter', ...
+                         'srcbufnum', 1, ... % # of buffer to process
+                         'dstbuffer', 'none'};
 %%
 makeParameterStructureSmall;
 %% Define sequence of Events for data acquisition
@@ -559,23 +566,16 @@ for nsupf = 1:numSupFrames
 %     Event(n).seqControl = [1, scInd, scInd-1];
         Event(n).seqControl = [1, scInd];
 
-%     Event(n).info = ['Frame ' num2str(nf) ': Doing IQ data thing................'];
-%     Event(n).tx = 0; 
-%     Event(n).rcv = 0; 
-%     Event(n).recon = 0; 
-%     Event(n).process = 2; 
-%     Event(n).seqControl = 0; 
-% 
-%     i = i + 1;
-
-%     n = n + 1;
-% 
-%     Event(n).info = 'Save data - ext proc func';
-%     Event(n).tx = 0; 
-%     Event(n).rcv = 0; 
-%     Event(n).recon = 0;
-%     Event(n).process = 1; 
-%     Event(n).seqControl = 0; 
+%     if saveRcvDataFlag
+%         n = n + 1;
+%     
+%         Event(n).info = 'Save data - ext proc func';
+%         Event(n).tx = 0; 
+%         Event(n).rcv = 0; 
+%         Event(n).recon = 0;
+%         Event(n).process = 1; 
+%         Event(n).seqControl = 0; 
+%     end
 
 
     n = n + 1;
@@ -595,7 +595,17 @@ for nsupf = 1:numSupFrames
     Event(n).recon = 0; 
     Event(n).process = 3; 
     Event(n).seqControl = 0; 
+
+    if saveIQDataFlag
+        n = n + 1;
     
+        Event(n).info = 'Save data - ext proc func';
+        Event(n).tx = 0; 
+        Event(n).rcv = 0; 
+        Event(n).recon = 0;
+        Event(n).process = 4; 
+        Event(n).seqControl = 0; 
+    end
 
 %     i = i + 1;
 % 
@@ -664,7 +674,7 @@ end
 
 makeParameterStructure;
 savefast([savepath, 'params.mat'], 'P')
-savefast([savepath, 'data.mat'], 'RcvData', 'ImgData')
+% savefast([savepath, 'data.mat'], 'RcvData', 'ImgData')
 % saveRcvData(RcvData{1})
 
 %% **** Callback routines used by UIControls (UI) ****
