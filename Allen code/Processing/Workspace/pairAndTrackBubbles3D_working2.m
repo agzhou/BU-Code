@@ -72,11 +72,18 @@ half_pi = pi/2;
 parameterDefaults = {'', '', num2str(P.Trans.spacingMm * 1e3), num2str(P.Trans.spacingMm * 1e3), num2str(P.wl/2 * 1e6), '50', '3', '3', '2', '20', num2str(half_pi)};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
+% Store the user inputs for parameters into the corresponding variables
 startFile = str2double(parameterUserInput{1});
 endFile = str2double(parameterUserInput{2});
 xpix_spacing = str2double(parameterUserInput{3});
 ypix_spacing = str2double(parameterUserInput{4});
 zpix_spacing = str2double(parameterUserInput{5});
+maxSpeedExpectedMMPerS = str2double(parameterUserInput{6});           % max expected flow speed [mm/s]
+pers = str2double(parameterUserInput{7}); % # of frames a track needs to persist through to keep it
+mmws = str2double(parameterUserInput{8}); % Moving mean window size [frames]
+aThresholdFactor = str2double(parameterUserInput{9});         % Acceleration change threshold factor
+vTrimmedMeanPercentage = str2double(parameterUserInput{10});   % Trimmed mean percentage for the acceleration change threshold [%]
+angleChangeThreshold = str2double(parameterUserInput{11});    % Angle change threshold [radians]
 
 %% 2. Turn the individual center files into one cell array and turn the logical matrices into coordinates
 numFiles = endFile - startFile + 1;  % # of files (superframes/buffers) to process
@@ -145,7 +152,6 @@ startFramePrompt = {'Start frame'}; % User input for the frame to start processi
 startFrameDefault = {'1'};
 startFrameUserInput = inputdlg(startFramePrompt, 'Choose start frame #', 1, startFrameDefault);
 startFrame = str2double(startFrameUserInput{1});                      % Frame to start processing at
-maxSpeedExpectedMMPerS = str2double(parameterUserInput{6});           % max expected flow speed [mm/s]
 timePerFrame = 1 / P.frameRate;                                       % time elapsed per frame [s]
 maxDistPerFrameM = (maxSpeedExpectedMMPerS / 1000) * timePerFrame;    % max distance traveled per frame [m], according to the max expected flow speed and frame rate
 % pixelsPerM = 1 / pix_spacing * imgRefinementFactor(1);              % # of pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
@@ -221,7 +227,6 @@ ubT = cell(totalFrames - 1, 1);             % unassigned bubbles from the target
 tic
 parfor f = startFrame:totalFrames - 1       % Go through frames
 % parfor f = startFrame:startFrame+100
-% parfor f = startFrame:5000
 % for f = startFrame:startFrame+0
     sourceFrame = ccc_copy_source{f};     % Get the coordinates for the source frame (f)
     targetFrame = ccc_copy_target{f}; % Get the coordinates for the target frame (f + 1)
@@ -244,8 +249,10 @@ parfor f = startFrame:totalFrames - 1       % Go through frames
         end
         
 %         D(D > maxDistPerFrameM) = Inf;      % Set the elements above the distance per frame threshold to Inf so they aren't considered for pairing
-%         [assignment, unassignedrows, unassignedcolumns] = assignmunkres(D, 100); % Pair with the Munkres algorithm, which minimizes the total cost (total paired distance)
-%           bubblePairs{f} = assignment; % assignment will always be sorted to make the second column in order
+%         [assignment, unassignedrows, unassignedcolumns] = assignmunkres(D, 10000000000000); % Pair with the Munkres algorithm, which minimizes the total cost (total paired distance)
+%         bubblePairs{f} = assignment; % assignment will always be sorted to make the second column in order
+%         ubS{f} = unassignedrows;
+%         ubT{f} = unassignedcolumns;
 
         % Use Yi Cao's munkres for efficiency, which might break if there
         % are Infs?
@@ -254,9 +261,6 @@ parfor f = startFrame:totalFrames - 1       % Go through frames
         [sourceInd, targetInd] = ind2sub(size(assignment), indTemp);
         bubblePairs{f} = [sourceInd, targetInd]; % assignment will always be sorted to make the second column in order
 
-%         ubS{f} = unassignedrows;
-%         ubT{f} = unassignedcolumns;
-        
     end
 end
 toc
@@ -264,8 +268,17 @@ disp('Pairing done')
 
 clear f nbS nbT D spi assignment unassignedrows unassignedcolumns ccc_copy_source ccc_copy_target
 
+%% 5.5 Plot the paired bubble count
+bubbleCountPaired = zeros(size(bubblePairs, 1), 1);   % numFiles/# buffers x # frames per buffer. Count of bubbles in each frame
+parfor bci = 1:length(bubbleCountPaired)
+    bubbleCountPaired(bci) = size(bubblePairs{bci}, 1);
+end
+figure
+plot(1:length(bubbleCount), bubbleCount, 1:length(bubbleCountPaired), bubbleCountPaired)
+title('Bubble count: raw vs. paired')
+legend('Raw', 'Paired')
+
 %% 6. Create tracks with persistence
-pers = str2double(parameterUserInput{7}); % # of frames a track needs to persist through to keep it
 
 tic
 % Separate the pairs of coordinates so we can change their sizes independently
@@ -368,7 +381,6 @@ disp('Velocity map created')
 clear ti fn tracksTemp startPoints endPoints vfn nbiti
 
 %% 9. Refine the velocity map
-mmws = str2double(parameterUserInput{8}); % Moving mean window size [frames]
 bVelocityMSmoothed = bVelocityM;          % Initialize the velocity data, which will be smoothed across frames with a moving mean
 
 for n = startFrame:size(bVelocityM, 1) % Go through each track collection n
@@ -515,9 +527,7 @@ disp('Kalman filter applied')
 clear n tn tln k xk Pk yk Kku Iku xku Pku track
 
 %% 11. Acceleration and direction constraints
-aThresholdFactor = str2double(parameterUserInput{9});         % Acceleration change threshold factor
-vTrimmedMeanPercentage = str2double(parameterUserInput{10});   % Trimmed mean percentage for the acceleration change threshold [%]
-angleChangeThreshold = str2double(parameterUserInput{11});    % Angle change threshold [radians]
+
 
 % bVelocityMSmoothedKFConstrainedMMS = bVelocityMSmoothedKFMMS; % Initialize the variable for the smoothed, Kalman filtered, constrained velocity map
 % tic
@@ -550,6 +560,11 @@ angleChangeThreshold = str2double(parameterUserInput{11});    % Angle change thr
 tic
 bVelocityConstrained = applyConstraints(bVelocityM, vTrimmedMeanPercentage, aThresholdFactor, angleChangeThreshold, timePerFrame);
 toc
+
+bVelocityMSmoothedMMSConstrained = applyConstraints(bVelocityMSmoothedMMS, vTrimmedMeanPercentage, aThresholdFactor, angleChangeThreshold, timePerFrame);
+
+
+bVelocityMSmoothedKFConstrainedMMS = applyConstraints(bVelocityMSmoothedKFMMS, vTrimmedMeanPercentage, aThresholdFactor, angleChangeThreshold, timePerFrame);
 
 disp('Acceleration and direction constraints applied')
 clear n tln tn trackAlreadyDeleted track vTrack vTrackTrimmedMean aThresholdMag aTrackMag angleTrack angelTrackChanges
