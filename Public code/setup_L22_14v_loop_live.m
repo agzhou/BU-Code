@@ -14,7 +14,7 @@ savepath = [savepath, '\'];
 mkdir(savepath)
 
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]'};
-parameterDefaults = {'5', '0', '10', '500', '21', '5', '15'};
+parameterDefaults = {'5', '0', '10', '500', '21', '5', '15.625'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % Store the user inputs for parameters into the corresponding variables
@@ -336,7 +336,7 @@ endSample = startSample + numRcvSamples - 1;
 % nspa = spw*(2*(Receive(1).endDepth - Receive(1).startDepth));
 % nspa = 128 * ceil(nspa/128); % # samples per acquisition
 % maxAcqLength_adjusted = nspa / spw / 2;
-Resource.RcvBuffer(1).rowsPerFrame = numRcvSamples * na * numSubFrames;
+Resource.RcvBuffer(1).rowsPerFrame = numRcvSamples * na * numSubFrames * 1.5;
 maxAcqLength_adjusted = numRcvSamples / samplesPerWave / 2;
 
 for lss = 1:length(startSample)
