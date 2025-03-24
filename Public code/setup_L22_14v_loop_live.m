@@ -13,8 +13,8 @@ savepath = uigetdir('F:\', 'Select the save path');
 savepath = [savepath, '\'];
 mkdir(savepath)
 
-parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]'};
-parameterDefaults = {'5', '0', '10', '500', '21', '5', '15.625'};
+parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)'};
+parameterDefaults = {'5', '0', '10', '500', '21', '5', '15.625', '0'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % Store the user inputs for parameters into the corresponding variables
@@ -25,11 +25,12 @@ fps_target = str2double(parameterUserInput{4});
 na = str2double(parameterUserInput{5});
 maxAngle = str2double(parameterUserInput{6});
 probe_freq = str2double(parameterUserInput{7});
+simMode = str2double(parameterUserInput{8});
 
 supFrameIndex = 0;
 
 runVSX = 1;
-simOrNot = 1;
+% simOrNot = 0;
 movePointsOrNot = 0; % Media movePoints on or off
 
 supFrameBurstRate = 0.5; % Defines spacing between end of superframe burst and the next burst after jumping
@@ -70,7 +71,7 @@ TimeTagEna = 2;
 
 %% Simulation things - Media structure
 
-Resource.Parameters.simulateMode = simOrNot; % run script in simulate mode. Set to 0 if not
+Resource.Parameters.simulateMode = simMode; % run script in simulate mode. Set to 0 if not
 
 xl = 40;
 zl = 60;
@@ -113,7 +114,7 @@ Media.function = 'movePointsZ';
 startDepth = ceil(startDepthMM/1e3/wl); % in wavelengths
 endDepth = ceil(endDepthMM/1e3/wl); % in wavelengths
 
-numElements = Trans.numelements; % the structure gives # row elements + # column elements
+numElements = Trans.numelements;
 
 %% Transmission Waveform (TW)
 tw.A = Trans.frequency; % frequency of transmission pulse, sets half cycle period of the waveform...
@@ -237,24 +238,27 @@ end
 % For 2D scans and slices of 3D scans, it's always a rectangular area at a
 % fixed location in the transducer coord system
 
-pixelspacingPrompt = {'z (axial) pixel spacing [um]', 'x (lateral) pixel spacing [um]'};
-pixelspacingDefaults = {num2str(wl/2 * 1e6), num2str(Trans.spacingMm * 1e3)};
+% pixelspacingPrompt = {'z (axial) pixel spacing [um]', 'x (lateral) pixel spacing [um]'};
+pixelspacingPrompt = {'z (axial) pixel spacing [wl]', 'x (lateral) pixel spacing [wl]'};
+% pixelspacingDefaults = {num2str(wl/2 * 1e6), num2str(Trans.spacingMm * 1e3)};
+pixelspacingDefaults = {num2str(Trans.spacing/2), num2str(Trans.spacing)};
 pixelspacingUserInput = inputdlg(pixelspacingPrompt, 'Pixel Spacing Parameters', 1, pixelspacingDefaults);
 
 z_pix_spacing = str2double(pixelspacingUserInput{1});
 x_pix_spacing = str2double(pixelspacingUserInput{2});
 
-PData.PDelta = [x_pix_spacing * wl, 0, z_pix_spacing * wl]; % Spacing between pixels in x, y, z, in wavelengths
+% PData.PDelta = [x_pix_spacing * wl, 0, z_pix_spacing * wl]; % Spacing between pixels in x, y, z, in wavelengths
+PData.PDelta = [x_pix_spacing, 0, z_pix_spacing]; % Spacing between pixels in x, y, z, in wavelengths
 
 PData.Coord = 'rectangular'; % rectangular coords, could change to polar or spherical
 % Set PData array dimensions --> # of rows, columns, sections (planes
 % parallel to the xy plane)
 % For a 3D scan, rows - y axis, columns - x axis, sections - z axis
-% PData.Size(1) = ceil((endDepth - startDepth)./PData.PDelta(3)); % # rows
-PData.Size(1) = floor((endDepth - startDepth)./PData.PDelta(3)); % # rows
+% PData.Size(1) = ceil((endDepth - startDepth)./PData.PDelta(3));
+PData.Size(1) = floor((endDepth - startDepth)./PData.PDelta(3));
 % (old)
-% PData.Size(1) = ceil((Receive(1).endDepth - Receive(1).startDepth)./PData.PDelta(3)); % # rows
-PData.Size(2) = ceil(numElements.*Trans.spacing./PData.PDelta(1)); % # cols
+% PData.Size(1) = ceil((Receive(1).endDepth - Receive(1).startDepth)./PData.PDelta(3));
+PData.Size(2) = ceil(numElements.*Trans.spacing./PData.PDelta(1));
 PData.Size(3) = 1; % depth, is 1 unit deep for a 2D image
 
 % Define the location (x, y, z) of the upper left corner of the array

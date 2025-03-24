@@ -21,7 +21,7 @@ mkdir(savepath)
 supFrameIndex = 0;
 
 runVSX = 1;
-simOrNot = 0;
+simOrNot = 1;
 movePointsOrNot = 0; % Media movePoints on or off
 
 initialVoltage = 20; % V
