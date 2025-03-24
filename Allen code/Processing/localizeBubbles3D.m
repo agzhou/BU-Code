@@ -65,7 +65,8 @@ function [centers, refIQs, XC, XCThresholdAdaptive] = localizeBubbles3D(IQf, ref
     %% remove data from XC beneath a threshold and find local maxima
     
     XCt = abs(XC); % XC Thresholded
-    XCThresholdAdaptive = XCThresholdFactor * max(XCt, [], 'all');
+    XCThresholdFactorGlobalMax = 0.1;
+    XCThresholdAdaptive = max([XCThresholdFactor * max(XCt, [], 'all'), XCThresholdFactorGlobalMax]);
 %     XCt(XCt < XCThreshold) = 0;
     XCt(XCt < XCThresholdAdaptive) = 0;
     centers = imregionalmax(XCt, 6); % Center of each isolated blob (logical matrix)

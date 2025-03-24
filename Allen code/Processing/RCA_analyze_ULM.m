@@ -59,10 +59,10 @@ ypix_spacing = str2double(parameterUserInput{10});
 zpix_spacing = str2double(parameterUserInput{11});
 
 % IQfolderName = 'IQ Data - Verasonics Recon\'; % 'IQ data\'
-saveFolderName = 'Processed Data 03-19-2025\';
+saveFolderName = 'Processed Data 03-22-2025 lower XCThresholdFactor\';
 % savepath = [datapath, saveFolderName];
 % mkdir([datapath, saveFolderName])
-savepath = ['G:\Allen\Data\03-17-2025 AZ02 ULM\RC15gV\run 2 right eye\', saveFolderName];
+savepath = ['G:\Allen\Data\03-20-2025 AZ03 ULM\RC15gV\run 1 left eye\', saveFolderName];
 mkdir(savepath)
 % savepath = 'F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\FMAS Processed Data\';
 
@@ -80,7 +80,7 @@ addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Processing\t
 % % Region of interest
 xrange = int16(1:80);
 yrange = int16(1:80);
-zrange = int16(36:142);
+zrange = int16(1:142);
 
 % framerange = 1:200;
 % framerange = 1:size(IQf, 3);
@@ -116,8 +116,8 @@ refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) 
 % test = zeros([s(1:3) .* 4, s(4)]);
 %% Process the data
 % tic
-for filenum = startFile:endFile
-% for filenum = 61
+% for filenum = startFile:endFile
+for filenum = 1:168
     tic
 %     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
     load([datapath, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
