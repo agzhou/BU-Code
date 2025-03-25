@@ -159,6 +159,7 @@ end
 
 volumeViewer(bubbleDensityMapRaw)
 figure; imagesc(squeeze(sum(bubbleDensityMapRaw, 1))' .^ 0.4); colormap hot; title('Raw bubble density, sum across y')
+figure; imagesc(squeeze(sum(bubbleDensityMapRaw(70:90, :, :), 1))' .^ 0.3); colormap hot; title('Raw bubble density, MIP across y = 70:90')
 
 %% 4. Define max speed (distance per frame) threshold and initialize variables
 startFramePrompt = {'Start frame'}; % User input for the frame to start processing at
@@ -597,7 +598,7 @@ volumeViewer(bSumConstrained .^ 0.5)
 volumeViewer(bSumSmoothedKF .^ 0.5)
 volumeViewer(bSumSmoothedKFConstrained .^ 0.5)
 
-figure; imagesc(sum(bSumSmoothedKFConstrained .^ 0.5, 3))
+% figure; imagesc(sum(bSumSmoothedKFConstrained .^ 0.5, 3))
 % holeMaskThreshold = 10;
 % maskHole = sum(bSumSmoothedKFConstrained .^ 0.5, 3) < holeMaskThreshold;
 % figure; imagesc(maskHole)
@@ -616,7 +617,7 @@ figure; imagesc(squeeze(sum(bSum, 3).^ 0.5)'); colormap hot; title('bSum sum acr
 % slices
 % figure; imagesc(squeeze(bSum(80, :, :) .^ 0.5)'); colormap hot
 % figure; imagesc(squeeze(max(bSum, [], 1).^ 0.5)'); colormap hot; title('bSum MIP across y')
-yrange_plot_MIP = 60:100;
+yrange_plot_MIP = 70:90;
 figure; imagesc(squeeze(max(bSum(yrange_plot_MIP, :, :), [], 1) .^ 0.5)'); colormap hot
 title(["bSum Maximum Intensity Projection from y = ", num2str(yrange_plot_MIP(1)), " to ", num2str(yrange_plot_MIP(end))])
 
@@ -633,10 +634,11 @@ addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Proces
 % volumeViewer(test)
 %%
 test_dmi = interpolatedDensityMap(bVelocityM, img_size, startFrame); % test density map interpolated
-
+% Probably should only do this if we're confident about the max speed input
+volumeViewer(test_dmi)
 figure; imagesc(squeeze(test_dmi(80, :, :))' .^ 0.5); colormap hot
 figure; imagesc(squeeze(sum(test_dmi, 1))' .^ 0.5); colormap hot
-findfigs
+% findfigs
 % bw = imbinarize(bSum .^ 1);
 %% Plot speed map after persistence with linear interpolation, on the cleaned and refined velocity data
 speedMap = zeros(img_size(1), img_size(2), img_size(3));
