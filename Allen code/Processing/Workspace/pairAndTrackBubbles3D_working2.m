@@ -46,7 +46,7 @@ end
 %% 1. Add dependencies and load parameters
 % Get data path of the localized bubble centers
 % datapath = uigetdir('F:\Allen\Data\', 'Select the data path');
-datapath = uigetdir('D:\Allen\Data\', 'Select the data path');
+datapath = uigetdir('D:\Allen\Data\', 'Select the processed data path');
 datapath = [datapath, '\'];
 
 % Load localization processing parameters: proc_params.mat
@@ -633,7 +633,10 @@ addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Proces
 % volumeViewer(test)
 %%
 test_dmi = interpolatedDensityMap(bVelocityM, img_size, startFrame); % test density map interpolated
-% 
+
+figure; imagesc(squeeze(test_dmi(80, :, :))' .^ 0.5); colormap hot
+figure; imagesc(squeeze(sum(test_dmi, 1))' .^ 0.5); colormap hot
+findfigs
 % bw = imbinarize(bSum .^ 1);
 %% Plot speed map after persistence with linear interpolation, on the cleaned and refined velocity data
 speedMap = zeros(img_size(1), img_size(2), img_size(3));
@@ -794,8 +797,8 @@ function [densityMapInterpolated] = interpolatedDensityMap(bVelocityM, img_size,
     densityMapInterpolatedCounter = zeros(size(densityMapInterpolated));
     
     tic
-%     for ti = startFrame:size(bVelocityM, 1)
-    for ti = startFrame
+    for ti = startFrame:size(bVelocityM, 1)
+%     for ti = startFrame:startFrame+100
         bvTemp = bVelocityM{ti}; % get the ti-th entry
         pers = size(bvTemp, 3);
         if ~isempty(bvTemp) % only do stuff if the bubble velocity cell array entry is not empty
@@ -816,8 +819,8 @@ function [densityMapInterpolated] = interpolatedDensityMap(bVelocityM, img_size,
                 end
     
                 vTemp = squeeze(bvTemp(bpi, 7:9, :)); % Velocity components
-                speedTemp = sqrt(vTemp(:, 1).^2 + vTemp(:, 2).^2 + vTemp(:, 3).^2); % Speed vector: one value per persistence frame index
-    
+%                 speedTemp = sqrt(vTemp(:, 1).^2 + vTemp(:, 2).^2 + vTemp(:, 3).^2); % Speed vector: one value per persistence frame index
+                speedTemp = sqrt(sum(vTemp.^2, 1))';
                 roundOrNot = true;
                 interpPts = ULM_interp3D_linear(coordsStart, coordsEnd, speedTemp, roundOrNot); % Get interpolated points with the corresponding z velocity value. each row is [z coord, x coord, z velocity]
 
@@ -849,6 +852,7 @@ function [densityMapInterpolated] = interpolatedDensityMap(bVelocityM, img_size,
     %     disp(strcat("Frame ", num2str(ti), " stored."))
     %     clear bvTemp
     end
+    disp('Density map interpolated')
     toc
 %     clear speedValTemp ti bpi pfi ipi interpPtsTemp speedTemp coordsStart coordsEnd bvTemp
     densityMapInterpolated = densityMapInterpolatedCounter;
