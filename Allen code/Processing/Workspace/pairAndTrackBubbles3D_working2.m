@@ -46,7 +46,7 @@ end
 %% 1. Add dependencies and load parameters
 % Get data path of the localized bubble centers
 % datapath = uigetdir('F:\Allen\Data\', 'Select the data path');
-datapath = uigetdir('D:\Allen\Data\', 'Select the data path');
+datapath = uigetdir('D:\Allen\Data\', 'Select the processed data path');
 datapath = [datapath, '\'];
 
 % Load localization processing parameters: proc_params.mat
@@ -146,6 +146,20 @@ xlabel('Frame number')
 ylabel('Bubble count')
 
 clear fi bufTemp
+
+%% 3.5 Plot the raw bubble density map
+bubbleDensityMapRaw = zeros(img_size(1), img_size(2), img_size(3));
+
+for cci = 1:length(centerCoords_corrected) % centerCoords index
+    cc = centerCoords_corrected{cci};
+    for nbcci = 1:size(cc, 1) % # bubbles in centerCoords_corrected at index cci
+        bubbleDensityMapRaw(cc(nbcci, 1), cc(nbcci, 2), cc(nbcci, 3)) = bubbleDensityMapRaw(cc(nbcci, 1), cc(nbcci, 2), cc(nbcci, 3)) + 1;
+    end
+end
+
+volumeViewer(bubbleDensityMapRaw)
+figure; imagesc(squeeze(sum(bubbleDensityMapRaw, 1))' .^ 0.4); colormap hot; title('Raw bubble density, sum across y')
+figure; imagesc(squeeze(sum(bubbleDensityMapRaw(70:90, :, :), 1))' .^ 0.3); colormap hot; title('Raw bubble density, MIP across y = 70:90')
 
 %% 4. Define max speed (distance per frame) threshold and initialize variables
 startFramePrompt = {'Start frame'}; % User input for the frame to start processing at
@@ -584,7 +598,7 @@ volumeViewer(bSumConstrained .^ 0.5)
 volumeViewer(bSumSmoothedKF .^ 0.5)
 volumeViewer(bSumSmoothedKFConstrained .^ 0.5)
 
-figure; imagesc(sum(bSumSmoothedKFConstrained .^ 0.5, 3))
+% figure; imagesc(sum(bSumSmoothedKFConstrained .^ 0.5, 3))
 % holeMaskThreshold = 10;
 % maskHole = sum(bSumSmoothedKFConstrained .^ 0.5, 3) < holeMaskThreshold;
 % figure; imagesc(maskHole)
@@ -603,7 +617,7 @@ figure; imagesc(squeeze(sum(bSum, 3).^ 0.5)'); colormap hot; title('bSum sum acr
 % slices
 % figure; imagesc(squeeze(bSum(80, :, :) .^ 0.5)'); colormap hot
 % figure; imagesc(squeeze(max(bSum, [], 1).^ 0.5)'); colormap hot; title('bSum MIP across y')
-yrange_plot_MIP = 60:100;
+yrange_plot_MIP = 70:90;
 figure; imagesc(squeeze(max(bSum(yrange_plot_MIP, :, :), [], 1) .^ 0.5)'); colormap hot
 title(["bSum Maximum Intensity Projection from y = ", num2str(yrange_plot_MIP(1)), " to ", num2str(yrange_plot_MIP(end))])
 
@@ -618,8 +632,13 @@ addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Proces
 
 % test = vesselness3D(bSum .^ 0.5, 1:5, [xpix_spacing; ypix_spacing; zpix_spacing], 0.5, true);
 % volumeViewer(test)
-
-% 
+%%
+test_dmi = interpolatedDensityMap(bVelocityM, img_size, startFrame); % test density map interpolated
+% Probably should only do this if we're confident about the max speed input
+volumeViewer(test_dmi)
+figure; imagesc(squeeze(test_dmi(80, :, :))' .^ 0.5); colormap hot
+figure; imagesc(squeeze(sum(test_dmi, 1))' .^ 0.5); colormap hot
+% findfigs
 % bw = imbinarize(bSum .^ 1);
 %% Plot speed map after persistence with linear interpolation, on the cleaned and refined velocity data
 speedMap = zeros(img_size(1), img_size(2), img_size(3));
@@ -635,10 +654,10 @@ speedMapCounter = zeros(img_size(1), img_size(2), img_size(3));
 tic
 for ti = startFrame:size(bVelocityMSmoothed, 1)
 % for ti = startFrame
-    bvTemp = bVelocityMSmoothedKFConstrainedMMS{ti};
+%     bvTemp = bVelocityMSmoothedKFConstrainedMMS{ti};
 %     bvTemp = bVelocityMSmoothedKFMMS{ti};
 %     bvTemp = bVelocityMSmoothedMMS{ti}; % get the ti-th entry
-%     bvTemp = bVelocityMSmoothed{ti}; % get the ti-th entry
+    bvTemp = bVelocityMSmoothed{ti}; % get the ti-th entry
 %     bvTemp = bVelocityM{ti}; % get the ti-th entry
     if ~isempty(bvTemp) % only do stuff if the bubble velocity cell array entry is not empty
         for bpi = 1:size(bvTemp, 1) % bubble pair index
@@ -769,4 +788,78 @@ function bVelocityConstrained = applyConstraints(bVelocity, vTrimmedMeanPercenta
             end
         end
     end
+end
+
+function [densityMapInterpolated] = interpolatedDensityMap(bVelocityM, img_size, startFrame)
+    densityMapInterpolated = zeros(img_size(1), img_size(2), img_size(3));
+%     plotPower = 1;
+
+    % Counters for proper averaging if there are overlapped pixels from
+    % different tracks
+    densityMapInterpolatedCounter = zeros(size(densityMapInterpolated));
+    
+    tic
+    for ti = startFrame:size(bVelocityM, 1)
+%     for ti = startFrame:startFrame+100
+        bvTemp = bVelocityM{ti}; % get the ti-th entry
+        pers = size(bvTemp, 3);
+        if ~isempty(bvTemp) % only do stuff if the bubble velocity cell array entry is not empty
+            for bpi = 1:size(bvTemp, 1) % bubble pair index
+    
+                % Initialize temporary start and end coordinate matrices.
+                % Each have dimensions [# persistence frames, 3] where each row is [x coord, y coord, z coord].
+                coordsStart = NaN(pers, 3);
+                coordsEnd = NaN(pers, 3);
+    
+                % Go through the # of persistence frames and get the
+                % coordinates at each frame pfi for the bubble track bpi.
+                %   Each row corresponds to a persistence frame, and contains
+                %   [x, y, z] velocity.
+                for pfi = 1:pers % persistence frame index
+                    coordsStart(pfi, :) = bvTemp(bpi, 1:3, pfi);
+                    coordsEnd(pfi, :) = bvTemp(bpi, 4:6, pfi);
+                end
+    
+                vTemp = squeeze(bvTemp(bpi, 7:9, :)); % Velocity components
+%                 speedTemp = sqrt(vTemp(:, 1).^2 + vTemp(:, 2).^2 + vTemp(:, 3).^2); % Speed vector: one value per persistence frame index
+                speedTemp = sqrt(sum(vTemp.^2, 1))';
+                roundOrNot = true;
+                interpPts = ULM_interp3D_linear(coordsStart, coordsEnd, speedTemp, roundOrNot); % Get interpolated points with the corresponding z velocity value. each row is [z coord, x coord, z velocity]
+
+                for ipi = 1:size(interpPts, 1) % interpolated point index
+                    interpPtsTemp = interpPts(ipi, 1:3);
+                    speedValTemp = interpPts(ipi, 4);
+                    
+%                     speedMap(smoothedPtsTemp(1), smoothedPtsTemp(2), smoothedPtsTemp(3)) = speedMap(smoothedPtsTemp(1), smoothedPtsTemp(2), smoothedPtsTemp(3)) + speedValTemp;
+                    densityMapInterpolatedCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) = densityMapInterpolatedCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) + 1;
+                end
+    
+    %             for ipi = 1:size(interpPts, 1) % interpolated point index
+    %                 interpPtsTemp = interpPts(ipi, :);
+    %                 speedValTemp = interpPtsTemp(4);
+    %                 
+    %                 speedMap(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) = speedMap(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) + speedValTemp;
+    %                 speedMapCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) = speedMapCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) + 1;
+    %             end
+            end
+    %     else
+    %         interpPts = [];
+    %         coordsStart = [];
+    %         coordsEnd = [];
+    %         zvTemp = [];
+    %         bvTemp = [];
+    %         zVelTemp = [];
+    %         interpPtsTemp = [];
+        end
+    %     disp(strcat("Frame ", num2str(ti), " stored."))
+    %     clear bvTemp
+    end
+    disp('Density map interpolated')
+    toc
+%     clear speedValTemp ti bpi pfi ipi interpPtsTemp speedTemp coordsStart coordsEnd bvTemp
+    densityMapInterpolated = densityMapInterpolatedCounter;
+    % Take the average for pixels with overlapping tracks
+%     speedMask = densityMapInterpolatedCounter > 0;
+%     speedMap(speedMask) = speedMap(speedMask) ./ densityMapInterpolatedCounter(speedMask);
+
 end
