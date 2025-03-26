@@ -633,15 +633,15 @@ figure; imagesc(squeeze(sum(bSum, 3).^ plotPower2D)'); colormap hot; title('bSum
 % figure; imagesc(squeeze(bSum(80, :, :) .^ 0.5)'); colormap hot
 % figure; imagesc(squeeze(max(bSum, [], 1).^ 0.5)'); colormap hot; title('bSum MIP across y')
 yrange_plot_MIP = 70:90;
-figure; imagesc(squeeze(max(bSum(yrange_plot_MIP, :, :), [], 1) .^ 0.3)'); colormap hot; colorbar
+figure; imagesc(squeeze(max(bSum(yrange_plot_MIP, :, :), [], 1) .^ 0.3)'); colormap hot
 title("bSum Maximum Intensity Projection from y = " + num2str(yrange_plot_MIP(1)) + " to " + num2str(yrange_plot_MIP(end)) + " \^ 0.3")
 
 xrange_plot_MIP = 70:90;
-figure; imagesc(squeeze(max(bSum(:, xrange_plot_MIP, :), [], 2) .^ 0.3)'); colormap hot; colorbar
+figure; imagesc(squeeze(max(bSum(:, xrange_plot_MIP, :), [], 2) .^ 0.3)'); colormap hot
 title("bSum Maximum Intensity Projection from x = " + num2str(xrange_plot_MIP(1)) + " to " + num2str(xrange_plot_MIP(end)) + " \^ 0.3")
 
-zrange_plot_MIP = 100:150;
-figure; imagesc(squeeze(max(bSum(:, :, zrange_plot_MIP), [], 3) .^ 0.5)'); colormap hot; colorbar
+zrange_plot_MIP = 60:100;
+figure; imagesc(squeeze(max(bSum(:, :, zrange_plot_MIP), [], 3) .^ 0.5)'); colormap hot
 title("bSum Maximum Intensity Projection from z = " + num2str(zrange_plot_MIP(1)) + " to " + num2str(zrange_plot_MIP(end)) + " \^ 0.3")
 
 figure; imagesc(squeeze(max(bSumSmoothedKFConstrained(yrange_plot_MIP, :, :), [], 1) .^ 0.3)'); colormap hot

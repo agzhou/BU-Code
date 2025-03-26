@@ -39,7 +39,7 @@ end
 
 % Prompt for parameter user input
 parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Image refinement factor - x', 'Image refinement factor - y', 'Image refinement factor - z', 'XC Threshold Factor', 'x pixel spacing [um]', 'y pixel spacing [um]', 'z pixel spacing [um]'};
-parameterDefaults = {'1', '', '20', '150', '2', '2', '2', '0.2', num2str(PData.PDelta(1) * P.wl * 1e6), num2str(PData.PDelta(2) * P.wl * 1e6), num2str(PData.PDelta(3) * P.wl * 1e6)};
+parameterDefaults = {'1', '', '20', '150', '2', '2', '2', '0.25', num2str(PData.PDelta(1) * P.wl * 1e6), num2str(PData.PDelta(2) * P.wl * 1e6), num2str(PData.PDelta(3) * P.wl * 1e6)};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % define # of files manually for now
@@ -54,9 +54,9 @@ if any(floor(imgRefinementFactor) ~= imgRefinementFactor) || any(imgRefinementFa
     error('Image refinement factors must be whole numbers')
 end
 XCThreshold = str2double(parameterUserInput{8});
-xpix_spacing = str2double(parameterUserInput{9});
-ypix_spacing = str2double(parameterUserInput{10});
-zpix_spacing = str2double(parameterUserInput{11});
+xpix_spacing = str2double(parameterUserInput{9}) / 1e6;
+ypix_spacing = str2double(parameterUserInput{10}) / 1e6;
+zpix_spacing = str2double(parameterUserInput{11}) / 1e6;
 
 % IQfolderName = 'IQ Data - Verasonics Recon\'; % 'IQ data\'
 % saveFolderName = 'Processed Data 03-24-2025\';
@@ -87,7 +87,11 @@ range = {xrange, yrange, zrange};
 
 % Load and refine simulated PSF
 if ~exist('PSF', 'var')
-    load('G:\Allen\Data\RC15gV PSF sim\PSF.mat', 'PSF')
+%     load('G:\Allen\Data\RC15gV PSF sim\PSF.mat', 'PSF')
+%     load([datapath, '..\..\..\..\RC15gV PSF sim\PSF.mat'], 'PSF')
+    datapath_split = split(string(datapath), filesep);
+    PSF_path = fullfile(join(datapath_split(1:find(contains(datapath_split, "Data"))), "\") + "\RC15gV PSF sim\PSF.mat");
+    load(PSF_path, 'PSF')
     % figure; imagesc(squeeze(abs(PSF(40, :, :)))')
 end
 
@@ -102,7 +106,7 @@ refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) 
 %% Process the data
 
 % for filenum = startFile:endFile
-for filenum = 82:endFile
+for filenum = 2:endFile
     tic
 %     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
     load([datapath, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
@@ -143,4 +147,4 @@ for filenum = 82:endFile
     disp(strcat("Centroid finding done: file ", num2str(filenum)))
     toc
 end
-save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'XCThreshold')
+save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'XCThreshold', 'xpix_spacing', 'ypix_spacing', 'zpix_spacing')

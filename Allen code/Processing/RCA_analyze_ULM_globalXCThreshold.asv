@@ -70,10 +70,8 @@ savepath = [savepath, '\'];
 
 filename_structure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 
-oldCodePath = uigetdir('G:\Allen\Data\', 'Select the IQ data path');
-oldCodePath = [oldCodePath, '\'];
 addpath([cd, '\normxcorr3.m'])
-addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Processing\toolbox_nlmeans_version2')
+addpath([cd, '\toolbox_nlmeans_version2'])
 
 %% Other parameters for processing the data
 
@@ -89,7 +87,11 @@ range = {xrange, yrange, zrange};
 
 % Load and refine simulated PSF
 if ~exist('PSF', 'var')
-    load('G:\Allen\Data\RC15gV PSF sim\PSF.mat', 'PSF')
+%     load('G:\Allen\Data\RC15gV PSF sim\PSF.mat', 'PSF')
+%     load([datapath, '..\..\..\..\RC15gV PSF sim\PSF.mat'], 'PSF')
+    datapath_split = split(string(datapath), filesep);
+    PSF_path = fullfile([join(datapath_split{1:find(contains(datapath_split, 'Data'))}, '\'), '\RC15gV PSF sim\PSF.mat']);
+    load(PSF_path, 'PSF')
     % figure; imagesc(squeeze(abs(PSF(40, :, :)))')
 end
 
