@@ -39,7 +39,7 @@ end
 
 % Prompt for parameter user input
 parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Image refinement factor - x', 'Image refinement factor - y', 'Image refinement factor - z', 'XC Threshold Factor', 'x pixel spacing [um]', 'y pixel spacing [um]', 'z pixel spacing [um]'};
-parameterDefaults = {'1', '', '20', '150', '2', '2', '2', '0.2', num2str(PData.PDelta(1) * P.wl * 1e6), num2str(PData.PDelta(2) * P.wl * 1e6), num2str(PData.PDelta(3) * P.wl * 1e6)};
+parameterDefaults = {'1', '', '20', '150', '2', '2', '2', '0.25', num2str(PData.PDelta(1) * P.wl * 1e6), num2str(PData.PDelta(2) * P.wl * 1e6), num2str(PData.PDelta(3) * P.wl * 1e6)};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % define # of files manually for now
@@ -101,8 +101,9 @@ refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) 
 % test = zeros([s(1:3) .* 4, s(4)]);
 %% Process the data
 
-% for filenum = startFile:endFile
-for filenum = 82:endFile
+for filenum = startFile:endFile
+% for filenum = 82:endFile
+% for filenum = 79:-1:15
     tic
 %     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
     load([datapath, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
