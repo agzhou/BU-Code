@@ -444,7 +444,7 @@ end
 
 disp('Velocity map smoothed')
 
-%% 10. Kalman filter
+%% 10a. Kalman filter with velocity in the state
 numDims = 3;
 numStates = numDims * 2; % In 3D: x position, y position, z position, x displacement, y displacement, z displacement
 
@@ -471,6 +471,113 @@ Hk = [1, 0, 0, 0, 0, 0; ...
       0, 0, 0, 1, 0, 0; ...
       0, 0, 0, 0, 1, 0; ...
       0, 0, 0, 0, 0, 1];
+
+%%%%%%%% these covariance matrices are from the Song et al. 2020 paper %%%%%%%%%
+Qk = diag(ones(numStates, 1)) .* 0.5;      % Covariance matrix of the system/process noise
+Rk = diag(ones(numStates, 1)) .* 4;   % Covariance matrix of the observation noise
+
+tic
+for n = startFrame:size(bVelocityMSmoothedKFMMS, 1)
+% for n = 7961
+    tln = bVelocityMSmoothedKFMMS{n}; % Track list n
+    %%%% MAYBE MOVE THE BELOW LOOP INTO A FUNCTION WITH A PARFOR %%%
+    for tn = 1:size(tln, 1) % Track number tn
+        track = squeeze(tln(tn, :, :))'; % Get the track
+        track = [track; [track(end, 4:6), 0, 0, 0, 0, 0, 0]];
+
+        % Initialize variables for the state vector and covariance matrix
+        xk = NaN(numStates, size(track, 1));
+        Pk = NaN(numStates, numStates, size(track, 1));
+
+        % Initial values                 
+        xk(:, 1) = [track(1, 1:3), track(1, 7:9) .* vMMStoPixelDispPerFrame]'; % Initial state vector
+
+        Pk(:, :, 1) = [1, 0, 0, 0, 0, 0; ... % Initial covariance matrix
+                       0, 1, 0, 0, 0, 0; ...
+                       0, 0, 1, 0, 0, 0; ...
+                       0, 0, 0, 10, 0, 0; ...
+                       0, 0, 0, 0, 10, 0; ...
+                       0, 0, 0, 0, 0, 10];
+        %%%%%% WHAT INITIAL COVARIANCES SHOULD I USE??? %%%%%%
+
+%         xk(:, 2) = [track(2, 1:2), track(1, 5:6) .* vMMStoPixelDispPerFrame]';
+% %         xk(:, 2) = [track(2, 1:2), track(1, 5:6)]';
+%         Pk(:, :, 2) = [1, 0, 0, 0; ...
+%                  0, 1, 0, 0; ...
+%                  0, 0, 10^4, 0; ...
+%                  0, 0, 0, 10^4];
+
+        for k = 2:size(track, 1) % Go through each step of the track
+            % Prediction
+            xkp = Fk * xk(:, k - 1); 
+            Pkp = Fk * Pk(:, :, k - 1) * Fk + Qk;
+
+            % Observation
+            yk = [track(k, 1:3), track(k, 7:9) .* vMMStoPixelDispPerFrame]';
+
+            % Update
+            Kku = Pkp * Hk' * inv(Hk * Pkp * Hk' + Rk); % Kalman gain matrix
+            Iku = yk - Hk * xkp; % Innovation vector (difference between the observed state and the predicted state transformed into an observation at step k)
+            xku = xkp + Kku * Iku; % Updated (weighted) estimate for the state at step k
+            Pku = (eye(length(xku)) - Kku * Hk) * Pkp; % Updated covariance matrix at step k
+
+            % Store the updated state and covariance
+            xk(:, k) = xku;
+            Pk(:, :, k) = Pku;
+        end
+
+        % Adjustments in case the Kalman filter puts some points outside the original region
+        xktemp = xk(1:3, :);
+        xktemp(xktemp < 1) = 1;
+        xk(1:3, :) = xktemp;
+        xk(1, xk(1, :) > img_size(1)) = img_size(1);
+        xk(2, xk(2, :) > img_size(2)) = img_size(2);
+        xk(3, xk(3, :) > img_size(3)) = img_size(3);
+        
+        bVelocityMSmoothedKFMMS{n}(tn, 1:3, :) = round(xk(1:3, 1:end-1));
+        bVelocityMSmoothedKFMMS{n}(tn, 4:6, :) = round(xk(1:3, 2:end));
+%         bVelocityMSmoothedKFMMS{n}(tn, 7:9, :) = xk(4:6, 2:end) ./ vMMStoPixelDispPerFrame;
+        bVelocityMSmoothedKFMMS{n}(tn, 7:9, :) = xk(4:6, 2:end) ./ repmat(vMMStoPixelDispPerFrame', 1, pers);
+%         bVelocityTestMSmoothedKFMMS{n}(tn, 5:6, :) = (xk(1:2, 2:end) - xk(1:2, 1:end-1)); % ./ timePerFrame;
+
+        % plot test to compare for a single track
+%         figure
+%         hold on
+%         plot(xk(1, :), xk(2, :), '-o')
+%         plot(track(:, 1), track(:, 2), '--x')
+%         clear i xki
+%         legend('Kalman filtered', 'Original')
+%         hold off
+    end
+end
+toc
+disp('Kalman filter applied')
+clear n tn tln k xk Pk yk Kku Iku xku Pku track
+
+%% 10b. Kalman filter without velocity in the observation
+numDims = 3;
+numStates = numDims * 2; % In 3D: x position, y position, z position, x displacement, y displacement, z displacement
+
+if pers < 3
+    error('The Kalman filter needs at least 3 points in the track')
+end
+
+% Initialize the filtered output variable
+bVelocityMSmoothedKFMMS = bVelocityMSmoothedMMS;
+% vMMStoPixelDispPerFrame = timePerFrame / 1e3 * pixelsPerM;
+vMMStoPixelDispPerFrame = timePerFrame / 1e3 * [xpixelsPerM, ypixelsPerM, zpixelsPerM];
+
+% Define the matrices that map the state transition, and the state ->
+% observation transformation
+Fk = [1, 0, 0, 1, 0, 0; ...
+      0, 1, 0, 0, 1, 0; ...
+      0, 0, 1, 0, 0, 1; ...
+      0, 0, 0, 1, 0, 0; ...
+      0, 0, 0, 0, 1, 0; ...
+      0, 0, 0, 0, 0, 1];
+Hk = [1, 0, 0, 0, 0, 0; ...
+      0, 1, 0, 0, 0, 0; ...
+      0, 0, 1, 0, 0, 0];
 
 %%%%%%%% these covariance matrices are from the Song et al. 2020 paper %%%%%%%%%
 Qk = diag(ones(numStates, 1)) .* 0.5;      % Covariance matrix of the system/process noise
@@ -612,6 +719,15 @@ volumeViewer(bSumConstrained .^ 0.5)
 volumeViewer(bSumSmoothedKF .^ 0.5)
 volumeViewer(bSumSmoothedKFConstrained .^ 0.3)
 
+imgRefinementFactor_map = [2, 2, 2];
+refineMap = @(map, imgRefinementFactor_map) imresize3(map, [size(map, 1) * imgRefinementFactor_map(1), size(map, 2) * imgRefinementFactor_map(2), size(map, 3) * imgRefinementFactor_map(3)]);
+bSumRefined = refineMap(bSum, imgRefinementFactor_map);
+volumeViewer(bSumRefined .^ 1)
+
+yrange_plot_MIP = 140:180;
+figure; imagesc(abs(squeeze(max(bSumRefined(yrange_plot_MIP, :, :), [], 1) .^ 0.3)')); colormap hot; colorbar
+title("bSumRefined Maximum Intensity Projection from y = " + num2str(yrange_plot_MIP(1)) + " to " + num2str(yrange_plot_MIP(end)) + " \^ 0.3")
+
 % figure; imagesc(sum(bSumSmoothedKFConstrained .^ 0.5, 3))
 % holeMaskThreshold = 10;
 % maskHole = sum(bSumSmoothedKFConstrained .^ 0.5, 3) < holeMaskThreshold;
@@ -620,7 +736,7 @@ volumeViewer(bSumSmoothedKFConstrained .^ 0.3)
 % Set voxels with a bubble count of 2 or less = 0
 bSumSmoothedKFConstrainedTest = bSumSmoothedKFConstrained;
 bSumSmoothedKFConstrainedTest(bSumSmoothedKFConstrainedTest <= 2) = 0;
-volumeViewer(bSumSmoothedKFConstrainedTest .^ 0.5)
+volumeViewer(bSumSmoothedKFConstrainedTest .^ 0.3)
 
 % 2D sum plots
 plotPower2D = 0.3;
@@ -632,7 +748,9 @@ figure; imagesc(squeeze(sum(bSum, 3).^ plotPower2D)'); colormap hot; title('bSum
 % slices
 % figure; imagesc(squeeze(bSum(80, :, :) .^ 0.5)'); colormap hot
 % figure; imagesc(squeeze(max(bSum, [], 1).^ 0.5)'); colormap hot; title('bSum MIP across y')
-yrange_plot_MIP = 70:90;
+% yrange_plot_MIP = 70:90;
+% yrange_plot_MIP = 45:55;
+yrange_plot_MIP = 75:85;
 figure; imagesc(squeeze(max(bSum(yrange_plot_MIP, :, :), [], 1) .^ 0.3)'); colormap hot; colorbar
 title("bSum Maximum Intensity Projection from y = " + num2str(yrange_plot_MIP(1)) + " to " + num2str(yrange_plot_MIP(end)) + " \^ 0.3")
 
@@ -644,19 +762,38 @@ zrange_plot_MIP = 100:150;
 figure; imagesc(squeeze(max(bSum(:, :, zrange_plot_MIP), [], 3) .^ 0.5)'); colormap hot; colorbar
 title("bSum Maximum Intensity Projection from z = " + num2str(zrange_plot_MIP(1)) + " to " + num2str(zrange_plot_MIP(end)) + " \^ 0.3")
 
-figure; imagesc(squeeze(max(bSumSmoothedKFConstrained(yrange_plot_MIP, :, :), [], 1) .^ 0.3)'); colormap hot
-title("bSumSmoothedKFConstrained Maximum Intensity Projection from y = " + num2str(yrange_plot_MIP(1)) + " to " + num2str(yrange_plot_MIP(end)) + " \^0.3")
+figure; imagesc(squeeze(max(bSumSmoothedKFConstrainedTest(yrange_plot_MIP, :, :), [], 1) .^ 0.3)'); colormap hot
+title("bSumSmoothedKFConstrained count<=2 removed Maximum Intensity Projection from y = " + num2str(yrange_plot_MIP(1)) + " to " + num2str(yrange_plot_MIP(end)) + " \^0.3")
 
 addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Processing\Jerman Enhancement Filter\')
 
 % test = vesselness3D(bSum .^ 0.5, 1:5, [xpix_spacing; ypix_spacing; zpix_spacing], 0.5, true);
 % volumeViewer(test)
 %%
-test_dmi = interpolatedDensityMap(bVelocityM, img_size, startFrame); % test density map interpolated
+test_dmi = interpolatedDensityMap(bVelocityMSmoothedKFConstrainedMMS, img_size, startFrame); % test density map interpolated
+
+% test_dmi = interpolatedDensityMap(bVelocityM, img_size, startFrame); % test density map interpolated
 % Probably should only do this if we're confident about the max speed input
-volumeViewer(test_dmi)
-figure; imagesc(squeeze(test_dmi(80, :, :))' .^ 0.5); colormap hot
-figure; imagesc(squeeze(sum(test_dmi, 1))' .^ 0.5); colormap hot
+volumeViewer(test_dmi .^ 0.3)
+test_dmi_remove_smallcounts = test_dmi;
+test_dmi_remove_smallcounts(test_dmi_remove_smallcounts .^ 0.3 <= 2) = 0;
+volumeViewer(test_dmi_remove_smallcounts .^ 0.6)
+
+yrange_plot_MIP = 70:90;
+figure; imagesc(squeeze(max(test_dmi_remove_smallcounts(yrange_plot_MIP, :, :), [], 1) .^ 0.4)'); colormap hot; colorbar
+% figure; imagesc(squeeze(max(test_dmi(yrange_plot_MIP, :, :), [], 1) .^ 1)'); colormap hot; colorbar
+title("test_dmi_remove_smallcounts Maximum Intensity Projection from y = " + num2str(yrange_plot_MIP(1)) + " to " + num2str(yrange_plot_MIP(end)) + " \^ 0.3")
+
+xrange_plot_MIP = 70:90;
+figure; imagesc(squeeze(max(test_dmi_remove_smallcounts(:, xrange_plot_MIP, :), [], 2) .^ 0.3)'); colormap hot; colorbar
+title("test_dmi_remove_smallcounts Maximum Intensity Projection from x = " + num2str(xrange_plot_MIP(1)) + " to " + num2str(xrange_plot_MIP(end)) + " \^ 0.3")
+
+zrange_plot_MIP = 100:150;
+figure; imagesc(squeeze(max(test_dmi_remove_smallcounts(:, :, zrange_plot_MIP), [], 3) .^ 0.5)'); colormap hot; colorbar
+title("test_dmi_remove_smallcounts Maximum Intensity Projection from z = " + num2str(zrange_plot_MIP(1)) + " to " + num2str(zrange_plot_MIP(end)) + " \^ 0.3")
+
+% figure; imagesc(squeeze(test_dmi(80, :, :))' .^ plotPower2D); colormap hot
+% figure; imagesc(squeeze(sum(test_dmi, 1))' .^ plotPower2D); colormap hot
 % findfigs
 % bw = imbinarize(bSum .^ 1);
 %% Plot speed map after persistence with linear interpolation, on the cleaned and refined velocity data
@@ -779,6 +916,34 @@ volumeViewer(speedMap)
 
 %% Helper functions
 
+function MIPvideo(bSum, xws, yws, zws, framerate, power) % Define x, y, z window sizes for a MIP flythrough video of the bubble density map
+    img_size = size(bSum);
+    savepath = [uigetdir('', 'Select the save path'), '\'];
+
+    filename = datestr(now, 0);
+
+    vo = VideoWriter([savepath, filename]);
+    vo.Quality = 100;
+    vo.FrameRate = framerate;
+    open(vo);
+
+    vf = figure;
+    
+    for f = 1:img_size(1) - xws
+%     for f = 1:100
+        v1f = max(bSum(f:xws, :, :), [], 1); % MIP across x
+        
+        imagesc(squeeze(v1f)')
+        
+        cv = getframe(vf);     % get the current volume
+        rgb = frame2im(cv);      % convert the frame to rgb data
+    
+        writeVideo(vo, rgb);
+    end
+    close(vo);
+
+end
+
 function bVelocityConstrained = applyConstraints(bVelocity, vTrimmedMeanPercentage, aThresholdFactor, angleChangeThreshold, timePerFrame)
     bVelocityConstrained = bVelocity; % Initialize the variable for the smoothed, Kalman filtered, constrained velocity map
     for n = 1:size(bVelocityConstrained, 1)
@@ -818,8 +983,9 @@ function [densityMapInterpolated] = interpolatedDensityMap(bVelocityM, img_size,
     densityMapInterpolatedCounter = zeros(size(densityMapInterpolated));
     
     tic
-    for ti = startFrame:size(bVelocityM, 1)
+%     for ti = startFrame:size(bVelocityM, 1)
 %     for ti = startFrame:startFrame+100
+    for ti = 12000:size(bVelocityM, 1)
         bvTemp = bVelocityM{ti}; % get the ti-th entry
         pers = size(bvTemp, 3);
         if ~isempty(bvTemp) % only do stuff if the bubble velocity cell array entry is not empty
@@ -845,6 +1011,7 @@ function [densityMapInterpolated] = interpolatedDensityMap(bVelocityM, img_size,
                 roundOrNot = true;
                 interpPts = ULM_interp3D_linear(coordsStart, coordsEnd, speedTemp, roundOrNot); % Get interpolated points with the corresponding z velocity value. each row is [z coord, x coord, z velocity]
 
+%                 figure; scatter3(interpPts(:, 1), interpPts(:, 2), interpPts(:, 3))
                 for ipi = 1:size(interpPts, 1) % interpolated point index
                     interpPtsTemp = interpPts(ipi, 1:3);
                     speedValTemp = interpPts(ipi, 4);
@@ -880,5 +1047,4 @@ function [densityMapInterpolated] = interpolatedDensityMap(bVelocityM, img_size,
     % Take the average for pixels with overlapping tracks
 %     speedMask = densityMapInterpolatedCounter > 0;
 %     speedMap(speedMask) = speedMap(speedMask) ./ densityMapInterpolatedCounter(speedMask);
-
 end
