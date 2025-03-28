@@ -87,8 +87,11 @@ range = {xrange, yrange, zrange};
 
 % Load and refine simulated PSF
 if ~exist('PSF', 'var')
-    load('G:\Allen\Data\RC15gV PSF sim\PSF.mat', 'PSF')
+%     load('G:\Allen\Data\RC15gV PSF sim\PSF.mat', 'PSF')
     % figure; imagesc(squeeze(abs(PSF(40, :, :)))')
+    datapath_split = split(string(datapath), filesep);
+    PSF_path = fullfile(join(datapath_split(1:find(contains(datapath_split, 'Data'))), '\') + "\RC15gV PSF sim\PSF.mat");
+    load(PSF_path, 'PSF')
 end
 
 % PSFs = PSF(190:210, 118:138, :); % PSF section
@@ -103,8 +106,8 @@ refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) 
 %% Process the data
 
 % for filenum = startFile:endFile
-% for filenum = [63:100]
-for filenum = [63:79, 81:endFile]
+for filenum = 80
+% for filenum = [63:79, 81:endFile]
     tic
 %     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
     load([datapath, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
