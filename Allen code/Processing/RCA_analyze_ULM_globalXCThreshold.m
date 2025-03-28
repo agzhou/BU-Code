@@ -87,8 +87,11 @@ range = {xrange, yrange, zrange};
 
 % Load and refine simulated PSF
 if ~exist('PSF', 'var')
-    load('G:\Allen\Data\RC15gV PSF sim\PSF.mat', 'PSF')
+%     load('G:\Allen\Data\RC15gV PSF sim\PSF.mat', 'PSF')
     % figure; imagesc(squeeze(abs(PSF(40, :, :)))')
+    datapath_split = split(string(datapath), filesep);
+    PSF_path = fullfile(join(datapath_split(1:find(contains(datapath_split, 'Data'))), '\') + "\RC15gV PSF sim\PSF.mat");
+    load(PSF_path, 'PSF')
 end
 
 % PSFs = PSF(190:210, 118:138, :); % PSF section
