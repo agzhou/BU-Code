@@ -54,9 +54,9 @@ if any(floor(imgRefinementFactor) ~= imgRefinementFactor) || any(imgRefinementFa
     error('Image refinement factors must be whole numbers')
 end
 XCThreshold = str2double(parameterUserInput{8});
-xpix_spacing = str2double(parameterUserInput{9}) / 1e6;
-ypix_spacing = str2double(parameterUserInput{10}) / 1e6;
-zpix_spacing = str2double(parameterUserInput{11}) / 1e6;
+xpix_spacing = str2double(parameterUserInput{9});
+ypix_spacing = str2double(parameterUserInput{10});
+zpix_spacing = str2double(parameterUserInput{11});
 
 % IQfolderName = 'IQ Data - Verasonics Recon\'; % 'IQ data\'
 % saveFolderName = 'Processed Data 03-24-2025\';
@@ -87,11 +87,7 @@ range = {xrange, yrange, zrange};
 
 % Load and refine simulated PSF
 if ~exist('PSF', 'var')
-%     load('G:\Allen\Data\RC15gV PSF sim\PSF.mat', 'PSF')
-%     load([datapath, '..\..\..\..\RC15gV PSF sim\PSF.mat'], 'PSF')
-    datapath_split = split(string(datapath), filesep);
-    PSF_path = fullfile(join(datapath_split(1:find(contains(datapath_split, "Data"))), "\") + "\RC15gV PSF sim\PSF.mat");
-    load(PSF_path, 'PSF')
+    load('G:\Allen\Data\RC15gV PSF sim\PSF.mat', 'PSF')
     % figure; imagesc(squeeze(abs(PSF(40, :, :)))')
 end
 
@@ -105,8 +101,9 @@ refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) 
 % test = zeros([s(1:3) .* 4, s(4)]);
 %% Process the data
 
-% for filenum = startFile:endFile
-for filenum = 2:endFile
+for filenum = startFile:endFile
+% for filenum = 82:endFile
+% for filenum = 79:-1:15
     tic
 %     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
     load([datapath, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe

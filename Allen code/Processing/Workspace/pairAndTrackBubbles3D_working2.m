@@ -81,8 +81,8 @@ axial_depth = (P.endDepthMM - P.startDepthMM) / 1e3;
 parameterPrompt = {'Start file number', 'End file number', 'x pixel spacing [um]', 'y pixel spacing [um]', 'z pixel spacing [um]', 'Maximum expected flow speed [mm/s]', 'Persistence frames', 'Moving window size [frames]', 'Acceleration constraint factor', 'Trimmed mean percentage', 'Direction constraint'};
 %%% NEED TO CHANGE THE PIX SPACING TO USE THE saved PData %%%
 half_pi = pi/2;
-% parameterDefaults = {'', '', num2str(P.Trans.spacingMm * 1e3), num2str(P.Trans.spacingMm * 1e3), num2str(P.wl/2 * 1e6), '50', '3', '3', '2', '20', num2str(half_pi)};
-parameterDefaults = {'', '', num2str(xpix_spacing * 1e6), num2str(ypix_spacing * 1e6), num2str(zpix_spacing * 1e6), '50', '3', '3', '2', '20', num2str(half_pi)};
+parameterDefaults = {'', '', num2str(P.Trans.spacingMm * 1e3), num2str(P.Trans.spacingMm * 1e3), num2str(P.wl/2 * 1e6), '50', '3', '3', '2', '20', num2str(half_pi)};
+% parameterDefaults = {'', '', num2str(xpix_spacing * 1e6), num2str(ypix_spacing * 1e6), num2str(zpix_spacing * 1e6), '50', '3', '3', '2', '20', num2str(half_pi)};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % Store the user inputs for parameters into the corresponding variables

@@ -68,9 +68,7 @@ function [centers, refIQs, XC] = localizeBubbles3D_globalXCThreshold(IQf, refPSF
     XCt(XCt < XCThreshold) = 0;
     centers = imregionalmax(XCt, 6); % Center of each isolated blob (logical matrix)
     
-%     y_mip_range = 60:100;
-%     figure; imagesc(abs(squeeze(max(XC(y_mip_range, :, :, 1), [], 1))' .^ 1))
-%     figure; imagesc(abs(squeeze(max(XCt(y_mip_range, :, :, 1), [], 1))' .^ 1))
+    figure; imagesc(squeeze(max(XC(70:90, :, :, 1), [], 1)' .^ 0.5))
     %% attempt to graph centroids
 
 %     xpts = [];
