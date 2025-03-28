@@ -31,7 +31,8 @@ function [centers, refIQs, XC] = localizeBubbles3D_globalXCThreshold(IQf, refPSF
     yrange = range{2};
     zrange = range{3};
     framerange = range{4};
-    IQs = IQf(xrange, yrange, zrange, framerange); % IQ section
+%     IQs = IQf(xrange, yrange, zrange, framerange); % IQ section
+    IQs = IQf(yrange, xrange, zrange, framerange); % IQ section
 
 %     IQs = IQf;
     
@@ -68,6 +69,7 @@ function [centers, refIQs, XC] = localizeBubbles3D_globalXCThreshold(IQf, refPSF
     XCt(XCt < XCThreshold) = 0;
     centers = imregionalmax(XCt, 6); % Center of each isolated blob (logical matrix)
     
+%     figure; imagesc(squeeze(abs(max(XCt(:, :, :, 1), [], 1)))')
 %     y_mip_range = 60:100;
 %     figure; imagesc(abs(squeeze(max(XC(y_mip_range, :, :, 1), [], 1))' .^ 1))
 %     figure; imagesc(abs(squeeze(max(XCt(y_mip_range, :, :, 1), [], 1))' .^ 1))
