@@ -150,7 +150,7 @@ for filenum = 79
 end
 save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'XCThreshold', 'xpix_spacing', 'ypix_spacing', 'zpix_spacing')
 
-%% test
+%% test bubble accumulation
 for filenum = 63:100
     load([savepath, 'centers-', num2str(filenum)])
     if filenum == 63
@@ -161,3 +161,40 @@ for filenum = 63:100
 end
 volumeViewer(bubbleAccum)
 figure; imagesc(squeeze(abs(sum(bubbleAccum, 1)))' .^ 1); colormap hot
+
+%% Try radial symmetry localization on a small region
+% sec = XC(22:33, 11:22, 12:20, 1); % section the XC
+sec = XC(:, :, :, 1);
+sect = sec; sect(sect <= XCThreshold) = 0; % section the thresholded XC
+secbinary = sect; secbinary(secbinary > 0) = 1;
+size_sec = size(sec);
+%%
+CC = bwconncomp(secbinary, 6);
+numBubbles = CC.NumObjects;
+% for bi = 1:numBubbles% bubble index
+for bi = 1
+%     min
+    linearInd = CC.PixelIdxList{bi};
+    [ssy, ssx, ssz] = ind2sub(size_sec, linearInd); % subscripts
+%     bubbleSection = sec(linearInd);
+%     bubbleSection = sec(ssy, ssx, ssz); 
+%     yr = min(ssy):max(ssy);
+%     xr = min(ssx):max(ssx);
+%     zr = min(ssz):max(ssz);
+%     g = ndgrid(yr, xr, zr);
+    g = ndgrid(ssy, ssx, ssz);
+    bubbleSection = sec(g);
+    % need to take the min and max to create a rectangular region...
+end
+
+%%
+% [rc, sigma] = radialcenter3D(sec, zpix_spacing/xpix_spacing);
+
+figure; imagesc(squeeze(max(sec, [], 1))); title('MIP across y'); xlabel('x'); ylabel('z')
+figure; imagesc(squeeze(max(sec, [], 2))); title('MIP across x'); xlabel('y'); ylabel('z')
+figure; imagesc(squeeze(max(sec, [], 3))); title('MIP across z'); xlabel('x'); ylabel('y')
+% volumeViewer(sec)
+%% 
+% test = XCt(1:30, :, 1:30, 1);
+% test = XC(1:30, :, 1:30, 1);
+[rc, sigma] = radialcenter3D(test, zpix_spacing/xpix_spacing);
