@@ -184,13 +184,13 @@ timePerFrame = 1 / P.frameRate;                                       % time ela
 maxDistPerFrameM = (maxSpeedExpectedMMPerS / 1000) * timePerFrame;    % max distance traveled per frame [m], according to the max expected flow speed and frame rate
 % pixelsPerM = 1 / pix_spacing * imgRefinementFactor(1);              % # of pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
 % maxPixelDistPerFrame = maxDistPerFrameM * pixelsPerM;               % max distance traveled per frame in units of pixels
-xpixelsPerM = 1 / (xpix_spacing / 1e6) * imgRefinementFactor(1);      % # of x pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
-ypixelsPerM = 1 / (ypix_spacing / 1e6) * imgRefinementFactor(2);      % # of y pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
-zpixelsPerM = 1 / (zpix_spacing / 1e6) * imgRefinementFactor(3);      % # of z pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
-maxxPixelDistPerFrame = maxDistPerFrameM * xpixelsPerM;               % max x distance traveled per frame in units of pixels
+xpixelsPerM = 1 / (xpix_spacing) * imgRefinementFactor(1);      % # of x pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
+ypixelsPerM = 1 / (ypix_spacing) * imgRefinementFactor(2);      % # of y pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
+zpixelsPerM = 1 / (zpix_spacing) * imgRefinementFactor(3);      % # of z pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
+maxXPixelDistPerFrame = maxDistPerFrameM * xpixelsPerM;               % max x distance traveled per frame in units of pixels
 maxyPixelDistPerFrame = maxDistPerFrameM * ypixelsPerM;               % max y distance traveled per frame in units of pixels
 maxzPixelDistPerFrame = maxDistPerFrameM * zpixelsPerM;               % max z distance traveled per frame in units of pixels
-
+maxPixelDistPerFrame = [maxxPixelDistPerFrame, maxyPixelDistPerFrame, maxzPixelDistPerFrame];
 % %% 5. Calculate pairing
 % bubblePairs = cell(totalFrames - 1, 1);   % Initialize cell vector of paired bubble indices
 % 
@@ -708,6 +708,7 @@ clear n tln tn trackAlreadyDeleted track vTrack vTrackTrimmedMean aThresholdMag 
 
 [bSum] = densityMap3D(bVelocityM, img_size, startFrame);
 [bSumConstrained] = densityMap3D(bVelocityConstrained, img_size, startFrame);
+[bSumSmoothedMMS] = densityMap3D(bVelocityMSmoothedMMS, img_size, startFrame);
 
 [bSumSmoothedKF] = densityMap3D(bVelocityMSmoothedKFMMS, img_size, startFrame);
 [bSumSmoothedKFConstrained] = densityMap3D(bVelocityMSmoothedKFConstrainedMMS, img_size, startFrame);
@@ -716,6 +717,8 @@ clear n tn iti trackTemp tempBuf
 
 volumeViewer(bSum .^ 0.3)
 volumeViewer(bSumConstrained .^ 0.5)
+volumeViewer(bSumSmoothedMMS .^ 0.3)
+
 volumeViewer(bSumSmoothedKF .^ 0.5)
 volumeViewer(bSumSmoothedKFConstrained .^ 0.3)
 
@@ -1011,7 +1014,8 @@ function [densityMapInterpolated] = interpolatedDensityMap(bVelocityM, img_size,
                 end
 
                 vecDist = coordsEnd - coordsStart;
-                totalDist = sqrt(sum(vecDist .^ 2, 2));
+%                 totalDist = sqrt(sum(vecDist .^ 2, 2));
+                
 %                 if any(totalDist > pixel)
     
                 vTemp = squeeze(bvTemp(bpi, 7:9, :)); % Velocity components
