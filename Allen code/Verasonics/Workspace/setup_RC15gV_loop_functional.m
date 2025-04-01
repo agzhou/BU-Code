@@ -16,16 +16,17 @@ codeDir_split = split(string(codeDir), filesep);
 AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "Allen code"))), '\') + "\Verasonics");
 addpath(AllenVerasonicsCodePath)
 
-% cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
-cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
+cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
+% cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
 activate
 
-savepath = uigetdir('F:\', 'Select the save path');
+savepath = uigetdir('G:\', 'Select the save path');
 savepath = [savepath, '\'];
 
-parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)'}; % 'Save RF data (0-no, 1-yes)', 
-% parameterDefaults = {'5', '0', '10', '40000', '2000', '11', '5', '13.6', '1540', '0', '0'};
-parameterDefaults = {'5', '0', '10', '40000', '100', '11', '5', '13.6', '1540', '1', '1'};
+parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per buffer'}; % 'Save RF data (0-no, 1-yes)', 
+% parameterDefaults = {'5', '0', '10', '40000', '2000', '11', '5', '13.6', '1540', '0', '0', '1000'};
+parameterDefaults = {'5', '0', '10', '50000', '2000', '11', '5', '13.6', '1540', '0', '1', '500'};
+% parameterDefaults = {'5', '0', '10', '40000', '500', '11', '5', '13.6', '1540', '0', '1', '500'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % Store the user inputs for parameters into the corresponding variables
@@ -40,6 +41,7 @@ probe_freq = str2double(parameterUserInput{8});
 speedOfSound = str2double(parameterUserInput{9});
 simMode = str2double(parameterUserInput{10});
 saveRcvDataFlag = str2double(parameterUserInput{11});
+numFramesPerBuffer = str2double(parameterUserInput{12});
 
 % tagtest = Hardware.enableAcquisitionTimeTagging(1);
 bufferIndex = 0;
@@ -48,9 +50,10 @@ movePointsOrNot = 0;
 numChannels = 256; % enable channels
 
 % Set up buffers
-numFramesPerBuffer = 200;
-numBuffers = ceil(frameRate / numFramesPerBuffer);
-bufferDutyCycle = 1/3;
+% numFramesPerBuffer = 200;
+% numBuffers = ceil(frameRate / numFramesPerBuffer);
+numBuffers = 3; %%%%%%%%%%%%%%%%%% TEST %%%%%%%%%%%%%%%%%%%%%%
+bufferDutyCycle = 1/10;
 disp(num2str(numFramesPerBuffer / frameRate / bufferDutyCycle))
 
 % Angles for plane waves are equally distributed over the defined range/# angles
@@ -388,6 +391,10 @@ if numGBPerBufferFrame > 2
     return
 end
 
+if ((maxAcqLength_adjusted + (endDepth-startDepth))*wl / speedOfSound) > 1/PRF
+    error('PRF is too high, it will send the next transmission before the previous transmission reflects from the deepest part of the region')
+
+end
 %% Reconstruction
 % numRegions = 3;
 % 
@@ -588,7 +595,8 @@ for nbuf = 1:numBuffers
         Event(n).rcv = 0; 
         Event(n).recon = 0;
         Event(n).process = nbuf; 
-        Event(n).seqControl = 7; 
+%         Event(n).seqControl = 7; 
+        Event(n).seqControl = 0; 
     end
 
 end
@@ -640,7 +648,7 @@ end
 makeParameterStructure_ULM;
 savefast([savepath, 'params.mat'], 'P')
 % saveRcvData(RcvData{1})
-savefast([savepath, 'workspace.mat'])
+% save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
 
 
 %% **** Callback routines used by UIControls (UI) ****
