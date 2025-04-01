@@ -184,12 +184,13 @@ timePerFrame = 1 / P.frameRate;                                       % time ela
 maxDistPerFrameM = (maxSpeedExpectedMMPerS / 1000) * timePerFrame;    % max distance traveled per frame [m], according to the max expected flow speed and frame rate
 % pixelsPerM = 1 / pix_spacing * imgRefinementFactor(1);              % # of pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
 % maxPixelDistPerFrame = maxDistPerFrameM * pixelsPerM;               % max distance traveled per frame in units of pixels
-xpixelsPerM = 1 / (xpix_spacing / 1e6) * imgRefinementFactor(1);      % # of x pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
-ypixelsPerM = 1 / (ypix_spacing / 1e6) * imgRefinementFactor(2);      % # of y pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
-zpixelsPerM = 1 / (zpix_spacing / 1e6) * imgRefinementFactor(3);      % # of z pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
-maxxPixelDistPerFrame = maxDistPerFrameM * xpixelsPerM;               % max x distance traveled per frame in units of pixels
-maxyPixelDistPerFrame = maxDistPerFrameM * ypixelsPerM;               % max y distance traveled per frame in units of pixels
-maxzPixelDistPerFrame = maxDistPerFrameM * zpixelsPerM;               % max z distance traveled per frame in units of pixels
+xpixelsPerM = 1 / (xpix_spacing) * imgRefinementFactor(1);      % # of x pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
+ypixelsPerM = 1 / (ypix_spacing) * imgRefinementFactor(2);      % # of y pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
+zpixelsPerM = 1 / (zpix_spacing) * imgRefinementFactor(3);      % # of z pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
+maxXPixelDistPerFrame = maxDistPerFrameM * xpixelsPerM;               % max x distance traveled per frame in units of pixels
+maxYPixelDistPerFrame = maxDistPerFrameM * ypixelsPerM;               % max y distance traveled per frame in units of pixels
+maxZPixelDistPerFrame = maxDistPerFrameM * zpixelsPerM;               % max z distance traveled per frame in units of pixels
+maxPixelDistPerFrame = [maxXPixelDistPerFrame, maxYPixelDistPerFrame, maxZPixelDistPerFrame];
 
 % %% 5. Calculate pairing
 % bubblePairs = cell(totalFrames - 1, 1);   % Initialize cell vector of paired bubble indices
@@ -708,6 +709,7 @@ clear n tln tn trackAlreadyDeleted track vTrack vTrackTrimmedMean aThresholdMag 
 
 [bSum] = densityMap3D(bVelocityM, img_size, startFrame);
 [bSumConstrained] = densityMap3D(bVelocityConstrained, img_size, startFrame);
+[bSumSmoothedMMS] = densityMap3D(bVelocityMSmoothedMMS, img_size, startFrame);
 
 [bSumSmoothedKF] = densityMap3D(bVelocityMSmoothedKFMMS, img_size, startFrame);
 [bSumSmoothedKFConstrained] = densityMap3D(bVelocityMSmoothedKFConstrainedMMS, img_size, startFrame);
@@ -716,6 +718,8 @@ clear n tn iti trackTemp tempBuf
 
 volumeViewer(bSum .^ 0.3)
 volumeViewer(bSumConstrained .^ 0.5)
+volumeViewer(bSumSmoothedMMS .^ 0.3)
+
 volumeViewer(bSumSmoothedKF .^ 0.5)
 volumeViewer(bSumSmoothedKFConstrained .^ 0.3)
 
@@ -770,15 +774,44 @@ addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Proces
 % test = vesselness3D(bSum .^ 0.5, 1:5, [xpix_spacing; ypix_spacing; zpix_spacing], 0.5, true);
 % volumeViewer(test)
 %%
-test_dmi = interpolatedDensityMap(bVelocityMSmoothedKFConstrainedMMS, img_size, startFrame); % test density map interpolated
-
+% test_dmi = interpolatedDensityMap(bVelocityMSmoothedKFConstrainedMMS, img_size, startFrame); % test density map interpolated
 % test_dmi = interpolatedDensityMap(bVelocityM, img_size, startFrame); % test density map interpolated
-% Probably should only do this if we're confident about the max speed input
-volumeViewer(test_dmi .^ 0.3)
-test_dmi_remove_smallcounts = test_dmi;
-test_dmi_remove_smallcounts(test_dmi_remove_smallcounts .^ 0.3 <= 2) = 0;
-volumeViewer(test_dmi_remove_smallcounts .^ 0.6)
 
+test_dmi_2 = interpolatedDensityMap(bVelocityM, img_size, startFrame, maxPixelDistPerFrame); % test density map interpolated
+% Probably should only do this if we're confident about the max speed input
+% volumeViewer(test_dmi .^ 0.3)
+volumeViewer(test_dmi_2 .^ 0.3)
+
+%% MIP plots for the interpolation test
+% yrange_plot_MIP = 75:85;
+yrange_plot_MIP = 70:90;
+figure; imagesc(squeeze(max(test_dmi_2(yrange_plot_MIP, :, :), [], 1) .^ 0.3)'); colormap hot; colorbar
+% figure; imagesc(squeeze(max(test_dmi(yrange_plot_MIP, :, :), [], 1) .^ 1)'); colormap hot; colorbar
+title("test_dmi_2 Maximum Intensity Projection from y = " + num2str(yrange_plot_MIP(1)) + " to " + num2str(yrange_plot_MIP(end)) + " \^ 0.3")
+
+figure; imagesc(squeeze(max(bSum(yrange_plot_MIP, :, :), [], 1) .^ 0.3)'); colormap hot; colorbar
+% figure; imagesc(squeeze(max(test_dmi(yrange_plot_MIP, :, :), [], 1) .^ 1)'); colormap hot; colorbar
+title("bSum Maximum Intensity Projection from y = " + num2str(yrange_plot_MIP(1)) + " to " + num2str(yrange_plot_MIP(end)) + " \^ 0.3")
+
+xrange_plot_MIP = 75:85;
+figure; imagesc(squeeze(max(test_dmi_2(:, xrange_plot_MIP, :), [], 2) .^ 0.3)'); colormap hot; colorbar
+title("test_dmi_2 Maximum Intensity Projection from x = " + num2str(xrange_plot_MIP(1)) + " to " + num2str(xrange_plot_MIP(end)) + " \^ 0.3")
+
+% zrange_plot_MIP = 100:150;
+zrange_plot_MIP = 110:130;
+figure; imagesc(squeeze(max(test_dmi_2(:, :, zrange_plot_MIP), [], 3) .^ 0.5)'); colormap hot; colorbar
+title("test_dmi_2 Maximum Intensity Projection from z = " + num2str(zrange_plot_MIP(1)) + " to " + num2str(zrange_plot_MIP(end)) + " \^ 0.3")
+
+figure; imagesc(squeeze(max(bSum(:, :, zrange_plot_MIP), [], 3) .^ 0.4)'); colormap hot; colorbar
+title("bSum Maximum Intensity Projection from z = " + num2str(zrange_plot_MIP(1)) + " to " + num2str(zrange_plot_MIP(end)) + " \^ 0.3")
+
+%%
+test_dmi_remove_smallcounts = test_dmi_2;
+% test_dmi_remove_smallcounts(test_dmi_remove_smallcounts .^ 0.3 <= 2) = 0;
+test_dmi_remove_smallcounts(test_dmi_remove_smallcounts <= 2) = 0;
+% test_dmi_remove_smallcounts(test_dmi_remove_smallcounts >= 1000) = 0;
+volumeViewer(test_dmi_remove_smallcounts .^ 0.4)
+%%
 yrange_plot_MIP = 70:90;
 figure; imagesc(squeeze(max(test_dmi_remove_smallcounts(yrange_plot_MIP, :, :), [], 1) .^ 0.4)'); colormap hot; colorbar
 % figure; imagesc(squeeze(max(test_dmi(yrange_plot_MIP, :, :), [], 1) .^ 1)'); colormap hot; colorbar
@@ -916,33 +949,33 @@ volumeViewer(speedMap)
 
 %% Helper functions
 
-function MIPvideo(bSum, xws, yws, zws, framerate, power) % Define x, y, z window sizes for a MIP flythrough video of the bubble density map
-    img_size = size(bSum);
-    savepath = [uigetdir('', 'Select the save path'), '\'];
-
-    filename = datestr(now, 0);
-
-    vo = VideoWriter([savepath, filename]);
-    vo.Quality = 100;
-    vo.FrameRate = framerate;
-    open(vo);
-
-    vf = figure;
-    
-    for f = 1:img_size(1) - xws
-%     for f = 1:100
-        v1f = max(bSum(f:xws, :, :), [], 1); % MIP across x
-        
-        imagesc(squeeze(v1f)')
-        
-        cv = getframe(vf);     % get the current volume
-        rgb = frame2im(cv);      % convert the frame to rgb data
-    
-        writeVideo(vo, rgb);
-    end
-    close(vo);
-
-end
+% function MIPvideo(bSum, xws, yws, zws, framerate, power) % Define x, y, z window sizes for a MIP flythrough video of the bubble density map
+%     img_size = size(bSum);
+%     savepath = [uigetdir('', 'Select the save path'), '\'];
+% 
+%     filename = datestr(now, 0);
+% 
+%     vo = VideoWriter([savepath, filename]);
+%     vo.Quality = 100;
+%     vo.FrameRate = framerate;
+%     open(vo);
+% 
+%     vf = figure;
+%     
+%     for f = 1:img_size(1) - xws
+% %     for f = 1:100
+%         v1f = max(bSum(f:xws, :, :), [], 1); % MIP across x
+%         
+%         imagesc(squeeze(v1f)')
+%         
+%         cv = getframe(vf);     % get the current volume
+%         rgb = frame2im(cv);      % convert the frame to rgb data
+%     
+%         writeVideo(vo, rgb);
+%     end
+%     close(vo);
+% 
+% end
 
 function bVelocityConstrained = applyConstraints(bVelocity, vTrimmedMeanPercentage, aThresholdFactor, angleChangeThreshold, timePerFrame)
     bVelocityConstrained = bVelocity; % Initialize the variable for the smoothed, Kalman filtered, constrained velocity map
@@ -974,7 +1007,7 @@ function bVelocityConstrained = applyConstraints(bVelocity, vTrimmedMeanPercenta
     end
 end
 
-function [densityMapInterpolated] = interpolatedDensityMap(bVelocityM, img_size, startFrame)
+function [densityMapInterpolated] = interpolatedDensityMap(bVelocityM, img_size, startFrame, maxPixelDistPerFrame)
     densityMapInterpolated = zeros(img_size(1), img_size(2), img_size(3));
 %     plotPower = 1;
 
@@ -983,9 +1016,10 @@ function [densityMapInterpolated] = interpolatedDensityMap(bVelocityM, img_size,
     densityMapInterpolatedCounter = zeros(size(densityMapInterpolated));
     
     tic
-%     for ti = startFrame:size(bVelocityM, 1)
+    for ti = startFrame:size(bVelocityM, 1)
 %     for ti = startFrame:startFrame+100
-    for ti = 12000:size(bVelocityM, 1)
+%     for ti = 15000:15100
+%     for ti = 12000:size(bVelocityM, 1)
         bvTemp = bVelocityM{ti}; % get the ti-th entry
         pers = size(bvTemp, 3);
         if ~isempty(bvTemp) % only do stuff if the bubble velocity cell array entry is not empty
@@ -1004,21 +1038,33 @@ function [densityMapInterpolated] = interpolatedDensityMap(bVelocityM, img_size,
                     coordsStart(pfi, :) = bvTemp(bpi, 1:3, pfi);
                     coordsEnd(pfi, :) = bvTemp(bpi, 4:6, pfi);
                 end
-    
-                vTemp = squeeze(bvTemp(bpi, 7:9, :)); % Velocity components
-%                 speedTemp = sqrt(vTemp(:, 1).^2 + vTemp(:, 2).^2 + vTemp(:, 3).^2); % Speed vector: one value per persistence frame index
-                speedTemp = sqrt(sum(vTemp.^2, 1))';
-                roundOrNot = true;
-                interpPts = ULM_interp3D_linear(coordsStart, coordsEnd, speedTemp, roundOrNot); % Get interpolated points with the corresponding z velocity value. each row is [z coord, x coord, z velocity]
 
-%                 figure; scatter3(interpPts(:, 1), interpPts(:, 2), interpPts(:, 3))
-                for ipi = 1:size(interpPts, 1) % interpolated point index
-                    interpPtsTemp = interpPts(ipi, 1:3);
-                    speedValTemp = interpPts(ipi, 4);
-                    
-%                     speedMap(smoothedPtsTemp(1), smoothedPtsTemp(2), smoothedPtsTemp(3)) = speedMap(smoothedPtsTemp(1), smoothedPtsTemp(2), smoothedPtsTemp(3)) + speedValTemp;
-                    densityMapInterpolatedCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) = densityMapInterpolatedCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) + 1;
+                vecDist = coordsEnd - coordsStart;
+%                 totalDist = sqrt(sum(vecDist .^ 2, 2));
+
+                % Only interpolate if the distance between points in a
+                % track is less than the max pixel dist per frame as
+                % calculated before
+                if all(abs(vecDist) - maxPixelDistPerFrame <= 0, 'all')
+                    vTemp = squeeze(bvTemp(bpi, 7:9, :)); % Velocity components
+%                 speedTemp = sqrt(vTemp(:, 1).^2 + vTemp(:, 2).^2 + vTemp(:, 3).^2); % Speed vector: one value per persistence frame index
+                    speedTemp = sqrt(sum(vTemp.^2, 1))';
+                    roundOrNot = true;
+                    interpPts = ULM_interp3D_linear(coordsStart, coordsEnd, speedTemp, roundOrNot); % Get interpolated points with the corresponding z velocity value. each row is [z coord, x coord, z velocity]
+    
+    %                 figure; scatter3(interpPts(:, 1), interpPts(:, 2), interpPts(:, 3))
+                    for ipi = 1:size(interpPts, 1) % interpolated point index
+                        interpPtsTemp = interpPts(ipi, 1:3);
+                        speedValTemp = interpPts(ipi, 4);
+                        
+    %                     speedMap(smoothedPtsTemp(1), smoothedPtsTemp(2), smoothedPtsTemp(3)) = speedMap(smoothedPtsTemp(1), smoothedPtsTemp(2), smoothedPtsTemp(3)) + speedValTemp;
+                        densityMapInterpolatedCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) = densityMapInterpolatedCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) + 1;
+                    end
                 end
+                
+%                 if any(totalDist > pixel)
+    
+                
     
     %             for ipi = 1:size(interpPts, 1) % interpolated point index
     %                 interpPtsTemp = interpPts(ipi, :);
