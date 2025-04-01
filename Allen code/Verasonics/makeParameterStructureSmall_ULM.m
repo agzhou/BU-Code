@@ -1,6 +1,6 @@
 
 Psmall.endDepthMM = endDepthMM;
-Psmall.fps_target = fps_target;
+% Psmall.fps_target = fps_target;
 Psmall.PRF = PRF;
 Psmall.maxAngle = maxAngle;
 Psmall.na = na;
