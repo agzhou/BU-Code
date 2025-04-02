@@ -256,7 +256,7 @@ try
     trials = findFrames(trials);
 catch
 end
-save(handles.output_file,'trials')
+save(handles.output_file,'trials','-append')
 
 % --- Executes on button press in restart_button.
 function restart_button_Callback(hObject, eventdata, handles)

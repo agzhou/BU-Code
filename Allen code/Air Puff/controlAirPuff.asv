@@ -1,0 +1,34 @@
+
+% Try to write my own air puff code
+% Requires Data Acquisition Toolbox and the NI package
+
+%% Set up the hardware and channels
+d = daq('ni'); % Create the DAQ object
+airPuffInputCh = addoutput(d, 'Dev1', 'ao0', 'Voltage');  % Trigger to the air puff input
+airPuffOutputCh = addinput(d, 'Dev1', 'ai6', 'Voltage');  % Record the actual air puff actions
+
+%% Create the air puff input signal
+% Air puff input signal (apis)
+apis.delay_time = 0; % [s]?
+apis.stim_freq = 4; % [pulses/sec]
+apis.stim_width = 100; % [ms]
+apis.stim_length = 2; % [s]
+apis.seq_length = 5; % [s]
+
+% airPuffInputSignal = ones(1000, 1) .* 5;
+% airPuffInputSignal = linspace(-1, 1, 2200)' .* 3.3;
+airPuffInputSignal = generateStimulus(apis.delay_time, apis.stim_freq,...
+    apis.stim_width, apis.stim_length, apis.seq_length);
+airPuffInputSignal = airPuffInputSignal(:, 1); % don't need the camera triggers like they did
+% numCycles = 3;
+% t = linspace(0, 2*pi * numCycles)';
+% airPuffInputSignal = square(1 .* t) .* 3.3;
+
+%%
+d.Rate = 1000; % I guess this is samples per second
+% preload(d, airPuffInputSignal);
+% start(d);
+readwrite(d, airPuffInputSignal);
+% outputData = generateStimulus(handles.delay_time,handles.stim_freq,...
+%     handles.stim_width,handles.stim_length,handles.seq_length);
+% handles.outputData = outputData;

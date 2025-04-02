@@ -18,7 +18,7 @@ function saveRcvData_ULM(RcvData)
 %     save([savepath, filename], 'RcvData', '-v7.3')
 %     RcvData = RcvData(:, Trans.Connector, :);
 %     whos RcvData
-    
+%     save([savepath, filename], 'RcvData', '-v7.3','-nocompression')
     savefast([savepath, filename], 'RcvData')
 
 
