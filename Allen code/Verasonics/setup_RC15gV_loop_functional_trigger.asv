@@ -562,7 +562,7 @@ SeqControl(scInd).condition = 'Hw&Sw'; % need to enable the noop in hardware
 scInd = scInd + 1;
 SeqControl(scInd).command = 'triggerIn';
 SeqControl(scInd).argument = 0; % 0-255. Each increment of 1 corresponds to 250 ms. The default is 0 and means to wait indefinitely.
-SeqControl(scInd).condition = 'Trigger_2_Rising'; % Which trigger in and type to use
+SeqControl(scInd).condition = 'Trigger_1_Rising'; % Which trigger in and type to use
 % SeqControl(scInd).command = 'pause';
 % SeqControl(scInd).argument = 19; % see p137
 % SeqControl(scInd).condition = 'extTrigger'; % need to enable the noop in hardware
@@ -578,9 +578,9 @@ SeqControl(scInd).condition = 'syncNone'; % syncNone -> generate the trigger asa
 % Sync to make the software sequencer also wait for the trigger input
 scInd = scInd + 1;
 SeqControl(scInd).command = 'sync';
-SeqControl(scInd).argument = 10000000; % 10 s
-% SeqControl(scInd).argument = 4000000;
-% SeqControl(scInd).argument = 4000000;
+% SeqControl(scInd).argument = 10000000; % 10 s
+SeqControl(scInd).argument = 4000000;
+
 
 n = 1;
 Event(n).info = 'Wait for external trigger to start the acquisition sequence';
@@ -588,6 +588,8 @@ Event(n).tx = 1; % It seems to not work properly if there isn't some acquisition
 Event(n).rcv = 0; 
 Event(n).recon = 0;
 Event(n).process = 0;
+% Event(n).seqControl = 8;
+% Event(n).seqControl = 9;
 Event(n).seqControl = [8, 10];
 
 for nbuf = 1:numBuffers
@@ -641,14 +643,14 @@ for nbuf = 1:numBuffers
 
 end
 
-n = n + 1;
-
-Event(n).info = 'Jump';
-Event(n).tx = 0; 
-Event(n).rcv = 0; 
-Event(n).recon = 0;
-Event(n).process = 0; 
-Event(n).seqControl = 3; 
+% n = n + 1;
+% 
+% Event(n).info = 'Jump';
+% Event(n).tx = 0; 
+% Event(n).rcv = 0; 
+% Event(n).recon = 0;
+% Event(n).process = 0; 
+% Event(n).seqControl = 3; 
 
 
 % %% User specified UI Control Elements
@@ -677,7 +679,7 @@ filename = 'RC15gV_Allen_loop_functional.mat';
 save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+filename);
 
 %% Run the air puff script before running VSX
-[Mcr_d, Mcr_fcp] = controlAirPuff_func_test; % Need to use Mcr_ because VSX will autoclear most variables
+[d, apis] = controlAirPuff_func;
 %% Run VSX automatically and make parameter structure for RF file naming
 
 if runVSX

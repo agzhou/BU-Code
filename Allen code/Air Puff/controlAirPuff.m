@@ -44,8 +44,9 @@ flush(d);
 preload(d, apis.signal);
 numTrials = 1;
 % start(d, 'NumScans', numTrials);
+disp('Start')
 start(d)
 
 %% Read the output data (what the air puff actually did)
 [inScanData, timeStamp, triggerTime] = read(d, seconds(apis.seq_length), "OutputFormat", "Matrix");
-
+disp('End')
