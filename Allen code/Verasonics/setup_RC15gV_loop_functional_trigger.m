@@ -76,6 +76,9 @@ Resource.Parameters.numRcvChannels = numChannels; % number of receive channels
 % Resource.Parameters.connector = 1; % transducer connector to use since the current plate for the 256 bit system is split into two 128 bit connectors. 1 is left and 2 is right
 Resource.Parameters.speedOfSound = speedOfSound; % speed of sound in m/s, the 1540 is for average human tissue
 
+%% 1.5. Specify the functional stimulus parameters
+
+[apis, vts] = functionalParameterInputPrompt;
 %% 2. Define Transducer structure
 
 Trans.name = 'RC15gV'; 
@@ -677,7 +680,7 @@ filename = 'RC15gV_Allen_loop_functional.mat';
 save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+filename);
 
 %% Run the air puff script before running VSX
-[Mcr_d, Mcr_fcp] = controlAirPuff_func_test; % Need to use Mcr_ because VSX will autoclear most variables
+[Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts); % Need to use Mcr_ because VSX will autoclear most variables
 %% Run VSX automatically and make parameter structure for RF file naming
 
 if runVSX
@@ -685,10 +688,13 @@ if runVSX
     VSX
 end
 
+%% Read the air puff data - may need to put this in the saveRcvData Processing...
+[inScanData, timeStamp, triggerTime] = read(Mcr_d, seconds(Mcr_fcp.apis.seq_length_s), "OutputFormat", "Matrix");
+
 %% Save post-acquisition parameters in a structure P
 
 makeParameterStructure_ULM;
-% savefast([savepath, 'params.mat'], 'P')
+savefast([savepath, 'params.mat'], 'P')
 % saveRcvData(RcvData{1})
 % save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
 

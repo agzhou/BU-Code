@@ -76,6 +76,23 @@ Resource.Parameters.numRcvChannels = numChannels; % number of receive channels
 % Resource.Parameters.connector = 1; % transducer connector to use since the current plate for the 256 bit system is split into two 128 bit connectors. 1 is left and 2 is right
 Resource.Parameters.speedOfSound = speedOfSound; % speed of sound in m/s, the 1540 is for average human tissue
 
+%% 1.5. Specify the functional stimulus parameters
+
+functionalParameterPrompt = {'Stim delay time [ms]', 'Stim frequency [Hz]', 'Stim pulse width [ms]', 'Stim duration within each trial [s]', 'Stim trial duration [s]', 'Verasonics trigger delay [s]', 'Verasonics trigger pulse width [ms]'};
+functionalParameterDefaults = {'10000', '3', '100', '1', '20', '4', '500'};
+functionalParameterUserInput = inputdlg(functionalParameterPrompt, 'Input Functional Stimulus Parameters', 1, functionalParameterDefaults);
+
+apis.delay_time_ms = str2double(functionalParameterUserInput{}); % Delay before the start of the stimulation [ms]
+apis.stim_freq_Hz = 3;     % Stimulation (square wave) frequency [pulses/sec]
+apis.stim_width_ms = 100;  % Width of each square wave [ms]
+apis.stim_length_s = 1;   % Duration of the stimulation [s]
+apis.seq_length_s = 20;   % Total duration of the trial [s]
+    
+% Verasonics trigger signal (vts)
+vts.delay_s = 4;
+vts.pulse_width_ms = 0.5;
+vts.total_duration_s = apis.seq_length;
+
 %% 2. Define Transducer structure
 
 Trans.name = 'RC15gV'; 
@@ -562,7 +579,7 @@ SeqControl(scInd).condition = 'Hw&Sw'; % need to enable the noop in hardware
 scInd = scInd + 1;
 SeqControl(scInd).command = 'triggerIn';
 SeqControl(scInd).argument = 0; % 0-255. Each increment of 1 corresponds to 250 ms. The default is 0 and means to wait indefinitely.
-SeqControl(scInd).condition = 'Trigger_1_Rising'; % Which trigger in and type to use
+SeqControl(scInd).condition = 'Trigger_2_Rising'; % Which trigger in and type to use
 % SeqControl(scInd).command = 'pause';
 % SeqControl(scInd).argument = 19; % see p137
 % SeqControl(scInd).condition = 'extTrigger'; % need to enable the noop in hardware
@@ -578,9 +595,9 @@ SeqControl(scInd).condition = 'syncNone'; % syncNone -> generate the trigger asa
 % Sync to make the software sequencer also wait for the trigger input
 scInd = scInd + 1;
 SeqControl(scInd).command = 'sync';
-% SeqControl(scInd).argument = 10000000; % 10 s
-SeqControl(scInd).argument = 4000000;
-
+SeqControl(scInd).argument = 10000000; % 10 s
+% SeqControl(scInd).argument = 4000000;
+% SeqControl(scInd).argument = 4000000;
 
 n = 1;
 Event(n).info = 'Wait for external trigger to start the acquisition sequence';
@@ -588,8 +605,6 @@ Event(n).tx = 1; % It seems to not work properly if there isn't some acquisition
 Event(n).rcv = 0; 
 Event(n).recon = 0;
 Event(n).process = 0;
-% Event(n).seqControl = 8;
-% Event(n).seqControl = 9;
 Event(n).seqControl = [8, 10];
 
 for nbuf = 1:numBuffers
@@ -643,14 +658,14 @@ for nbuf = 1:numBuffers
 
 end
 
-% n = n + 1;
-% 
-% Event(n).info = 'Jump';
-% Event(n).tx = 0; 
-% Event(n).rcv = 0; 
-% Event(n).recon = 0;
-% Event(n).process = 0; 
-% Event(n).seqControl = 3; 
+n = n + 1;
+
+Event(n).info = 'Jump';
+Event(n).tx = 0; 
+Event(n).rcv = 0; 
+Event(n).recon = 0;
+Event(n).process = 0; 
+Event(n).seqControl = 3; 
 
 
 % %% User specified UI Control Elements
@@ -679,13 +694,16 @@ filename = 'RC15gV_Allen_loop_functional.mat';
 save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+filename);
 
 %% Run the air puff script before running VSX
-[d, apis] = controlAirPuff_func;
+[Mcr_d, Mcr_fcp] = controlAirPuff_func; % Need to use Mcr_ because VSX will autoclear most variables
 %% Run VSX automatically and make parameter structure for RF file naming
 
 if runVSX
     disp("running VSX")
     VSX
 end
+
+%% Read the air puff data - may need to put this in the saveRcvData Processing...
+[inScanData, timeStamp, triggerTime] = read(Mcr_d, seconds(Mcr_fcp.apis.seq_length_s), "OutputFormat", "Matrix");
 
 %% Save post-acquisition parameters in a structure P
 

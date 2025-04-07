@@ -2,7 +2,7 @@
 % Trying to write my own air puff code
 % Requires Data Acquisition Toolbox and the NI package
 % Connect the air puffer (PicoSpritzer III) to the NI DAQ
-function [Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts)
+function [Mcr_d, Mcr_fcp] = controlAirPuff_func
     %% Set up the hardware and channels
     Mcr_d = daq('ni'); % Create the DAQ object
     airPuffInputCh = addoutput(Mcr_d, 'Dev1', 'ao0', 'Voltage');  % Trigger to the air puff input
@@ -15,7 +15,11 @@ function [Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts)
     % Functional control parameters (fcp)
 
     % Air puff input signal (apis)
-    Mcr_fcp.apis = apis;
+    Mcr_fcp.apis.delay_time_ms = 10000; % Delay before the start of the stimulation [ms]
+    Mcr_fcp.apis.stim_freq_Hz = 3;     % Stimulation (square wave) frequency [pulses/sec]
+    Mcr_fcp.apis.stim_width_ms = 100;  % Width of each square wave [ms]
+    Mcr_fcp.apis.stim_length_s = 1;   % Duration of the stimulation [s]
+    Mcr_fcp.apis.seq_length_s = 20;   % Total duration of the trial [s]
     
     % Use the previous lab code to generate the signal
     Mcr_fcp.apis.signal = generateStimulus(Mcr_fcp.apis.delay_time_ms, Mcr_fcp.apis.stim_freq_Hz, ...
@@ -23,8 +27,10 @@ function [Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts)
     Mcr_fcp.apis.signal = Mcr_fcp.apis.signal(:, 1); % don't need the camera triggers like they did
     
     % Verasonics trigger signal (vts)
-    Mcr_fcp.vts = vts;
-    Mcr_fcp.vts.pulse_width_s = vts.pulse_width_ms / 1000;
+    Mcr_fcp.vts.delay_s = 4;
+%     Mcr_fcp.vts.pulse_width_s = 0.5;
+    Mcr_fcp.vts.pulse_width_s = Mcr_fcp.vts.pulse_width_ms / 1000;
+    Mcr_fcp.vts.total_duration_s = Mcr_fcp.apis.seq_length;
     Mcr_fcp.vts.signal = generateSingleTriggerSignal(Mcr_d.Rate, Mcr_fcp.vts.delay_s, Mcr_fcp.vts.pulse_width_s, Mcr_fcp.vts.total_duration_s);
     
     % In case the lengths of each signal are somehow different - they need
