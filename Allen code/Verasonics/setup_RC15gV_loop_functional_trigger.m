@@ -52,7 +52,7 @@ numChannels = 256; % enable channels
 % Set up buffers
 % numFramesPerBuffer = 200;
 % numBuffers = ceil(frameRate / numFramesPerBuffer);
-numBuffers = 3; %%%%%%%%%%%%%%%%%% TEST %%%%%%%%%%%%%%%%%%%%%%
+numBuffers = 1; %%%%%%%%%%%%%%%%%% TEST %%%%%%%%%%%%%%%%%%%%%%
 bufferDutyCycle = 1/10;
 disp(num2str(numFramesPerBuffer / frameRate / bufferDutyCycle))
 
@@ -98,7 +98,7 @@ endDepth = endDepthMM/1e3/wl; % end depth in wavelengths
 % angpitch = wl / (Trans.spacingMm*Trans.numelements / 2 / 1e3);
 % angles = -(na - 1) / 2 * angpitch : angpitch : (na - 1) / 2 * angpitch
 %% enable time tag
-TimeTagEna = 2;
+TimeTagEna = 1;
 % 0: disable
 % 1: enable but don't reset counter
 % 2: enable and reset counter
@@ -446,11 +446,15 @@ end
 
 
 %% Process the Reconstructed data
+Process(1).classname = 'External';
+Process(1).method = 'saveTimetag';
+Process(1).Parameters = {'srcbuffer', 'none', ...
+                             'dstbuffer', 'none'};
+nprevproc = 1; % number of previous Processes
 
-nprevproc = 0; % number of previous Processes
 for nbuf = 1:numBuffers
     Process(nbuf + nprevproc).classname = 'External';
-    Process(nbuf + nprevproc).method = 'saveRcvData_ULM'; % Function name
+    Process(nbuf + nprevproc).method = 'saveRcvData_timetag'; % Function name
     % Process(1).Parameters = {'srcbuffer', 'bufferName', ...
     %                          'srcbufnum', 1, ... % # of buffer to process
     %                          'srcframenum', 1, ... % starting frame #
@@ -485,7 +489,7 @@ SeqControl(scInd).command = 'timeToNextAcq'; % In us, allowed range is from 10 -
                                          % the TPC (voltage) across acqs,
                                          % since it takes 800 us - 8 ms to
                                          % switch
-SeqControl(scInd).condition = 'ignore';  % don't print the warning message
+% SeqControl(scInd).condition = 'ignore';  % don't print the warning message
 
 timePerAcq = 1 / PRF * 1e6; % PRF in us
 
@@ -604,32 +608,37 @@ for nbuf = 1:numBuffers
             Event(n).recon = 0; % 0 means no reconstruction
             Event(n).process = 0; % 0 means no processing
             Event(n).seqControl = 1;
-%             Event(n).seqControl = [1, 8, 10];
-%             Event(n).seqControl = [1, 8];
 
-
-            
             n = n + 1;
             Event(n).info = 'Transmit all rows and receive all columns';
             Event(n).tx = a.*2; 
             Event(n).rcv = (nbuf - 1) .* numFramesPerBuffer .* pair .* na + (nf - 1).*pair.*na + a.*2; 
             Event(n).recon = 0; 
             Event(n).process = 0; 
-            Event(n).seqControl = 1;  
-%             Event(n).seqControl = [1, 8, 10];
-%             Event(n).seqControl = [1, 8];
-
-        
+            Event(n).seqControl = 1;
+      
         end
         scInd = scInd + 1; 
         SeqControl(scInd).command = 'transferToHost'; % Transfer every frame
-%         Event(n).seqControl = [4, 5, scInd];
-        Event(n).seqControl = [4, scInd];
+%         Event(n).seqControl = [4, 5, scInd]; % includes some noop
+%         Event(n).seqControl = [4, scInd];
+
+        % includes the waitForTransferComplete
+        scInd = scInd + 1;
+        SeqControl(scInd).command = 'waitForTransferComplete';
+        SeqControl(scInd).argument = scInd - 1;
+        Event(n).seqControl = [4, scInd - 1, scInd];
 
     end
 
-    Event(n).seqControl = [6, scInd];
-    
+%     Event(n).seqControl = [6, scInd];
+
+    % includes the waitForTransferComplete
+%     scInd = scInd + 1;
+%     SeqControl(scInd).command = 'waitForTransferComplete';
+%     SeqControl(scInd).argument = scInd - 1;
+    Event(n).seqControl = [6, scInd - 1, scInd];
+
     if saveRcvDataFlag
         n = n + 1;
     
@@ -637,7 +646,7 @@ for nbuf = 1:numBuffers
         Event(n).tx = 0; 
         Event(n).rcv = 0; 
         Event(n).recon = 0;
-        Event(n).process = nbuf; 
+        Event(n).process = nbuf + nprevproc; 
 %         Event(n).seqControl = 7; 
         Event(n).seqControl = 0; 
     end
@@ -653,6 +662,8 @@ Event(n).recon = 0;
 Event(n).process = 0; 
 Event(n).seqControl = 3; 
 
+% Add trigger out to the first frame within a superframe or buffer group
+% Event(2).seqControl = [1, 9];
 
 % %% User specified UI Control Elements
 % 
@@ -680,26 +691,8 @@ filename = 'RC15gV_Allen_loop_functional.mat';
 save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+filename);
 
 %% Run the air puff script before running VSX
-[Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts); % Need to use Mcr_ because VSX will autoclear most variables
-%% Run VSX automatically and make parameter structure for RF file naming
+[Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts, 125000); % Need to use Mcr_ because VSX will autoclear most variables
 
-if runVSX
-    disp("running VSX")
-    VSX
-end
-
-%% Read the air puff data - may need to put this in the saveRcvData Processing...
-[inScanData, timeStamp, triggerTime] = read(Mcr_d, seconds(Mcr_fcp.apis.seq_length_s), "OutputFormat", "Matrix");
-
-%% Save post-acquisition parameters in a structure P
-
-makeParameterStructure_ULM;
-savefast([savepath, 'params.mat'], 'P')
-% saveRcvData(RcvData{1})
-% save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
-
-
-%% **** Callback routines used by UIControls (UI) ****
 % Initialize time tagging if enabled
 import com.verasonics.hal.hardware.*
 switch TimeTagEna
@@ -728,7 +721,29 @@ switch TimeTagEna
             error('Error from setTimeTaggingAttributes')
         end
         tagstr = 'on, reset';
+        disp('Time tagging enabled')
 end
+
+%% Run VSX automatically and make parameter structure for RF file naming
+
+if runVSX
+    disp("running VSX")
+    VSX
+end
+
+%% Read the air puff data - may need to put this in the saveRcvData Processing...
+[inScanData, timeStamp, triggerTime] = read(Mcr_d, seconds(Mcr_fcp.apis.seq_length_s), "OutputFormat", "Matrix");
+
+%% Save post-acquisition parameters in a structure P
+
+makeParameterStructure_ULM;
+% savefast([savepath, 'params.mat'], 'P')
+% saveRcvData(RcvData{1})
+% save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
+
+
+%% **** Callback routines used by UIControls (UI) ****
+
 %% Time tag callback test
 
 function TimeTagCallback(~, ~, UIValue)

@@ -1,6 +1,6 @@
 function [apis, vts] = functionalParameterInputPrompt
     functionalParameterPrompt = {'Stim delay time [ms]', 'Stim frequency [Hz]', 'Stim pulse width [ms]', 'Stim duration within each trial [s]', 'Stim trial duration [s]', 'Verasonics trigger delay [s]', 'Verasonics trigger pulse width [ms]'};
-    functionalParameterDefaults = {'10000', '3', '100', '1', '20', '4', '500'};
+    functionalParameterDefaults = {'10000', '3', '100', '1', '20', '6', '500'};
     functionalParameterUserInput = inputdlg(functionalParameterPrompt, 'Input Functional Stimulus Parameters', 1, functionalParameterDefaults);
     
     apis.delay_time_ms = str2double(functionalParameterUserInput{1}); % Delay before the start of the stimulation [ms]

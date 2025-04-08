@@ -2,16 +2,14 @@
 % Trying to write my own air puff code
 % Requires Data Acquisition Toolbox and the NI package
 % Connect the air puffer (PicoSpritzer III) to the NI DAQ
-function [Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts, daqrate)
+function [Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts)
     %% Set up the hardware and channels
     Mcr_d = daq('ni'); % Create the DAQ object
     airPuffInputCh = addoutput(Mcr_d, 'Dev1', 'ao0', 'Voltage');  % Trigger to the air puff input
     airPuffOutputCh = addinput(Mcr_d, 'Dev1', 'ai6', 'Voltage');  % Record the actual air puff actions
     verasonicsTriggerCh = addoutput(Mcr_d, 'Dev1', 'ao1', 'Voltage');  % Trigger to start the Verasonics acquisition
-%     verasonicsOutputCh = addinput(Mcr_d, 'Dev1', 'ai7', 'Voltage');  % Record the start of (triggers from) each acquired superframe/buffer
 
-%     Mcr_d.Rate = 1000; % DAQ rate [samples per second]
-    Mcr_d.Rate = daqrate; % DAQ rate [samples per second]
+    Mcr_d.Rate = 1000; % DAQ rate [samples per second]
     
     %% Create the air puff input signal
     % Functional control parameters (fcp)
@@ -20,8 +18,8 @@ function [Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts, daqrate)
     Mcr_fcp.apis = apis;
     
     % Use the previous lab code to generate the signal
-    Mcr_fcp.apis.signal = generateStimulus_variablerate(Mcr_fcp.apis.delay_time_ms, Mcr_fcp.apis.stim_freq_Hz, ...
-        Mcr_fcp.apis.stim_width_ms, Mcr_fcp.apis.stim_length_s, Mcr_fcp.apis.seq_length_s, Mcr_d.Rate);
+    Mcr_fcp.apis.signal = generateStimulus(Mcr_fcp.apis.delay_time_ms, Mcr_fcp.apis.stim_freq_Hz, ...
+        Mcr_fcp.apis.stim_width_ms, Mcr_fcp.apis.stim_length_s, Mcr_fcp.apis.seq_length_s);
     Mcr_fcp.apis.signal = Mcr_fcp.apis.signal(:, 1); % don't need the camera triggers like they did
     
     % Verasonics trigger signal (vts)

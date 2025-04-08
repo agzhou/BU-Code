@@ -594,7 +594,7 @@ for nbuf = 1:numBuffers
         Event(n).tx = 0; 
         Event(n).rcv = 0; 
         Event(n).recon = 0;
-        Event(n).process = nbuf; 
+        Event(n).process = nbuf + nprevproc; 
 %         Event(n).seqControl = 7; 
         Event(n).seqControl = 0; 
     end

@@ -78,21 +78,7 @@ Resource.Parameters.speedOfSound = speedOfSound; % speed of sound in m/s, the 15
 
 %% 1.5. Specify the functional stimulus parameters
 
-functionalParameterPrompt = {'Stim delay time [ms]', 'Stim frequency [Hz]', 'Stim pulse width [ms]', 'Stim duration within each trial [s]', 'Stim trial duration [s]', 'Verasonics trigger delay [s]', 'Verasonics trigger pulse width [ms]'};
-functionalParameterDefaults = {'10000', '3', '100', '1', '20', '4', '500'};
-functionalParameterUserInput = inputdlg(functionalParameterPrompt, 'Input Functional Stimulus Parameters', 1, functionalParameterDefaults);
-
-apis.delay_time_ms = str2double(functionalParameterUserInput{}); % Delay before the start of the stimulation [ms]
-apis.stim_freq_Hz = 3;     % Stimulation (square wave) frequency [pulses/sec]
-apis.stim_width_ms = 100;  % Width of each square wave [ms]
-apis.stim_length_s = 1;   % Duration of the stimulation [s]
-apis.seq_length_s = 20;   % Total duration of the trial [s]
-    
-% Verasonics trigger signal (vts)
-vts.delay_s = 4;
-vts.pulse_width_ms = 0.5;
-vts.total_duration_s = apis.seq_length;
-
+[apis, vts] = functionalParameterInputPrompt;
 %% 2. Define Transducer structure
 
 Trans.name = 'RC15gV'; 
@@ -667,6 +653,10 @@ Event(n).recon = 0;
 Event(n).process = 0; 
 Event(n).seqControl = 3; 
 
+% Add trigger out to the first frame within a superframe or buffer group
+Event(2).seqControl = [1, 9];
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 % %% User specified UI Control Elements
 % 
@@ -694,7 +684,7 @@ filename = 'RC15gV_Allen_loop_functional.mat';
 save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+filename);
 
 %% Run the air puff script before running VSX
-[Mcr_d, Mcr_fcp] = controlAirPuff_func; % Need to use Mcr_ because VSX will autoclear most variables
+[Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts, 125000); % Need to use Mcr_ because VSX will autoclear most variables
 %% Run VSX automatically and make parameter structure for RF file naming
 
 if runVSX
@@ -714,35 +704,7 @@ makeParameterStructure_ULM;
 
 
 %% **** Callback routines used by UIControls (UI) ****
-% Initialize time tagging if enabled
-import com.verasonics.hal.hardware.*
-switch TimeTagEna
-    case 0
-        % disable time tag
-        rc = Hardware.enableAcquisitionTimeTagging(false);
-        if ~rc
-            error('Error from enableAcqTimeTagging')
-        end
-        tagstr = 'off';
-    case 1
-        % enable time tag
-        rc = Hardware.enableAcquisitionTimeTagging(true);
-        if ~rc
-            error('Error from enableAcqTimeTagging')
-        end
-        tagstr = 'on';
-    case 2
-        % enable time tag and reset counter
-        rc = Hardware.enableAcquisitionTimeTagging(true);
-        if ~rc
-            error('Error from enableAcqTimeTagging')
-        end
-        rc = Hardware.setTimeTaggingAttributes(false, true); % reset hardware counter to 0 (otherwise, it continuously counts up from system bootup until it gets to 107,000s - see p37 of User Manual
-        if ~rc
-            error('Error from setTimeTaggingAttributes')
-        end
-        tagstr = 'on, reset';
-end
+
 %% Time tag callback test
 
 function TimeTagCallback(~, ~, UIValue)
