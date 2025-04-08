@@ -2,7 +2,7 @@
 % Trying to write my own air puff code
 % Requires Data Acquisition Toolbox and the NI package
 % Connect the air puffer (PicoSpritzer III) to the NI DAQ
-function [Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts, daqrate)
+function [Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts, daqrate, numTrials)
     %% Set up the hardware and channels
     Mcr_d = daq('ni'); % Create the DAQ object
     airPuffInputCh = addoutput(Mcr_d, 'Dev1', 'ao0', 'Voltage');  % Trigger to the air puff input
@@ -27,15 +27,20 @@ function [Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts, daqrate)
     % Verasonics trigger signal (vts)
     Mcr_fcp.vts = vts;
     Mcr_fcp.vts.pulse_width_s = vts.pulse_width_ms / 1000;
-    Mcr_fcp.vts.signal = generateSingleTriggerSignal(Mcr_d.Rate, Mcr_fcp.vts.delay_s, Mcr_fcp.vts.pulse_width_s, Mcr_fcp.vts.total_duration_s);
+    Mcr_fcp.vts.signal = generateSingleTriggerSignal(Mcr_d.Rate, Mcr_fcp.vts.delay_s, Mcr_fcp.vts.pulse_width_s);
     
-    % In case the lengths of each signal are somehow different - they need
-    % to be the same to be concatenated later into a matrix for 'preload'
-    Mcr_fcp.vts.signal = padarray(Mcr_fcp.vts.signal, length(Mcr_fcp.apis.signal) - length(Mcr_fcp.vts.signal), 'post');
+    % Repeat the stimulus signal for each trial
+    Mcr_fcp.apis.signal = repmat(Mcr_fcp.apis.signal, numTrials, 1);
 
-    % numCycles = 3;
-    % t = linspace(0, 2*pi * numCycles)';
-    % airPuffInputSignal = square(1 .* t) .* 3.3;
+    % Pad the stimulus signal with zeros while the Verasonics trigger delay
+    % is going
+    Mcr_fcp.apis.signal = [zeros(length(Mcr_fcp.vts.signal), 1); Mcr_fcp.apis.signal];
+
+    % Pad the Verasonics trigger delay with zeros according to the length
+    % of the experiment. (Also, in case the lengths of each signal are 
+    % somehow different - they need to be the same to be concatenated 
+    % later into a matrix for 'preload'
+    Mcr_fcp.vts.signal = padarray(Mcr_fcp.vts.signal, length(Mcr_fcp.apis.signal) - length(Mcr_fcp.vts.signal), 'post');
 
     %% Run the trial in the background
     % global data;

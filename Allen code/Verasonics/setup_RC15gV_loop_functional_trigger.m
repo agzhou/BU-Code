@@ -50,11 +50,10 @@ movePointsOrNot = 0;
 numChannels = 256; % enable channels
 
 % Set up buffers
-% numFramesPerBuffer = 200;
 % numBuffers = ceil(frameRate / numFramesPerBuffer);
-numBuffers = 1; %%%%%%%%%%%%%%%%%% TEST %%%%%%%%%%%%%%%%%%%%%%
-bufferDutyCycle = 1/10;
-disp(num2str(numFramesPerBuffer / frameRate / bufferDutyCycle))
+numBuffers = 1;
+% bufferDutyCycle = 1/10;
+% disp(num2str(numFramesPerBuffer / frameRate / bufferDutyCycle))
 
 % Angles for plane waves are equally distributed over the defined range/# angles
 angleRange = [-maxAngle, maxAngle].*pi/180; % Angle range in radians
@@ -78,7 +77,7 @@ Resource.Parameters.speedOfSound = speedOfSound; % speed of sound in m/s, the 15
 
 %% 1.5. Specify the functional stimulus parameters
 
-[apis, vts] = functionalParameterInputPrompt;
+[apis, vts, daqrate, numTrials] = functionalParameterInputPrompt;
 %% 2. Define Transducer structure
 
 Trans.name = 'RC15gV'; 
@@ -594,7 +593,7 @@ Event(n).info = 'Wait for external trigger to start the acquisition sequence';
 Event(n).tx = 1; % It seems to not work properly if there isn't some acquisition event combined here
 Event(n).rcv = 0; 
 Event(n).recon = 0;
-Event(n).process = 0;
+Event(n).process = 1; % save the initial timetag
 Event(n).seqControl = [8, 10];
 
 for nbuf = 1:numBuffers
@@ -691,9 +690,9 @@ filename = 'RC15gV_Allen_loop_functional.mat';
 save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+filename);
 
 %% Run the air puff script before running VSX
-[Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts, 125000); % Need to use Mcr_ because VSX will autoclear most variables
+[Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts, daqrate, numTrials); % Need to use Mcr_ because VSX will autoclear most variables
 
-% Initialize time tagging if enabled
+%% Initialize time tagging if enabled
 import com.verasonics.hal.hardware.*
 switch TimeTagEna
     case 0
@@ -732,12 +731,13 @@ if runVSX
 end
 
 %% Read the air puff data - may need to put this in the saveRcvData Processing...
-[inScanData, timeStamp, triggerTime] = read(Mcr_d, seconds(Mcr_fcp.apis.seq_length_s), "OutputFormat", "Matrix");
+[inScanData, timeStamp, triggerTime] = read(Mcr_d, seconds(Mcr_d.NumScansAvailable / Mcr_d.Rate), "OutputFormat", "Matrix");
 
 %% Save post-acquisition parameters in a structure P
 
-makeParameterStructure_ULM;
-% savefast([savepath, 'params.mat'], 'P')
+makeParameterStructure_functional;
+savefast([savepath, 'params.mat'], 'P')
+savefast([savepath, 'triggerData.mat'], 'inScanData', 'timeStamp', 'triggerTime')
 % saveRcvData(RcvData{1})
 % save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
 

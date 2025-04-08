@@ -39,10 +39,20 @@ end
 % timeTags = [0; timeTags]; % add the zero timepoint
 
 %% Plot Time tags
-figure; plot(timeTags, '-o'); title('TimeTags')
+chk = timeTags(101:end);
+figure; plot(chk)
+title('TimeTags')
+chk2 = chk - chk(1);
+figure
+plot(chk2)
+title('TimeTags from zero')
 
-timeTagDiff = diff(timeTags);
-figure; plot(timeTagDiff); title('difference')
+chk3 = diff(chk2);
+figure; plot(chk3); title('difference')
+chk4 = find(chk3 > 0.1)
+
+%% Test
+getTimeStamp(double(RFData(1:2,1,12)))/4e4
 
 %% Helper Functions
 function [fileCount] = countFiles(fileName,filePath)
