@@ -1,7 +1,7 @@
 % Check Time tags
 
 % clearvars
-close all
+% close all
 
 %% Load parameters
 
@@ -9,7 +9,9 @@ FilePath = "G:\Allen\Data\04-01-2025 functional acq testing\";
 % FilePath = "G:\Nikunj\test1\";
 
 RFPath = FilePath;
-RFName = "RF-5-11-500-100-1-1.mat";
+% RFName = "RF-5-11-2000-500-1-1.mat";
+
+RFName = "RF-5-11-500-500-1-1.mat";
 % RFName = "RF-5-11-100-100-1-1.mat";
 
 %% Define Load path and save path for RF and IQ respectively

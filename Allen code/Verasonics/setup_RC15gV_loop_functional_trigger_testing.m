@@ -26,7 +26,7 @@ savepath = [savepath, '\'];
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per buffer'}; % 'Save RF data (0-no, 1-yes)', 
 % parameterDefaults = {'5', '0', '10', '40000', '2000', '11', '5', '13.6', '1540', '0', '0', '1000'};
 % parameterDefaults = {'5', '0', '10', '50000', '2000', '11', '5', '13.6', '1540', '0', '1', '500'};
-parameterDefaults = {'5', '0', '10', '50000', '500', '11', '5', '13.6', '1540', '0', '1', '100'};
+parameterDefaults = {'20', '0', '10', '50000', '2000', '11', '5', '13.6', '1540', '0', '1', '500'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % Store the user inputs for parameters into the corresponding variables
@@ -50,11 +50,10 @@ movePointsOrNot = 0;
 numChannels = 256; % enable channels
 
 % Set up buffers
-% numFramesPerBuffer = 200;
 % numBuffers = ceil(frameRate / numFramesPerBuffer);
-numBuffers = 3; %%%%%%%%%%%%%%%%%% TEST %%%%%%%%%%%%%%%%%%%%%%
+numBuffers = 1;
 bufferDutyCycle = 1/10;
-disp(num2str(numFramesPerBuffer / frameRate / bufferDutyCycle))
+% disp(num2str(numFramesPerBuffer / frameRate / bufferDutyCycle))
 
 % Angles for plane waves are equally distributed over the defined range/# angles
 angleRange = [-maxAngle, maxAngle].*pi/180; % Angle range in radians
@@ -78,7 +77,7 @@ Resource.Parameters.speedOfSound = speedOfSound; % speed of sound in m/s, the 15
 
 %% 1.5. Specify the functional stimulus parameters
 
-[apis, vts] = functionalParameterInputPrompt;
+[apis, vts, daqrate, numTrials] = functionalParameterInputPrompt;
 %% 2. Define Transducer structure
 
 Trans.name = 'RC15gV'; 
@@ -98,7 +97,7 @@ endDepth = endDepthMM/1e3/wl; % end depth in wavelengths
 % angpitch = wl / (Trans.spacingMm*Trans.numelements / 2 / 1e3);
 % angles = -(na - 1) / 2 * angpitch : angpitch : (na - 1) / 2 * angpitch
 %% enable time tag
-TimeTagEna = 2;
+TimeTagEna = 1;
 % 0: disable
 % 1: enable but don't reset counter
 % 2: enable and reset counter
@@ -398,59 +397,17 @@ if ((maxAcqLength_adjusted + (endDepth-startDepth))*wl / speedOfSound) > 1/PRF
     error('PRF is too high, it will send the next transmission before the previous transmission reflects from the deepest part of the region')
 
 end
-%% Reconstruction
-% numRegions = 3;
-% 
-% Resource.ImageBuffer(1).numFrames = numSupFrames; % Define an ImageBuffer with a # of frames
-% Resource.InterBuffer(1).numFrames = numSupFrames; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % Resource.InterBuffer(1).numFrames = 1;
-% 
-% % Recon = struct('senscutoff', 0.6, ... % Threshold for which the reconstruction doesn't consider an element's contribution due to directivity of the element, for a certain pixel (whose echoes are at an angle to the element). Should be in radians.
-% %                'pdatanum', 1, ... % Which PData structure to use
-% %                'rcvBufFrame', -1, ... % Use the most recently transferred frame
-% %                'IntBufDest', [1, 1], ... % idk but it's for the IQ (complex) data
-% %                'ImgBufDest', [1, -1], ... % [buffer #, frame #] Auto-increment ImageBuffer for each reconstruction???? % something is [first/oldest frame, last/newest frame]
-% %                'RINums', [1:2*na]); % The ReconInfo structure #(s). Each Recon must have its own unique set of ReconInfo #s
-% 
-% sco = 0.6; %%%%
-% % sco = 0.4;
-% Recon = struct('senscutoff', sco, ... % Threshold for which the reconstruction doesn't consider an element's contribution due to directivity of the element, for a certain pixel (whose echoes are at an angle to the element). Should be in radians.
-%                'pdatanum', 1, ... % Which PData structure to use
-%                'rcvBufFrame', -1, ... % Use the most recently transferred frame
-%                'IntBufDest', [1, -1], ... % IQ (complex) data, Auto-increment for every frame
-%                'ImgBufDest', [1, -1], ... % [buffer #, frame #] Auto-increment ImageBuffer for each reconstruction???? % something is [first/oldest frame, last/newest frame]
-%                'RINums', [1:2*na]); % The ReconInfo structure #(s). Each Recon must have its own unique set of ReconInfo #s
-% 
-% % Recon = repmat(Recon, 1, numFrames);
-% % for nf = 1:numFrames
-% %     Recon(nf).IntBufDest = [1, nf];
-% %     Recon(nf).ImgBufDest = [1, nf];
-% % end
-% 
-% ReconInfo = repmat(struct('mode', 'accumIQ_replaceIntensity', ... % reconstruct, and replace intensity data in ImageBuffer and IQ data in InterBuffer (see Table 12.4 in Tutorial)
-%                    'txnum', 1, ...                 % TX structure to use
-%                    'rcvnum', 1, ...                % RX structure to use
-%                    'regionnum', 1), 1, 2*na);                % PData Region to process in
-% 
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % for nf = 1
-% for n = 1:2*na % need to change this and above for more than 1 frame
-%     % - Set specific ReconInfo attributes.
-%     % ReconInfo(1).mode = 'replaceIQ'; % replace IQ data
-%     ReconInfo(n).txnum = n;
-%     ReconInfo(n).rcvnum = n;
-%     ReconInfo(n).pagenum = n; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %     ReconInfo(1).regionnum = 1; %1 for the whole volume, 5 for the slices
-% 
-% end
-
 
 %% Process the Reconstructed data
+Process(1).classname = 'External';
+Process(1).method = 'saveTimetag';
+Process(1).Parameters = {'srcbuffer', 'none', ...
+                             'dstbuffer', 'none'};
+nprevproc = 1; % number of previous Processes
 
-nprevproc = 0; % number of previous Processes
 for nbuf = 1:numBuffers
     Process(nbuf + nprevproc).classname = 'External';
-    Process(nbuf + nprevproc).method = 'saveRcvData_ULM'; % Function name
+    Process(nbuf + nprevproc).method = 'saveRcvData_timetag'; % Function name
     % Process(1).Parameters = {'srcbuffer', 'bufferName', ...
     %                          'srcbufnum', 1, ... % # of buffer to process
     %                          'srcframenum', 1, ... % starting frame #
@@ -467,18 +424,14 @@ for nbuf = 1:numBuffers
                              'dstbuffer', 'none'};
 end
 
-%%
+%% Store a select couple of parameters into a structure for updating the save data's filename
 makeParameterStructureSmall_ULM;
-%% New Event structure
+
+%% Event structure
 
 Resource.VDAS.dmaTimeout = 1000;
-% Flow:
-% 1. Transmit (TX)
-% 2. Receive (Receive)
-% 3. Reconstruction (Recon)
-% 4. Processing (Process)
-% 5. Control (SeqControl)
 
+% Set the shot-to-shot (each angle) timing according to the PRF
 scInd = 1; % sequence control index
 SeqControl(scInd).command = 'timeToNextAcq'; % In us, allowed range is from 10 - 4190000
                                          % Very useful if you are switching
@@ -487,34 +440,35 @@ SeqControl(scInd).command = 'timeToNextAcq'; % In us, allowed range is from 10 -
                                          % switch
 SeqControl(scInd).condition = 'ignore';  % don't print the warning message
 
-timePerAcq = 1 / PRF * 1e6; % PRF in us
+timePerAcq = 1 / PRF * 1e6; % time step according to the PRF [us]
 
 timePerAcqLimits = [10, 4190000];
 if timePerAcq < timePerAcqLimits(1)
-    warning('Acquisition time too short, setting to minimum of 10 us')
+    warning('Shot acquisition time too short, setting to minimum of 10 us')
     SeqControl(scInd).argument = timePerAcqLimits(1); 
 elseif timePerAcq > timePerAcqLimits(2)
-    warning('Acquisition time too long, setting to maximum of 4190000 us')
+    warning('Shot acquisition time too long, setting to maximum of 4190000 us')
     SeqControl(scInd).argument = timePerAcqLimits(2);
 else
     SeqControl(scInd).argument = timePerAcq;
 end
 
-timePerFrame = SeqControl(scInd).argument * na * 2;     % Time to acquire all the acquisitions for one frame/volume based on PRF (us)
-frameTimeGap = 1 / frameRate * 1e6 - timePerFrame;      % Add delays to account for the frame/volume rate set above
-
+% Return to Matlab SeqControl
 scInd = scInd + 1;
-
 SeqControl(scInd).command = 'returnToMatlab';
 
+% Jump to some event to keep the acquisition looping
 scInd = scInd + 1;
-
 SeqControl(scInd).command = 'jump'; % jump to
 % SeqControl(scInd).argument = 1;     % first event
 SeqControl(scInd).argument = 2;     % second event
 SeqControl(scInd).condition = 'exitAfterJump'; % Normally, jumping auto returns to Matlab if it returns to the first event, but not for other events
 
-% frame/volume rate
+% Set the frame/volume rate
+timePerFrame = SeqControl(scInd-2).argument * na * 2;     % Time to acquire all the acquisitions for one frame/volume based on the PRF [us]
+% frameTimeGap = 1 / frameRate * 1e6 - timePerFrame;      % Add delays to account for the frame/volume rate set above
+frameTimeGap = 1 / frameRate * 1e6 - timePerFrame + SeqControl(scInd-2).argument;      % Add delays to account for the frame/volume rate set above. Add the PRF time because this value replaces one of those delays too.
+
 scInd = scInd + 1;
 SeqControl(scInd).command = 'timeToNextAcq';
 
@@ -565,7 +519,7 @@ SeqControl(scInd).condition = 'Hw&Sw'; % need to enable the noop in hardware
 scInd = scInd + 1;
 SeqControl(scInd).command = 'triggerIn';
 SeqControl(scInd).argument = 0; % 0-255. Each increment of 1 corresponds to 250 ms. The default is 0 and means to wait indefinitely.
-SeqControl(scInd).condition = 'Trigger_2_Rising'; % Which trigger in and type to use
+SeqControl(scInd).condition = 'Trigger_2_Rising'; % Which trigger in port and type to use
 % SeqControl(scInd).command = 'pause';
 % SeqControl(scInd).argument = 19; % see p137
 % SeqControl(scInd).condition = 'extTrigger'; % need to enable the noop in hardware
@@ -582,15 +536,18 @@ SeqControl(scInd).condition = 'syncNone'; % syncNone -> generate the trigger asa
 scInd = scInd + 1;
 SeqControl(scInd).command = 'sync';
 SeqControl(scInd).argument = 10000000; % 10 s
-% SeqControl(scInd).argument = 4000000;
-% SeqControl(scInd).argument = 4000000;
+
+% Sync for aligning the hardware to when the data is done saving
+scInd = scInd + 1;
+SeqControl(scInd).command = 'sync';
+SeqControl(scInd).argument = 10000000; % 10 s
 
 n = 1;
 Event(n).info = 'Wait for external trigger to start the acquisition sequence';
 Event(n).tx = 1; % It seems to not work properly if there isn't some acquisition event combined here
 Event(n).rcv = 0; 
 Event(n).recon = 0;
-Event(n).process = 0;
+Event(n).process = 1; % save the initial timetag
 Event(n).seqControl = [8, 10];
 
 for nbuf = 1:numBuffers
@@ -604,32 +561,50 @@ for nbuf = 1:numBuffers
             Event(n).recon = 0; % 0 means no reconstruction
             Event(n).process = 0; % 0 means no processing
             Event(n).seqControl = 1;
-%             Event(n).seqControl = [1, 8, 10];
-%             Event(n).seqControl = [1, 8];
+%             Event(n).seqControl = 11;
+%             Event(n).seqControl = [1, 11];
 
-
-            
             n = n + 1;
             Event(n).info = 'Transmit all rows and receive all columns';
             Event(n).tx = a.*2; 
             Event(n).rcv = (nbuf - 1) .* numFramesPerBuffer .* pair .* na + (nf - 1).*pair.*na + a.*2; 
             Event(n).recon = 0; 
             Event(n).process = 0; 
-            Event(n).seqControl = 1;  
-%             Event(n).seqControl = [1, 8, 10];
-%             Event(n).seqControl = [1, 8];
-
-        
+            Event(n).seqControl = 1;
+%             Event(n).seqControl = 11;
+%             Event(n).seqControl = [1, 11];
+      
         end
-        scInd = scInd + 1; 
-        SeqControl(scInd).command = 'transferToHost'; % Transfer every frame
-%         Event(n).seqControl = [4, 5, scInd];
-        Event(n).seqControl = [4, scInd];
+%         scInd = scInd + 1; 
+%         SeqControl(scInd).command = 'transferToHost'; % Transfer every frame
+% %         Event(n).seqControl = [4, 5, scInd]; % includes some noop
+% %         Event(n).seqControl = [4, scInd];
+% 
+%         % includes the waitForTransferComplete
+%         scInd = scInd + 1;
+%         SeqControl(scInd).command = 'waitForTransferComplete';
+%         SeqControl(scInd).argument = scInd - 1;
+%         Event(n).seqControl = [4, scInd - 1, scInd];
 
     end
+    scInd = scInd + 1; 
+    SeqControl(scInd).command = 'transferToHost'; % Transfer every frame
+    % includes the waitForTransferComplete
+    scInd = scInd + 1;
+    SeqControl(scInd).command = 'waitForTransferComplete';
+    SeqControl(scInd).argument = scInd - 1;
+%     Event(n).seqControl = [4, scInd - 1, scInd];
 
-    Event(n).seqControl = [6, scInd];
-    
+%     Event(n).seqControl = [6, scInd];
+
+    % includes the waitForTransferComplete
+%     scInd = scInd + 1;
+%     SeqControl(scInd).command = 'waitForTransferComplete';
+%     SeqControl(scInd).argument = scInd - 1;
+%     Event(n).seqControl = [6, scInd - 1, scInd];
+%     Event(n).seqControl = [11, scInd - 1, scInd]; % 11 corresponds to the sync
+    Event(n).seqControl = [scInd - 1, scInd];
+
     if saveRcvDataFlag
         n = n + 1;
     
@@ -637,26 +612,25 @@ for nbuf = 1:numBuffers
         Event(n).tx = 0; 
         Event(n).rcv = 0; 
         Event(n).recon = 0;
-        Event(n).process = nbuf; 
+        Event(n).process = nbuf + nprevproc; 
 %         Event(n).seqControl = 7; 
-        Event(n).seqControl = 0; 
+%         Event(n).seqControl = 0; 
+        Event(n).seqControl = 11; 
     end
 
 end
 
 n = n + 1;
-
 Event(n).info = 'Jump';
 Event(n).tx = 0; 
 Event(n).rcv = 0; 
 Event(n).recon = 0;
 Event(n).process = 0; 
 Event(n).seqControl = 3; 
+% Event(n).seqControl = [3, 11]; 
 
 % Add trigger out to the first frame within a superframe or buffer group
-Event(2).seqControl = [1, 9];
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+% Event(2).seqControl = [1, 9];
 
 % %% User specified UI Control Elements
 % 
@@ -684,7 +658,42 @@ filename = 'RC15gV_Allen_loop_functional.mat';
 save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+filename);
 
 %% Run the air puff script before running VSX
-[Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts, 125000); % Need to use Mcr_ because VSX will autoclear most variables
+[Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts, daqrate, numTrials); % Need to use Mcr_ because VSX will autoclear most variables
+daqStartTimetag = datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss.SSS');
+savefast([savepath, 'daqStartTimetag'], 'daqStartTimetag')
+
+%% Initialize time tagging if enabled
+import com.verasonics.hal.hardware.*
+switch TimeTagEna
+    case 0
+        % disable time tag
+        rc = Hardware.enableAcquisitionTimeTagging(false);
+        if ~rc
+            error('Error from enableAcqTimeTagging')
+        end
+        tagstr = 'off';
+    case 1
+        % enable time tag
+        rc = Hardware.enableAcquisitionTimeTagging(true);
+        if ~rc
+            error('Error from enableAcqTimeTagging')
+        end
+        tagstr = 'on';
+        disp('**** Time tagging enabled on mode 1 ****')
+    case 2
+        % enable time tag and reset counter
+        rc = Hardware.enableAcquisitionTimeTagging(true);
+        if ~rc
+            error('Error from enableAcqTimeTagging')
+        end
+        rc = Hardware.setTimeTaggingAttributes(false, true); % reset hardware counter to 0 (otherwise, it continuously counts up from system bootup until it gets to 107,000s - see p37 of User Manual
+        if ~rc
+            error('Error from setTimeTaggingAttributes')
+        end
+        tagstr = 'on, reset';
+        disp('**** Time tagging enabled on mode 2 ****')
+end
+
 %% Run VSX automatically and make parameter structure for RF file naming
 
 if runVSX
@@ -693,15 +702,15 @@ if runVSX
 end
 
 %% Read the air puff data - may need to put this in the saveRcvData Processing...
-[inScanData, timeStamp, triggerTime] = read(Mcr_d, seconds(Mcr_fcp.apis.seq_length_s), "OutputFormat", "Matrix");
+[inScanData, timeStamp, triggerTime] = read(Mcr_d, seconds(Mcr_d.NumScansAvailable / Mcr_d.Rate), "OutputFormat", "Matrix");
 
 %% Save post-acquisition parameters in a structure P
 
-makeParameterStructure_ULM;
+makeParameterStructure_functional;
 % savefast([savepath, 'params.mat'], 'P')
+savefast([savepath, 'triggerData.mat'], 'inScanData', 'timeStamp', 'triggerTime')
 % saveRcvData(RcvData{1})
 % save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
-
 
 %% **** Callback routines used by UIControls (UI) ****
 

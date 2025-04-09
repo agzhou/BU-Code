@@ -36,6 +36,6 @@ end
 P.apis = apis;
 P.vts = vts;
 P.numTrials = numTrials;
-P.daqrate = P.daqrate;
-P.Mcr_d = Mcr_d;
+P.daqrate = daqrate;
+% P.Mcr_d = Mcr_d;
 P.Mcr_fcp = Mcr_fcp;

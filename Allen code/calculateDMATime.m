@@ -1,0 +1,10 @@
+PRF = 50000; %[Hz]
+DMA_rate_max_GB = 6.6; % [GB/s]
+DMA_rate_max_B = DMA_rate_max_GB * 1024^3; % [bytes/s]
+
+numSamplesPerFrame = Resource.RcvBuffer(1).rowsPerFrame * Resource.RcvBuffer(1).colsPerFrame;
+numBytesPerSample = 2; % int16 takes up 2 bytes
+numBytesPerFrame = numSamplesPerFrame * numBytesPerSample;
+
+timePerDMATheoretical = numBytesPerFrame / DMA_rate_max_B
+frameRateTheoreticalMax = 1/timePerDMATheoretical % [Hz]

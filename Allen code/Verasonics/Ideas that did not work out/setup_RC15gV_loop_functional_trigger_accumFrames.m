@@ -294,31 +294,36 @@ Receive = repmat(struct('Apod', zeros(1, Trans.numelements), ...
 j = 1;
 % an = 0;
 for nbuf = 1:numBuffers
-    
     for nf = 1:numFramesPerBuffer
         an = 0; % acquisition number
         
         % Move points after all the acquisitions for one frame
         Receive(j).callMediaFunc = movePointsOrNot;
-    %     Receive(j).mode = 0; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         for n = 1:na
             an = an + 1;
+            Receive(j).mode = 1; % Accumulate
             Receive(j).bufnum = nbuf;
             Receive(j).framenum = nf;
-            Receive(j).acqNum = an;
+%             Receive(j).acqNum = an;
+            Receive(j).acqNum = 1;
             Receive(j).Apod(Trans.numelements/2 + 1 : end) = ones(1, Trans.numelements/2);
             j = j + 1;
         end
-    
+
+        Receive(j - na).mode = 0; % Replace at the start of each half-frame
+
         for n = 1:na
             an = an + 1;
+            Receive(j).mode = 1; % Accumulate
             Receive(j).bufnum = nbuf;
             Receive(j).framenum = nf;
-            Receive(j).acqNum = an;
+%             Receive(j).acqNum = an;
+            Receive(j).acqNum = 2;
             Receive(j).Apod(1:Trans.numelements/2) = ones(1, Trans.numelements/2);
             j = j + 1;
         end
-        
+        Receive(j - na).mode = 0; % Replace at the start of each half-frame
+
     end
 end
 
@@ -364,7 +369,8 @@ end
 maxAcqLength_adjusted = numRcvSamples / samplesPerWave / 2;
 
 for nbuf = 1:numBuffers
-    Resource.RcvBuffer(nbuf).rowsPerFrame = numRcvSamples * na * 2;
+%     Resource.RcvBuffer(nbuf).rowsPerFrame = numRcvSamples * na * 2;
+    Resource.RcvBuffer(nbuf).rowsPerFrame = numRcvSamples*2; %%%%%%%%%%%%%%
     Resource.RcvBuffer(nbuf).colsPerFrame = Resource.Parameters.numRcvChannels; % Usually 1:1 to # of receive channels available in the system. Can change to 256 with the 2D probe and new connector plate.
     Resource.RcvBuffer(nbuf).numFrames = numFramesPerBuffer; % minimum # frames of RF data to acquire; RcvBuffer contains all the data needed for a whole frame, including multiple acquisition passes needed for reconstruction. Software can re-process RcvBuffer frames
     Resource.RcvBuffer(nbuf).datatype = 'int16'; % 16 bit signed integers are the only supported datatype
@@ -700,7 +706,7 @@ end
 %% Save post-acquisition parameters in a structure P
 
 makeParameterStructure_functional;
-% savefast([savepath, 'params.mat'], 'P')
+savefast([savepath, 'params.mat'], 'P')
 savefast([savepath, 'triggerData.mat'], 'inScanData', 'timeStamp', 'triggerTime')
 % saveRcvData(RcvData{1})
 % save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
