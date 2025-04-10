@@ -36,6 +36,10 @@ if exist('bufferDutyCycle', 'var')
     P.bufferDutyCycle = bufferDutyCycle;
 end
 
+if exist('rcvChunkSize', 'var')
+    P.rcvChunkSize = rcvChunkSize;
+end
+
 % Functional params
 P.apis = apis;
 P.vts = vts;

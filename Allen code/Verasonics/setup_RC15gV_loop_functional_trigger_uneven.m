@@ -484,7 +484,7 @@ SeqControl(scInd).condition = 'exitAfterJump'; % Normally, jumping auto returns 
 % frameTimeGap = 1 / frameRate * 1e6 - timePerFrame + SeqControl(scInd-2).argument;      % Add delays to account for the frame/volume rate set above. Add the PRF time because this value replaces one of those delays too.
 
 timePerTransferSeconds = numGBPerBufferFrame / 6.6; % PCie speed is 6.6 GB/s
-frameTimeGap = timePerTransferSeconds * 1e6;
+frameTimeGap = timePerTransferSeconds * 1e6; % [us]
 
 scInd = scInd + 1;
 SeqControl(scInd).command = 'timeToNextAcq';
@@ -738,7 +738,9 @@ makeParameterStructure_functional;
 savefast([savepath, 'params.mat'], 'P')
 savefast([savepath, 'triggerData.mat'], 'inScanData', 'timeStamp', 'triggerTime')
 % saveRcvData(RcvData{1})
-% save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
+
+clear RcvData
+save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
 
 %% **** Callback routines used by UIControls (UI) ****
 

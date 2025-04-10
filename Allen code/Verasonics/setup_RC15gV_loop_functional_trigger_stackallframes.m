@@ -737,7 +737,8 @@ makeParameterStructure_functional;
 savefast([savepath, 'params.mat'], 'P')
 savefast([savepath, 'triggerData.mat'], 'inScanData', 'timeStamp', 'triggerTime')
 % saveRcvData(RcvData{1})
-% save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
+clear RcvData
+save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
 
 %% **** Callback routines used by UIControls (UI) ****
 
