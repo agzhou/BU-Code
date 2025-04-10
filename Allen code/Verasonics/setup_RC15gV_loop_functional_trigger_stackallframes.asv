@@ -6,7 +6,7 @@
 % Uses saveRcvData external function for saving
 % Starts on an external trigger
 
-% Collects nbuf buffers of nf frames with some duty cycle for saving delays
+% Collects a stack of nf frames with one transfer for all at once
 
 %% 1. Specify system parameters
 clearvars

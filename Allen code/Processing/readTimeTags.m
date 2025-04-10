@@ -9,8 +9,8 @@
 datapath = "G:\Allen\Data\04-01-2025 functional acq testing\";
 
 % RFName = "RF-5-11-2000-500-1-1.mat";
-% RFName = "RF-5-11-1800-500-1-1.mat";
-RFName = "RF-5-11-500-500-1-1.mat";
+RFName = "RF-5-11-1000-180-1-1.mat";
+% RFName = "RF-5-11-500-500-1-1.mat";
 % RFName = "RF-5-11-1000-500-1-1.mat";
 % RFName = "RF-5-11-400-500-1-1.mat";
 

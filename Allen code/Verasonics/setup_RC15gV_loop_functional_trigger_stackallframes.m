@@ -6,7 +6,7 @@
 % Uses saveRcvData external function for saving
 % Starts on an external trigger
 
-% Collects nbuf buffers of nf frames with some duty cycle for saving delays
+% Collects a stack of nf frames with one transfer for all at once
 
 %% 1. Specify system parameters
 clearvars
@@ -23,10 +23,11 @@ activate
 savepath = uigetdir('G:\', 'Select the save path');
 savepath = [savepath, '\'];
 
-parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'RcvData chunk size [frames]'}; % 'Save RF data (0-no, 1-yes)', 
+parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe'}; % 'Save RF data (0-no, 1-yes)', 
 % parameterDefaults = {'5', '0', '10', '40000', '2000', '11', '5', '13.6', '1540', '0', '0', '1000'};
 % parameterDefaults = {'5', '0', '10', '50000', '2000', '11', '5', '13.6', '1540', '0', '1', '500'};
-parameterDefaults = {'20', '2', '8', '650000', '2000', '11', '5', '13.6', '1540', '0', '1', '500', '100'};
+parameterDefaults = {'20', '2', '10', '60000', '2500', '11', '5', '13.6', '1540', '0', '1', '180'};
+% parameterDefaults = {'20', '0', '20', '30000', '1000', '11', '5', '13.6', '1540', '0', '1', '80'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % Store the user inputs for parameters into the corresponding variables
@@ -42,14 +43,6 @@ speedOfSound = str2double(parameterUserInput{9});
 simMode = str2double(parameterUserInput{10});
 saveRcvDataFlag = str2double(parameterUserInput{11});
 numFramesPerSF = str2double(parameterUserInput{12});
-rcvChunkSize = str2double(parameterUserInput{13});
-
-%%%%%%%%% Chunking the receives %%%%%%%%%%
-numBuffers = numFramesPerSF / rcvChunkSize;
-if numBuffers ~= floor(numBuffers) % if the # of frames per superframe is not a natural number multiple of the chunk size
-    error("Error: Please set the # of frames per superframe to be a natural number multiple of the chunk size (" + num2str(rcvChunkSize) + " frames)")
-end
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % tagtest = Hardware.enableAcquisitionTimeTagging(1);
 bufferIndex = 0;
@@ -59,7 +52,7 @@ numChannels = 256; % enable channels
 
 % Set up buffers
 % numBuffers = ceil(frameRate / numFramesPerBuffer);
-% numBuffers = 1;
+numBuffers = 1;
 bufferDutyCycle = 1/10;
 % disp(num2str(numFramesPerBuffer / frameRate / bufferDutyCycle))
 
@@ -305,7 +298,7 @@ j = 1;
 for nbuf = 1:numBuffers
     an = 0; % acquisition number
 
-    for nf = 1:rcvChunkSize
+    for nf = 1:numFramesPerSF
 %         an = 0; % acquisition number
         
         % Move points after all the acquisitions for one frame
@@ -316,7 +309,7 @@ for nbuf = 1:numBuffers
             Receive(j).bufnum = nbuf;
 %             Receive(j).framenum = nf;
 %             Receive(j).framenum = nbuf;
-            Receive(j).framenum = 1; % 1 chunked frame per buffer
+            Receive(j).framenum = 1; % 1 stacked frame per buffer
             Receive(j).acqNum = an;
             Receive(j).Apod(Trans.numelements/2 + 1 : end) = ones(1, Trans.numelements/2);
             j = j + 1;
@@ -378,7 +371,7 @@ end
 maxAcqLength_adjusted = numRcvSamples / samplesPerWave / 2;
 
 for nbuf = 1:numBuffers
-    Resource.RcvBuffer(nbuf).rowsPerFrame = numRcvSamples * na * 2 * rcvChunkSize;
+    Resource.RcvBuffer(nbuf).rowsPerFrame = numRcvSamples * na * 2 * numFramesPerSF;
     Resource.RcvBuffer(nbuf).colsPerFrame = Resource.Parameters.numRcvChannels; % Usually 1:1 to # of receive channels available in the system. Can change to 256 with the 2D probe and new connector plate.
 %     Resource.RcvBuffer(nbuf).colsPerFrame = 160; % Usually 1:1 to # of receive channels available in the system. Can change to 256 with the 2D probe and new connector plate.
 %     Resource.RcvBuffer(nbuf).numFrames = numFramesPerSF; % minimum # frames of RF data to acquire; RcvBuffer contains all the data needed for a whole frame, including multiple acquisition passes needed for reconstruction. Software can re-process RcvBuffer frames
@@ -405,7 +398,7 @@ numSamplesPerBufferFrame = Resource.RcvBuffer(1).rowsPerFrame * Resource.RcvBuff
 numGBPerBufferFrame = numSamplesPerBufferFrame ./ 1024^3 * 2 % # samples * (2 bytes per int16 sample) 
 
 if numGBPerBufferFrame > 2
-    warning('Buffer size per frame is too large, exiting')
+    warning('Buffer size per frame is too large (> 2 GB), exiting')
     return
 end
 
@@ -607,6 +600,7 @@ for nbuf = 1
       
         end
 
+        Event(n).seqControl = [1, 4]; % set the frame rate control
 %         scInd = scInd + 1; 
 %         SeqControl(scInd).command = 'transferToHost'; % sub-DMA
 %         Event(n).seqControl = [1, scInd];
@@ -740,7 +734,7 @@ end
 %% Save post-acquisition parameters in a structure P
 
 makeParameterStructure_functional;
-% savefast([savepath, 'params.mat'], 'P')
+savefast([savepath, 'params.mat'], 'P')
 savefast([savepath, 'triggerData.mat'], 'inScanData', 'timeStamp', 'triggerTime')
 % saveRcvData(RcvData{1})
 % save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')

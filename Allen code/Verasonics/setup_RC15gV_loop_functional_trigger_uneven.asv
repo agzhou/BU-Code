@@ -6,7 +6,7 @@
 % Uses saveRcvData external function for saving
 % Starts on an external trigger
 
-% Collects nbuf buffers of nf frames with some duty cycle for saving delays
+% Collects
 
 %% 1. Specify system parameters
 clearvars
@@ -26,7 +26,7 @@ savepath = [savepath, '\'];
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'RcvData chunk size [frames]'}; % 'Save RF data (0-no, 1-yes)', 
 % parameterDefaults = {'5', '0', '10', '40000', '2000', '11', '5', '13.6', '1540', '0', '0', '1000'};
 % parameterDefaults = {'5', '0', '10', '50000', '2000', '11', '5', '13.6', '1540', '0', '1', '500'};
-parameterDefaults = {'20', '2', '8', '650000', '2000', '11', '5', '13.6', '1540', '0', '1', '500', '100'};
+parameterDefaults = {'20', '2', '10', '65000', '2000', '11', '5', '13.6', '1540', '0', '1', '100', '2'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % Store the user inputs for parameters into the corresponding variables
@@ -34,7 +34,7 @@ initialVoltage = str2double(parameterUserInput{1});
 startDepthMM = str2double(parameterUserInput{2});
 endDepthMM = str2double(parameterUserInput{3});
 PRF = str2double(parameterUserInput{4});
-frameRate = str2double(parameterUserInput{5}); % subframe (volume) rate (Hz)
+frameRate = str2double(parameterUserInput{5}); % subframe (volume) rate (Hz). See the SeqControl section -> this is set to be as fast as possible given the # of samples per "frame stack" and the PCIe transfer speed
 na = str2double(parameterUserInput{6});
 maxAngle = str2double(parameterUserInput{7});
 probe_freq = str2double(parameterUserInput{8});
@@ -45,8 +45,7 @@ numFramesPerSF = str2double(parameterUserInput{12});
 rcvChunkSize = str2double(parameterUserInput{13});
 
 %%%%%%%%% Chunking the receives %%%%%%%%%%
-numBuffers = numFramesPerSF / rcvChunkSize;
-if numBuffers ~= floor(numBuffers) % if the # of frames per superframe is not a natural number multiple of the chunk size
+if mod(numFramesPerSF, rcvChunkSize) ~= 0 % if the # of frames per superframe is not a natural number multiple of the chunk size
     error("Error: Please set the # of frames per superframe to be a natural number multiple of the chunk size (" + num2str(rcvChunkSize) + " frames)")
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -59,7 +58,7 @@ numChannels = 256; % enable channels
 
 % Set up buffers
 % numBuffers = ceil(frameRate / numFramesPerBuffer);
-% numBuffers = 1;
+numBuffers = 1;
 bufferDutyCycle = 1/10;
 % disp(num2str(numFramesPerBuffer / frameRate / bufferDutyCycle))
 
@@ -303,36 +302,31 @@ Receive = repmat(struct('Apod', zeros(1, Trans.numelements), ...
 j = 1;
 % an = 0;
 for nbuf = 1:numBuffers
-    an = 0; % acquisition number
-
-    for nf = 1:rcvChunkSize
-%         an = 0; % acquisition number
+%     an = 0; % acquisition number
+    for nf = 1:numFramesPerSF/rcvChunkSize
+        an = 0; % acquisition number
+        for ic = 1:rcvChunkSize % index of chunk
+            % Move points after all the acquisitions for one frame
+            Receive(j).callMediaFunc = movePointsOrNot;
+        %     Receive(j).mode = 0; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            for n = 1:na
+                an = an + 1;
+                Receive(j).bufnum = nbuf;
+                Receive(j).framenum = nf; % Frame num is the same for all acquisitions in a chunk
+                Receive(j).acqNum = an;
+                Receive(j).Apod(Trans.numelements/2 + 1 : end) = ones(1, Trans.numelements/2);
+                j = j + 1;
+            end
         
-        % Move points after all the acquisitions for one frame
-        Receive(j).callMediaFunc = movePointsOrNot;
-    %     Receive(j).mode = 0; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        for n = 1:na
-            an = an + 1;
-            Receive(j).bufnum = nbuf;
-%             Receive(j).framenum = nf;
-%             Receive(j).framenum = nbuf;
-            Receive(j).framenum = 1; % 1 chunked frame per buffer
-            Receive(j).acqNum = an;
-            Receive(j).Apod(Trans.numelements/2 + 1 : end) = ones(1, Trans.numelements/2);
-            j = j + 1;
+            for n = 1:na
+                an = an + 1;
+                Receive(j).bufnum = nbuf;
+                Receive(j).framenum = nf;
+                Receive(j).acqNum = an;
+                Receive(j).Apod(1:Trans.numelements/2) = ones(1, Trans.numelements/2);
+                j = j + 1;
+            end
         end
-    
-        for n = 1:na
-            an = an + 1;
-            Receive(j).bufnum = nbuf;
-%             Receive(j).framenum = nf;
-%             Receive(j).framenum = nbuf;
-            Receive(j).framenum = 1; % 1 chunked frame per buffer
-            Receive(j).acqNum = an;
-            Receive(j).Apod(1:Trans.numelements/2) = ones(1, Trans.numelements/2);
-            j = j + 1;
-        end
-        
     end
 end
 
@@ -380,9 +374,8 @@ maxAcqLength_adjusted = numRcvSamples / samplesPerWave / 2;
 for nbuf = 1:numBuffers
     Resource.RcvBuffer(nbuf).rowsPerFrame = numRcvSamples * na * 2 * rcvChunkSize;
     Resource.RcvBuffer(nbuf).colsPerFrame = Resource.Parameters.numRcvChannels; % Usually 1:1 to # of receive channels available in the system. Can change to 256 with the 2D probe and new connector plate.
-%     Resource.RcvBuffer(nbuf).colsPerFrame = 160; % Usually 1:1 to # of receive channels available in the system. Can change to 256 with the 2D probe and new connector plate.
-%     Resource.RcvBuffer(nbuf).numFrames = numFramesPerSF; % minimum # frames of RF data to acquire; RcvBuffer contains all the data needed for a whole frame, including multiple acquisition passes needed for reconstruction. Software can re-process RcvBuffer frames
-    Resource.RcvBuffer(nbuf).numFrames = 1; % minimum # frames of RF data to acquire; RcvBuffer contains all the data needed for a whole frame, including multiple acquisition passes needed for reconstruction. Software can re-process RcvBuffer frames
+    Resource.RcvBuffer(nbuf).numFrames = numFramesPerSF / rcvChunkSize; % minimum # frames of RF data to acquire; RcvBuffer contains all the data needed for a whole frame, including multiple acquisition passes needed for reconstruction. Software can re-process RcvBuffer frames
+%     Resource.RcvBuffer(nbuf).numFrames = 1; % minimum # frames of RF data to acquire; RcvBuffer contains all the data needed for a whole frame, including multiple acquisition passes needed for reconstruction. Software can re-process RcvBuffer frames
     Resource.RcvBuffer(nbuf).datatype = 'int16'; % 16 bit signed integers are the only supported datatype
 end
 % Commenting below section because it doesn't work for the second set of
@@ -481,10 +474,16 @@ SeqControl(scInd).command = 'jump'; % jump to
 SeqControl(scInd).argument = 2;     % second event
 SeqControl(scInd).condition = 'exitAfterJump'; % Normally, jumping auto returns to Matlab if it returns to the first event, but not for other events
 
-% Set the frame/volume rate
-timePerFrame = SeqControl(scInd-2).argument * na * 2;     % Time to acquire all the acquisitions for one frame/volume based on the PRF [us]
-% frameTimeGap = 1 / frameRate * 1e6 - timePerFrame;      % Add delays to account for the frame/volume rate set above
-frameTimeGap = 1 / frameRate * 1e6 - timePerFrame + SeqControl(scInd-2).argument;      % Add delays to account for the frame/volume rate set above. Add the PRF time because this value replaces one of those delays too.
+% Set the frame/volume rate. But each "frame" is actually made up of
+% rcvChunkSize frames. This frameRate should be set according to the max
+% allowed, given the # of samples per frame stack and the PCIe transfer
+% speed.
+
+% frameRate = PRF / na / 2 / rcvChunkSize;
+% timePerFrame = SeqControl(scInd-2).argument * na * 2 * rcvChunkSize;     % Time to acquire all the acquisitions for one frame/volume based on the PRF [us]
+% frameTimeGap = 1 / frameRate * 1e6 - timePerFrame + SeqControl(scInd-2).argument;      % Add delays to account for the frame/volume rate set above. Add the PRF time because this value replaces one of those delays too.
+
+timePerTransfer = numGBPerBufferFrame / 6.6; % PCie speed is 6.6 GB/s
 
 scInd = scInd + 1;
 SeqControl(scInd).command = 'timeToNextAcq';

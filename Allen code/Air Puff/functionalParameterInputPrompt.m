@@ -3,6 +3,7 @@ function [apis, vts, daqrate, numTrials] = functionalParameterInputPrompt
     functionalParameterPrompt = {'Stim delay time [ms]', 'Stim frequency [Hz]', 'Stim pulse width [ms]', 'Stim duration within each trial [s]', 'Stim trial duration [s]', 'Verasonics trigger delay [s]', 'Verasonics trigger pulse width [ms]', 'DAQ sample rate [Hz]', 'Number of trials per run'};
 %     functionalParameterDefaults = {'5000', '3', '100', '1', '20', '6', '500', '1000', '1'};
     functionalParameterDefaults = {'5000', '3', '100', '5', '30', '10', '500', '1000', '1'};
+%     functionalParameterDefaults = {'5000', '3', '100', '1', '20', '10', '500', '1000', '1'};
     functionalParameterUserInput = inputdlg(functionalParameterPrompt, 'Input Functional Stimulus Parameters', 1, functionalParameterDefaults);
     
     apis.delay_time_ms = str2double(functionalParameterUserInput{1}); % Delay before the start of the stimulation [ms]

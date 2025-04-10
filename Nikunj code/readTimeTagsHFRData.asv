@@ -10,9 +10,8 @@ FilePath = "G:\Allen\Data\04-01-2025 functional acq testing\";
 
 RFPath = FilePath;
 % RFName = "RF-5-11-2000-500-1-1.mat";
-RFName = "RF-5-11-1000-180-1-1.mat";
 
-% RFName = "RF-5-11-500-500-1-1.mat";
+RFName = "RF-5-11-500-500-1-1.mat";
 % RFName = "RF-5-11-100-100-1-1.mat";
 
 %% Define Load path and save path for RF and IQ respectively
@@ -48,7 +47,7 @@ figure
 plot(chk2)
 title('TimeTags from zero')
 
-chk3 = diff(chk);
+chk3 = diff(chk2);
 figure; plot(chk3); title('difference')
 chk4 = find(chk3 > 0.1)
 
