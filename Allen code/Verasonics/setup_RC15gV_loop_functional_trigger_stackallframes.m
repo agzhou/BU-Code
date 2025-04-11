@@ -600,7 +600,7 @@ for nbuf = 1
       
         end
 
-        Event(n).seqControl = [1, 4]; % set the frame rate control
+        Event(n).seqControl = [4]; % set the frame rate control
 %         scInd = scInd + 1; 
 %         SeqControl(scInd).command = 'transferToHost'; % sub-DMA
 %         Event(n).seqControl = [1, scInd];

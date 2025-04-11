@@ -735,6 +735,7 @@ end
 %% Save post-acquisition parameters in a structure P
 
 makeParameterStructure_functional;
+P.rcvChunkSize = rcvChunkSize;
 savefast([savepath, 'params.mat'], 'P')
 savefast([savepath, 'triggerData.mat'], 'inScanData', 'timeStamp', 'triggerTime')
 % saveRcvData(RcvData{1})
