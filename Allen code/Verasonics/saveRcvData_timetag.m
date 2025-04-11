@@ -3,6 +3,8 @@
 
 function saveRcvData_timetag(RcvData)
 %     tic
+    timetag = datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss.SSS');
+
     savepath = evalin('base', 'savepath');
     Trans = evalin('base', 'Trans');
     Psmall = evalin('base', 'Psmall');
@@ -19,7 +21,6 @@ function saveRcvData_timetag(RcvData)
 %     RcvData = RcvData(:, Trans.Connector, :);
 %     whos RcvData
 %     save([savepath, filename], 'RcvData', '-v7.3','-nocompression')
-    timetag = datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss.SSS');
     savefast([savepath, filename], 'RcvData', 'timetag')
 
 

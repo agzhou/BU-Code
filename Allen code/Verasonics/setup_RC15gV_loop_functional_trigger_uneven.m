@@ -26,7 +26,7 @@ savepath = [savepath, '\'];
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'RcvData chunk size [frames]'}; % 'Save RF data (0-no, 1-yes)', 
 % parameterDefaults = {'5', '0', '10', '40000', '2000', '11', '5', '13.6', '1540', '0', '0', '1000'};
 % parameterDefaults = {'5', '0', '10', '50000', '2000', '11', '5', '13.6', '1540', '0', '1', '500'};
-parameterDefaults = {'20', '2', '10', '65000', '2000', '11', '5', '13.6', '1540', '0', '1', '1000', '2'};
+parameterDefaults = {'20', '2', '10', '60000', '2000', '11', '5', '13.6', '1540', '0', '1', '1000', '2'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % Store the user inputs for parameters into the corresponding variables
@@ -552,12 +552,12 @@ SeqControl(scInd).condition = 'syncNone'; % syncNone -> generate the trigger asa
 % Sync to make the software sequencer also wait for the trigger input
 scInd = scInd + 1;
 SeqControl(scInd).command = 'sync';
-SeqControl(scInd).argument = 10000000; % 10 s
+SeqControl(scInd).argument = 30000000; % 30 s
 
 % Sync for aligning the hardware to when the data is done saving
 scInd = scInd + 1;
 SeqControl(scInd).command = 'sync';
-SeqControl(scInd).argument = 10000000; % 10 s
+SeqControl(scInd).argument = 30000000; % 30 s
 
 n = 1;
 Event(n).info = 'Wait for external trigger to start the acquisition sequence';

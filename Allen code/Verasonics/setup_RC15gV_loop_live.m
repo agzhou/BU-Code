@@ -15,7 +15,7 @@ cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 activate
 % numElements = 80;
 
-savepath = "G:\Allen\Data\03-20-2025 AZ03 ULM\RC15gV\run 0\";
+savepath = "G:\Allen\Data\04-11-2025 AZ02 fUS RC15gV\run 0\";
 savepath = char(savepath);
 mkdir(savepath)
 
