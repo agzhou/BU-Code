@@ -1,0 +1,28 @@
+% function [RcvData_unstacked] = unstackFrames(RcvData, P)
+    if exist('P.rcvChunkSize', 'var')
+        nsf = P.rcvChunkSize; % number of stacked frames
+    else
+        nsf = P.numFramesPerBuffer;
+    end
+
+    nspa = P.Receive(1).endSample; % # samples per acquisition
+    nspf = nspa * P.na * 2; % # samples per frame
+    
+    RcvData_unstacked = zeros(nspf, P.Resource.Parameters.numRcvChannels, nsf);
+
+    % ... unstack
+%     RcvData_unstacked = reshape(RcvData, [nspf, P.Resource.Parameters.numRcvChannels, nsf]);
+    
+    for n = 1:nsf
+        RcvData_unstacked(:, :, n) = RcvData((n-1) * nspf + 1 : n * nsf, :);
+
+
+    end
+    
+    % Remap according to the element - channel map
+%     RcvData_unstacked = RcvData_unstacked(:, P.Trans.Connector, :);
+
+
+% end
+
+% figure; imagesc(abs(squeeze(double(RcvData_unstacked(:, :, 1))) .^ 0.5))
