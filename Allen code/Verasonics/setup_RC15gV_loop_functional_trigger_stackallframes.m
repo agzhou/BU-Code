@@ -550,7 +550,8 @@ SeqControl(scInd).argument = 10000000; % 10 s
 % Sync for aligning the hardware to when the data is done saving
 scInd = scInd + 1;
 SeqControl(scInd).command = 'sync';
-SeqControl(scInd).argument = 10000000; % 10 s
+% SeqControl(scInd).argument = 10000000; % 10 s
+SeqControl(scInd).argument = 1000000 * vts.delay_s*5; % Timeout set to 5x the input delay just in case
 
 n = 1;
 Event(n).info = 'Wait for external trigger to start the acquisition sequence';
