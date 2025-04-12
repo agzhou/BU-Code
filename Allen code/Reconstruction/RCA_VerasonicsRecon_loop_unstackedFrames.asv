@@ -20,7 +20,6 @@ clearvars
 
 cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 % cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
-addpath 'C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Reconstruction'
 
 activate
 clearvars
@@ -63,42 +62,41 @@ Mcr_AutoScriptTest = 1;
 %% Assign variables and structures
 
 pair = 2; % The R-C and C-R pair of acquisitions per angle
-numChannels = P_unstacked.Resource.Parameters.numTransmit;
+numChannels = P.Resource.Parameters.numTransmit;
 
 % assignFromParameterStructure;
-assignStructVars(P_unstacked);                                                        % Assign parameters from P structure into the workspace
+assignStructVars(P);                                                        % Assign parameters from P structure into the workspace
 
 maxAcqLength = maxAcqLength_adjusted;
 Trans_acq = Trans;
 TX_acq = TX;
 TW_acq = TW;
-% Resource = P_unstacked.Resource;
-% Receive_acq = Receive;
-% Receive = Receive(1:numFramesPerBuffer * na * pair);
-% Receive = P_unstacked.Receive;
-clear Event Process Recon ReconInfo SeqControl Trans TW TX
+Resource_acq = Resource;
+Receive_acq = Receive;
+Receive = Receive(1:numFramesPerBuffer * na * pair);
+clear Event Process Recon ReconInfo SeqControl Trans TW TX Resource
 
 
 
 %% Resource, define system parameters
-% Resource.Parameters.numTransmit = numChannels;                              % number of transmit channels
-% Resource.Parameters.numRcvChannels = numChannels;                           % number of receive channels
-% % Resource.Parameters.connector = 1;                                        % transducer connector to use since the current plate for the 256 bit system is split into two 128 bit connectors. 1 is left and 2 is right
-% Resource.Parameters.speedOfSound = Resource_acq.Parameters.speedOfSound;    % speed of sound in m/s
-% 
-% Resource.RcvBuffer = Resource_acq.RcvBuffer(1);
-% 
-% % load the first one to get this size
-% load([Mcr_datapath, Mcr_filenameStructure, '1']);
-% rpf = size(RcvData, 1);
-% clear RcvData
-% Resource.RcvBuffer.rowsPerFrame = rpf;
-% 
-% Resource.RcvBuffer.numFrames = numFramesPerBuffer;
+Resource.Parameters.numTransmit = numChannels;                              % number of transmit channels
+Resource.Parameters.numRcvChannels = numChannels;                           % number of receive channels
+% Resource.Parameters.connector = 1;                                        % transducer connector to use since the current plate for the 256 bit system is split into two 128 bit connectors. 1 is left and 2 is right
+Resource.Parameters.speedOfSound = Resource_acq.Parameters.speedOfSound;    % speed of sound in m/s
+
+Resource.RcvBuffer = Resource_acq.RcvBuffer(1);
+
+% load the first one to get this size
+load([Mcr_datapath, Mcr_filenameStructure, '1']);
+rpf = size(RcvData, 1);
+clear RcvData
+Resource.RcvBuffer.rowsPerFrame = rpf;
+
+Resource.RcvBuffer.numFrames = numFramesPerBuffer;
 Resource.RcvBuffer.lastFrame = 1; % reset the counter
 Resource.Parameters.simulateMode = 2; % Enable mode 2, which processes data in the buffers
 
-% Resource.Parameters.verbose = 2; % Describe errors in varying levels
+Resource.Parameters.verbose = 2; % Describe errors in varying levels
 %% Define Transducer
 
 Trans.name = Trans_acq.name; 
@@ -115,6 +113,46 @@ TW(1).Parameters = TW_acq.Parameters;
 TX_fn = fieldnames(TX_acq);
 TX = rmfield(TX_acq, TX_fn(6:14));
 
+%% Receive (need to be careful about the superframe and subframe definition since ReconInfo depends on it!!!!!!!!!!!!!!!!!!!!!!!!!!!!!)
+% Receive = repmat(struct('Apod', zeros(1, Trans.numelements), ... 
+%                         'startDepth', startDepth, ...
+%                         'endDepth', maxAcqLength, ...
+%                         'TGC', 1, ...
+%                         'bufnum', 1, ...
+%                         'framenum', 1, ...
+%                         'acqNum', 1, ...
+%                         'sampleMode', 'NS200BW', ...
+%                         'mode', 0, ...
+%                         'callMediaFunc', 0, ...
+%                         'LowPassCoef', [], ...
+%                         'InputFilter', []), 1, pair*P_new.numSupFrames*P_new.numSubFrames*na);
+% j = 1;
+% % an = 0;
+% for nsupf = 1:P_new.numSupFrames
+%     for nsubf = 1:P_new.numSubFrames
+%         % Move points after all the acquisitions for one frame
+% %         Receive(j).callMediaFunc = movePointsOrNot;
+%     %     Receive(j).mode = 0; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%         an = 0;
+% 
+%         for n = 1:na
+%             an = an + 1;
+%             Receive(j).framenum = nsubf;
+%             Receive(j).acqNum = an;
+%             Receive(j).Apod(Trans.numelements/2 + 1 : end) = ones(1, Trans.numelements/2);
+%             j = j + 1;
+%         end
+%     
+%         for n = 1:na
+%             an = an + 1;
+%             Receive(j).framenum = nsubf;
+%             Receive(j).acqNum = an;
+%             Receive(j).Apod(1:Trans.numelements/2) = ones(1, Trans.numelements/2);
+%             j = j + 1;
+%         end
+%         
+%     end
+% end
 %% PData structure (Pixel Data --> image reconstruction range)
 % For 2D scans and slices of 3D scans, it's always a rectangular area at a
 % fixed location in the transducer coord system
@@ -122,7 +160,6 @@ TX = rmfield(TX_acq, TX_fn(6:14));
 numElements = Trans.numelements./2; % the structure gives # row elements + # column elements
 
 PData.PDelta = [Trans.spacing, Trans.spacing, 0.5]; % Spacing between pixels in x, y, z, in wavelengths
-% PData.PDelta = [0.5, 0.5, 0.5]; % Spacing between pixels in x, y, z, in wavelengths
 
 PData.Coord = 'rectangular'; % rectangular coords, could change to polar or spherical
 % Set PData array dimensions --> # of rows, columns, sections (planes
@@ -241,7 +278,7 @@ end
 
 %% Save all the data/structures to a .mat file.
 currentDir = cd; currentDir = regexp(currentDir, filesep, 'split');
-Mcr_filename = 'RC15gV_Allen_recon_unstackedFrames.mat';
+Mcr_filename = 'RC15gV_Allen_recon.mat';
 
 save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+Mcr_filename, "Event", "SeqControl", "ReconInfo", "Recon", "Resource", "Media", "PData", "Receive", "TGC", "TPC", "Trans", "TW", "TX");
 
@@ -249,15 +286,15 @@ save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"
 %% Run VSX automatically and make parameter structure for RF file naming
 
 
-% for Mcr_filenum = Mcr_startFile:Mcr_endFile
-for Mcr_filenum = 1:1
+for Mcr_filenum = Mcr_startFile:Mcr_endFile
+% for Mcr_filenum = 1:2
     tic
 
     load([Mcr_datapath, Mcr_filenameStructure, num2str(Mcr_filenum)]);
     disp(strcat("Raw data file ", num2str(Mcr_filenum), " loaded."))
     
     % Put RcvData into a cell array for VSX
-    [r, ~] = unstackFrames(RcvData, P);
+    r = RcvData;
     clear RcvData;
     
     RcvData{1} = r;
