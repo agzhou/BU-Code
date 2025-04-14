@@ -47,7 +47,42 @@ figure; imagesc(abs(squeeze(max(IQf(:, :, :, 1), [], 1)))')
 %%
 taustep = 1/P.frameRate;
 tau = taustep:taustep:(P.numFramesPerBuffer * taustep);
+tau_ms = tau .* 1000;
 
 g1 = g1test(IQf);
 
-te
+figure; plot(tau_ms, squeeze(g1(40, 43, 47, :)), '-o')
+
+%%
+[CBF, CBV] = g1_to_CBi(g1, tau_ms, 2, 5, 2); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+%%
+figure; imagesc(squeeze(CBF(40, :, :))')
+title('CBFi - xz plane')
+xlabel('x pixels')
+ylabel('z pixels')
+figure; imagesc(squeeze(CBF(:, 40, :))')
+title('CBFi - yz plane')
+xlabel('x pixels')
+ylabel('z pixels')
+
+%%
+figure; imagesc(squeeze(CBV(40, :, :))'); colormap hot
+title('CBVi - xz plane')
+xlabel('x pixels')
+ylabel('z pixels')
+figure; imagesc(squeeze(CBV(:, 40, :))'); colormap hot
+title('CBVi - yz plane')
+xlabel('x pixels')
+ylabel('z pixels')
+%% MIP over the whole dimension
+figure; imagesc(squeeze(max(CBV, [], 1))' .^ 0.5); colormap hot
+title('CBVi - xz MIP')
+xlabel('x pixels')
+ylabel('z pixels')
+figure; imagesc(squeeze(max(CBV, [], 2))'); colormap hot
+title('CBVi - yz MIP')
+xlabel('x pixels')
+ylabel('z pixels')
+
+%% 
+volumeViewer(CBV)

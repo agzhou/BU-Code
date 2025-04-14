@@ -16,40 +16,66 @@ end
 
 % Load Verasonics reconstruction parameters: datapath\PData.mat
 if ~exist('PData', 'var')
-    load([datapath, 'PData.mat'])
+    load([IQpath, 'PData.mat'])
 end
 
 IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 
 savepath = uigetdir('G:\Allen\Data\', 'Select the save path');
 savepath = [savepath, '\'];
-%% 
-load([IQpath, IQfilenameStructure, '7'])
 
-IQ = squeeze(IData + 1i .* QData);
-clear IData QData
-%%
+%% Main loop
 sv_threshold_lower = 10;
 sv_threshold_upper = 150;
 
-% SVD decluttering
-[xp, yp, zp, nf] = size(IQ);
+startFile = 1;
+endFile = 148;
 
-[PP, EVs, V_sort] = getSVs2D(IQ);
-disp('SVs decomposed')
-[IQf] = applySVs2D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
-disp('SVD filtered images put together')
+taustep = 1/P.frameRate;
+% tau = taustep:taustep:(P.numFramesPerBuffer * taustep);
+tau = 0:taustep:((P.numFramesPerBuffer - 1) * taustep);
+tau_ms = tau .* 1000; % Assuming even time spacing between frames
+
+tau1_index_CBF = 2;
+tau2_index_CBF = 6;
+tau1_index_CBV = 2;
+
+% for filenum = startFile:endFile
+for filenum = 2:endFile
+    tic
+    load([IQpath, IQfilenameStructure, num2str(filenum)])
+    
+    IQ = squeeze(IData + 1i .* QData);
+    clearvars IData QData
+    
+    % SVD decluttering
+    [xp, yp, zp, nf] = size(IQ);
+    
+    [PP, EVs, V_sort] = getSVs2D(IQ);
+    disp('SVs decomposed')
+    [IQf] = applySVs2D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
+    disp('SVD filtered images put together')
+
+    clearvars IQ  
+    
+    g1 = g1test(IQf);
+    
+    [CBFi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+
+%     savefast([savepath, 'fUSdata-', num2str(filenum), '.mat'], g1, CBFi, CBVi);
+    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFi', 'CBVi', '-v7.3', '-nocompression');
+    disp("fUS result for file " + num2str(filenum) + " saved" )
+    toc
+    
+end
+savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'tau1_index_CBF', 'tau2_index_CBF', 'tau1_index_CBV');
 
 %%
 volumeViewer(abs(IQf(:, :, :, 1)))
 %%
 figure; imagesc(abs(squeeze(max(IQf(:, :, :, 1), [], 1)))')
 %%
-taustep = 1/P.frameRate;
-tau = taustep:taustep:(P.numFramesPerBuffer * taustep);
-tau_ms = tau .* 1000;
 
-g1 = g1test(IQf);
 
 %% Plot the magnitude of g1 at some point
 figure; plot(tau_ms, abs(squeeze(g1(40, 45, 61, :))), '-o')
