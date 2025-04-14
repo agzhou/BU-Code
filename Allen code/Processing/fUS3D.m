@@ -1,0 +1,88 @@
+%% load params and stuff
+% IQpath = 'D:\Allen\Data\04-11-2025 AZ02 fUS RC15gV\run 1 all frames stacked\IQ Data - Verasonics recon\';
+IQpath = uigetdir('G:\Allen\Data\', 'Select the IQ data path');
+IQpath = [IQpath, '\'];
+
+% Load parameters
+% if ~exist('P', 'var')
+%     load([IQpath, '..\params.mat'])
+% end
+% Load acquisition parameters: params.mat
+if ~exist('P', 'var')
+    % Choose and load the params.mat file (from the acquisition)
+    [params_filename, params_pathname, ~] = uigetfile('*.mat', 'Select the params file', [IQpath, '..\params.mat']);
+    load([params_pathname, params_filename])
+end
+
+% Load Verasonics reconstruction parameters: datapath\PData.mat
+if ~exist('PData', 'var')
+    load([datapath, 'PData.mat'])
+end
+
+IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
+
+savepath = uigetdir('G:\Allen\Data\', 'Select the save path');
+savepath = [savepath, '\'];
+%% 
+load([IQpath, IQfilenameStructure, '7'])
+
+IQ = squeeze(IData + 1i .* QData);
+clear IData QData
+%%
+sv_threshold_lower = 10;
+sv_threshold_upper = 150;
+
+% SVD decluttering
+[xp, yp, zp, nf] = size(IQ);
+
+[PP, EVs, V_sort] = getSVs2D(IQ);
+disp('SVs decomposed')
+[IQf] = applySVs2D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
+disp('SVD filtered images put together')
+
+%%
+volumeViewer(abs(IQf(:, :, :, 1)))
+%%
+figure; imagesc(abs(squeeze(max(IQf(:, :, :, 1), [], 1)))')
+%%
+taustep = 1/P.frameRate;
+tau = taustep:taustep:(P.numFramesPerBuffer * taustep);
+tau_ms = tau .* 1000;
+
+g1 = g1test(IQf);
+
+figure; plot(tau_ms, squeeze(g1(40, 43, 47, :)), '-o')
+
+%%
+[CBF, CBV] = g1_to_CBi(g1, tau_ms, 2, 5, 2); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+%%
+figure; imagesc(squeeze(CBF(40, :, :))')
+title('CBFi - xz plane')
+xlabel('x pixels')
+ylabel('z pixels')
+figure; imagesc(squeeze(CBF(:, 40, :))')
+title('CBFi - yz plane')
+xlabel('x pixels')
+ylabel('z pixels')
+
+%%
+figure; imagesc(squeeze(CBV(40, :, :))'); colormap hot
+title('CBVi - xz plane')
+xlabel('x pixels')
+ylabel('z pixels')
+figure; imagesc(squeeze(CBV(:, 40, :))'); colormap hot
+title('CBVi - yz plane')
+xlabel('x pixels')
+ylabel('z pixels')
+%% MIP over the whole dimension
+figure; imagesc(squeeze(max(CBV, [], 1))'); colormap hot
+title('CBVi - xz MIP')
+xlabel('x pixels')
+ylabel('z pixels')
+figure; imagesc(squeeze(max(CBV, [], 2))'); colormap hot
+title('CBVi - yz MIP')
+xlabel('x pixels')
+ylabel('z pixels')
+
+%% 
+volumeViewer(CBV)
