@@ -247,17 +247,20 @@ save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"
 
 
 %% Run VSX automatically and make parameter structure for RF file naming
-Mcr_P = P; % VSX_auto will clear the P, so set it to not be cleared because unstackFrames needs it
+if ~exist('Mcr_P', 'var')
+    Mcr_P = P; % VSX_auto will clear the P, so set it to not be cleared because unstackFrames needs it
+end
 
 % for Mcr_filenum = Mcr_startFile:Mcr_endFile
-for Mcr_filenum = 3:Mcr_endFile
+for Mcr_filenum = 16:Mcr_endFile
+% for Mcr_filenum = 1
     tic
 
     load([Mcr_datapath, Mcr_filenameStructure, num2str(Mcr_filenum)], 'RcvData');
     disp(strcat("Raw data file ", num2str(Mcr_filenum), " loaded."))
     
     % Put RcvData into a cell array for VSX
-    [r, ~] = unstackFrames(RcvData, Mcr_P);
+    r = unstackFrames(RcvData, Mcr_P);
     clear RcvData;
     
     RcvData{1} = r;
@@ -283,6 +286,7 @@ for Mcr_filenum = 3:Mcr_endFile
     clear IData QData RcvData
 end
 savefast([Mcr_savepath, 'PData'], 'PData') % Save the PData structure
+
 %% saving speed test
 % tic
 % test = IData{1};
