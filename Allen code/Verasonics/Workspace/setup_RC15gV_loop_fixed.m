@@ -24,7 +24,7 @@ savepath = uigetdir('F:\', 'Select the save path');
 savepath = [savepath, '\'];
 
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe'}; % 'Save RF data (0-no, 1-yes)', 
-parameterDefaults = {'20', '2', '10', '60000', '500', '11', '5', '13.6', '1540', '0', '1', '180'};
+parameterDefaults = {'20', '2', '10', '60000', '500', '11', '5', '13.6', '1540', '0', '1', '200'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % Store the user inputs for parameters into the corresponding variables
@@ -539,7 +539,7 @@ SeqControl(scInd).condition = 'Hw&Sw';                  % need to enable the noo
 % buffer rate
 
 % need to change this to be consistent with the if blocks above
-timePerBuffer = 1 / frameRate * numFramesPerBuffer * 1e6;                 % Time to acquire all the frames within one buffer (us)
+timePerBuffer = 1 / frameRate * numFramesPerSF * 1e6;                 % Time to acquire all the frames within one buffer (us)
 bufferTimeGap = timePerBuffer / bufferDutyCycle - timePerBuffer;          % Add delay to account for the buffer rate duty cycle set above
 
 scInd = scInd + 1;
@@ -577,7 +577,7 @@ for nbuf = 1:numBuffers
             n = n + 1;
             Event(n).info = 'Transmit all columns and receive all rows';
             Event(n).tx = a.*2 - 1; % Use ath TX structure
-            Event(n).rcv = (nbuf - 1) .* numFramesPerBuffer .* pair .* na + (nf - 1).*pair.*na + a.*2 - 1; % Use nth Receive structure % need to make this alternate between (1 and 2) * numframes or something
+            Event(n).rcv = (nbuf - 1) .* numFramesPerSF .* pair .* na + (nf - 1).*pair.*na + a.*2 - 1; % Use nth Receive structure % need to make this alternate between (1 and 2) * numframes or something
             Event(n).recon = 0; % 0 means no reconstruction
             Event(n).process = 0; % 0 means no processing
             Event(n).seqControl = 1;
@@ -585,7 +585,7 @@ for nbuf = 1:numBuffers
             n = n + 1;
             Event(n).info = 'Transmit all rows and receive all columns';
             Event(n).tx = a.*2; 
-            Event(n).rcv = (nbuf - 1) .* numFramesPerBuffer .* pair .* na + (nf - 1).*pair.*na + a.*2; 
+            Event(n).rcv = (nbuf - 1) .* numFramesPerSF .* pair .* na + (nf - 1).*pair.*na + a.*2; 
             Event(n).recon = 0; 
             Event(n).process = 0; 
             Event(n).seqControl = 1;  
@@ -700,10 +700,10 @@ end
 % save([savepath, 'params.mat'], 'P')
 
 makeParameterStructure_ULM;
-savefast([savepath, 'params.mat'], 'P')
+% savefast([savepath, 'params.mat'], 'P')
 % saveRcvData(RcvData{1})
 clearvars RcvData
-save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
+% save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
 
 
 %% **** Callback routines used by UIControls (UI) ****
