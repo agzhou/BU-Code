@@ -25,8 +25,8 @@ savepath = uigetdir('G:\Allen\Data\', 'Select the save path');
 savepath = [savepath, '\'];
 
 %% Main loop
-sv_threshold_lower = 10;
-sv_threshold_upper = 150;
+sv_threshold_lower = 40;
+sv_threshold_upper = 400;
 
 startFile = 1;
 endFile = 148;
@@ -41,7 +41,8 @@ tau2_index_CBF = 6;
 tau1_index_CBV = 2;
 
 % for filenum = startFile:endFile
-for filenum = 2:endFile
+% for filenum = 2:endFile
+for filenum = 1
     tic
     load([IQpath, IQfilenameStructure, num2str(filenum)])
     

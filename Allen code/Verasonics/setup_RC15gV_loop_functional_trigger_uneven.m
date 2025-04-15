@@ -499,6 +499,10 @@ else
     SeqControl(scInd).argument = frameTimeGap;
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+frameRate = 1/(SeqControl(scInd).argument * 1e-6); % Set the actual inter-frame-stack rate
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % frame/volume rate noop
 scInd = scInd + 1;
 SeqControl(scInd).command = 'noop';                     % no operation
