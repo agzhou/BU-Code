@@ -9,6 +9,10 @@
 % clutter
 
 % ...
+
+% **** Make sure that the current directory is set to the directory where this
+% script is located!!! ****
+
 %% Use parallel processing for speed
 % https://www.mathworks.com/matlabcentral/answers/91744-how-can-i-check-if-matlabpool-is-running-when-using-parallel-computing-toolbox
 
@@ -39,7 +43,7 @@ end
 
 % Prompt for parameter user input
 parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Image refinement factor - x', 'Image refinement factor - y', 'Image refinement factor - z', 'XC Threshold Factor', 'x pixel spacing [um]', 'y pixel spacing [um]', 'z pixel spacing [um]'};
-parameterDefaults = {'1', '', '20', '150', '2', '2', '2', '0.25', num2str(PData.PDelta(1) * P.wl * 1e6), num2str(PData.PDelta(2) * P.wl * 1e6), num2str(PData.PDelta(3) * P.wl * 1e6)};
+parameterDefaults = {'1', '', '20', '150', '2', '2', '2', '0.2', num2str(PData.PDelta(1) * P.wl * 1e6), num2str(PData.PDelta(2) * P.wl * 1e6), num2str(PData.PDelta(3) * P.wl * 1e6)};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % define # of files manually for now
