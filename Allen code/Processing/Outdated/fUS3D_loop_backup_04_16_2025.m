@@ -41,8 +41,7 @@ tau2_index_CBF = 6;
 tau1_index_CBV = 2;
 
 % for filenum = startFile:endFile
-% for filenum = [37, 110, 111, 123:endFile]
-for filenum = 7
+for filenum = [37, 110, 111, 123:endFile]
     tic
     load([IQpath, IQfilenameStructure, num2str(filenum)])
     
@@ -57,18 +56,10 @@ for filenum = 7
     [IQf] = applySVs2D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
     disp('SVD filtered images put together')
 
-    clearvars IQ
-
-    % Use the IQf with separated negative and positive frequency components
-    [IQf_separated, ~]  = separatePosNegFreqs(IQf);
+    clearvars IQ  
     
-    g1_n = g1test(IQf_separated{1});
-    [CBFi_n, CBVi_n] = g1_to_CBi(g1_n, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
-    g1_p = g1test(IQf_separated{2});
-    [CBFi_p, CBVi_p] = g1_to_CBi(g1_p, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
-
     g1 = g1test(IQf);
-
+    
     [CBFi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 
 %     savefast([savepath, 'fUSdata-', num2str(filenum), '.mat'], g1, CBFi, CBVi);
@@ -83,14 +74,8 @@ savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_
 volumeViewer(abs(IQf(:, :, :, 1)))
 %%
 figure; imagesc(abs(squeeze(max(IQf(:, :, :, 1), [], 1)))')
-%% Power Doppler
-% [PDI] = calcPowerDoppler(IQf_separated);
-plotMIPs(PDI{3}, 0.8)
-% volumeViewer(PDI{3})
-volumeSegmenter(PDI{3})
+%%
 
-%% CBVi and CBFi MIP over the whole dimension with negative and positive components
-plotMIPs(CBVi_n, 1)
 
 %% Plot the magnitude of g1 at some point
 figure; plot(tau_ms, abs(squeeze(g1(40, 45, 61, :))), '-o')
@@ -99,7 +84,7 @@ xlabel('Tau [ms]')
 ylabel('|g1|')
 
 %%
-[CBFi, CBVi] = g1_to_CBi(g1, tau_ms, 2, 3, 2); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+[CBF, CBV] = g1_to_CBi(g1, tau_ms, 2, 3, 2); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 %%
 figure; imagesc(squeeze(CBF(40, :, :))')
 title('CBFi - xz plane')
@@ -134,18 +119,18 @@ title('CBVi - yz plane')
 xlabel('x pixels')
 ylabel('z pixels')
 %% CBV MIP over the whole dimension
-gamcp = 1; % gamma compression power
-figure; imagesc(squeeze(max(CBVi, [], 1))' .^ gamcp); colormap hot; colorbar
+gcp = 1; % gamma compression power
+figure; imagesc(squeeze(max(CBV, [], 1))' .^ gcp); colormap hot; colorbar
 title('CBVi - xz MIP')
 xlabel('y pixels')
 ylabel('z pixels')
-figure; imagesc(squeeze(max(CBVi, [], 2))' .^ gamcp); colormap hot; colorbar
+figure; imagesc(squeeze(max(CBV, [], 2))' .^ gcp); colormap hot; colorbar
 title('CBVi - yz MIP')
 xlabel('x pixels')
 ylabel('z pixels')
 
 %% 
-volumeViewer(CBV .^ gamcp)
+volumeViewer(CBV .^ gcp)
 
 
 %% Store all the CBVi across the experiment into one matrix
@@ -176,18 +161,3 @@ figure; plot(test_ma, '-o')
 title("rCBV at " + num2str(pt(1)) + ", " +  num2str(pt(2)) + ", " +num2str(pt(3)))
 xlabel('erm')
 ylabel('rCBV')
-
-%% Helper functions
-function plotMIPs(data, gamcp) % expects 4D input (x, y, z, frames)
-    % gamcp = gamma compression power
-
-    figure; imagesc(squeeze(max(data, [], 1))' .^ gamcp); colormap hot; colorbar
-    title('xz MIP')
-    xlabel('y pixels')
-    ylabel('z pixels')
-    figure; imagesc(squeeze(max(data, [], 2))' .^ gamcp); colormap hot; colorbar
-    title('yz MIP')
-    xlabel('x pixels')
-    ylabel('z pixels')
-
-end
