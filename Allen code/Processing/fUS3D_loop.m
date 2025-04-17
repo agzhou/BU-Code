@@ -64,12 +64,12 @@ for filenum = 7
     % Use the IQf with separated negative and positive frequency components
     [IQf_separated, ~]  = separatePosNegFreqs(IQf);
     
-    g1_n = g1T_3D(IQf_separated{1});
+    g1_n = g1T(IQf_separated{1});
     [CBFi_n, CBVi_n] = g1_to_CBi(g1_n, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
-    g1_p = g1T_3D(IQf_separated{2});
+    g1_p = g1T(IQf_separated{2});
     [CBFi_p, CBVi_p] = g1_to_CBi(g1_p, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 
-    g1 = g1T_3D_test(IQf);
+    g1 = g1T(IQf);
 
     [CBFi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 
