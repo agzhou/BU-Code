@@ -142,7 +142,7 @@ for iCP=startCP:startCP+nCP-1
             Tau2=7;
             % negative and positive frequency GG
             disp('npIQ to GG to CBF indices...');
-            fIQ=sysNoiseRemove(sIQ,PRSSinfo.rFrame); % ** filtered (denoised) IQ **
+            fIQ=sysNoiseRemove(sIQ,PRSSinfo.rFrame); % ** filtered (denoised) IQ in the Fourier domain **
             [nz,nx,nt]=size(sIQ);
             npGG=zeros(nz,nx,PRSSinfo.g1nTau); % ** g1 with negative and positive frequencies separated **
             unNorm_npGG=npGG;                  % ** un-normalized g1 **

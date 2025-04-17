@@ -1,6 +1,5 @@
 %% load params and stuff
-% IQpath = 'D:\Allen\Data\04-11-2025 AZ02 fUS RC15gV\run 1 all frames stacked\IQ Data - Verasonics recon\';
-IQpath = uigetdir('G:\Allen\Data\', 'Select the IQ data path');
+IQpath = uigetdir('D:\Allen\Data\', 'Select the IQ data path');
 IQpath = [IQpath, '\'];
 
 % Load parameters
@@ -21,10 +20,12 @@ end
 
 IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 
-savepath = uigetdir('G:\Allen\Data\', 'Select the save path');
+savepath = uigetdir('D:\Allen\Data\', 'Select the save path');
 savepath = [savepath, '\'];
 
-%% Main loop
+addpath([cd, '\Speckle tracking']) % add path for the g1 calculation functions
+
+%% Define some parameters (add this to a prompt later)
 sv_threshold_lower = 10;
 sv_threshold_upper = 150;
 
@@ -40,6 +41,7 @@ tau1_index_CBF = 2;
 tau2_index_CBF = 6;
 tau1_index_CBV = 2;
 
+%% Main loop
 % for filenum = startFile:endFile
 % for filenum = [37, 110, 111, 123:endFile]
 for filenum = 7
@@ -62,12 +64,12 @@ for filenum = 7
     % Use the IQf with separated negative and positive frequency components
     [IQf_separated, ~]  = separatePosNegFreqs(IQf);
     
-    g1_n = g1test(IQf_separated{1});
+    g1_n = g1T_3D(IQf_separated{1});
     [CBFi_n, CBVi_n] = g1_to_CBi(g1_n, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
-    g1_p = g1test(IQf_separated{2});
+    g1_p = g1T_3D(IQf_separated{2});
     [CBFi_p, CBVi_p] = g1_to_CBi(g1_p, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 
-    g1 = g1test(IQf);
+    g1 = g1T_3D_test(IQf);
 
     [CBFi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 
@@ -79,15 +81,21 @@ for filenum = 7
 end
 savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'tau1_index_CBF', 'tau2_index_CBF', 'tau1_index_CBV');
 
-%%
-volumeViewer(abs(IQf(:, :, :, 1)))
-%%
-figure; imagesc(abs(squeeze(max(IQf(:, :, :, 1), [], 1)))')
+%% testing
+% plotMIPs(squeeze(IData(:, :, :, 1, 1)), 1)
+% plotMIPs(squeeze(QData(:, :, :, 1, 1)), 1)
+phasetest = squeeze(QData(:, :, :, 1, 1) ./ IData(:, :, :, 1, 1));
+phasetest = phasetest(abs(phasetest) < 10);
+plotMIPs(phasetest(:, :, :, 1), 1)
+findfigs
 %% Power Doppler
 % [PDI] = calcPowerDoppler(IQf_separated);
-plotMIPs(PDI{3}, 0.8)
+plotMIPs(PDI{1}, 0.8)
+plotMIPs(PDI{2}, 0.8)
+% plotMIPs(PDI{3}, 0.8)
+
 % volumeViewer(PDI{3})
-volumeSegmenter(PDI{3})
+% volumeSegmenter(PDI{3})
 
 %% CBVi and CBFi MIP over the whole dimension with negative and positive components
 plotMIPs(CBVi_n, 1)
@@ -180,7 +188,7 @@ ylabel('rCBV')
 %% Helper functions
 function plotMIPs(data, gamcp) % expects 4D input (x, y, z, frames)
     % gamcp = gamma compression power
-
+    
     figure; imagesc(squeeze(max(data, [], 1))' .^ gamcp); colormap hot; colorbar
     title('xz MIP')
     xlabel('y pixels')
