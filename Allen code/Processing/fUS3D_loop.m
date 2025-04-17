@@ -62,14 +62,14 @@ for filenum = 7
     clearvars IQ
 
     % Use the IQf with separated negative and positive frequency components
-    [IQf_separated, ~]  = separatePosNegFreqs(IQf);
+    [IQf_separated, IQf_FT_separated]  = separatePosNegFreqs(IQf);
     
-    g1_n = g1T(IQf_separated{1});
+    g1_n = g1T(IQf_separated{1}, 10);
     [CBFi_n, CBVi_n] = g1_to_CBi(g1_n, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
-    g1_p = g1T(IQf_separated{2});
+    g1_p = g1T(IQf_separated{2}, 10);
     [CBFi_p, CBVi_p] = g1_to_CBi(g1_p, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 
-    g1 = g1T(IQf);
+    g1 = g1T(IQf, 10);
 
     [CBFi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 
@@ -89,14 +89,19 @@ phasetest = phasetest(abs(phasetest) < 10);
 plotMIPs(phasetest(:, :, :, 1), 1)
 findfigs
 %% Power Doppler
-% [PDI] = calcPowerDoppler(IQf_separated);
-plotMIPs(PDI{1}, 0.8)
-plotMIPs(PDI{2}, 0.8)
-% plotMIPs(PDI{3}, 0.8)
+[PDI] = calcPowerDoppler(IQf_separated);
+% plotMIPs(PDI{1}, 0.8)
+% plotMIPs(PDI{2}, 0.8)
+plotMIPs(PDI{3}, 0.8)
 
 % volumeViewer(PDI{3})
 % volumeSegmenter(PDI{3})
 
+%% Color Doppler
+% [CDI] = calcColorDoppler(IQf_FT_separated, P);
+plotMIPs(CDI{1}, 1)
+plotMIPs(CDI{2}, 1)
+% plotMIPs(CDI{3}, 1)
 %% CBVi and CBFi MIP over the whole dimension with negative and positive components
 plotMIPs(CBVi_n, 1)
 
