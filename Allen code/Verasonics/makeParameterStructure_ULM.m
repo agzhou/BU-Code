@@ -10,7 +10,11 @@ P.maxAngle = maxAngle;
 P.Media = Media;
 P.na = na;
 % P.nf = nf;
-P.numFramesPerBuffer = numFramesPerBuffer;
+if exist('numFramesPerBuffer', 'var')
+    P.numFramesPerBuffer = numFramesPerBuffer;
+else
+    P.numFramesPerBuffer = numFramesPerSF;
+end
 
 P.numElements = numElements;
 P.Receive = Receive;

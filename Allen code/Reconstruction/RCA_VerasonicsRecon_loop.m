@@ -294,7 +294,7 @@ save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"
 
 
 for Mcr_filenum = Mcr_startFile:Mcr_endFile
-% for Mcr_filenum = 1:2
+% for Mcr_filenum = 40
     tic
 
     load([Mcr_datapath, Mcr_filenameStructure, num2str(Mcr_filenum)]);

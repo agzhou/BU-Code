@@ -11,17 +11,19 @@
 %% Specify system parameters
 clearvars
 
+codeDir = cd;
+codeDir_split = split(string(codeDir), filesep);
+AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "Allen code"))), '\') + "\Verasonics");
+addpath(AllenVerasonicsCodePath)
+
 cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
-
 activate
-% numElements = 80;
 
+%%
 savepath = "G:\Allen\Data\03-20-2025 AZ03 ULM\RC15gV\run 2 right eye\";
-% savepath = "F:\BioMicro Senior Capstone\HF2\";
 savepath = char(savepath);
 mkdir(savepath)
 
-% tagtest = Hardware.enableAcquisitionTimeTagging(1);
 bufferIndex = 0;
 
 runVSX = 1;

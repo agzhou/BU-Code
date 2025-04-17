@@ -14,21 +14,13 @@ function [P_unstacked] = updateParams_unstackedFrames(P)
     nspa = P.Receive(1).endSample; % # samples per acquisition
     nspf = nspa * P.na * 2; % # samples per frame
     
+
     % Redefine the parameters structure with the unstacked parameters
-    if exist('rcvChunkSize', 'var')
-        P_unstacked = P;
-        P_unstacked.numFramesPerBuffer = P.numFramesPerBuffer;
-        P_unstacked.Resource.RcvBuffer.numFrames = P_unstacked.numFramesPerBuffer;
-        P_unstacked.Resource.RcvBuffer.rowsPerFrame = nspf;
-        P_unstacked.Receive = updateReceiveStructure(P_unstacked);
-    else
-        P_unstacked = P;
-        P_unstacked.numFramesPerBuffer = nsf;
-        P_unstacked.Resource.RcvBuffer.numFrames = nsf;
-        P_unstacked.Resource.RcvBuffer.rowsPerFrame = nspf;
-        P_unstacked.Receive = updateReceiveStructure(P_unstacked);
-    end
-    
+    P_unstacked = P;
+    P_unstacked.numFramesPerBuffer = nsf;
+    P_unstacked.Resource.RcvBuffer.numFrames = nsf;
+    P_unstacked.Resource.RcvBuffer.rowsPerFrame = nspf;
+    P_unstacked.Receive = updateReceiveStructure(P_unstacked);
 end
 
 

@@ -15,7 +15,8 @@ function [RcvData_unstacked, P_unstacked] = unstackFrames(RcvData, P)
     end
 
     if exist('rcvChunkSize', 'var')
-        nsf = rcvChunkSize; % number of stacked frames
+%         nsf = rcvChunkSize; % number of stacked frames
+        nsf = P.numFramesPerBuffer;
     else
         nsf = P.numFramesPerBuffer;
     end
@@ -28,14 +29,15 @@ function [RcvData_unstacked, P_unstacked] = unstackFrames(RcvData, P)
     % Unstack the frames
 %     RcvData_unstacked = reshape(RcvData, [nspf, P.Resource.Parameters.numRcvChannels, nsf]);
     
-    if length(size(RcvData)) == 2 % all frames are stacked
+    if length(size(RcvData)) == 2 % all frames are stacked into one "frame" in the buffer
         for n = 1:nsf
             RcvData_unstacked(:, :, n) = RcvData((n-1) * nspf + 1 : n * nspf, :);
         end
     else % if only some frames are stacked, RcvData should have 3 dimensions
         for n = 1:rcvChunkSize:nsf
             for c = 0:rcvChunkSize - 1
-                RcvData_unstacked(:, :, n + c) = RcvData((n-1) * nspf + 1 : n * nspf, :, n + c);
+%                 RcvData_unstacked(:, :, n + c) = RcvData((n-1) * nspf + 1 : n * nspf, :, floor(n/rcvChunkSize) + 1);
+                RcvData_unstacked(:, :, n + c) = RcvData(c * nspf + 1 : (c + 1) * nspf, :, floor(n/rcvChunkSize) + 1);
             end
     
         end
@@ -45,55 +47,6 @@ function [RcvData_unstacked, P_unstacked] = unstackFrames(RcvData, P)
     % if using Verasonics recon)
 %     RcvData_unstacked = RcvData_unstacked(:, P.Trans.Connector, :);
 
-    %% Redefine the parameters structure with the unstacked parameters
-    P_unstacked = P;
-    P_unstacked.numFramesPerBuffer = nsf;
-    P_unstacked.Resource.RcvBuffer.numFrames = nsf;
-    P_unstacked.Resource.RcvBuffer.rowsPerFrame = nspf;
-    P_unstacked.Receive = updateReceiveStructure(P_unstacked);
 end
 
 % figure; imagesc(abs(squeeze(double(RcvData_unstacked(:, :, 1))) .^ 0.5))
-
-%% Helper function for setting the Receive structure
-% P_unstacked.Receive(1).
-function [Receive] = updateReceiveStructure(P_unstacked)
-    pair = 2;
-    Receive = repmat(struct('Apod', zeros(1, P_unstacked.Trans.numelements), ... 
-                            'startDepth', P_unstacked.Receive(1).startDepth, ...
-                            'endDepth', P_unstacked.Receive(1).endDepth, ...
-                            'TGC', P_unstacked.Receive(1).TGC, ...
-                            'bufnum', P_unstacked.Receive(1).bufnum, ...
-                            'framenum', P_unstacked.Receive(1).framenum, ...
-                            'acqNum', P_unstacked.Receive(1).acqNum, ...
-                            'sampleMode', P_unstacked.Receive(1).sampleMode, ...
-                            'mode', P_unstacked.Receive(1).mode, ...
-                            'callMediaFunc', P_unstacked.Receive(1).callMediaFunc, ...
-                            'LowPassCoef', P_unstacked.Receive(1).LowPassCoef, ...
-                            'InputFilter', P_unstacked.Receive(1).InputFilter), 1, pair * P_unstacked.na * P_unstacked.numFramesPerBuffer);
-    j = 1;
-    % an = 0;
-    for nf = 1:P_unstacked.numFramesPerBuffer
-        % Move points after all the acquisitions for one frame
-%         Receive(j).callMediaFunc = movePointsOrNot;
-    %     Receive(j).mode = 0; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        an = 0;
-
-        for n = 1:P_unstacked.na
-            an = an + 1;
-            Receive(j).framenum = nf;
-            Receive(j).acqNum = an;
-            Receive(j).Apod(P_unstacked.Trans.numelements/2 + 1 : end) = ones(1, P_unstacked.Trans.numelements/2);
-            j = j + 1;
-        end
-    
-        for n = 1:P_unstacked.na
-            an = an + 1;
-            Receive(j).framenum = nf;
-            Receive(j).acqNum = an;
-            Receive(j).Apod(1:P_unstacked.Trans.numelements/2) = ones(1, P_unstacked.Trans.numelements/2);
-            j = j + 1;
-        end
-        
-    end
-end

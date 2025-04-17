@@ -4,7 +4,12 @@ Psmall.endDepthMM = endDepthMM;
 Psmall.PRF = PRF;
 Psmall.maxAngle = maxAngle;
 Psmall.na = na;
-Psmall.numFramesPerBuffer = numFramesPerBuffer;
+
+if exist('numFramesPerBuffer', 'var')
+    Psmall.numFramesPerBuffer = numFramesPerBuffer;
+else
+    Psmall.numFramesPerBuffer = numFramesPerSF;
+end
 
 Psmall.bufferIndex = 0;
 Psmall.frameRate = frameRate;
