@@ -98,10 +98,14 @@ plotMIPs(PDI{3}, 0.8)
 % volumeSegmenter(PDI{3})
 
 %% Color Doppler
-% [CDI] = calcColorDoppler(IQf_FT_separated, P);
+[CDI] = calcColorDoppler(IQf_FT_separated, P);
 plotMIPs(CDI{1}, 1)
 plotMIPs(CDI{2}, 1)
-% plotMIPs(CDI{3}, 1)
+plotMIPs(CDI{3}, 1)
+
+% volumeViewer(CDI{})
+% volumeSegmenter(CDI{1})
+
 %% CBVi and CBFi MIP over the whole dimension with negative and positive components
 plotMIPs(CBVi_n, 1)
 

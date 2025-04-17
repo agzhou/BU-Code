@@ -12,7 +12,8 @@ function [CDI] = calcColorDoppler(IQf_FT_separated, P)
         
         % Note: this line only works for 3D right now
         fi = repmat(permute(fi, [1, 4, 3, 2]), size(IQf_FT_separated{i}, 1), size(IQf_FT_separated{i}, 2), size(IQf_FT_separated{i}, 3), 1);
-        CDI{i} = sum( abs(IQf_FT_separated{i} .^ 2) .* fi, freqDim) ./ sum( abs(IQf_FT_separated{i} .^ 2), freqDim);
+        fDi = sum( abs(IQf_FT_separated{i} .^ 2) .* fi, freqDim) ./ sum( abs(IQf_FT_separated{i} .^ 2), freqDim); % Estimate the Doppler frequency
+        CDI{i} = -fDi * P.Resource.Parameters.speedOfSound / 2 / P.Trans.frequency;
     end
 
 end
