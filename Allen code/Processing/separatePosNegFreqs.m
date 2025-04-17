@@ -2,7 +2,7 @@
 % (filtered to have the blood signal)
 
 % Output: 
-%   IQf_separated
+%   IQf_separated (negative, positive, all)
 function [IQf_separated, IQf_FT_separated]  = separatePosNegFreqs(IQf)
     % [negativeComponent, positiveComponent, allComponents]
     frameDim = length(size(IQf)); % Usually the frame dimension is the last dimension. 3 for 2D data and 4 for 3D data.
