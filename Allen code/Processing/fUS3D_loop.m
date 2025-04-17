@@ -99,6 +99,7 @@ plotMIPs(PDI{3}, 0.8)
 
 %% Color Doppler
 [CDI] = calcColorDoppler(IQf_FT_separated, P);
+%%
 plotMIPs(CDI{1}, 1)
 plotMIPs(CDI{2}, 1)
 plotMIPs(CDI{3}, 1)
@@ -107,7 +108,14 @@ plotMIPs(CDI{3}, 1)
 % volumeSegmenter(CDI{1})
 
 %% CBVi and CBFi MIP over the whole dimension with negative and positive components
-plotMIPs(CBVi_n, 1)
+% plotMIPs(CBVi_n, 1)
+% plotMIPs(CBFi_n, 1)
+
+% plotMIPs(CBVi_p, 1)
+% plotMIPs(CBFi_p, 1)
+
+plotMIPs(CBVi, 1)
+plotMIPs(CBFi, 1)
 
 %% Plot the magnitude of g1 at some point
 figure; plot(tau_ms, abs(squeeze(g1(40, 45, 61, :))), '-o')
@@ -162,7 +170,8 @@ xlabel('x pixels')
 ylabel('z pixels')
 
 %% 
-volumeViewer(CBV .^ gamcp)
+
+% volumeViewer(CBV .^ gamcp)
 
 
 %% Store all the CBVi across the experiment into one matrix
