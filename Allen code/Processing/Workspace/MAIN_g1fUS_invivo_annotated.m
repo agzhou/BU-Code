@@ -155,7 +155,7 @@ for iCP=startCP:startCP+nCP-1
                 iFIQ(:,:,(floor(nt/2))*(iNP-1)+1:floor(nt/2)*iNP)=fIQ(:,:,(floor(nt/2))*(iNP-1)+1:floor(nt/2)*iNP); % Slice the Fourier-Transformed IQ data
                 iIQ=(ifft(iFIQ,nt,3)); % ** inverse FFT across frames to get the filtered IQ with only the negative or positive frequencies **
                 Vcz(:,:,iNP)=(ColorDoppler_NP(iIQ,PRSSinfo)); % improved color Doppler, all frequency            
-                %% normalized g1 calculation
+                %% normalized g1 calculation ** normalized is small g1 **
                 npGG=sIQ2GG(iIQ, PRSSinfo); % g1 of p or n frequency signal    
                 % g1(1) adjustment
                 GG2=reshape(npGG,[PRSSinfo.Dim(1)*PRSSinfo.Dim(2),PRSSinfo.g1nTau]);
@@ -175,7 +175,7 @@ for iCP=startCP:startCP+nCP-1
                 CBF_speedInd(:,:,iNP) = abs(squeeze(sqrt(log(abs(GGsmth(:,:,Tau1))./abs((GGsmth(:,:,Tau2))))))/(sqrt(Tau2^2-Tau1^2)*0.1));
                 CBVind(:,:,iNP) = squeeze(mean(abs(GGsmth(:,:,1)),3)./(1-mean(abs(GGsmth(:,:,1)),3)));
                 
-                %% no normalized g1 calculation
+                %% no normalized g1 calculation ** unnormalized is big G1 **
                 unNorm_npGG=log(abs(sIQ2GG_unNorm_GPU(iIQ, PRSSinfo))); % g1 of p or n frequency signal                
                 % g1(1) adjustment
                 GG2=reshape(unNorm_npGG,[PRSSinfo.Dim(1)*PRSSinfo.Dim(2),PRSSinfo.g1nTau]);

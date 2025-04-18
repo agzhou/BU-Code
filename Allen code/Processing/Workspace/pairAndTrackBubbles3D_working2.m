@@ -695,13 +695,11 @@ clear n tn tln k xk Pk yk Kku Iku xku Pku track
 % end
 tic
 bVelocityConstrained = applyConstraints(bVelocityM, vTrimmedMeanPercentage, aThresholdFactor, angleChangeThreshold, timePerFrame);
-toc
 
 bVelocityMSmoothedMMSConstrained = applyConstraints(bVelocityMSmoothedMMS, vTrimmedMeanPercentage, aThresholdFactor, angleChangeThreshold, timePerFrame);
 
-
 bVelocityMSmoothedKFConstrainedMMS = applyConstraints(bVelocityMSmoothedKFMMS, vTrimmedMeanPercentage, aThresholdFactor, angleChangeThreshold, timePerFrame);
-
+toc
 disp('Acceleration and direction constraints applied')
 clear n tln tn trackAlreadyDeleted track vTrack vTrackTrimmedMean aThresholdMag aTrackMag angleTrack angelTrackChanges
 
@@ -723,10 +721,10 @@ volumeViewer(bSumSmoothedMMS .^ 0.3)
 volumeViewer(bSumSmoothedKF .^ 0.5)
 volumeViewer(bSumSmoothedKFConstrained .^ 0.3)
 
-imgRefinementFactor_map = [2, 2, 2];
-refineMap = @(map, imgRefinementFactor_map) imresize3(map, [size(map, 1) * imgRefinementFactor_map(1), size(map, 2) * imgRefinementFactor_map(2), size(map, 3) * imgRefinementFactor_map(3)]);
-bSumRefined = refineMap(bSum, imgRefinementFactor_map);
-volumeViewer(bSumRefined .^ 1)
+% imgRefinementFactor_map = [2, 2, 2];
+% refineMap = @(map, imgRefinementFactor_map) imresize3(map, [size(map, 1) * imgRefinementFactor_map(1), size(map, 2) * imgRefinementFactor_map(2), size(map, 3) * imgRefinementFactor_map(3)]);
+% bSumRefined = refineMap(bSum, imgRefinementFactor_map);
+% volumeViewer(bSumRefined .^ 1)
 
 yrange_plot_MIP = 140:180;
 figure; imagesc(abs(squeeze(max(bSumRefined(yrange_plot_MIP, :, :), [], 1) .^ 0.3)')); colormap hot; colorbar
@@ -811,6 +809,9 @@ test_dmi_remove_smallcounts = test_dmi_2;
 test_dmi_remove_smallcounts(test_dmi_remove_smallcounts <= 2) = 0;
 % test_dmi_remove_smallcounts(test_dmi_remove_smallcounts >= 1000) = 0;
 volumeViewer(test_dmi_remove_smallcounts .^ 0.4)
+
+%% generate Tiff stacks
+generateTiffStack(test_dmi_remove_smallcounts .^ 0.4, [lateral_width, lateral_width, axial_depth], 'gray')
 %%
 yrange_plot_MIP = 70:90;
 figure; imagesc(squeeze(max(test_dmi_remove_smallcounts(yrange_plot_MIP, :, :), [], 1) .^ 0.4)'); colormap hot; colorbar
