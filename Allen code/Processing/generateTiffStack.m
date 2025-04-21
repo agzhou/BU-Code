@@ -10,7 +10,7 @@ function generateTiffStack(volumeData, varargin)
             cmap = varargin{2};
         end
     end
-    savepath = uigetdir('G:\Allen\Data\', 'Select the save path');
+    savepath = uigetdir('D:\Allen\Data\', 'Select the save path');
     savepath = [savepath, '\'];
 
     nyp = size(volumeData, 1);

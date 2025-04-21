@@ -10,7 +10,8 @@ function [IQf_separated, IQf_FT_separated]  = separatePosNegFreqs(IQf)
 
     np = 2^nextpow2(2*size(IQf, frameDim));           % # of Fourier Transform points
 
-    IQf_FT = fft(IQf, np, frameDim);
+%     IQf_FT = fft(IQf, np, frameDim);
+    IQf_FT = fft(abs(IQf), np, frameDim); %%%%%%% TESTING %%%%%%%
     IQf_FT_shifted = fftshift(IQf_FT, frameDim);
 
     if frameDim == 4 % 3D data

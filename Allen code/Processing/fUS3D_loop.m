@@ -200,7 +200,7 @@ test_ma = movmean(test, 1);
 % figure; plot(test, '-o')
 figure; plot(test_ma, '-o')
 title("rCBV at " + num2str(pt(1)) + ", " +  num2str(pt(2)) + ", " +num2str(pt(3)))
-xlabel('erm')
+xlabel('')
 ylabel('rCBV')
 
 %% Helper functions
