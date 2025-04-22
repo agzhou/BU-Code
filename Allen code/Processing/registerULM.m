@@ -3,3 +3,87 @@
 load('D:\Allen\Data\AZ02 Stroke ULM RC15gV\04-15-25 1h left eye\ULM processing results\Pairing and tracking results\bubble_density_maps.mat', 'BDMs_AZ02_hour1')
 load('D:\Allen\Data\AZ02 Stroke ULM RC15gV\04-18-2025 3d right eye\ULM processing results\Pairing and tracking results\bubble_density_maps.mat', 'BDMs_AZ02_day3')
 
+%%
+fixed = BDMs_AZ02_hour1.BDM_LI_RSC;
+moving_orig = BDMs_AZ02_day3.BDM_LI_RSC;
+
+% fixed = fixed ./ max(fixed, [], 'all');
+% moving_orig = moving_orig ./ max(moving_orig, [], 'all');
+
+% View histograms to see where we can set the cutoff. It's to remove those
+% points where some false positive bubble is present for every frame, so
+% it's really bright
+% figure; hf = histogram(fixed(:), 10, 'BinWidth', 10)
+% figure; hm = histogram(moving_orig, 10, 'BinWidth', 10)
+%
+cutoff = 500;
+fixed(fixed > cutoff) = 0;
+moving_orig(moving_orig > cutoff) = 0;
+moving = moving_orig;
+
+%% Adjust the histogram
+% moving = imhistmatchn(moving_orig, fixed);
+moving = moving_orig;
+
+%%
+sv1 = size(fixed);
+sv2 = size(moving);
+figure
+imshowpair(max(fixed(:, :, sv1(3)/2 - 5 : sv1(3)/2 + 5) .^ 0.3, [], 3), max(moving(:, :, sv2(3)/2 - 5 : sv2(3)/2 + 5) .^ 0.3, [], 3))
+
+%% Base MIPs for the original data
+mipPower = 1;
+yr = 70:90; % y range for MIP
+figure; imagesc(squeeze(max(fixed(yr, :, :), [], 1))' .^ mipPower); colormap hot
+figure; imagesc(squeeze(max(moving(yr, :, :), [], 1))' .^ mipPower); colormap hot
+
+%% Show the two volumes on top of each other
+viewerUnregistered = viewer3d(BackgroundColor="black",BackgroundGradient="off");
+volshow(fixed .^ mipPower, Parent=viewerUnregistered,RenderingStyle="Isosurface", ...
+    Colormap=[1 0 1],Alphamap=1);
+volshow(moving .^ mipPower, Parent=viewerUnregistered,RenderingStyle="Isosurface", ...
+    Colormap=[0 1 0],Alphamap=1);
+
+%% imregdemons test
+
+[D, ird] = imregdemons(moving, fixed, 100, 'DisplayWaitbar', true, 'PyramidLevels', 3, 'AccumulatedFieldSmoothing', 3);
+
+%% display results of imregdemons
+% volumeViewer(ird .^ 0.3)
+figure; imagesc(squeeze(max(ird(yr, :, :), [], 1))' .^ mipPower); colormap hot
+
+% viewerRegistered = viewer3d(BackgroundColor="black",BackgroundGradient="off");
+% volshow(fixed .^ 0.3, Parent=viewerRegistered,RenderingStyle="Isosurface", ...
+%     Colormap=[1 0 1],Alphamap=1);
+% volshow(moving .^ 0.3, Parent=viewerRegistered,RenderingStyle="Isosurface", ...
+%     Colormap=[0 1 0],Alphamap=1);
+
+%%
+[optimizer, metric] = imregconfig('monomodal');
+% [optimizer, metric] = imregconfig('multimodal');
+%%
+% optimizer.GradientMagnitudeTolerance = 1e-7;
+% optimizer.MaximumIterations = 1000;
+% optimizer.MinimumStepLength = 1e-6;
+% moving, fixed, transform type, optimizer, metric
+tic
+test = imregister(moving, fixed, 'affine', optimizer, metric, 'DisplayOptimization', true);
+% test = imregtform(moving, fixed, 'rigid', optimizer, metric, 'DisplayOptimization', true);
+toc
+%%
+movingRegistered = imwarp(moving, test, "OutputView",imref3d(size(fixed)));
+% movingRegistered = imwarp(vol2, test);
+%%
+% figure; imagesc(squeeze(max(test(yr, :, :), [], 1))' .^ 0.3); colormap hot
+figure; imagesc(squeeze(max(movingReg.regVol.Voxels(yr, :, :), [], 1))'); colormap hot
+% figure; imagesc(squeeze(max(movingReg1.regVol.Voxels(yr, :, :), [], 1))' .^ 0.3); colormap hot
+% figure; imagesc(squeeze(max(movingRegistered(yr, :, :), [], 1))' .^ 0.3); colormap hot
+
+%%
+moving_thresholded = moving > 0.3;
+
+viewerThresholded = viewer3d(BackgroundColor = "black", BackgroundGradient="off");
+volshow(fixed .^ 0.3, Parent=viewerThresholded, RenderingStyle = "Isosurface", ...
+    Colormap=[1 0 1],Alphamap=1);
+volshow(moving_thresholded .^ 0.3, Parent=viewerThresholded, RenderingStyle = "Isosurface", ...
+    Colormap=[0 1 0],Alphamap=1);
