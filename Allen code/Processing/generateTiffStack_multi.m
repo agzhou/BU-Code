@@ -281,22 +281,40 @@ function generateTiffStack_multi(volumeData, varargin)
                     new_xy_xticks = default_xy_xticks;
                 end
 
-                lateral_range_mm = linspace(-actualSize(2)/2, actualSize(2)/2, length(new_xy_xticks)); % x on 'x' axis
+                x_range_mm = linspace(-actualSize(2)/2, actualSize(2)/2, length(new_xy_xticks)); % x on 'x' axis
 
                 new_xy_xticklabels = {};
                 for i = 1:length(new_xy_xticks)
-                    new_xy_xticklabels{i} = num2str(lateral_range_mm(i));
+                    new_xy_xticklabels{i} = num2str(x_range_mm(i));
                 end
 
-                nyp_xy = nyp(1); % # z pixels in the xz image
-                new_xy_ytick_interval_mm = 1; % Set the interval between y ticks
-                num_xy_yticks = actualSize(1)/new_xy_ytick_interval_mm; % number of y ticks
-                new_xy_yticks = round(0:nyp_xy / num_xy_yticks:nyp_xy); new_xy_yticks(1) = 1;
-                axial_range_mm = 0:new_xy_ytick_interval_mm:actualSize(1);
+
+
+
+                default_xy_yticks = yticks;
+                if mod(length(default_xy_yticks), 2) == 0 % Modify if the # of ticks is even, so we can get a tick at 0
+                    new_xy_yticks = [1, default_xy_yticks];
+                else
+                    new_xy_yticks = default_xy_yticks;
+                end
+
+                y_range_mm = linspace(-actualSize(1)/2, actualSize(1)/2, length(new_xy_xticks)); % x on 'x' axis
+
                 new_xy_yticklabels = {};
                 for i = 1:length(new_xy_yticks)
-                    new_xy_yticklabels{i} = num2str(axial_range_mm(i));
+                    new_xy_yticklabels{i} = num2str(y_range_mm(i));
                 end
+
+                % nyp_xy = nyp(1); % # z pixels in the xz image
+                % new_xy_ytick_interval_mm = 1; % Set the interval between y ticks
+                % num_xy_yticks = actualSize(1)/new_xy_ytick_interval_mm; % number of y ticks
+                % new_xy_yticks = round(0:nyp_xy / num_xy_yticks:nyp_xy); new_xy_yticks(1) = 1;
+                % % axial_range_mm = 0:new_xy_ytick_interval_mm:actualSize(1);
+                % axial_range_mm = linspace(-actualSize(1)/2, actualSize(1)/2, length(new_xy_xticks)); % x on 'x' axis
+                % new_xy_yticklabels = {};
+                % for i = 1:length(new_xy_yticks)
+                %     new_xy_yticklabels{i} = num2str(axial_range_mm(i));
+                % end
             end
 
             % Set labels
