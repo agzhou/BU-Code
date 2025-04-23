@@ -775,9 +775,10 @@ title("bSum Maximum Intensity Projection from z = " + num2str(zrange_plot_MIP(1)
 % test_dmi = interpolatedDensityMap(bVelocityM, img_size, startFrame); % test density map interpolated
 
 BDM_LI = interpolatedDensityMap(bVelocityM, img_size, startFrame, maxPixelDistPerFrame); % density map, linearly interpolated
+% BDM_LI = interpolatedDensityMap(bVelocityM, img_size, startFrame, maxPixelDistPerFrame ./ 2); % density map, linearly interpolated
 % Probably should only do this if we're confident about the max speed input
 % volumeViewer(test_dmi .^ 0.3)
-volumeViewer(BDM_LI .^ 0.3)
+% volumeViewer(BDM_LI .^ 0.3)
 %%
 actualSize = [lateral_width, lateral_width, axial_depth];
 test_dmi_v = interpolatedDensityMapWithVideo(bVelocityM, img_size, startFrame, maxPixelDistPerFrame, actualSize); % test density map interpolated
@@ -836,11 +837,11 @@ title("test_dmi_remove_smallcounts Maximum Intensity Projection from z = " + num
 %% convert outdated names to new ones
 % BDM_LI = test_dmi_2;
 % clear test_dmi_2
-% BDM = bSum; clear bSum
-% BDM_Constrained = bSumConstrained; clear bSumConstrained
-% BDM_SmoothedMMS = bSumSmoothedMMS; clear bSumSmoothedMMS
-% BDM_SmoothedKF = bSumSmoothedKF; clear bSumSmoothedKF
-% BDM_SmoothedKFConstrained = bSumSmoothedKFConstrained; clear bSumSmoothedKFConstrained
+BDM = bSum; clear bSum
+BDM_Constrained = bSumConstrained; clear bSumConstrained
+BDM_SmoothedMMS = bSumSmoothedMMS; clear bSumSmoothedMMS
+BDM_SmoothedKF = bSumSmoothedKF; clear bSumSmoothedKF
+BDM_SmoothedKFConstrained = bSumSmoothedKFConstrained; clear bSumSmoothedKFConstrained
 
 % Structure to make it easier
 % BDMs_AZ02_day3.BDM = BDM;
@@ -850,12 +851,19 @@ title("test_dmi_remove_smallcounts Maximum Intensity Projection from z = " + num
 % BDMs_AZ02_day3.BDM_SmoothedMMS = BDM_SmoothedMMS;
 % BDMs_AZ02_day3.BDM_SmoothedKFConstrained = BDM_SmoothedKFConstrained;
 
-BDMs_AZ02_hour1.BDM = BDM;
-BDMs_AZ02_hour1.BDM_LI = BDM_LI;
-BDMs_AZ02_hour1.BDM_LI_RSC = BDM_LI_RSC;
-BDMs_AZ02_hour1.BDM_Constrained = BDM_Constrained;
-BDMs_AZ02_hour1.BDM_SmoothedMMS = BDM_SmoothedMMS;
-BDMs_AZ02_hour1.BDM_SmoothedKFConstrained = BDM_SmoothedKFConstrained;
+% BDMs_AZ02_hour1.BDM = BDM;
+% BDMs_AZ02_hour1.BDM_LI = BDM_LI;
+% BDMs_AZ02_hour1.BDM_LI_RSC = BDM_LI_RSC;
+% BDMs_AZ02_hour1.BDM_Constrained = BDM_Constrained;
+% BDMs_AZ02_hour1.BDM_SmoothedMMS = BDM_SmoothedMMS;
+% BDMs_AZ02_hour1.BDM_SmoothedKFConstrained = BDM_SmoothedKFConstrained;
+
+BDMs_AZ02_baseline.BDM = BDM;
+BDMs_AZ02_baseline.BDM_LI = BDM_LI;
+BDMs_AZ02_baseline.BDM_LI_RSC = BDM_LI_RSC;
+BDMs_AZ02_baseline.BDM_Constrained = BDM_Constrained;
+BDMs_AZ02_baseline.BDM_SmoothedMMS = BDM_SmoothedMMS;
+BDMs_AZ02_baseline.BDM_SmoothedKFConstrained = BDM_SmoothedKFConstrained;
 
 %% Plot speed map after persistence with linear interpolation, on the cleaned and refined velocity data
 speedMap = zeros(img_size(1), img_size(2), img_size(3));

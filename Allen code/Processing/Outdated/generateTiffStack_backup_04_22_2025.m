@@ -2,22 +2,12 @@
 % Input data is assumed to be (y, x, z)
 % Optional inputs: 1. actual image/physical size [y, x, z] in the same physical units
 %                  2. colormap (string)
-%                  3. MIP window size
 
 function generateTiffStack(volumeData, varargin)
-
-    % volumeData = volumeData ./ max(volumeData, [], 'all'); % Normalize intensities to be between 0 - 1
-    cr = [0, max(volumeData, [], 'all')]; % color range
-    showColorbar = false;
-    
-    mws = 1; % default MIP window size is 1 (no MIP)
     if nargin > 1
         actualSize = varargin{1};
         if nargin > 2
             cmap = varargin{2};
-            if nargin > 3
-                mws = varargin{3}; % MIP window size
-            end
         end
     end
     savepath = uigetdir('D:\Allen\Data\', 'Select the save path');
@@ -49,14 +39,10 @@ function generateTiffStack(volumeData, varargin)
 %         hwRatio_xz = 1;
 %     end
 
-    for y = 1:size(volumeData, 1) - mws + 1
-        planeTemp = squeeze(max(volumeData(y:y + mws - 1, :, :), [], 1));
+    for y = 1:size(volumeData, 1)
+        planeTemp = volumeData(y, :, :);
 
         imagesc(squeeze(planeTemp)')
-        if showColorbar
-            colorbar
-        end
-        clim(cr)
         cv = getframe(tf);
         rgb = frame2im(cv);      % convert the frame to rgb data
         if y == 1
@@ -96,23 +82,19 @@ function generateTiffStack(volumeData, varargin)
 %         hwRatio_yz = 1;
 %     end
 
-    for x = 1:size(volumeData, 2) - mws + 1
-        planeTemp = squeeze(max(volumeData(:, x:x + mws - 1, :), [], 2));
+    for x = 1:size(volumeData, 2)
+        planeTemp = volumeData(:, x, :);
 
         imagesc(squeeze(planeTemp)')
-        if showColorbar
-            colorbar
-        end
-        clim(cr)
         cv = getframe(tf);
         rgb = frame2im(cv);      % convert the frame to rgb data
         if x == 1
             yz_tagstruct.ImageLength = size(rgb, 1);
             yz_tagstruct.ImageWidth = size(rgb, 2);
             setTag(yz_stack, yz_tagstruct) % set the tags
-
+            
 %             tf.Position(4) = ceil(tf.Position(3) * hwRatio_yz);
-
+            
         else
             writeDirectory(yz_stack)
             setTag(yz_stack, yz_tagstruct)
@@ -143,23 +125,19 @@ function generateTiffStack(volumeData, varargin)
 %         hwRatio_xy = 1;
 %     end
 
-    for z = 1:size(volumeData, 3) - mws + 1
-        planeTemp = squeeze(max(volumeData(:, :, z:z + mws - 1), [], 3));
+    for z = 1:size(volumeData, 3)
+        planeTemp = volumeData(:, :, z);
 
         imagesc(squeeze(planeTemp)')
-        if showColorbar
-            colorbar
-        end
-        clim(cr)
         cv = getframe(tf);
         rgb = frame2im(cv);      % convert the frame to rgb data
         if z == 1
             xy_tagstruct.ImageLength = size(rgb, 1);
             xy_tagstruct.ImageWidth = size(rgb, 2);
             setTag(xy_stack, xy_tagstruct) % set the tags
-
+            
 %             tf.Position(4) = ceil(tf.Position(3) * hwRatio_xy);
-
+            
         else
             writeDirectory(xy_stack)
             setTag(xy_stack, xy_tagstruct)
@@ -169,5 +147,5 @@ function generateTiffStack(volumeData, varargin)
     end
     close(xy_stack)
 
-    
+
 end

@@ -6,10 +6,6 @@
 
 function generateTiffStack(volumeData, varargin)
 
-    % volumeData = volumeData ./ max(volumeData, [], 'all'); % Normalize intensities to be between 0 - 1
-    cr = [0, max(volumeData, [], 'all')]; % color range
-    showColorbar = false;
-    
     mws = 1; % default MIP window size is 1 (no MIP)
     if nargin > 1
         actualSize = varargin{1};
@@ -53,10 +49,6 @@ function generateTiffStack(volumeData, varargin)
         planeTemp = squeeze(max(volumeData(y:y + mws - 1, :, :), [], 1));
 
         imagesc(squeeze(planeTemp)')
-        if showColorbar
-            colorbar
-        end
-        clim(cr)
         cv = getframe(tf);
         rgb = frame2im(cv);      % convert the frame to rgb data
         if y == 1
@@ -97,13 +89,9 @@ function generateTiffStack(volumeData, varargin)
 %     end
 
     for x = 1:size(volumeData, 2) - mws + 1
-        planeTemp = squeeze(max(volumeData(:, x:x + mws - 1, :), [], 2));
+        planeTemp = squeeze(max(volumeData(:, x:x + mws - 1, :); volumeData(y:y + mws - 1, :, :), [], 1));
 
         imagesc(squeeze(planeTemp)')
-        if showColorbar
-            colorbar
-        end
-        clim(cr)
         cv = getframe(tf);
         rgb = frame2im(cv);      % convert the frame to rgb data
         if x == 1
@@ -143,14 +131,10 @@ function generateTiffStack(volumeData, varargin)
 %         hwRatio_xy = 1;
 %     end
 
-    for z = 1:size(volumeData, 3) - mws + 1
-        planeTemp = squeeze(max(volumeData(:, :, z:z + mws - 1), [], 3));
+    for z = 1:size(volumeData, 3)
+        planeTemp = volumeData(:, :, z);
 
         imagesc(squeeze(planeTemp)')
-        if showColorbar
-            colorbar
-        end
-        clim(cr)
         cv = getframe(tf);
         rgb = frame2im(cv);      % convert the frame to rgb data
         if z == 1
@@ -169,5 +153,5 @@ function generateTiffStack(volumeData, varargin)
     end
     close(xy_stack)
 
-    
+
 end
