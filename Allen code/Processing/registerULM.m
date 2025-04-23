@@ -110,3 +110,5 @@ uf = 2; % upsampling factor
 volumeDataUpsampled = {imresize3(baselineBDM_registered, is .* uf), imresize3(hour1BDM, is .* uf), imresize3(day3BDM_registered, is .* uf)};
 
 volumeDataGammaCompressed = {baselineBDM_registered .^ 0.7, hour1BDM .^ 1, day3BDM_registered .^ 0.9};
+
+volumeDataGammaCompressed2 = {baselineBDM_registered .^ 0.3, hour1BDM .^ 0.5, day3BDM_registered .^ 0.5};
