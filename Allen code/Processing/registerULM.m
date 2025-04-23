@@ -104,3 +104,9 @@ volshow(moving_registered .^ 1, Parent=viewerThresholded, RenderingStyle = "Isos
 %%
 
 volumeData = {baselineBDM_registered, hour1BDM, day3BDM_registered};
+
+is = size(hour1BDM); % image size
+uf = 2; % upsampling factor
+volumeDataUpsampled = {imresize3(baselineBDM_registered, is .* uf), imresize3(hour1BDM, is .* uf), imresize3(day3BDM_registered, is .* uf)};
+
+volumeDataGammaCompressed = {baselineBDM_registered .^ 0.7, hour1BDM .^ 1, day3BDM_registered .^ 0.9};

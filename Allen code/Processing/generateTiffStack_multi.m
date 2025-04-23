@@ -8,6 +8,7 @@ function generateTiffStack_multi(volumeData, varargin)
 
     % volumeData = volumeData ./ max(volumeData, [], 'all'); % Normalize intensities to be between 0 - 1
     showColorbar = false;
+    scale = 5;
     
     mws = 1; % default MIP window size is 1 (no MIP)
     if nargin > 1
@@ -48,9 +49,9 @@ function generateTiffStack_multi(volumeData, varargin)
     setTag(xz_stack, xz_tagstruct) % set the tags
 
     tf = figure;
-    % set(tf, 'Position', [100, 100, round(nzp * numVolumes * actualSize(3)/actualSize(1)), nxp]); % Define figure size early on
+    % set(tf, 'Position', [100, 100, round(nzp * numVolumes * actualSize(3)/actualSize(1)), nxp]); % Define figure size
     %%%% this line assumes the same size across each volume in volumeData ****
-    set(tf, 'Position', [0, 0, nzp(1) * numVolumes, nxp(1)] .* 5); % Define figure size early on
+    set(tf, 'Position', [0, 0, nzp(1) * numVolumes, nxp(1)] .* scale); % Define figure size
     tiledlayout(1, numVolumes)
     % subplot(1, numVolumes, 1)
     colormap(cmap)
@@ -61,141 +62,144 @@ function generateTiffStack_multi(volumeData, varargin)
 %     else
 %         hwRatio_xz = 1;
 %     end
-    
-        
+
+
     for y = 1:size(volumeData{vi}, 1) - mws + 1
         for vi = 1:numVolumes
-            nexttile(vi)
+            nexttile(vi) % cycle between tiles
             planeTemp = squeeze(max(volumeData{vi}(y:y + mws - 1, :, :), [], 1));
             figure(tf)
-            
+
             % subplot(1, numVolumes, vi, 'Position', [0, 0, (vi - 1)/numVolumes, 0])
-            
+
+            imagesc(squeeze(planeTemp)')
+            if showColorbar
+                colorbar
+            end
+            clim(cr(vi, :)) % set the color range
+
+        end
+
+        cv = getframe(tf); % Get the frame once all the tiles are populated for that MIP
+        rgb = frame2im(cv);      % convert the frame to rgb data
+        if y == 1
+            xz_tagstruct.ImageLength = size(rgb, 1);
+            xz_tagstruct.ImageWidth = size(rgb, 2);
+            setTag(xz_stack, xz_tagstruct) % set the tags
+
+%             tf.Position(4) = ceil(tf.Position(3) * hwRatio_xz);
+
+        else
+            writeDirectory(xz_stack)
+            setTag(xz_stack, xz_tagstruct)
+        end
+        write(xz_stack, rgb)
+    end
+    close(xz_stack)
+
+    %% yz planes
+    yz_stack = Tiff([savepath, 'yz_stack.tif'], 'w');
+%     yz_tagstruct.ImageLength = nzp;
+%     yz_tagstruct.ImageWidth = nxp;
+    yz_tagstruct.Photometric = Tiff.Photometric.RGB;
+    yz_tagstruct.PlanarConfiguration = Tiff.PlanarConfiguration.Chunky;
+    yz_tagstruct.BitsPerSample = 8;
+    yz_tagstruct.SamplesPerPixel = 3;
+    yz_tagstruct.Software = 'MATLAB';
+    setTag(yz_stack, yz_tagstruct) % set the tags
+
+    tf = figure;
+    set(tf, 'Position', [0, 0, nzp(1) * numVolumes, nyp(1)] .* scale); % Define figure size
+    tiledlayout(1, numVolumes)
+    colormap(cmap)
+
+    % adjust size of the image
+%     if exist('actualSize', 'var')
+%         hwRatio_yz = actualSize(3) / actualSize(1); % height to width ratio
+%     else
+%         hwRatio_yz = 1;
+%     end
+
+    for x = 1:size(volumeData{vi}, 2) - mws + 1
+        for vi = 1:numVolumes
+            nexttile(vi) % cycle between tiles
+            planeTemp = squeeze(max(volumeData{vi}(:, x:x + mws - 1, :), [], 2));
+
             imagesc(squeeze(planeTemp)')
             if showColorbar
                 colorbar
             end
             clim(cr(vi, :))
-            cv = getframe(tf);
-            rgb = frame2im(cv);      % convert the frame to rgb data
-            if y == 1
-                xz_tagstruct.ImageLength = size(rgb, 1);
-                xz_tagstruct.ImageWidth = size(rgb, 2);
-                setTag(xz_stack, xz_tagstruct) % set the tags
-                
-    %             tf.Position(4) = ceil(tf.Position(3) * hwRatio_xz);
-                
-            else
-                writeDirectory(xz_stack)
-                setTag(xz_stack, xz_tagstruct)
-            end
         end
 
-        write(xz_stack, rgb)
-    end
-    close(xz_stack)
+        cv = getframe(tf);
+        rgb = frame2im(cv);      % convert the frame to rgb data
+        if x == 1
+            yz_tagstruct.ImageLength = size(rgb, 1);
+            yz_tagstruct.ImageWidth = size(rgb, 2);
+            setTag(yz_stack, yz_tagstruct) % set the tags
 
-%     %% yz planes
-%     yz_stack = Tiff([savepath, 'yz_stack.tif'], 'w');
-% %     yz_tagstruct.ImageLength = nzp;
-% %     yz_tagstruct.ImageWidth = nxp;
-%     yz_tagstruct.Photometric = Tiff.Photometric.RGB;
-%     yz_tagstruct.PlanarConfiguration = Tiff.PlanarConfiguration.Chunky;
-%     yz_tagstruct.BitsPerSample = 8;
-%     yz_tagstruct.SamplesPerPixel = 3;
-%     yz_tagstruct.Software = 'MATLAB';
-%     setTag(yz_stack, yz_tagstruct) % set the tags
-% 
-%     tf = figure;
-%     subplot(1, numVolumes, 1)
-%     colormap(cmap)
-% 
-%     % adjust size of the image
-% %     if exist('actualSize', 'var')
-% %         hwRatio_yz = actualSize(3) / actualSize(1); % height to width ratio
-% %     else
-% %         hwRatio_yz = 1;
-% %     end
-%     for vi = 1:numVolumes
-%         for x = 1:size(volumeData{vi}, 2) - mws + 1
-%             planeTemp = squeeze(max(volumeData{vi}(:, x:x + mws - 1, :), [], 2));
-% 
-%             subplot(1, numVolumes, vi)
-% 
-%             imagesc(squeeze(planeTemp)')
-%             if showColorbar
-%                 colorbar
-%             end
-%             clim(cr(vi, :))
-%             cv = getframe(tf);
-%             rgb = frame2im(cv);      % convert the frame to rgb data
-%             if x == 1
-%                 yz_tagstruct.ImageLength = size(rgb, 1);
-%                 yz_tagstruct.ImageWidth = size(rgb, 2);
-%                 setTag(yz_stack, yz_tagstruct) % set the tags
-% 
-%     %             tf.Position(4) = ceil(tf.Position(3) * hwRatio_yz);
-% 
-%             else
-%                 writeDirectory(yz_stack)
-%                 setTag(yz_stack, yz_tagstruct)
-%             end
-% 
-%             write(yz_stack, rgb)
-%         end
+%             tf.Position(4) = ceil(tf.Position(3) * hwRatio_yz);
+
+        else
+            writeDirectory(yz_stack)
+            setTag(yz_stack, yz_tagstruct)
+        end
+
+        write(yz_stack, rgb)
+    end
+    close(yz_stack)
+
+    %% xy planes
+    xy_stack = Tiff([savepath, 'xy_stack.tif'], 'w');
+%     xy_tagstruct.ImageLength = nzp;
+%     xy_tagstruct.ImageWidth = nxp;
+    xy_tagstruct.Photometric = Tiff.Photometric.RGB;
+    xy_tagstruct.PlanarConfiguration = Tiff.PlanarConfiguration.Chunky;
+    xy_tagstruct.BitsPerSample = 8;
+    xy_tagstruct.SamplesPerPixel = 3;
+    xy_tagstruct.Software = 'MATLAB';
+    setTag(xy_stack, xy_tagstruct) % set the tags
+
+    tf = figure;
+    set(tf, 'Position', [0, 0, nxp(1) * numVolumes, nyp(1)] .* scale); % Define figure size
+    tiledlayout(1, numVolumes)
+    colormap(cmap)
+
+    % adjust size of the image
+%     if exist('actualSize', 'var')
+%         hwRatio_xy = actualSize(3) / actualSize(2); % height to width ratio
+%     else
+%         hwRatio_xy = 1;
 %     end
-%     close(yz_stack)
-% 
-%     %% xy planes
-%     xy_stack = Tiff([savepath, 'xy_stack.tif'], 'w');
-% %     xy_tagstruct.ImageLength = nzp;
-% %     xy_tagstruct.ImageWidth = nxp;
-%     xy_tagstruct.Photometric = Tiff.Photometric.RGB;
-%     xy_tagstruct.PlanarConfiguration = Tiff.PlanarConfiguration.Chunky;
-%     xy_tagstruct.BitsPerSample = 8;
-%     xy_tagstruct.SamplesPerPixel = 3;
-%     xy_tagstruct.Software = 'MATLAB';
-%     setTag(xy_stack, xy_tagstruct) % set the tags
-% 
-%     tf = figure;
-%     subplot(1, numVolumes, 1)
-%     colormap(cmap)
-% 
-%     % adjust size of the image
-% %     if exist('actualSize', 'var')
-% %         hwRatio_xy = actualSize(3) / actualSize(2); % height to width ratio
-% %     else
-% %         hwRatio_xy = 1;
-% %     end
-%     for vi = 1:numVolumes
-%         for z = 1:size(volumeData{vi}, 3) - mws + 1
-%             planeTemp = squeeze(max(volumeData{vi}(:, :, z:z + mws - 1), [], 3));
-% 
-%             subplot(1, numVolumes, vi)
-% 
-%             imagesc(squeeze(planeTemp)')
-%             if showColorbar
-%                 colorbar
-%             end
-%             clim(cr(vi, :))
-%             cv = getframe(tf);
-%             rgb = frame2im(cv);      % convert the frame to rgb data
-%             if z == 1
-%                 xy_tagstruct.ImageLength = size(rgb, 1);
-%                 xy_tagstruct.ImageWidth = size(rgb, 2);
-%                 setTag(xy_stack, xy_tagstruct) % set the tags
-% 
-%     %             tf.Position(4) = ceil(tf.Position(3) * hwRatio_xy);
-% 
-%             else
-%                 writeDirectory(xy_stack)
-%                 setTag(xy_stack, xy_tagstruct)
-%             end
-% 
-%             write(xy_stack, rgb)
-%         end
-%     end
-%     close(xy_stack)
+    for z = 1:size(volumeData{vi}, 3) - mws + 1
+        for vi = 1:numVolumes
+            nexttile(vi) % cycle between tiles
+            planeTemp = squeeze(max(volumeData{vi}(:, :, z:z + mws - 1), [], 3));
+
+            imagesc(squeeze(planeTemp)')
+            if showColorbar
+                colorbar
+            end
+            clim(cr(vi, :))
+        end
+        cv = getframe(tf);
+        rgb = frame2im(cv);      % convert the frame to rgb data
+        if z == 1
+            xy_tagstruct.ImageLength = size(rgb, 1);
+            xy_tagstruct.ImageWidth = size(rgb, 2);
+            setTag(xy_stack, xy_tagstruct) % set the tags
+
+%             tf.Position(4) = ceil(tf.Position(3) * hwRatio_xy);
+
+        else
+            writeDirectory(xy_stack)
+            setTag(xy_stack, xy_tagstruct)
+        end
+
+        write(xy_stack, rgb)
+    end
+    close(xy_stack)
 
     
 end
