@@ -40,7 +40,7 @@ load([Mcr_datapath, 'params.mat']) % load acquisition parameters
 
 % Mcr_savepath = [Mcr_datapath, 'IQ Data - Verasonics Recon\'];
 % Mcr_savepath = 'F:\Allen\Data\03-17-2025 AZ02 ULM\RC15gV\run 2 right eye\';
-Mcr_savepath = uigetdir('G:\Allen\Data\', 'Select the folder to save reconstructed data to');
+Mcr_savepath = uigetdir(Mcr_datapath, 'Select the folder to save reconstructed data to');
 Mcr_savepath = [Mcr_savepath, '\'];
 % Mcr_savepath = ['K:\Allen data backup\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\', 'IQ Data with pages - Verasonics Recon\']; 
 % mkdir(Mcr_savepath)
@@ -293,8 +293,8 @@ save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"
 %% Run VSX automatically and make parameter structure for RF file naming
 
 
-for Mcr_filenum = Mcr_startFile:Mcr_endFile
-% for Mcr_filenum = 40
+% for Mcr_filenum = Mcr_startFile:Mcr_endFile
+for Mcr_filenum = 181:182
     tic
 
     load([Mcr_datapath, Mcr_filenameStructure, num2str(Mcr_filenum)]);

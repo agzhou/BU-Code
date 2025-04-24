@@ -26,7 +26,7 @@ end
 %% Load parameters and make folder for saving the processed data
 
 % Get data path of the reconstructed IQ data
-datapath = uigetdir('G:\Allen\Data\', 'Select the IQ data path');
+datapath = uigetdir('F:\Allen\Data\', 'Select the IQ data path');
 datapath = [datapath, '\'];
 
 % Load acquisition parameters: params.mat
@@ -80,14 +80,14 @@ addpath([cd, '\toolbox_nlmeans_version2'])
 %% Other parameters for processing the data
 
 % Region of interest
-xrange = int16(1:80);
-yrange = int16(1:80);
-zrange = int16(1:142);
+% xrange = int16(1:80);
+% yrange = int16(1:80);
+% zrange = int16(1:142);
 
 % framerange = 1:200;
 % framerange = 1:size(IQf, 3);
 % range = {xrange, yrange, zrange, framerange};
-range = {xrange, yrange, zrange};
+% range = {xrange, yrange, zrange};
 
 % Load and refine simulated PSF
 if ~exist('PSF', 'var')
@@ -109,7 +109,7 @@ refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) 
 %% Process the data
 
 for filenum = startFile:endFile
-% for filenum = 82:endFile
+% for filenum = 122:endFile
 % for filenum = 79:-1:15
     tic
 %     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
@@ -121,6 +121,10 @@ for filenum = startFile:endFile
     
 %     if filenum == 1
         [xp, yp, zp, nf] = size(IQ);
+        xrange = int16(1:xp);
+        yrange = int16(1:yp);
+        zrange = int16(1:zp);
+        range = {xrange, yrange, zrange};
         range{4} = int16(1:nf); % set frame range after rolling on the first file
 %     end
 
