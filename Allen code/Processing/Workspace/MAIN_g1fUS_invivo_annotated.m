@@ -108,7 +108,7 @@ PRSSinfo.MpVz=1; % maximum velocity distribution, sigma-Vz
 covB=ones(3,3); covB(3,3)=9; covB=covB/sum(covB(:));
 %% data processing
 [VzCmap]=Colormaps_fUS;
-for iCP=startCP:startCP+nCP-1
+for iCP=startCP:startCP+nCP-1 % ** Go through each file **
     for iRPT=startRPT:startRPT+nRPT-1
         tic;
         iFileInfo=fileInfo;
@@ -144,8 +144,8 @@ for iCP=startCP:startCP+nCP-1
             disp('npIQ to GG to CBF indices...');
             fIQ=sysNoiseRemove(sIQ,PRSSinfo.rFrame); % ** filtered (denoised) IQ in the Fourier domain **
             [nz,nx,nt]=size(sIQ);
-            npGG=zeros(nz,nx,PRSSinfo.g1nTau); % ** g1 with negative and positive frequencies separated **
-            unNorm_npGG=npGG;                  % ** un-normalized g1 **
+            npGG=zeros(nz,nx,PRSSinfo.g1nTau);       % ** initialize the g1 matrix with negative and positive frequencies separated **
+            unNorm_npGG=npGG;                        % ** initialize the un-normalized g1 matrix **
             Vcz=zeros(nz*PRSSinfo.rfnScale,nx*PRSSinfo.rfnScale,3); % ** initialize the z velocity map **
             Vcz(:,:,3)=(ColorDoppler(sIQ,PRSSinfo)); % color Doppler, all frequency
 
