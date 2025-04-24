@@ -1,6 +1,5 @@
 %% load params and stuff
-% IQpath = 'D:\Allen\Data\04-11-2025 AZ02 fUS RC15gV\run 1 all frames stacked\IQ Data - Verasonics recon\';
-IQpath = uigetdir('G:\Allen\Data\', 'Select the IQ data path');
+IQpath = uigetdir('D:\Allen\Data\', 'Select the IQ data path');
 IQpath = [IQpath, '\'];
 
 % Load parameters
@@ -21,12 +20,14 @@ end
 
 IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 
-savepath = uigetdir('G:\Allen\Data\', 'Select the save path');
+savepath = uigetdir('D:\Allen\Data\', 'Select the save path');
 savepath = [savepath, '\'];
 
-%% Main loop
-sv_threshold_lower = 40;
-sv_threshold_upper = 400;
+addpath([cd, '\Speckle tracking']) % add path for the g1 calculation functions
+
+%% Define some parameters (add this to a prompt later)
+sv_threshold_lower = 10;
+sv_threshold_upper = 150;
 
 startFile = 1;
 endFile = 148;
@@ -40,9 +41,10 @@ tau1_index_CBF = 2;
 tau2_index_CBF = 6;
 tau1_index_CBV = 2;
 
+%% Main loop
 % for filenum = startFile:endFile
-% for filenum = 2:endFile
-for filenum = 1
+% for filenum = [37, 110, 111, 123:endFile]
+for filenum = 7
     tic
     load([IQpath, IQfilenameStructure, num2str(filenum)])
     
@@ -57,10 +59,18 @@ for filenum = 1
     [IQf] = applySVs2D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
     disp('SVD filtered images put together')
 
-    clearvars IQ  
+    clearvars IQ
+
+    % Use the IQf with separated negative and positive frequency components
+    [IQf_separated, IQf_FT_separated]  = separatePosNegFreqs(IQf);
     
-    g1 = g1test(IQf);
-    
+    g1_n = g1T(IQf_separated{1}, 10);
+    [CBFi_n, CBVi_n] = g1_to_CBi(g1_n, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+    g1_p = g1T(IQf_separated{2}, 10);
+    [CBFi_p, CBVi_p] = g1_to_CBi(g1_p, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+
+    g1 = g1T(IQf, 10);
+
     [CBFi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 
 %     savefast([savepath, 'fUSdata-', num2str(filenum), '.mat'], g1, CBFi, CBVi);
@@ -71,12 +81,41 @@ for filenum = 1
 end
 savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'tau1_index_CBF', 'tau2_index_CBF', 'tau1_index_CBV');
 
-%%
-volumeViewer(abs(IQf(:, :, :, 1)))
-%%
-figure; imagesc(abs(squeeze(max(IQf(:, :, :, 1), [], 1)))')
-%%
+%% testing
+% plotMIPs(squeeze(IData(:, :, :, 1, 1)), 1)
+% plotMIPs(squeeze(QData(:, :, :, 1, 1)), 1)
+phasetest = squeeze(QData(:, :, :, 1, 1) ./ IData(:, :, :, 1, 1));
+phasetest = phasetest(abs(phasetest) < 10);
+plotMIPs(phasetest(:, :, :, 1), 1)
+findfigs
+%% Power Doppler
+[PDI] = calcPowerDoppler(IQf_separated);
+% plotMIPs(PDI{1}, 0.8)
+% plotMIPs(PDI{2}, 0.8)
+plotMIPs(PDI{3}, 0.8)
 
+% volumeViewer(PDI{3})
+% volumeSegmenter(PDI{3})
+
+%% Color Doppler
+[CDI] = calcColorDoppler(IQf_FT_separated, P);
+%%
+plotMIPs(CDI{1}, 1)
+plotMIPs(CDI{2}, 1)
+plotMIPs(CDI{3}, 1)
+
+% volumeViewer(CDI{})
+% volumeSegmenter(CDI{1})
+
+%% CBVi and CBFi MIP over the whole dimension with negative and positive components
+% plotMIPs(CBVi_n, 1)
+% plotMIPs(CBFi_n, 1)
+
+% plotMIPs(CBVi_p, 1)
+% plotMIPs(CBFi_p, 1)
+
+plotMIPs(CBVi, 1)
+plotMIPs(CBFi, 1)
 
 %% Plot the magnitude of g1 at some point
 figure; plot(tau_ms, abs(squeeze(g1(40, 45, 61, :))), '-o')
@@ -85,7 +124,7 @@ xlabel('Tau [ms]')
 ylabel('|g1|')
 
 %%
-[CBF, CBV] = g1_to_CBi(g1, tau_ms, 2, 3, 2); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+[CBFi, CBVi] = g1_to_CBi(g1, tau_ms, 2, 3, 2); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 %%
 figure; imagesc(squeeze(CBF(40, :, :))')
 title('CBFi - xz plane')
@@ -120,15 +159,61 @@ title('CBVi - yz plane')
 xlabel('x pixels')
 ylabel('z pixels')
 %% CBV MIP over the whole dimension
-gcp = 1; % gamma compression power
-figure; imagesc(squeeze(max(CBV, [], 1))' .^ gcp); colormap hot; colorbar
+gamcp = 1; % gamma compression power
+figure; imagesc(squeeze(max(CBVi, [], 1))' .^ gamcp); colormap hot; colorbar
 title('CBVi - xz MIP')
 xlabel('y pixels')
 ylabel('z pixels')
-figure; imagesc(squeeze(max(CBV, [], 2))' .^ gcp); colormap hot; colorbar
+figure; imagesc(squeeze(max(CBVi, [], 2))' .^ gamcp); colormap hot; colorbar
 title('CBVi - yz MIP')
 xlabel('x pixels')
 ylabel('z pixels')
 
 %% 
-volumeViewer(CBV .^ gcp)
+
+% volumeViewer(CBV .^ gamcp)
+
+
+%% Store all the CBVi across the experiment into one matrix
+load([savepath, 'fUSdata-', num2str(1), '.mat'], 'CBVi')
+CBViallSF = zeros([size(CBVi), endFile - startFile + 1]); % Matrix with the CBVi for every superframe
+CBViallSF(:, :, :, 1) = CBVi;
+for filenum = startFile + 1:endFile
+    load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'CBVi')
+    CBViallSF(:, :, :, filenum) = CBVi;
+end
+
+%% Calculate rCBV and rCBF
+% rCBV = CBViallSF(:, :, :, 2:end) ./ CBViallSF(:, :, :, 1:end-1);
+rCBV = CBViallSF ./ CBViallSF(:, :, :, 1); % Measure relative to the "baseline", which I'm choosing as superframe 1
+% Need to add the timetags
+
+%% Plot the rCBV at some point
+% Increasing y is going towards the back of the brain
+% Increasing x is going from the right to the left of the brain if we align
+% with -y (look towards the front)
+
+% pt = [40, 45, 61];
+pt = [40, 56, 26];
+test = squeeze(rCBV(pt(1), pt(2), pt(3), :));
+test_ma = movmean(test, 1);
+% figure; plot(test, '-o')
+figure; plot(test_ma, '-o')
+title("rCBV at " + num2str(pt(1)) + ", " +  num2str(pt(2)) + ", " +num2str(pt(3)))
+xlabel('')
+ylabel('rCBV')
+
+%% Helper functions
+function plotMIPs(data, gamcp) % expects 4D input (x, y, z, frames)
+    % gamcp = gamma compression power
+    
+    figure; imagesc(squeeze(max(data, [], 1))' .^ gamcp); colormap hot; colorbar
+    title('xz MIP')
+    xlabel('y pixels')
+    ylabel('z pixels')
+    figure; imagesc(squeeze(max(data, [], 2))' .^ gamcp); colormap hot; colorbar
+    title('yz MIP')
+    xlabel('x pixels')
+    ylabel('z pixels')
+
+end

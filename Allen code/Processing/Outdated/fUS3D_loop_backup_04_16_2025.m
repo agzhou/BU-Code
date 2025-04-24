@@ -32,11 +32,16 @@ startFile = 1;
 endFile = 148;
 
 taustep = 1/P.frameRate;
-tau = taustep:taustep:(P.numFramesPerBuffer * taustep);
+% tau = taustep:taustep:(P.numFramesPerBuffer * taustep);
+tau = 0:taustep:((P.numFramesPerBuffer - 1) * taustep);
 tau_ms = tau .* 1000; % Assuming even time spacing between frames
 
+tau1_index_CBF = 2;
+tau2_index_CBF = 6;
+tau1_index_CBV = 2;
+
 % for filenum = startFile:endFile
-for filenum = 1
+for filenum = [37, 110, 111, 123:endFile]
     tic
     load([IQpath, IQfilenameStructure, num2str(filenum)])
     
@@ -55,14 +60,15 @@ for filenum = 1
     
     g1 = g1test(IQf);
     
-    [CBFi, CBVi] = g1_to_CBi(g1, tau_ms, 2, 6, 2); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+    [CBFi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 
-    savefast([savepath, 'fUSdata-', num2str(filenum), '.mat'], g1, CBFi, CBVi);
+%     savefast([savepath, 'fUSdata-', num2str(filenum), '.mat'], g1, CBFi, CBVi);
+    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFi', 'CBVi', '-v7.3', '-nocompression');
     disp("fUS result for file " + num2str(filenum) + " saved" )
     toc
     
 end
-    savefast([savepath, fUSdata, '-', num2str(filenum), '.mat'], g1, CBFi, CBVi);
+savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'tau1_index_CBF', 'tau2_index_CBF', 'tau1_index_CBV');
 
 %%
 volumeViewer(abs(IQf(:, :, :, 1)))
@@ -125,3 +131,33 @@ ylabel('z pixels')
 
 %% 
 volumeViewer(CBV .^ gcp)
+
+
+%% Store all the CBVi across the experiment into one matrix
+load([savepath, 'fUSdata-', num2str(1), '.mat'], 'CBVi')
+CBViallSF = zeros([size(CBVi), endFile - startFile + 1]); % Matrix with the CBVi for every superframe
+CBViallSF(:, :, :, 1) = CBVi;
+for filenum = startFile + 1:endFile
+    load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'CBVi')
+    CBViallSF(:, :, :, filenum) = CBVi;
+end
+
+%% Calculate rCBV and rCBF
+% rCBV = CBViallSF(:, :, :, 2:end) ./ CBViallSF(:, :, :, 1:end-1);
+rCBV = CBViallSF ./ CBViallSF(:, :, :, 1); % Measure relative to the "baseline", which I'm choosing as superframe 1
+% Need to add the timetags
+
+%% Plot the rCBV at some point
+% Increasing y is going towards the back of the brain
+% Increasing x is going from the right to the left of the brain if we align
+% with -y (look towards the front)
+
+% pt = [40, 45, 61];
+pt = [40, 56, 26];
+test = squeeze(rCBV(pt(1), pt(2), pt(3), :));
+test_ma = movmean(test, 1);
+% figure; plot(test, '-o')
+figure; plot(test_ma, '-o')
+title("rCBV at " + num2str(pt(1)) + ", " +  num2str(pt(2)) + ", " +num2str(pt(3)))
+xlabel('erm')
+ylabel('rCBV')
