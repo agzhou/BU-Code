@@ -40,7 +40,7 @@ load([Mcr_datapath, 'params.mat']) % load acquisition parameters
 
 % Mcr_savepath = [Mcr_datapath, 'IQ Data - Verasonics Recon\'];
 % Mcr_savepath = 'F:\Allen\Data\03-17-2025 AZ02 ULM\RC15gV\run 2 right eye\';
-Mcr_savepath = uigetdir('G:\Allen\Data\', 'Select the folder to save reconstructed data to');
+Mcr_savepath = uigetdir(Mcr_datapath, 'Select the folder to save reconstructed data to');
 Mcr_savepath = [Mcr_savepath, '\'];
 % Mcr_savepath = ['K:\Allen data backup\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\', 'IQ Data with pages - Verasonics Recon\']; 
 % mkdir(Mcr_savepath)
@@ -51,7 +51,7 @@ parameterDefaults = {'1', ''};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 Mcr_startFile = str2double(parameterUserInput{1}); % File to start reconstructing from
-Mcr_endFile = str2double(parameterUserInput{2});    
+Mcr_endFile = str2double(parameterUserInput{2});   % File to stop reconstructing on
 
 Mcr_filenameStructure = ['RF-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 Mcr_IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
@@ -294,7 +294,7 @@ save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"
 
 
 for Mcr_filenum = Mcr_startFile:Mcr_endFile
-% for Mcr_filenum = 1:2
+% for Mcr_filenum = 181:182
     tic
 
     load([Mcr_datapath, Mcr_filenameStructure, num2str(Mcr_filenum)]);
