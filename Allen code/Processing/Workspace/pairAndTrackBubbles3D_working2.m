@@ -81,7 +81,7 @@ axial_depth = (P.endDepthMM - P.startDepthMM) / 1e3;
 parameterPrompt = {'Start file number', 'End file number', 'x pixel spacing [um]', 'y pixel spacing [um]', 'z pixel spacing [um]', 'Maximum expected flow speed [mm/s]', 'Persistence frames', 'Moving window size [frames]', 'Acceleration constraint factor', 'Trimmed mean percentage', 'Direction constraint'};
 %%% NEED TO CHANGE THE PIX SPACING TO USE THE saved PData %%%
 half_pi = pi/2;
-parameterDefaults = {'', '', num2str(P.Trans.spacingMm * 1e3), num2str(P.Trans.spacingMm * 1e3), num2str(P.wl/2 * 1e6), '50', '3', '3', '2', '20', num2str(half_pi)};
+parameterDefaults = {'', '', num2str(P.Trans.spacingMm * 1e3), num2str(P.Trans.spacingMm * 1e3), num2str(P.wl/2 * 1e6), '50', '5', '3', '2', '20', num2str(half_pi)};
 % parameterDefaults = {'', '', num2str(xpix_spacing * 1e6), num2str(ypix_spacing * 1e6), num2str(zpix_spacing * 1e6), '50', '3', '3', '2', '20', num2str(half_pi)};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
@@ -780,6 +780,14 @@ BDM_LI = interpolatedDensityMap(bVelocityM, img_size, startFrame, maxPixelDistPe
 % volumeViewer(test_dmi .^ 0.3)
 % volumeViewer(BDM_LI .^ 0.3)
 %%
+plotMIPs(BDM_LI , 0.4)
+%%
+BDM_SmoothedKFConstrained_LI = interpolatedDensityMap(bVelocityMSmoothedKFConstrainedMMS, img_size, startFrame, maxPixelDistPerFrame); % density map, linearly interpolated
+BDM_SmoothedKFConstrained_LI_RSC = BDM_SmoothedKFConstrained_LI;
+BDM_SmoothedKFConstrained_LI_RSC(BDM_SmoothedKFConstrained_LI_RSC <= 2) = 0;
+% volumeViewer(BDM_SmoothedKFConstrained_LI_RSC .^ 0.4)
+plotMIPs(BDM_SmoothedKFConstrained_LI_RSC, 0.4)
+%%
 actualSize = [lateral_width, lateral_width, axial_depth];
 test_dmi_v = interpolatedDensityMapWithVideo(bVelocityM, img_size, startFrame, maxPixelDistPerFrame, actualSize); % test density map interpolated
 
@@ -837,11 +845,11 @@ title("test_dmi_remove_smallcounts Maximum Intensity Projection from z = " + num
 %% convert outdated names to new ones
 % BDM_LI = test_dmi_2;
 % clear test_dmi_2
-BDM = bSum; clear bSum
-BDM_Constrained = bSumConstrained; clear bSumConstrained
-BDM_SmoothedMMS = bSumSmoothedMMS; clear bSumSmoothedMMS
-BDM_SmoothedKF = bSumSmoothedKF; clear bSumSmoothedKF
-BDM_SmoothedKFConstrained = bSumSmoothedKFConstrained; clear bSumSmoothedKFConstrained
+% BDM = bSum; clear bSum
+% BDM_Constrained = bSumConstrained; clear bSumConstrained
+% BDM_SmoothedMMS = bSumSmoothedMMS; clear bSumSmoothedMMS
+% BDM_SmoothedKF = bSumSmoothedKF; clear bSumSmoothedKF
+% BDM_SmoothedKFConstrained = bSumSmoothedKFConstrained; clear bSumSmoothedKFConstrained
 
 % Structure to make it easier
 % BDMs_AZ02_day3.BDM = BDM;
@@ -858,13 +866,21 @@ BDM_SmoothedKFConstrained = bSumSmoothedKFConstrained; clear bSumSmoothedKFConst
 % BDMs_AZ02_hour1.BDM_SmoothedMMS = BDM_SmoothedMMS;
 % BDMs_AZ02_hour1.BDM_SmoothedKFConstrained = BDM_SmoothedKFConstrained;
 
-BDMs_AZ02_baseline.BDM = BDM;
-BDMs_AZ02_baseline.BDM_LI = BDM_LI;
-BDMs_AZ02_baseline.BDM_LI_RSC = BDM_LI_RSC;
-BDMs_AZ02_baseline.BDM_Constrained = BDM_Constrained;
-BDMs_AZ02_baseline.BDM_SmoothedMMS = BDM_SmoothedMMS;
-BDMs_AZ02_baseline.BDM_SmoothedKFConstrained = BDM_SmoothedKFConstrained;
+% BDMs_AZ02_baseline.BDM = BDM;
+% BDMs_AZ02_baseline.BDM_LI = BDM_LI;
+% BDMs_AZ02_baseline.BDM_LI_RSC = BDM_LI_RSC;
+% BDMs_AZ02_baseline.BDM_Constrained = BDM_Constrained;
+% BDMs_AZ02_baseline.BDM_SmoothedMMS = BDM_SmoothedMMS;
+% BDMs_AZ02_baseline.BDM_SmoothedKFConstrained = BDM_SmoothedKFConstrained;
+% BDMs_AZ02_baseline.BDM_SmoothedKFConstrained_LI_RSC = BDM_SmoothedKFConstrained_LI_RSC;
 
+BDMs_AZ02_day7.BDM = BDM;
+BDMs_AZ02_day7.BDM_LI = BDM_LI;
+BDMs_AZ02_day7.BDM_LI_RSC = BDM_LI_RSC;
+BDMs_AZ02_day7.BDM_Constrained = BDM_Constrained;
+BDMs_AZ02_day7.BDM_SmoothedMMS = BDM_SmoothedMMS;
+BDMs_AZ02_day7.BDM_SmoothedKFConstrained = BDM_SmoothedKFConstrained;
+BDMs_AZ02_day7.BDM_SmoothedKFConstrained_LI_RSC = BDM_SmoothedKFConstrained_LI_RSC;
 %% Plot speed map after persistence with linear interpolation, on the cleaned and refined velocity data
 speedMap = zeros(img_size(1), img_size(2), img_size(3));
 plotPower = 1;
@@ -1258,4 +1274,18 @@ function [densityMapInterpolated] = interpolatedDensityMapWithVideo(bVelocityM, 
     % Take the average for pixels with overlapping tracks
 %     speedMask = densityMapInterpolatedCounter > 0;
 %     speedMap(speedMask) = speedMap(speedMask) ./ densityMapInterpolatedCounter(speedMask);
+end
+
+function plotMIPs(data, gamcp) % expects 4D input (x, y, z, frames)
+    % gamcp = gamma compression power
+    
+    figure; imagesc(squeeze(max(data, [], 1))' .^ gamcp); colormap hot; colorbar
+    title('xz MIP')
+    xlabel('y pixels')
+    ylabel('z pixels')
+    figure; imagesc(squeeze(max(data, [], 2))' .^ gamcp); colormap hot; colorbar
+    title('yz MIP')
+    xlabel('x pixels')
+    ylabel('z pixels')
+
 end

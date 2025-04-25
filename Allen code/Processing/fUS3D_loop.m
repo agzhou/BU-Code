@@ -62,7 +62,7 @@ for filenum = 7
     clearvars IQ
 
     % Use the IQf with separated negative and positive frequency components
-    [IQf_separated, IQf_FT_separated]  = separatePosNegFreqs(IQf);
+    [IQf_separated, IQf_FT_separated] = separatePosNegFreqs(IQf);
     
     g1_n = g1T(IQf_separated{1}, 10);
     [CBFi_n, CBVi_n] = g1_to_CBi(g1_n, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
@@ -70,7 +70,6 @@ for filenum = 7
     [CBFi_p, CBVi_p] = g1_to_CBi(g1_p, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 
     g1 = g1T(IQf, 10);
-
     [CBFi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 
 %     savefast([savepath, 'fUSdata-', num2str(filenum), '.mat'], g1, CBFi, CBVi);
@@ -89,14 +88,26 @@ phasetest = phasetest(abs(phasetest) < 10);
 plotMIPs(phasetest(:, :, :, 1), 1)
 findfigs
 %% Power Doppler
-[PDI] = calcPowerDoppler(IQf_separated);
+% [PDI] = calcPowerDoppler(IQf_separated);
 % plotMIPs(PDI{1}, 0.8)
 % plotMIPs(PDI{2}, 0.8)
-plotMIPs(PDI{3}, 0.8)
+% plotMIPs(PDI{3}, 0.8)
 
 % volumeViewer(PDI{3})
 % volumeSegmenter(PDI{3})
+%% Plot Power Doppler results
+PDIn = PDI{3}; % normalized PDI of all frequencies
+PDIn = PDIn ./ max(PDIn, [], 'all');
+plotMIPs(PDIn, 1)
 
+%% trying to denoise the Power Doppler
+% PDInt = PDIn; % normalized, thresholded
+% PDInt(PDInt < 0.07) = 0;
+% plotMIPs(PDInt, 1)
+% %%
+% test = NLMF(PDIn);
+% %%
+% plotMIPs(test, 1)
 %% Color Doppler
 [CDI] = calcColorDoppler(IQf_FT_separated, P);
 %%
@@ -124,7 +135,7 @@ xlabel('Tau [ms]')
 ylabel('|g1|')
 
 %%
-[CBFi, CBVi] = g1_to_CBi(g1, tau_ms, 2, 3, 2); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+% [CBFi, CBVi] = g1_to_CBi(g1, tau_ms, 2, 3, 2); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 %%
 figure; imagesc(squeeze(CBF(40, :, :))')
 title('CBFi - xz plane')
