@@ -293,8 +293,8 @@ save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"
 %% Run VSX automatically and make parameter structure for RF file naming
 
 
-% for Mcr_filenum = Mcr_startFile:Mcr_endFile
-for Mcr_filenum = 181:182
+for Mcr_filenum = Mcr_startFile:Mcr_endFile
+% for Mcr_filenum = 264:Mcr_endFile
     tic
 
     load([Mcr_datapath, Mcr_filenameStructure, num2str(Mcr_filenum)]);
