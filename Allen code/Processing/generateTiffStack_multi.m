@@ -83,6 +83,7 @@ function generateTiffStack_multi(volumeData, varargin)
             imagesc(squeeze(planeTemp)')
             axis tight
             ax = gca;
+            % set(ax, 'Color', 'k') % set background to black
             ax.PlotBoxAspectRatio = [1, hwRatio_xz, 1];
 
             if showColorbar
@@ -180,6 +181,7 @@ function generateTiffStack_multi(volumeData, varargin)
             imagesc(squeeze(planeTemp)')
             axis tight
             ax = gca;
+            % set(ax, 'Color', 'k') % set background to black
             ax.PlotBoxAspectRatio = [1, hwRatio_yz, 1];
             if showColorbar
                 colorbar
@@ -275,6 +277,7 @@ function generateTiffStack_multi(volumeData, varargin)
             imagesc(squeeze(planeTemp)')
             axis tight
             ax = gca;
+            % set(ax, 'Color', 'k') % set background to black
             ax.PlotBoxAspectRatio = [1, hwRatio_xy, 1];
             if showColorbar
                 colorbar

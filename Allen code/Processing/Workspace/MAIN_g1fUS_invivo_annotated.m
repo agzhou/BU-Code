@@ -158,7 +158,9 @@ for iCP=startCP:startCP+nCP-1 % ** Go through each file **
                 %% normalized g1 calculation ** normalized is small g1 **
                 npGG=sIQ2GG(iIQ, PRSSinfo); % g1 of p or n frequency signal    
                 % g1(1) adjustment
-                GG2=reshape(npGG,[PRSSinfo.Dim(1)*PRSSinfo.Dim(2),PRSSinfo.g1nTau]);
+                GG2=reshape(npGG,[PRSSinfo.Dim(1)*PRSSinfo.Dim(2),PRSSinfo.g1nTau]); % ** stack the spatial dimensions of the g1 **
+                
+                % ** This seems like noise removal (CR = Clutter Removal?) **
                 ggCR1=(abs(abs(GG2(:,1))-abs(GG2(:,2)))>2*abs((abs(GG2(:,2))-abs(GG2(:,3)))));
                 ggCR2=(abs(GG2(:,1))>0.55).*(abs(GG2(:,2))<0.25).*(abs(GG2(:,2))<abs(GG2(:,3)));
                 ggCR0=((ggCR1+ggCR2)>0); % modified by Bingxue Liu;
@@ -166,7 +168,7 @@ for iCP=startCP:startCP+nCP-1 % ** Go through each file **
                 GG2temp(:,1)=(1-ggCR0).*GG2(:,1)+ggCR0.*(GG2(:,2)+(abs(real(GG2(:,1)-GG2(:,2)))+1i*(imag(GG2(:,2)-GG2(:,3))))*1);% abs; real GG1-GG2
                 GG2temp(find(abs(GG2temp)>1)) = GG2(find(abs(GG2temp)>1),1); %
                 GG2(:,1) = GG2temp; % modified by Bingxue Liu
-                npGG=reshape(GG2,[PRSSinfo.Dim(1),PRSSinfo.Dim(2),PRSSinfo.g1nTau]);
+                npGG=reshape(GG2,[PRSSinfo.Dim(1),PRSSinfo.Dim(2),PRSSinfo.g1nTau]); % ** unstack the spatial dimensions **
                 % GG to CBFspeed Index and CBV index
                 for itau=1:PRSSinfo.g1nTau
                     npGG(:,:,itau)=convn(npGG(:,:,itau),covB,'same');

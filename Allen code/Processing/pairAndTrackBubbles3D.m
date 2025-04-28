@@ -31,6 +31,9 @@
 %   smoothn.m (From Damien Garcia: https://www.mathworks.com/matlabcentral/fileexchange/25634-smoothn/)
 %   densityMap3D.m      
 % Acknowledgement: using Jianbo Tang's ULM code, the Song group's ULM papers, and Jean-Yves Tinevez's simpletracker as references
+
+% Last updated: 4/24/25
+
 clearvars
 
 %% 0. Use parallel processing for speed
@@ -881,44 +884,6 @@ BDMs_AZ02_day7.BDM_Constrained = BDM_Constrained;
 BDMs_AZ02_day7.BDM_SmoothedMMS = BDM_SmoothedMMS;
 BDMs_AZ02_day7.BDM_SmoothedKFConstrained = BDM_SmoothedKFConstrained;
 BDMs_AZ02_day7.BDM_SmoothedKFConstrained_LI_RSC = BDM_SmoothedKFConstrained_LI_RSC;
-
-%% Test the speed map
-[SM_LI, SM_LI_counter] = interpolatedSpeedMap(bVelocityM, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
-%%
-[SM_SmoothedKFConstrained_LI, SM_SmoothedKFConstrained_LI_counter] = interpolatedSpeedMap(bVelocityMSmoothedKFConstrainedMMS, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
-
-SM_SmoothedKFConstrained_LI_RSC = SM_SmoothedKFConstrained_LI;
-SM_SmoothedKFConstrained_LI_RSC(SM_SmoothedKFConstrained_LI_counter <= 2) = 0; % Use the counter to remove voxels with small counts
-SM_SmoothedKFConstrained_LI_RSC = thresholdMaps(SM_SmoothedKFConstrained_LI_RSC, SM_SmoothedKFConstrained_LI_counter, 500);
-%% Refine the speed map
-SM_LI_RSC = SM_LI;
-SM_LI_RSC(SM_LI_counter <= 2) = 0; % Use the counter to remove voxels with small counts
-SM_LI_RSC = thresholdMaps(SM_LI_RSC, SM_LI_counter, 500);
-%% Plot speed map
-
-volumeViewer(SM_LI_RSC)
-% plotMIPs(SM_LI_RSC, 1)
-
-volumeViewer(SM_SmoothedKFConstrained_LI_RSC)
-
-%%
-% [cmap, ~, ~, ~, ~] = Colormaps_fUS;
-% [~, ~, cmap, ~, ~] = Colormaps_fUS;
-cmap = 'turbo';
-% plotSpeedMIPs(SM_LI_RSC, 1)
-generateTiffStack_multi([{SM_LI_RSC}], [8.8, 8.8, 8], cmap, 10)
-
-%%
-% SMs_AZ02_hour1.SM = SM;
-SMs_AZ02_hour1.SM_LI = SM_LI;
-SMs_AZ02_hour1.SM_LI_counter = SM_LI_counter;
-SMs_AZ02_hour1.SM_LI_RSC = SM_LI_RSC;
-% SMs_AZ02_hour1.SM_Constrained = SM_Constrained;
-% SMs_AZ02_hour1.SM_SmoothedMMS = SM_SmoothedMMS;
-SMs_AZ02_hour1.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
-SMs_AZ02_hour1.SM_SmoothedKFConstrained_LI_RSC = SM_SmoothedKFConstrained_LI_RSC;
-SMs_AZ02_hour1.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
-
 %% Plot speed map after persistence with linear interpolation, on the cleaned and refined velocity data
 speedMap = zeros(img_size(1), img_size(2), img_size(3));
 plotPower = 1;
@@ -1185,93 +1150,6 @@ function [densityMapInterpolated] = interpolatedDensityMap(bVelocityM, img_size,
 %     speedMap(speedMask) = speedMap(speedMask) ./ densityMapInterpolatedCounter(speedMask);
 end
 
-function [speedMapInterpolated, speedMapInterpolatedCounter] = interpolatedSpeedMap(bVelocityM, img_size, startFrame, maxPixelDistPerFrame)
-    speedMapInterpolated = zeros(img_size(1), img_size(2), img_size(3));
-
-    % Counters for proper averaging if there are overlapped pixels from
-    % different tracks
-    speedMapInterpolatedCounter = zeros(size(speedMapInterpolated));
-    
-    tic
-    for ti = startFrame:size(bVelocityM, 1)
-%     for ti = startFrame:startFrame+100
-%     for ti = 15000:15100
-%     for ti = 12000:size(bVelocityM, 1)
-        bvTemp = bVelocityM{ti}; % get the ti-th entry
-        pers = size(bvTemp, 3);
-        if ~isempty(bvTemp) % only do stuff if the bubble velocity cell array entry is not empty
-            for bpi = 1:size(bvTemp, 1) % bubble pair index
-    
-                % Initialize temporary start and end coordinate matrices.
-                % Each have dimensions [# persistence frames, 3] where each row is [x coord, y coord, z coord].
-                coordsStart = NaN(pers, 3);
-                coordsEnd = NaN(pers, 3);
-    
-                % Go through the # of persistence frames and get the
-                % coordinates at each frame pfi for the bubble track bpi.
-                %   Each row corresponds to a persistence frame, and contains
-                %   [x, y, z] velocity.
-                for pfi = 1:pers % persistence frame index
-                    coordsStart(pfi, :) = bvTemp(bpi, 1:3, pfi);
-                    coordsEnd(pfi, :) = bvTemp(bpi, 4:6, pfi);
-                end
-
-                vecDist = coordsEnd - coordsStart;
-%                 totalDist = sqrt(sum(vecDist .^ 2, 2));
-
-                % Only interpolate if the distance between points in a
-                % track is less than the max pixel dist per frame as
-                % calculated before
-                if all(abs(vecDist) - maxPixelDistPerFrame <= 0, 'all')
-                    vTemp = squeeze(bvTemp(bpi, 7:9, :)); % Velocity components for the track # bpi
-%                 speedTemp = sqrt(vTemp(:, 1).^2 + vTemp(:, 2).^2 + vTemp(:, 3).^2); % Speed vector: one value per persistence frame index
-                    speedTemp = sqrt(sum(vTemp.^2, 1))';
-                    roundOrNot = true;
-                    interpPts = ULM_interp3D_linear(coordsStart, coordsEnd, speedTemp, roundOrNot); % Get interpolated points with the corresponding z velocity value. each row is [z coord, x coord, z velocity]
-    
-    %                 figure; scatter3(interpPts(:, 1), interpPts(:, 2), interpPts(:, 3))
-                    for ipi = 1:size(interpPts, 1) % interpolated point index
-                        interpPtsTemp = interpPts(ipi, 1:3);
-                        speedValTemp = interpPts(ipi, 4);
-                        
-    %                     speedMap(smoothedPtsTemp(1), smoothedPtsTemp(2), smoothedPtsTemp(3)) = speedMap(smoothedPtsTemp(1), smoothedPtsTemp(2), smoothedPtsTemp(3)) + speedValTemp;
-                        speedMapInterpolated(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) = speedMapInterpolated(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) + speedValTemp; % Accumulate the speed so we can take the average for overlapping tracks at a voxel
-                        speedMapInterpolatedCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) = speedMapInterpolatedCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) + 1; % Increment the counter for taking the average
-                    end
-                end
-                
-%                 if any(totalDist > pixel)
-    
-                
-    
-    %             for ipi = 1:size(interpPts, 1) % interpolated point index
-    %                 interpPtsTemp = interpPts(ipi, :);
-    %                 speedValTemp = interpPtsTemp(4);
-    %                 
-    %                 speedMap(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) = speedMap(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) + speedValTemp;
-    %                 speedMapCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) = speedMapCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) + 1;
-    %             end
-            end
-    %     else
-    %         interpPts = [];
-    %         coordsStart = [];
-    %         coordsEnd = [];
-    %         zvTemp = [];
-    %         bvTemp = [];
-    %         zVelTemp = [];
-    %         interpPtsTemp = [];
-        end
-    %     clear bvTemp
-    end
-    disp('Density map interpolated')
-    toc
-%     clear speedValTemp ti bpi pfi ipi interpPtsTemp speedTemp coordsStart coordsEnd bvTemp
-
-    % Take the average speed    for pixels with overlapping tracks
-    speedMask = speedMapInterpolatedCounter > 0;
-    speedMapInterpolated(speedMask) = speedMapInterpolated(speedMask) ./ speedMapInterpolatedCounter(speedMask);
-end
-
 function [densityMapInterpolated] = interpolatedDensityMapWithVideo(bVelocityM, img_size, startFrame, maxPixelDistPerFrame, actualSize)
     densityMapInterpolated = zeros(img_size(1), img_size(2), img_size(3));
 
@@ -1401,27 +1279,16 @@ function [densityMapInterpolated] = interpolatedDensityMapWithVideo(bVelocityM, 
 %     speedMap(speedMask) = speedMap(speedMask) ./ densityMapInterpolatedCounter(speedMask);
 end
 
-function plotSpeedMIPs(data, gamcp) % expects 4D input (x, y, z, frames)
+function plotMIPs(data, gamcp) % expects 4D input (x, y, z, frames)
     % gamcp = gamma compression power
     
-    figure; imagesc(squeeze(max(data, [], 1))' .^ gamcp); colormap jet; colorbar
+    figure; imagesc(squeeze(max(data, [], 1))' .^ gamcp); colormap hot; colorbar
     title('xz MIP')
     xlabel('y pixels')
     ylabel('z pixels')
-
-    figure; imagesc(squeeze(max(data, [], 2))' .^ gamcp); colormap jet; colorbar
+    figure; imagesc(squeeze(max(data, [], 2))' .^ gamcp); colormap hot; colorbar
     title('yz MIP')
     xlabel('x pixels')
     ylabel('z pixels')
 
-    figure; imagesc(squeeze(max(data, [], 3))' .^ gamcp); colormap jet; colorbar
-    title('xy MIP')
-    xlabel('x pixels')
-    ylabel('y pixels')
-
-end
-
-function [Tmap] = thresholdMaps(map, counter, cutoff) % threshold a bubble density map or speed map to remove high counts (false positives)
-    Tmap = map;
-    Tmap(counter > cutoff) = 0;
 end
