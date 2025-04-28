@@ -1,0 +1,42 @@
+function [cmap] = colormap_ULM
+
+    numSteps = 10; % How many steps total for each color increment, then times 3 for rgb
+    cmap = []; % Initialize the colormap
+
+    % Black to blue to green to red. Black corresponds to small values.
+%     for c = 3:-1:1 % 1 - R, 2 - G, 3 - B
+%         temp = zeros(numSteps, 3);
+%         temp(:, c) = linspace(0, 1, numSteps);
+%         cmap = cat(1, cmap, temp);
+%     end
+%     cmapblue = zeros(numSteps, 3);
+%     cmapblue(:, 3) = linspace(0, 1, numSteps);
+% 
+% %     cmapcyan = zeros(numSteps, 3);
+% %     cmapcyan(:, 3) = linspace(1, 0, numSteps); % decreasing blue
+% %     cmapcyan(:, 2) = linspace(0, 1, numSteps); % increasing green
+% 
+%     cmapgreen = zeros(numSteps, 3);
+%     cmapgreen(:, 3) = linspace(1, 0, numSteps); % decreasing blue
+%     cmapgreen(:, 2) = linspace(0, 1, numSteps); % increasing green
+% 
+%     cmapred = zeros(numSteps, 3);
+%     cmapred(:, 2) = linspace(1, 0, numSteps); % decreasing green
+%     cmapred(:, 1) = linspace(0, 1, numSteps); % increasing red
+
+%     cmap = cat(1, cmapblue, cmapgreen, cmapred);
+
+    parabola = @(x, center) -(x - center) .^ 2 ./ max(center)^2 + 1;
+    % blue, green, red curves
+    bc = parabola(0:round(numSteps/2) - 1, round(numSteps/2/2 - 1));
+    gc = parabola(round(numSteps/4):round(numSteps*3/4) - 1, round(numSteps/2));
+    rc = parabola(round(numSteps/2) + 1:numSteps, round(numSteps*3/4));
+
+    cmap = zeros(numSteps * 3, 3);
+    cmap(1:round(numSteps/2), 3) = bc;
+    cmap(round(numSteps/4):round(numSteps*3/4), 2) = gc;
+    cmap(round(numSteps/2):numSteps) = rc;
+
+
+
+end

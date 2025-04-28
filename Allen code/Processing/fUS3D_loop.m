@@ -25,6 +25,10 @@ savepath = [savepath, '\'];
 
 addpath([cd, '\Speckle tracking']) % add path for the g1 calculation functions
 
+% Load the timing data
+timingFilePath = uigetfile([IQpath, '..\Timing data'], 'Select the timing data');
+timingFilePath = [timingFilePath, '\'];
+% load(timingFilePath, 'acqStart', 'airPuffOutput', 'daqStartTimetag', 'sfTimeTags', 'sfTimeTagsDAQStart', 'sfTimeTagsDAQStart_adj', 'sfWidth', 'sfWidth_adj', 'timeStamp')
 %% Define some parameters (add this to a prompt later)
 sv_threshold_lower = 10;
 sv_threshold_upper = 150;
@@ -248,11 +252,11 @@ xlabel('x pixels')
 ylabel('z pixels')
 
 %% CBF MIP over the whole dimension
-figure; imagesc(squeeze(max(CBF, [], 1))' .^ 1); colormap hot
+figure; imagesc(squeeze(max(CBFi_smoothed, [], 1))' .^ 1); colormap hot
 title('CBFi - xz MIP')
 xlabel('x pixels')
 ylabel('z pixels')
-figure; imagesc(squeeze(max(CBF, [], 2))' .^ 1); colormap hot
+figure; imagesc(squeeze(max(CBFi, [], 2))' .^ 1); colormap hot
 title('CBFi - yz MIP')
 xlabel('x pixels')
 ylabel('z pixels')

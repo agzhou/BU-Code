@@ -16,7 +16,7 @@
 function generateTiffStack_multi(volumeData, varargin)
 
     % volumeData = volumeData ./ max(volumeData, [], 'all'); % Normalize intensities to be between 0 - 1
-    showColorbar = false;
+    showColorbar = true;
     scale = 5;
     
     mws = 1; % default MIP window size is 1 (no MIP)
@@ -27,19 +27,31 @@ function generateTiffStack_multi(volumeData, varargin)
             if nargin > 3
                 mws = varargin{3}; % MIP window size
             end
+                if nargin > 4
+                    cr = varargin{4}; % colorbar limits/range
+                    crUserInput = true;
+                else
+                    crUserInput = false;
+                end
         end
     end
     savepath = uigetdir('D:\Allen\Data\', 'Select the save path');
     savepath = [savepath, '\'];
 
     numVolumes = length(volumeData); % get the # of volumes from the input
-    cr = zeros(numVolumes, 2); % color range
+    if ~crUserInput % if a color range is specified in the input
+        cr = zeros(numVolumes, 2); % color range
+    else
+        cr = repmat(cr, numVolumes, 1);
+    end
     nyp = zeros(numVolumes, 1); % number of y pixels
     nxp = zeros(numVolumes, 1); % x
     nzp = zeros(numVolumes, 1); % z
 
     for vi = 1:numVolumes % volume index
-        cr(vi, :) = [0, max(volumeData{vi}, [], 'all')];
+        if ~crUserInput % if a color range is specified in the input
+            cr(vi, :) = [0, max(volumeData{vi}, [], 'all')]; % Set the color range from 0 to the max of the volumeData for each volume
+        end
         nyp(vi) = size(volumeData{vi}, 1);
         nxp(vi) = size(volumeData{vi}, 2);
         nzp(vi) = size(volumeData{vi}, 3);
