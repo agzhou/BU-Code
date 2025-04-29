@@ -822,7 +822,9 @@ BDM_LI_Rfn = thresholdMaps(BDM_LI_Rfn, BDM_LI_Rfn, 2, 500);
 volumeViewer(BDM_LI_Rfn .^ 0.4)
 
 %% generate Tiff stacks
-generateTiffStack(BDM_LI_Rfn .^ 0.4, [lateral_width, lateral_width, axial_depth], 'gray')
+% generateTiffStack(BDM_LI_Rfn .^ 1, [lateral_width, lateral_width, axial_depth], 'gray')
+generateTiffStack_multi([{BDM_LI_Rfn .^ 0.5}], [8.8, 8.8, 8], 'hot', 10)
+
 %%
 yrange_plot_MIP = 70:90;
 figure; imagesc(squeeze(max(BDM_LI_Rfn(yrange_plot_MIP, :, :), [], 1) .^ 0.4)'); colormap hot; colorbar
@@ -874,19 +876,26 @@ title("test_dmi_remove_smallcounts Maximum Intensity Projection from z = " + num
 % BDMs_AZ02_baseline.BDM_SmoothedKFConstrained = BDM_SmoothedKFConstrained;
 % BDMs_AZ02_baseline.BDM_SmoothedKFConstrained_LI_RSC = BDM_SmoothedKFConstrained_LI_RSC;
 
-BDMs_AZ02_day7.BDM = BDM;
-BDMs_AZ02_day7.BDM_LI = BDM_LI;
-BDMs_AZ02_day7.BDM_LI_RSC = BDM_LI_Rfn;
-BDMs_AZ02_day7.BDM_Constrained = BDM_Constrained;
-BDMs_AZ02_day7.BDM_SmoothedMMS = BDM_SmoothedMMS;
-BDMs_AZ02_day7.BDM_SmoothedKFConstrained = BDM_SmoothedKFConstrained;
-BDMs_AZ02_day7.BDM_SmoothedKFConstrained_LI_RSC = BDM_SmoothedKFConstrained_LI_RSC;
+% BDMs_AZ02_day7.BDM = BDM;
+% BDMs_AZ02_day7.BDM_LI = BDM_LI;
+% BDMs_AZ02_day7.BDM_LI_RSC = BDM_LI_Rfn;
+% BDMs_AZ02_day7.BDM_Constrained = BDM_Constrained;
+% BDMs_AZ02_day7.BDM_SmoothedMMS = BDM_SmoothedMMS;
+% BDMs_AZ02_day7.BDM_SmoothedKFConstrained = BDM_SmoothedKFConstrained;
+% BDMs_AZ02_day7.BDM_SmoothedKFConstrained_LI_RSC = BDM_SmoothedKFConstrained_LI_RSC;
 
+BDMs_AZ03_baseline.BDM = BDM;
+BDMs_AZ03_baseline.BDM_LI = BDM_LI;
+BDMs_AZ03_baseline.BDM_LI_Rfn = BDM_LI_Rfn;
+BDMs_AZ03_baseline.BDM_Constrained = BDM_Constrained;
+BDMs_AZ03_baseline.BDM_SmoothedMMS = BDM_SmoothedMMS;
+BDMs_AZ03_baseline.BDM_SmoothedKFConstrained = BDM_SmoothedKFConstrained;
+BDMs_AZ03_baseline.BDM_SmoothedKFConstrained_LI_RSC = BDM_SmoothedKFConstrained_LI_RSC;
 %% Get the speed maps
 [SM_LI, SM_LI_counter] = interpolatedSpeedMap(bVelocityM, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
 % Refine the speed map
-SM_LI_RSC = SM_LI;
-SM_LI_RSC = thresholdMaps(SM_LI_RSC, SM_LI_counter, 2, 500);
+SM_LI_Rfn = SM_LI;
+SM_LI_Rfn = thresholdMaps(SM_LI_Rfn, SM_LI_counter, 2, 500);
 
 % Constrained KF
 [SM_SmoothedKFConstrained_LI, SM_SmoothedKFConstrained_LI_counter] = interpolatedSpeedMap(bVelocityMSmoothedKFConstrainedMMS, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
@@ -897,12 +906,12 @@ SM_SmoothedKFConstrained_LI_RSC = thresholdMaps(SM_SmoothedKFConstrained_LI_RSC,
 % Look at the smoothed constrained no KF data %%%%%%
 [SM_SC_LI, SM_SC_LI_counter] = interpolatedSpeedMap(bVelocityMSmoothedMMSConstrained, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
 
-SM_SC_LI_RSC = SM_SC_LI;
-SM_SC_LI_RSC = thresholdMaps(SM_SC_LI_RSC, SM_SC_LI_counter, 2, 500);
+SM_SC_LI_Rfn = SM_SC_LI;
+SM_SC_LI_Rfn = thresholdMaps(SM_SC_LI_Rfn, SM_SC_LI_counter, 2, 500);
 
 %% Plot speed map
 
-volumeViewer(SM_LI_RSC)
+volumeViewer(SM_LI_Rfn)
 % plotMIPs(SM_LI_RSC, 1)
 
 volumeViewer(SM_SmoothedKFConstrained_LI_RSC)
@@ -914,17 +923,17 @@ volumeViewer(SM_SmoothedKFConstrained_LI_RSC)
 cmap = colormap_ULM;
 % plotSpeedMIPs(SM_LI_RSC, 1)
 % generateTiffStack_multi([{SM_LI_RSC}], [8.8, 8.8, 8], cmap, 10)
-generateTiffStack_multi([{SM_SC_LI_RSC}], [8.8, 8.8, 8], cmap, 10, [0, 50])
+generateTiffStack_multi([{SM_SC_LI_Rfn}], [8.8, 8.8, 8], cmap, 10, [0, 50])
 
 %% Convert the speed maps to a structure
-SMs_AZ02_baseline.SM_LI = SM_LI;
-SMs_AZ02_baseline.SM_LI_counter = SM_LI_counter;
-SMs_AZ02_baseline.SM_LI_RSC = SM_LI_RSC;
-SMs_AZ02_baseline.SM_SC_LI_counter = SM_SC_LI_counter;
-SMs_AZ02_baseline.SM_SC_LI_RSC = SM_SC_LI_RSC;
-SMs_AZ02_baseline.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
-SMs_AZ02_baseline.SM_SmoothedKFConstrained_LI_RSC = SM_SmoothedKFConstrained_LI_RSC;
-SMs_AZ02_baseline.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
+% SMs_AZ02_baseline.SM_LI = SM_LI;
+% SMs_AZ02_baseline.SM_LI_counter = SM_LI_counter;
+% SMs_AZ02_baseline.SM_LI_RSC = SM_LI_RSC;
+% SMs_AZ02_baseline.SM_SC_LI_counter = SM_SC_LI_counter;
+% SMs_AZ02_baseline.SM_SC_LI_RSC = SM_SC_LI_RSC;
+% SMs_AZ02_baseline.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
+% SMs_AZ02_baseline.SM_SmoothedKFConstrained_LI_RSC = SM_SmoothedKFConstrained_LI_RSC;
+% SMs_AZ02_baseline.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
 
 % % SMs_AZ02_hour1.SM = SM;
 % SMs_AZ02_hour1.SM_LI = SM_LI;
@@ -953,6 +962,15 @@ SMs_AZ02_baseline.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI
 % SMs_AZ02_day7.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
 % SMs_AZ02_day7.SM_SmoothedKFConstrained_LI_RSC = SM_SmoothedKFConstrained_LI_RSC;
 % SMs_AZ02_day7.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
+
+SMs_AZ03_baseline.SM_LI = SM_LI;
+SMs_AZ03_baseline.SM_LI_counter = SM_LI_counter;
+SMs_AZ03_baseline.SM_LI_Rfn = SM_LI_Rfn;
+SMs_AZ03_baseline.SM_SC_LI_counter = SM_SC_LI_counter;
+SMs_AZ03_baseline.SM_SC_LI_Rfn = SM_SC_LI_Rfn;
+SMs_AZ03_baseline.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
+SMs_AZ03_baseline.SM_SmoothedKFConstrained_LI_Rfn = SM_SmoothedKFConstrained_LI_Rfn;
+SMs_AZ03_baseline.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
 
 %% Plot speed map after persistence with linear interpolation, on the cleaned and refined velocity data
 speedMap = zeros(img_size(1), img_size(2), img_size(3));

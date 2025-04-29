@@ -784,7 +784,7 @@ plotMIPs(BDM_LI , 0.4)
 %%
 BDM_SmoothedKFConstrained_LI = interpolatedDensityMap(bVelocityMSmoothedKFConstrainedMMS, img_size, startFrame, maxPixelDistPerFrame); % density map, linearly interpolated
 BDM_SmoothedKFConstrained_LI_RSC = BDM_SmoothedKFConstrained_LI;
-BDM_SmoothedKFConstrained_LI_RSC(BDM_SmoothedKFConstrained_LI_RSC <= 2) = 0;
+BDM_SmoothedKFConstrained_LI_RSC = thresholdMaps(BDM_SmoothedKFConstrained_LI_RSC, BDM_SmoothedKFConstrained_LI_RSC, 2, 500);
 % volumeViewer(BDM_SmoothedKFConstrained_LI_RSC .^ 0.4)
 plotMIPs(BDM_SmoothedKFConstrained_LI_RSC, 0.4)
 %%
@@ -815,26 +815,28 @@ figure; imagesc(squeeze(max(BDM(:, :, zrange_plot_MIP), [], 3) .^ 0.4)'); colorm
 title("bSum Maximum Intensity Projection from z = " + num2str(zrange_plot_MIP(1)) + " to " + num2str(zrange_plot_MIP(end)) + " \^ 0.3")
 
 %%
-BDM_LI_RSC = BDM_LI;
-% test_dmi_remove_smallcounts(test_dmi_remove_smallcounts .^ 0.3 <= 2) = 0;
-BDM_LI_RSC(BDM_LI_RSC <= 2) = 0;
-% test_dmi_remove_smallcounts(test_dmi_remove_smallcounts >= 1000) = 0;
-volumeViewer(BDM_LI_RSC .^ 0.4)
+BDM_LI_Rfn = BDM_LI;
+BDM_LI_Rfn = thresholdMaps(BDM_LI_Rfn, BDM_LI_Rfn, 2, 500);
+
+
+volumeViewer(BDM_LI_Rfn .^ 0.4)
 
 %% generate Tiff stacks
-generateTiffStack(BDM_LI_RSC .^ 0.4, [lateral_width, lateral_width, axial_depth], 'gray')
+% generateTiffStack(BDM_LI_Rfn .^ 1, [lateral_width, lateral_width, axial_depth], 'gray')
+generateTiffStack_multi([{BDM_LI_Rfn .^ 0.5}], [8.8, 8.8, 8], 'hot', 10)
+
 %%
 yrange_plot_MIP = 70:90;
-figure; imagesc(squeeze(max(BDM_LI_RSC(yrange_plot_MIP, :, :), [], 1) .^ 0.4)'); colormap hot; colorbar
+figure; imagesc(squeeze(max(BDM_LI_Rfn(yrange_plot_MIP, :, :), [], 1) .^ 0.4)'); colormap hot; colorbar
 % figure; imagesc(squeeze(max(test_dmi(yrange_plot_MIP, :, :), [], 1) .^ 1)'); colormap hot; colorbar
 title("test_dmi_remove_smallcounts Maximum Intensity Projection from y = " + num2str(yrange_plot_MIP(1)) + " to " + num2str(yrange_plot_MIP(end)) + " \^ 0.3")
 
 xrange_plot_MIP = 70:90;
-figure; imagesc(squeeze(max(BDM_LI_RSC(:, xrange_plot_MIP, :), [], 2) .^ 0.3)'); colormap hot; colorbar
+figure; imagesc(squeeze(max(BDM_LI_Rfn(:, xrange_plot_MIP, :), [], 2) .^ 0.3)'); colormap hot; colorbar
 title("test_dmi_remove_smallcounts Maximum Intensity Projection from x = " + num2str(xrange_plot_MIP(1)) + " to " + num2str(xrange_plot_MIP(end)) + " \^ 0.3")
 
 zrange_plot_MIP = 100:150;
-figure; imagesc(squeeze(max(BDM_LI_RSC(:, :, zrange_plot_MIP), [], 3) .^ 0.5)'); colormap hot; colorbar
+figure; imagesc(squeeze(max(BDM_LI_Rfn(:, :, zrange_plot_MIP), [], 3) .^ 0.5)'); colormap hot; colorbar
 title("test_dmi_remove_smallcounts Maximum Intensity Projection from z = " + num2str(zrange_plot_MIP(1)) + " to " + num2str(zrange_plot_MIP(end)) + " \^ 0.3")
 
 % figure; imagesc(squeeze(test_dmi(80, :, :))' .^ plotPower2D); colormap hot
@@ -874,34 +876,32 @@ title("test_dmi_remove_smallcounts Maximum Intensity Projection from z = " + num
 % BDMs_AZ02_baseline.BDM_SmoothedKFConstrained = BDM_SmoothedKFConstrained;
 % BDMs_AZ02_baseline.BDM_SmoothedKFConstrained_LI_RSC = BDM_SmoothedKFConstrained_LI_RSC;
 
-BDMs_AZ02_day7.BDM = BDM;
-BDMs_AZ02_day7.BDM_LI = BDM_LI;
-BDMs_AZ02_day7.BDM_LI_RSC = BDM_LI_RSC;
-BDMs_AZ02_day7.BDM_Constrained = BDM_Constrained;
-BDMs_AZ02_day7.BDM_SmoothedMMS = BDM_SmoothedMMS;
-BDMs_AZ02_day7.BDM_SmoothedKFConstrained = BDM_SmoothedKFConstrained;
-BDMs_AZ02_day7.BDM_SmoothedKFConstrained_LI_RSC = BDM_SmoothedKFConstrained_LI_RSC;
+% BDMs_AZ02_day7.BDM = BDM;
+% BDMs_AZ02_day7.BDM_LI = BDM_LI;
+% BDMs_AZ02_day7.BDM_LI_RSC = BDM_LI_Rfn;
+% BDMs_AZ02_day7.BDM_Constrained = BDM_Constrained;
+% BDMs_AZ02_day7.BDM_SmoothedMMS = BDM_SmoothedMMS;
+% BDMs_AZ02_day7.BDM_SmoothedKFConstrained = BDM_SmoothedKFConstrained;
+% BDMs_AZ02_day7.BDM_SmoothedKFConstrained_LI_RSC = BDM_SmoothedKFConstrained_LI_RSC;
+
 
 %% Get the speed maps
 [SM_LI, SM_LI_counter] = interpolatedSpeedMap(bVelocityM, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
 % Refine the speed map
 SM_LI_RSC = SM_LI;
-SM_LI_RSC(SM_LI_counter <= 2) = 0; % Use the counter to remove voxels with small counts
-SM_LI_RSC = thresholdMaps(SM_LI_RSC, SM_LI_counter, 500);
+SM_LI_RSC = thresholdMaps(SM_LI_RSC, SM_LI_counter, 2, 500);
 
 % Constrained KF
 [SM_SmoothedKFConstrained_LI, SM_SmoothedKFConstrained_LI_counter] = interpolatedSpeedMap(bVelocityMSmoothedKFConstrainedMMS, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
 
 SM_SmoothedKFConstrained_LI_RSC = SM_SmoothedKFConstrained_LI;
-SM_SmoothedKFConstrained_LI_RSC(SM_SmoothedKFConstrained_LI_counter <= 2) = 0; % Use the counter to remove voxels with small counts
-SM_SmoothedKFConstrained_LI_RSC = thresholdMaps(SM_SmoothedKFConstrained_LI_RSC, SM_SmoothedKFConstrained_LI_counter, 500);
+SM_SmoothedKFConstrained_LI_RSC = thresholdMaps(SM_SmoothedKFConstrained_LI_RSC, SM_SmoothedKFConstrained_LI_counter, 2, 500);
 
 % Look at the smoothed constrained no KF data %%%%%%
 [SM_SC_LI, SM_SC_LI_counter] = interpolatedSpeedMap(bVelocityMSmoothedMMSConstrained, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
 
 SM_SC_LI_RSC = SM_SC_LI;
-SM_SC_LI_RSC(SM_SC_LI_counter <= 2) = 0; % Use the counter to remove voxels with small counts
-SM_SC_LI_RSC = thresholdMaps(SM_SC_LI_RSC, SM_SC_LI_counter, 500);
+SM_SC_LI_RSC = thresholdMaps(SM_SC_LI_RSC, SM_SC_LI_counter, 2, 500);
 
 %% Plot speed map
 
@@ -920,6 +920,15 @@ cmap = colormap_ULM;
 generateTiffStack_multi([{SM_SC_LI_RSC}], [8.8, 8.8, 8], cmap, 10, [0, 50])
 
 %% Convert the speed maps to a structure
+SMs_AZ02_baseline.SM_LI = SM_LI;
+SMs_AZ02_baseline.SM_LI_counter = SM_LI_counter;
+SMs_AZ02_baseline.SM_LI_RSC = SM_LI_RSC;
+SMs_AZ02_baseline.SM_SC_LI_counter = SM_SC_LI_counter;
+SMs_AZ02_baseline.SM_SC_LI_RSC = SM_SC_LI_RSC;
+SMs_AZ02_baseline.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
+SMs_AZ02_baseline.SM_SmoothedKFConstrained_LI_RSC = SM_SmoothedKFConstrained_LI_RSC;
+SMs_AZ02_baseline.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
+
 % % SMs_AZ02_hour1.SM = SM;
 % SMs_AZ02_hour1.SM_LI = SM_LI;
 % SMs_AZ02_hour1.SM_LI_counter = SM_LI_counter;
@@ -939,14 +948,14 @@ generateTiffStack_multi([{SM_SC_LI_RSC}], [8.8, 8.8, 8], cmap, 10, [0, 50])
 % SMs_AZ02_day3.SM_SmoothedKFConstrained_LI_RSC = SM_SmoothedKFConstrained_LI_RSC;
 % SMs_AZ02_day3.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
 
-SMs_AZ02_day3.SM_LI = SM_LI;
-SMs_AZ02_day3.SM_LI_counter = SM_LI_counter;
-SMs_AZ02_day3.SM_LI_RSC = SM_LI_RSC;
-SMs_AZ02_day3.SM_SC_LI_counter = SM_SC_LI_counter;
-SMs_AZ02_day3.SM_SC_LI_RSC = SM_SC_LI_RSC;
-SMs_AZ02_day3.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
-SMs_AZ02_day3.SM_SmoothedKFConstrained_LI_RSC = SM_SmoothedKFConstrained_LI_RSC;
-SMs_AZ02_day3.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
+% SMs_AZ02_day7.SM_LI = SM_LI;
+% SMs_AZ02_day7.SM_LI_counter = SM_LI_counter;
+% SMs_AZ02_day7.SM_LI_RSC = SM_LI_RSC;
+% SMs_AZ02_day7.SM_SC_LI_counter = SM_SC_LI_counter;
+% SMs_AZ02_day7.SM_SC_LI_RSC = SM_SC_LI_RSC;
+% SMs_AZ02_day7.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
+% SMs_AZ02_day7.SM_SmoothedKFConstrained_LI_RSC = SM_SmoothedKFConstrained_LI_RSC;
+% SMs_AZ02_day7.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
 
 %% Plot speed map after persistence with linear interpolation, on the cleaned and refined velocity data
 speedMap = zeros(img_size(1), img_size(2), img_size(3));
@@ -1450,7 +1459,8 @@ function plotSpeedMIPs(data, gamcp) % expects 4D input (x, y, z, frames)
 
 end
 
-function [Tmap] = thresholdMaps(map, counter, cutoff) % threshold a bubble density map or speed map to remove high counts (false positives)
+function [Tmap] = thresholdMaps(map, counter, lowerCutoff, upperCutoff) % threshold a bubble density map or speed map to remove low and high counts (noise and/or false positives)
     Tmap = map;
-    Tmap(counter > cutoff) = 0;
+    Tmap(counter <= lowerCutoff) = 0;
+    Tmap(counter >= upperCutoff) = 0;
 end
