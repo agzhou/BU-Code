@@ -815,26 +815,26 @@ figure; imagesc(squeeze(max(BDM(:, :, zrange_plot_MIP), [], 3) .^ 0.4)'); colorm
 title("bSum Maximum Intensity Projection from z = " + num2str(zrange_plot_MIP(1)) + " to " + num2str(zrange_plot_MIP(end)) + " \^ 0.3")
 
 %%
-BDM_LI_RSC = BDM_LI;
-% test_dmi_remove_smallcounts(test_dmi_remove_smallcounts .^ 0.3 <= 2) = 0;
-BDM_LI_RSC(BDM_LI_RSC <= 2) = 0;
-% test_dmi_remove_smallcounts(test_dmi_remove_smallcounts >= 1000) = 0;
-volumeViewer(BDM_LI_RSC .^ 0.4)
+BDM_LI_Rfn = BDM_LI;
+BDM_LI_Rfn(BDM_LI_Rfn <= 2) = 0;
+BDM_LI_Rfn(BDM_LI_Rfn > 500) = 0;
+
+volumeViewer(BDM_LI_Rfn .^ 0.4)
 
 %% generate Tiff stacks
-generateTiffStack(BDM_LI_RSC .^ 0.4, [lateral_width, lateral_width, axial_depth], 'gray')
+generateTiffStack(BDM_LI_Rfn .^ 0.4, [lateral_width, lateral_width, axial_depth], 'gray')
 %%
 yrange_plot_MIP = 70:90;
-figure; imagesc(squeeze(max(BDM_LI_RSC(yrange_plot_MIP, :, :), [], 1) .^ 0.4)'); colormap hot; colorbar
+figure; imagesc(squeeze(max(BDM_LI_Rfn(yrange_plot_MIP, :, :), [], 1) .^ 0.4)'); colormap hot; colorbar
 % figure; imagesc(squeeze(max(test_dmi(yrange_plot_MIP, :, :), [], 1) .^ 1)'); colormap hot; colorbar
 title("test_dmi_remove_smallcounts Maximum Intensity Projection from y = " + num2str(yrange_plot_MIP(1)) + " to " + num2str(yrange_plot_MIP(end)) + " \^ 0.3")
 
 xrange_plot_MIP = 70:90;
-figure; imagesc(squeeze(max(BDM_LI_RSC(:, xrange_plot_MIP, :), [], 2) .^ 0.3)'); colormap hot; colorbar
+figure; imagesc(squeeze(max(BDM_LI_Rfn(:, xrange_plot_MIP, :), [], 2) .^ 0.3)'); colormap hot; colorbar
 title("test_dmi_remove_smallcounts Maximum Intensity Projection from x = " + num2str(xrange_plot_MIP(1)) + " to " + num2str(xrange_plot_MIP(end)) + " \^ 0.3")
 
 zrange_plot_MIP = 100:150;
-figure; imagesc(squeeze(max(BDM_LI_RSC(:, :, zrange_plot_MIP), [], 3) .^ 0.5)'); colormap hot; colorbar
+figure; imagesc(squeeze(max(BDM_LI_Rfn(:, :, zrange_plot_MIP), [], 3) .^ 0.5)'); colormap hot; colorbar
 title("test_dmi_remove_smallcounts Maximum Intensity Projection from z = " + num2str(zrange_plot_MIP(1)) + " to " + num2str(zrange_plot_MIP(end)) + " \^ 0.3")
 
 % figure; imagesc(squeeze(test_dmi(80, :, :))' .^ plotPower2D); colormap hot
@@ -876,7 +876,7 @@ title("test_dmi_remove_smallcounts Maximum Intensity Projection from z = " + num
 
 BDMs_AZ02_day7.BDM = BDM;
 BDMs_AZ02_day7.BDM_LI = BDM_LI;
-BDMs_AZ02_day7.BDM_LI_RSC = BDM_LI_RSC;
+BDMs_AZ02_day7.BDM_LI_RSC = BDM_LI_Rfn;
 BDMs_AZ02_day7.BDM_Constrained = BDM_Constrained;
 BDMs_AZ02_day7.BDM_SmoothedMMS = BDM_SmoothedMMS;
 BDMs_AZ02_day7.BDM_SmoothedKFConstrained = BDM_SmoothedKFConstrained;
