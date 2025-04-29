@@ -6,7 +6,9 @@
 %%
 
 function [CBFi, CBVi] = g1_to_CBi(g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
-    CBF = @(tau_2, tau_1, g1_tau_2, g1_tau_1) 1./sqrt(tau_2 ^2 - tau_1 ^2) .* sqrt(abs(log10(abs(g1_tau_1) ./ abs(g1_tau_2))));
+    % CBF = @(tau_2, tau_1, g1_tau_2, g1_tau_1) 1./sqrt(tau_2 ^2 - tau_1 ^2) .* sqrt(abs(log10(abs(g1_tau_1) ./ abs(g1_tau_2))));
+    CBF = @(tau_2, tau_1, g1_tau_2, g1_tau_1) 1./(sqrt(tau_2 ^2 - tau_1 ^2) * 1) .* sqrt(abs(log(abs(g1_tau_1) ./ abs(g1_tau_2))));
+    % CBF = @(tau_2, tau_1, g1_tau_2, g1_tau_1) 1./sqrt(tau_2 ^2 - tau_1 ^2) .* sqrt(abs(abs(g1_tau_1) ./ abs(g1_tau_2)));
     CBV = @(tau_1, g1_tau_1) abs(squeeze(g1_tau_1)) ./ (1 - abs(squeeze(g1_tau_1)));
 
 

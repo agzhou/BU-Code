@@ -26,12 +26,10 @@ function [cmap] = colormap_ULM
 
 %     cmap = cat(1, cmapblue, cmapgreen, cmapred);
 
-    ng = 6; % give green a different width
-
     parabola = @(x, center) -(x - center) .^ 2 ./ (max(x) - center)^2 + 1;
     % blue, green, red curves
     bc = parabola(0:round(numSteps/2) - 1, round(numSteps/2/2 - 1));
-    gc = parabola(round(numSteps/ng):round(numSteps*(ng - 1)/ng) - 1, round(numSteps/2));
+    gc = parabola(round(numSteps/4):round(numSteps*3/4) - 1, round(numSteps/2));
     rc = parabola(round(numSteps/2) + 1:numSteps, round(numSteps*3/4));
 
 %     cmap = zeros(numSteps * 1, 3);
@@ -46,12 +44,11 @@ function [cmap] = colormap_ULM
 %     cmap(round(numSteps/2) + 1:numSteps, 1) = rc;
 %     cmap = cmap(1:numSteps - round(numSteps / 10), :);
 
-    cmap = zeros(numSteps * 1, 3);
-    cmap(1:round(numSteps/2), 3) = bc;
-%     cmap(round(numSteps/5) + 1 - round(numSteps / 10) : round(numSteps*4/5) - round(numSteps / 10), 2) = gc;
-    cmap(round(numSteps/ng) + 1 : round(numSteps*(ng-1)/ng), 2) = gc;
-    cmap(round(numSteps/2) + 1:numSteps, 1) = rc;
-    cmap = cmap(1:numSteps - round(numSteps / 10), :);
+%     cmap = zeros(numSteps * 1, 3);
+%     cmap(1:round(numSteps/2), 3) = bc;
+%     cmap(round(numSteps/4) + 1 - round(numSteps / 10) : round(numSteps*3/4) - round(numSteps / 10), 2) = gc;
+%     cmap(round(numSteps/2) + 1:numSteps, 1) = rc;
+%     cmap = cmap(1:numSteps - round(numSteps / 10), :);
 
     cmap(cmap < 0) = 0;
 end

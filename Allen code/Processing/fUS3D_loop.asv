@@ -25,6 +25,8 @@ savepath = [savepath, '\'];
 
 addpath([cd, '\Speckle tracking']) % add path for the g1 calculation functions
 
+% Load the timing data
+
 %% Define some parameters (add this to a prompt later)
 sv_threshold_lower = 10;
 sv_threshold_upper = 150;
@@ -248,11 +250,11 @@ xlabel('x pixels')
 ylabel('z pixels')
 
 %% CBF MIP over the whole dimension
-figure; imagesc(squeeze(max(CBF, [], 1))' .^ 1); colormap hot
+figure; imagesc(squeeze(max(CBFi_smoothed, [], 1))' .^ 1); colormap hot
 title('CBFi - xz MIP')
 xlabel('x pixels')
 ylabel('z pixels')
-figure; imagesc(squeeze(max(CBF, [], 2))' .^ 1); colormap hot
+figure; imagesc(squeeze(max(CBFi, [], 2))' .^ 1); colormap hot
 title('CBFi - yz MIP')
 xlabel('x pixels')
 ylabel('z pixels')
@@ -297,16 +299,33 @@ end
 
 %% Store all the PDI across the experiment into one matrix
 load([savepath, 'PDI_CDI-', num2str(1), '.mat'], 'PDI', 'CDI')
-PDIallSF = cell([length(PDI), endFile - startFile + 1]); % Matrix with the CBVi for every superframe
-PDIallSF(:,  1) = PDI;
-CDIallSF = cell([length(CDI), endFile - startFile + 1]); % Matrix with the CBVi for every superframe
-CDIallSF(:,  1) = CDI;
-for filenum = startFile + 1:endFile
+% PDIallSF = cell([length(PDI), endFile - startFile + 1]); % Matrix with the CBVi for every superframe
+PDIallSF = cell([size(PDI)]); % Matrix with the CBVi for every superframe
+% PDIallSF(:,  1) = PDI;
+CDIallSF = cell([size(CDI)]); % Matrix with the CBVi for every superframe
+% CDIallSF(:,  1) = CDI;
+
+
+% for filenum = startFile + 1:endFile
+for filenum = startFile:endFile
     load([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI')
-    PDIallSF(:,  filenum) = PDI;
-    CDIallSF(:,  filenum) = CDI;
+    for i = 1:3
+        PDIallSF{i} = cat(4, PDIallSF{i}, PDI{i});
+        CDIallSF{i} = cat(4, CDIallSF{i}, CDI{i});
+    end
 end
-% PDI{3}
+
+%% Visualize the PDI and CDI across the experiment
+% mwr = 30:50; % MIP window range
+% mdim = 1; % MIP dimension
+% newsize = size(CBViallSF);
+% newsize(mdim) = 1; % Set the size of the new variable to 1
+% CBViMIPStack = zeros(newsize);
+PDIMIPStack = squeeze(max(PDIallSF{1}(30:50, :, :, :), [], 1));
+CDIMIPStack = squeeze(max(CDIallSF{1}(30:50, :, :, :), [], 1));
+
+%%
+generateTiffStack_acrossframes(PDIallSF{3} .^ 0.7, [8.8, 8.8, 8], 'hot', 1:80)
 %% Calculate rCBV and rCBF
 % rCBV = CBViallSF(:, :, :, 2:end) ./ CBViallSF(:, :, :, 1:end-1);
 rCBV = CBViallSF ./ CBViallSF(:, :, :, 1); % Measure relative to the "baseline", which I'm choosing as superframe 1
@@ -320,6 +339,7 @@ rCBV = CBViallSF ./ CBViallSF(:, :, :, 1); % Measure relative to the "baseline",
 % CBViMIPStack = zeros(newsize);
 CBViMIPStack = squeeze(max(CBViallSF(30:50, :, :, :), [], 1));
 
+generateTiffStack_acrossframes(CBViallSF .^ 0.7, [8.8, 8.8, 8], 'hot', 1:80)
 %% Plot the rCBV at some point
 % Increasing y is going towards the back of the brain
 % Increasing x is going from the right to the left of the brain if we align
