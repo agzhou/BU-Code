@@ -26,8 +26,9 @@ savepath = [savepath, '\'];
 addpath([cd, '\Speckle tracking']) % add path for the g1 calculation functions
 
 % Load the timing data
-timingFilePath = uigetfile([IQpath, '..\Timing data'], 'Select the timing data');
-timingFilePath = [timingFilePath, '\'];
+[timingFilePathFN, timingFilePath] = uigetfile([IQpath, '..\Timing data'], 'Select the timing data');
+timingFilePath = [timingFilePath, timingFilePathFN];
+load(timingFilePath)
 % load(timingFilePath, 'acqStart', 'airPuffOutput', 'daqStartTimetag', 'sfTimeTags', 'sfTimeTagsDAQStart', 'sfTimeTagsDAQStart_adj', 'sfWidth', 'sfWidth_adj', 'timeStamp')
 %% Define some parameters (add this to a prompt later)
 sv_threshold_lower = 10;
@@ -340,8 +341,9 @@ rCBV = CBViallSF ./ CBViallSF(:, :, :, 1); % Measure relative to the "baseline",
 % newsize(mdim) = 1; % Set the size of the new variable to 1
 % CBViMIPStack = zeros(newsize);
 CBViMIPStack = squeeze(max(CBViallSF(30:50, :, :, :), [], 1));
-
-generateTiffStack_acrossframes(CBViallSF .^ 0.7, [8.8, 8.8, 8], 'hot', 1:80)
+%%
+yr = 50:55;
+generateTiffStack_acrossframes(CBViallSF .^ 0.7, [8.8, 8.8, 8], 'hot', yr)
 %% Plot the rCBV at some point
 % Increasing y is going towards the back of the brain
 % Increasing x is going from the right to the left of the brain if we align

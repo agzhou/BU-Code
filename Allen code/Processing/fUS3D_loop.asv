@@ -26,7 +26,10 @@ savepath = [savepath, '\'];
 addpath([cd, '\Speckle tracking']) % add path for the g1 calculation functions
 
 % Load the timing data
-
+timingFilePath = uiopen([IQpath, '..\Timing data'], 'Select the timing data');
+% timingFilePath = [timingFilePath, '\'];
+% load(timingFilePath)
+% load(timingFilePath, 'acqStart', 'airPuffOutput', 'daqStartTimetag', 'sfTimeTags', 'sfTimeTagsDAQStart', 'sfTimeTagsDAQStart_adj', 'sfWidth', 'sfWidth_adj', 'timeStamp')
 %% Define some parameters (add this to a prompt later)
 sv_threshold_lower = 10;
 sv_threshold_upper = 150;

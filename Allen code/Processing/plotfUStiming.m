@@ -67,3 +67,14 @@ for tti = 1:length(sfTimeTagsDAQStart_adj) % time tag index
     patch(xshade, yshade, 'g', 'FaceAlpha', .3) % Plot the shaded region
 end
 legend('Air puff output', 'Verasonics trigger', 'Superframe acquisition')
+
+%% Add relevant variables to a structure 'TD' (Timing Data)
+TD.acqStart = acqStart;
+TD.airPuffOutput = airPuffOutput;
+TD.daqStartTimetag = daqStartTimetag;
+TD.sfTimeTags = sfTimeTags;
+TD.sfTimeTagsDAQStart = sfTimeTagsDAQStart;
+TD.sfTimeTagsDAQStart_adj = sfTimeTagsDAQStart_adj;
+TD.sfWidth = sfWidth;
+TD.sfWidth_adj = sfWidth_adj;
+TD.timeStamp = timeStamp;

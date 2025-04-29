@@ -882,20 +882,21 @@ BDMs_AZ02_day7.BDM_SmoothedMMS = BDM_SmoothedMMS;
 BDMs_AZ02_day7.BDM_SmoothedKFConstrained = BDM_SmoothedKFConstrained;
 BDMs_AZ02_day7.BDM_SmoothedKFConstrained_LI_RSC = BDM_SmoothedKFConstrained_LI_RSC;
 
-%%       Test the speed map
+%% Get the speed maps
 [SM_LI, SM_LI_counter] = interpolatedSpeedMap(bVelocityM, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
-%%
+% Refine the speed map
+SM_LI_RSC = SM_LI;
+SM_LI_RSC(SM_LI_counter <= 2) = 0; % Use the counter to remove voxels with small counts
+SM_LI_RSC = thresholdMaps(SM_LI_RSC, SM_LI_counter, 500);
+
+% Constrained KF
 [SM_SmoothedKFConstrained_LI, SM_SmoothedKFConstrained_LI_counter] = interpolatedSpeedMap(bVelocityMSmoothedKFConstrainedMMS, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
 
 SM_SmoothedKFConstrained_LI_RSC = SM_SmoothedKFConstrained_LI;
 SM_SmoothedKFConstrained_LI_RSC(SM_SmoothedKFConstrained_LI_counter <= 2) = 0; % Use the counter to remove voxels with small counts
 SM_SmoothedKFConstrained_LI_RSC = thresholdMaps(SM_SmoothedKFConstrained_LI_RSC, SM_SmoothedKFConstrained_LI_counter, 500);
-%% Refine the speed map
-SM_LI_RSC = SM_LI;
-SM_LI_RSC(SM_LI_counter <= 2) = 0; % Use the counter to remove voxels with small counts
-SM_LI_RSC = thresholdMaps(SM_LI_RSC, SM_LI_counter, 500);
 
-%% Look at the smoothed constrained no KF data %%%%%%
+% Look at the smoothed constrained no KF data %%%%%%
 [SM_SC_LI, SM_SC_LI_counter] = interpolatedSpeedMap(bVelocityMSmoothedMMSConstrained, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
 
 SM_SC_LI_RSC = SM_SC_LI;
@@ -919,6 +920,15 @@ cmap = colormap_ULM;
 generateTiffStack_multi([{SM_SC_LI_RSC}], [8.8, 8.8, 8], cmap, 10, [0, 50])
 
 %% Convert the speed maps to a structure
+SMs_AZ02_baseline.SM_LI = SM_LI;
+SMs_AZ02_baseline.SM_LI_counter = SM_LI_counter;
+SMs_AZ02_baseline.SM_LI_RSC = SM_LI_RSC;
+SMs_AZ02_baseline.SM_SC_LI_counter = SM_SC_LI_counter;
+SMs_AZ02_baseline.SM_SC_LI_RSC = SM_SC_LI_RSC;
+SMs_AZ02_baseline.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
+SMs_AZ02_baseline.SM_SmoothedKFConstrained_LI_RSC = SM_SmoothedKFConstrained_LI_RSC;
+SMs_AZ02_baseline.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
+
 % % SMs_AZ02_hour1.SM = SM;
 % SMs_AZ02_hour1.SM_LI = SM_LI;
 % SMs_AZ02_hour1.SM_LI_counter = SM_LI_counter;
@@ -929,14 +939,23 @@ generateTiffStack_multi([{SM_SC_LI_RSC}], [8.8, 8.8, 8], cmap, 10, [0, 50])
 % SMs_AZ02_hour1.SM_SmoothedKFConstrained_LI_RSC = SM_SmoothedKFConstrained_LI_RSC;
 % SMs_AZ02_hour1.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
 
-SMs_AZ02_day3.SM_LI = SM_LI;
-SMs_AZ02_day3.SM_LI_counter = SM_LI_counter;
-SMs_AZ02_day3.SM_LI_RSC = SM_LI_RSC;
-SMs_AZ02_day3.SM_SC_LI_counter = SM_SC_LI_counter;
-SMs_AZ02_day3.SM_SC_LI_RSC = SM_SC_LI_RSC;
-SMs_AZ02_day3.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
-SMs_AZ02_day3.SM_SmoothedKFConstrained_LI_RSC = SM_SmoothedKFConstrained_LI_RSC;
-SMs_AZ02_day3.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
+% SMs_AZ02_day3.SM_LI = SM_LI;
+% SMs_AZ02_day3.SM_LI_counter = SM_LI_counter;
+% SMs_AZ02_day3.SM_LI_RSC = SM_LI_RSC;
+% SMs_AZ02_day3.SM_SC_LI_counter = SM_SC_LI_counter;
+% SMs_AZ02_day3.SM_SC_LI_RSC = SM_SC_LI_RSC;
+% SMs_AZ02_day3.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
+% SMs_AZ02_day3.SM_SmoothedKFConstrained_LI_RSC = SM_SmoothedKFConstrained_LI_RSC;
+% SMs_AZ02_day3.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
+
+% SMs_AZ02_day7.SM_LI = SM_LI;
+% SMs_AZ02_day7.SM_LI_counter = SM_LI_counter;
+% SMs_AZ02_day7.SM_LI_RSC = SM_LI_RSC;
+% SMs_AZ02_day7.SM_SC_LI_counter = SM_SC_LI_counter;
+% SMs_AZ02_day7.SM_SC_LI_RSC = SM_SC_LI_RSC;
+% SMs_AZ02_day7.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
+% SMs_AZ02_day7.SM_SmoothedKFConstrained_LI_RSC = SM_SmoothedKFConstrained_LI_RSC;
+% SMs_AZ02_day7.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
 
 %% Plot speed map after persistence with linear interpolation, on the cleaned and refined velocity data
 speedMap = zeros(img_size(1), img_size(2), img_size(3));
