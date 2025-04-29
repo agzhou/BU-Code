@@ -784,7 +784,7 @@ plotMIPs(BDM_LI , 0.4)
 %%
 BDM_SmoothedKFConstrained_LI = interpolatedDensityMap(bVelocityMSmoothedKFConstrainedMMS, img_size, startFrame, maxPixelDistPerFrame); % density map, linearly interpolated
 BDM_SmoothedKFConstrained_LI_RSC = BDM_SmoothedKFConstrained_LI;
-BDM_SmoothedKFConstrained_LI_RSC(BDM_SmoothedKFConstrained_LI_RSC <= 2) = 0;
+BDM_SmoothedKFConstrained_LI_RSC = thresholdMaps(BDM_SmoothedKFConstrained_LI_RSC, BDM_SmoothedKFConstrained_LI_RSC, 2, 500);
 % volumeViewer(BDM_SmoothedKFConstrained_LI_RSC .^ 0.4)
 plotMIPs(BDM_SmoothedKFConstrained_LI_RSC, 0.4)
 %%
@@ -816,8 +816,8 @@ title("bSum Maximum Intensity Projection from z = " + num2str(zrange_plot_MIP(1)
 
 %%
 BDM_LI_Rfn = BDM_LI;
-BDM_LI_Rfn(BDM_LI_Rfn <= 2) = 0;
-BDM_LI_Rfn(BDM_LI_Rfn > 500) = 0;
+BDM_LI_Rfn = thresholdMaps(BDM_LI_Rfn, BDM_LI_Rfn, 2, 500);
+
 
 volumeViewer(BDM_LI_Rfn .^ 0.4)
 
@@ -886,22 +886,19 @@ BDMs_AZ02_day7.BDM_SmoothedKFConstrained_LI_RSC = BDM_SmoothedKFConstrained_LI_R
 [SM_LI, SM_LI_counter] = interpolatedSpeedMap(bVelocityM, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
 % Refine the speed map
 SM_LI_RSC = SM_LI;
-SM_LI_RSC(SM_LI_counter <= 2) = 0; % Use the counter to remove voxels with small counts
-SM_LI_RSC = thresholdMaps(SM_LI_RSC, SM_LI_counter, 500);
+SM_LI_RSC = thresholdMaps(SM_LI_RSC, SM_LI_counter, 2, 500);
 
 % Constrained KF
 [SM_SmoothedKFConstrained_LI, SM_SmoothedKFConstrained_LI_counter] = interpolatedSpeedMap(bVelocityMSmoothedKFConstrainedMMS, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
 
 SM_SmoothedKFConstrained_LI_RSC = SM_SmoothedKFConstrained_LI;
-SM_SmoothedKFConstrained_LI_RSC(SM_SmoothedKFConstrained_LI_counter <= 2) = 0; % Use the counter to remove voxels with small counts
-SM_SmoothedKFConstrained_LI_RSC = thresholdMaps(SM_SmoothedKFConstrained_LI_RSC, SM_SmoothedKFConstrained_LI_counter, 500);
+SM_SmoothedKFConstrained_LI_RSC = thresholdMaps(SM_SmoothedKFConstrained_LI_RSC, SM_SmoothedKFConstrained_LI_counter, 2, 500);
 
 % Look at the smoothed constrained no KF data %%%%%%
 [SM_SC_LI, SM_SC_LI_counter] = interpolatedSpeedMap(bVelocityMSmoothedMMSConstrained, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
 
 SM_SC_LI_RSC = SM_SC_LI;
-SM_SC_LI_RSC(SM_SC_LI_counter <= 2) = 0; % Use the counter to remove voxels with small counts
-SM_SC_LI_RSC = thresholdMaps(SM_SC_LI_RSC, SM_SC_LI_counter, 500);
+SM_SC_LI_RSC = thresholdMaps(SM_SC_LI_RSC, SM_SC_LI_counter, 2, 500);
 
 %% Plot speed map
 
@@ -1459,7 +1456,8 @@ function plotSpeedMIPs(data, gamcp) % expects 4D input (x, y, z, frames)
 
 end
 
-function [Tmap] = thresholdMaps(map, counter, cutoff) % threshold a bubble density map or speed map to remove high counts (false positives)
+function [Tmap] = thresholdMaps(map, counter, lowerCutoff, upperCutoff) % threshold a bubble density map or speed map to remove low and high counts (noise and/or false positives)
     Tmap = map;
-    Tmap(counter > cutoff) = 0;
+    Tmap(counter <= lowerCutoff) = 0;
+    Tmap(counter >= upperCutoff) = 0;
 end
