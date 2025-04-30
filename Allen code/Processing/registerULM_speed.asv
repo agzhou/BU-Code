@@ -59,8 +59,7 @@ region_size = [8.8, 8.8, 8];
 
 % Bubble density map
 BDMs_registered = {baselineBDM_registered, hour1BDM_registered, day3BDM_registered, day7BDM};
-BDMs_registered_gamma = {baselineBDM_registered .^ 0.4, hour1BDM_registered .^ 0.5, day3BDM_registered .^ 0.5, day7BDM .^ 0.5};
-generateTiffStack_multi(BDMs_registered_gamma, region_size, 'hot', MIP_windowsize)
+generateTiffStack_multi(BDMs_registered, region_size, ', MIP_windowsize, speedRange)
 
 % Speed map
 generateTiffStack_multi(SMs_registered, region_size, cmap, MIP_windowsize, speedRange)

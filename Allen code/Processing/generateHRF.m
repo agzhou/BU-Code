@@ -1,0 +1,22 @@
+
+pps = P.daqrate; % Points per second
+% All below values are in [s] and converted according some sample rate
+delay_response = 1.5 * pps;
+delay_undershoot = 10 * pps;
+dispersion_response = 0.5 * pps;
+dispersion_undershoot = 1 * pps;
+ratio_response_to_undershoot = 6 * pps;
+onset = 0 * pps;
+kernel_length = 16 * pps;
+
+duration = 30 * pps;
+
+%%
+% temp to figure out what it does
+b = 1/10;
+c = 1;
+
+t = 0:duration;
+% HRF = 1 .* (t - delay_response).^2 .* exp(-b .* (t - delay_response).^c); % .* heaviside(t - delay_response)
+HRF = gampdf(t, 3, 5);
+figure; plot(HRF)

@@ -1,7 +1,7 @@
 % registerULM
 
 % load('D:\Allen\Data\AZ02 Stroke ULM RC15gV\03-17-2025 baseline right eye\ULM processing results\Pairing and tracking all files\bubble_density_maps.mat')
-load('D:\Allen\Data\AZ02 Stroke ULM RC15gV\03-17-2025 baseline right eye\ULM processing results\Pairing and tracking all files\bubble_density_maps_v2.mat')
+load('D:\Allen\Data\AZ02 Stroke ULM RC15gV\03-17-2025 baseline right eye\ULM processing results\Pairing and tracking all files\bubble_density_maps_v2.mat', 'BDMs_AZ02_baseline')
 load('D:\Allen\Data\AZ02 Stroke ULM RC15gV\04-15-25 1h left eye\ULM processing results\Pairing and tracking results\bubble_density_maps.mat', 'BDMs_AZ02_hour1')
 load('D:\Allen\Data\AZ02 Stroke ULM RC15gV\04-18-2025 3d right eye\ULM processing results\Pairing and tracking results\bubble_density_maps.mat', 'BDMs_AZ02_day3')
 load('D:\Allen\Data\AZ02 Stroke ULM RC15gV\04-22-2025 7d left eye\ULM processing results\Pairing and tracking results\bubble_density_maps.mat')
@@ -12,7 +12,7 @@ day3BDM = BDMs_AZ02_day3.BDM_LI_RSC;
 % baselineBDM = BDMs_AZ02_baseline.BDM_LI_RSC;
 baselineBDM = BDMs_AZ02_baseline.BDM_SmoothedKFConstrained_LI_RSC;
 day7BDM = BDMs_AZ02_day7.BDM_LI_RSC;
-day7BDMKF = BDMs_AZ02_day7.BDM_SmoothedKFConstrained_LI_RSC;
+% day7BDMKF = BDMs_AZ02_day7.BDM_SmoothedKFConstrained_LI_RSC;
 % fixed = fixed ./ max(fixed, [], 'all');
 % moving_orig = moving_orig ./ max(moving_orig, [], 'all');
 
@@ -22,13 +22,18 @@ day7BDMKF = BDMs_AZ02_day7.BDM_SmoothedKFConstrained_LI_RSC;
 % figure; hf = histogram(fixed(:), 10, 'BinWidth', 10)
 % figure; hm = histogram(moving_orig, 10, 'BinWidth', 10)
 %
-cutoff = 500;
-baselineBDM(baselineBDM > cutoff) = 0;
-hour1BDM(hour1BDM > cutoff) = 0;
-day3BDM(day3BDM > cutoff) = 0;
-day7BDM(day7BDM > cutoff) = 0;
-day7BDMKF(day7BDMKF > cutoff) = 0;
-
+lc = 2; % lower cutoff
+uc = 500; % upper cutoff
+% baselineBDM(baselineBDM > cutoff) = 0;
+% hour1BDM(hour1BDM > cutoff) = 0;
+% day3BDM(day3BDM > cutoff) = 0;
+% day7BDM(day7BDM > cutoff) = 0;
+% day7BDMKF(day7BDMKF > cutoff) = 0;
+baselineBDM = thresholdMaps(baselineBDM, baselineBDM, lc, uc);
+hour1BDM = thresholdMaps(hour1BDM, hour1BDM, lc, uc);
+day3BDM = thresholdMaps(day3BDM, day3BDM, lc, uc);
+day7BDM = thresholdMaps(day7BDM, day7BDM, lc, uc);
+ % = thresholdMaps(, , lc, uc);
 %% Adjust the histogram
 % moving = imhistmatchn(moving_orig, fixed);
 day3BDM = day3BDM;
@@ -59,8 +64,9 @@ figure; imagesc(squeeze(max(day7BDM(:, :, :), [], 1))' .^ mipPower); colormap ho
 % volshow(day7BDM .^ mipPower, Parent=viewerUnregistered,RenderingStyle="Isosurface", ...
 %     Colormap=[0 1 0],Alphamap=1);
 
-compareVolumes(hour1BDM, baselineBDM .^ 0.7)
-
+% compareVolumes(hour1BDM, baselineBDM .^ 0.7)
+compareVolumes(hour1BDM, day3BDM)
+% compareVolumes(hour1BDM, day7BDM_registered)
 %% imregdemons test
 
 [D, ird] = imregdemons(day3BDM, hour1BDM, 100, 'DisplayWaitbar', true, 'PyramidLevels', 3, 'AccumulatedFieldSmoothing', 3);
@@ -80,17 +86,26 @@ figure; imagesc(squeeze(max(ird(yr, :, :), [], 1))' .^ mipPower); colormap hot
 % [baselineBDM_registered, R_reg_baselineBDM] = rigidReg(baselineBDM .^ 0.7, hour1BDM);
 
 % [day3BDM_registered, R_reg_day3BDM] = rigidReg(day3BDM, hour1BDM);
+
+% [baselineBDM_registered, tf_baselineBDM] = rigidRegTF(baselineBDM, hour1BDM);
+% [day3BDM_registered, tf_day3BDM] = rigidRegTF(day3BDM, hour1BDM);
+% [day7BDM_registered, tf_day7BDM] = rigidRegTF(day7BDM, hour1BDM);
+
+% [baselineBDM_registered, tf_baselineBDM] = rigidRegTF(baselineBDM, day7BDM);
+% [hour1BDM_registered, tf_hour1BDM] = rigidRegTF(hour1BDM, day7BDM);
+[day3BDM_registered, tf_day3BDM] = rigidRegTF(day3BDM, day7BDM);
+
 % [day7BDM_registered, R_reg_day7BDM] = rigidReg(day7BDM, hour1BDM);
 
-figure; imagesc(squeeze(max(hour1BDM(yr, :, :), [], 1))' .^ 1); colormap hot
-figure; imagesc(squeeze(max(baselineBDM_registered(yr, :, :), [], 1))' .^ 0.7); colormap hot
+% figure; imagesc(squeeze(max(hour1BDM(yr, :, :), [], 1))' .^ 1); colormap hot
+% figure; imagesc(squeeze(max(baselineBDM_registered(yr, :, :), [], 1))' .^ 0.7); colormap hot
 % figure; imagesc(squeeze(max(day7BDM_registered(yr, :, :), [], 1))' .^ 1); colormap hot
 
 
 %% Trying imregtform
 
 % test = imregtform(moving, fixed, 'rigid', optimizer, metric, 'DisplayOptimization', true);
-movingRegistered = imwarp(day3BDM, moving_registered, "OutputView",imref3d(size(hour1BDM))); % apply the transformation
+movingRegistered = imwarp(day3BDM, moving_registered, "OutputView", imref3d(size(hour1BDM))); % apply the transformation
 % movingRegistered = imwarp(vol2, test);
 %
 % figure; imagesc(squeeze(max(test(yr, :, :), [], 1))' .^ 1); colormap hot
@@ -103,7 +118,29 @@ figure; imagesc(squeeze(max(moving_registered(yr, :, :), [], 1))' .^ 0.5); color
 
 %% Check the results of imregister
 
-compareVolumes(hour1BDM, day7BDM_registered)
+% compareVolumes(hour1BDM, baselineBDM_registered .^ 0.5)
+% compareVolumes(hour1BDM, day7BDM_registered)
+% compareVolumes(hour1BDM, day3BDM_registered)
+% compareVolumes(hour1BDM, day7BDM_registered)
+
+compareVolumes(day7BDM, baselineBDM_registered .^ 0.5)
+compareVolumes(day7BDM, hour1BDM_registered)
+compareVolumes(day7BDM, day3BDM_registered)
+
+%% Save registering results
+savepath = 'D:\Allen\Data\AZ02 Stroke ULM RC15gV\baseline to day 7 comparison\Registration to day 7\';
+[optimizer, metric] = imregconfig('monomodal');
+% optimizer.GradientMagnitudeTolerance = 1e-7;
+optimizer.MaximumIterations = 10000; %%%%%%%%%%
+% optimizer.MaximumIterations = 1000;
+optimizer.MinimumStepLength = 1e-7;
+% save([savepath, 'registration_to_day7.mat'], 'optimizer', 'metric')
+% save([savepath, 'registration_to_day7.mat'], 'baselineBDM_registered', 'tf_baselineBDM', '-append')
+% save([savepath, 'registration_to_day7.mat'], 'hour1BDM_registered', 'tf_hour1BDM', '-append')
+% save([savepath, 'registration_to_day7.mat'], 'day3BDM_registered', 'tf_day3BDM', '-append')
+save([savepath, 'registration_to_day7.mat'], 'day7BDM', '-append')
+
+
 
 %%
 
@@ -140,6 +177,24 @@ function [img_reg, R_reg] = rigidReg(img, fixed)
     toc
 end
 
+% Get the registered image and the rigid transformation for registering
+% 'img' to 'fixed'
+function [img_reg, tform] = rigidRegTF(img, fixed)
+    [optimizer, metric] = imregconfig('monomodal');
+    % optimizer.GradientMagnitudeTolerance = 1e-7;
+    optimizer.MaximumIterations = 10000; %%%%%%%%%%
+    % optimizer.MaximumIterations = 1000;
+    optimizer.MinimumStepLength = 1e-7;
+    
+    % Inputs: moving, fixed, transform type, optimizer, metric
+
+    tic
+    [tform] = imregtform(img, fixed, 'rigid', optimizer, metric, 'DisplayOptimization', true);
+    img_reg = imwarp(img, tform, "OutputView", imref3d(size(fixed)));
+    disp('Registration done')
+    toc
+end
+
 function compareVolumes(vol1, vol2) % Can change this so it has a cell array input and goes through more than 2 volumes
 
     viewerThresholded = viewer3d(BackgroundColor = "black", BackgroundGradient="off");
@@ -148,4 +203,10 @@ function compareVolumes(vol1, vol2) % Can change this so it has a cell array inp
     volshow(vol2 .^ 1, Parent=viewerThresholded, RenderingStyle = "Isosurface", ...
         Colormap=[0 1 0],Alphamap=1);
 
+end
+
+function [Tmap] = thresholdMaps(map, counter, lowerCutoff, upperCutoff) % threshold a bubble density map or speed map to remove low and high counts (noise and/or false positives)
+    Tmap = map;
+    Tmap(counter <= lowerCutoff) = 0;
+    Tmap(counter >= upperCutoff) = 0;
 end

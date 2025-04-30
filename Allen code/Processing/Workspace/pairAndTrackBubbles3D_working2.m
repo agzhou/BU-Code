@@ -916,7 +916,7 @@ volumeViewer(SM_LI_Rfn)
 
 volumeViewer(SM_SmoothedKFConstrained_LI_RSC)
 
-%%
+%% Make speed map MIPs
 % [cmap, ~, ~, ~, ~] = Colormaps_fUS;
 % [~, ~, cmap, ~, ~] = Colormaps_fUS;
 % cmap = 'turbo';

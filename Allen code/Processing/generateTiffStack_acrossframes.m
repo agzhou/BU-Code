@@ -52,6 +52,7 @@ function generateTiffStack_acrossframes(volumeData, varargin)
         planeTemp = squeeze(max(volumeData(mwr, :, :, f), [], 1));
 
         imagesc(squeeze(planeTemp)')
+        title("Frame " + num2str(f))
         if showColorbar
             colorbar
         end

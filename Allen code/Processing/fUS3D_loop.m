@@ -341,9 +341,10 @@ rCBV = CBViallSF ./ CBViallSF(:, :, :, 1); % Measure relative to the "baseline",
 % newsize(mdim) = 1; % Set the size of the new variable to 1
 % CBViMIPStack = zeros(newsize);
 CBViMIPStack = squeeze(max(CBViallSF(30:50, :, :, :), [], 1));
-%%
-yr = 50:55;
+%% Check different MIPs across superframes
+yr = 30:40;
 generateTiffStack_acrossframes(CBViallSF .^ 0.7, [8.8, 8.8, 8], 'hot', yr)
+% generateTiffStack_acrossframes(CBViallSF .^ 1, [8.8, 8.8, 8], 'hot', yr)
 %% Plot the rCBV at some point
 % Increasing y is going towards the back of the brain
 % Increasing x is going from the right to the left of the brain if we align
@@ -351,12 +352,86 @@ generateTiffStack_acrossframes(CBViallSF .^ 0.7, [8.8, 8.8, 8], 'hot', yr)
 
 % pt = [40, 45, 61];
 pt = [40, 56, 26];
-test = squeeze(rCBV(pt(1), pt(2), pt(3), :));
-test_ma = movmean(test, 1);
+high_values_risingedges = squeeze(rCBV(pt(1), pt(2), pt(3), :));
+test_ma = movmean(high_values_risingedges, 1);
 % figure; plot(test, '-o')
 figure; plot(test_ma, '-o')
 title("rCBV at " + num2str(pt(1)) + ", " +  num2str(pt(2)) + ", " +num2str(pt(3)))
 xlabel('')
 ylabel('rCBV')
 
+%% Separate each trial
+ah = 3; % Approximate a cutoff value for analog high
+figure; plot(TD.airPuffOutput)
+ind_above_ah = find(TD.airPuffOutput > ah); % Get indices of the air puff output above analog high
+ind_shift_below_ah = find(TD.airPuffOutput(ind_above_ah - 1) < ah); % See which indices above analog high have an analog low when shifted by -1 (rising edge)
+ind_rising_edge = ind_above_ah(ind_shift_below_ah); % Store the original indices for the rising edges
+% hold on
+% plot(ind_rising_edge, ones(size(ind_rising_edge)) .* 5, 'o')
+% hold off
+
+stim_starts_gap = (P.Mcr_fcp.apis.seq_length_s - P.Mcr_fcp.apis.stim_length_s) * P.daqrate; % How long we expect the stim gap to be between the end of one stim to the start of the next
+stim_prestart_baseline = (P.Mcr_fcp.apis.delay_time_ms / 1e3) * P.daqrate; % The duration between the baseline period and the corresponding stim start
+stim_starts = ind_rising_edge([true; diff(ind_rising_edge) > stim_starts_gap]); % Add a 1/true at the beginning index for the first stim
+hold on
+plot(stim_starts, ones(size(stim_starts)) .* 5, 'o') % Plot the calculated start points of each stim period
+hold off
+
+clearvars ind_above_ah ind_shift_below_ah ind_rising_edge
+% figure; plot(TD.sfTimeTagsDAQStart_adj) % plot the time tags for each superframe, adjusted to match the DAQ sampling rate
+
+trial_windows = cell(size(stim_starts)); % Cell array of size (# trials, 1). Each cell contains the time points (according to the DAQ rate) that correspond to that trial.
+trial_sf = cell(size(trial_windows));    % Cell array of size (# trials, 1). Each cell contains the superframe indices that started within that trial.
+
+sfStarts = (TD.sfTimeTagsDAQStart_adj - TD.sfWidth_adj); % Adjust the superframe time tags so each index is at the start of the superframe acquisition
+
+% Go through each trial within the run and assign the trial timepoints and the corresponding superframe indices
+for trial = 1:length(trial_windows)
+    trial_windows{trial} = stim_starts(trial) - stim_prestart_baseline : stim_starts(trial) + stim_starts_gap;
+
+    trial_sf{trial} = find(sfStarts >= trial_windows{trial}(1) & sfStarts <= trial_windows{trial}(end));
+end
+clearvars trial
+
+%% Assign the superframe trial binning to CBVi and PDI
+trial_CBVi = cell(size(trial_sf));
+trial_PDI = cell(size(trial_sf)); % use the all frequency PDI
+minNumPts = Inf;
+for trial = 1:length(trial_sf)
+    trial_CBVi{trial} = CBViallSF(:, :, :, trial_sf{trial});
+    trial_PDI{trial} = PDIallSF{3}(:, :, :, trial_sf{trial});
+    minNumPts = min(minNumPts, length(trial_sf{trial})); % Get the minimum number of measurement points across all trials
+end
+
+
+%% Trial averaging
+temp_size = size(trial_CBVi{1}); temp_size(4) = minNumPts; % NEED TO THINK ABOUT THE ALIGNMENT
+trialAvg_CBVi = zeros(temp_size);
+clearvars temp_size
+
+for trial = 1:length(trial_sf)
+    trialAvg_CBVi = trialAvg_CBVi + trial_CBVi{trial}(:, :, :, 1:minNumPts);
+end
+trialAvg_CBVi = trialAvg_CBVi ./ length(trial_sf);
+
+% HRF_analytical = ;
+% generateTiffStack_multi([{trialAvg_CBVi(:, :, :, 10) .^ 0.7}], [8.8, 8.8, 8], 'hot', 5)
+% yr = 30:40;
+yr = 1:80;
+generateTiffStack_acrossframes(trialAvg_CBVi .^ 0.7, [8.8, 8.8, 8], 'hot', yr)
+figure; imagesc(squeeze(max(trialAvg_CBVi(1:80, :, :, 1), [], 1))'); colormap hot
+
+%% Plot the CBVi trial average at some point
+% Increasing y is going towards the back of the brain
+% Increasing x is going from the right to the left of the brain if we align
+% with -y (look towards the front)
+
+pt = [35, 26, 33];
+high_values_risingedges = squeeze(trialAvg_CBVi(pt(1), pt(2), pt(3), :));
+test_ma = movmean(high_values_risingedges, 1);
+% figure; plot(test, '-o')
+figure; plot(test_ma, '-o')
+title("CBVi at " + num2str(pt(1)) + ", " +  num2str(pt(2)) + ", " +num2str(pt(3)))
+xlabel('')
+ylabel('CBVi')
 %% Helper functions
