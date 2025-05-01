@@ -26,7 +26,7 @@ savepath = [savepath, '\'];
 addpath([cd, '\Speckle tracking']) % add path for the g1 calculation functions
 
 % Load the timing data
-[timingFilePathFN, timingFilePath] = uigetfile([IQpath, '..\Timing data'], 'Select the timing data');
+[timingFilePathFN, timingFilePath] = uigetfile([IQpath, '..\Timing data\TD.mat'], 'Select the timing data');
 timingFilePath = [timingFilePath, timingFilePathFN];
 load(timingFilePath)
 % load(timingFilePath, 'acqStart', 'airPuffOutput', 'daqStartTimetag', 'sfTimeTags', 'sfTimeTagsDAQStart', 'sfTimeTagsDAQStart_adj', 'sfWidth', 'sfWidth_adj', 'timeStamp')
@@ -403,6 +403,39 @@ for trial = 1:length(trial_sf)
     minNumPts = min(minNumPts, length(trial_sf{trial})); % Get the minimum number of measurement points across all trials
 end
 
+%% Get the max CBVi or PDI etc. within each trial's stimulation period
+trial_sf_stimon = cell(size(trial_windows));    % Cell array of size (# trials, 1). Each cell contains the superframe indices that correspond to the stimulus period within that trial.
+trial_sf_baseline = cell(size(trial_windows));    % Cell array of size (# trials, 1). Each cell contains the superframe indices that correspond to the baseline period within that trial.
+stim_length = P.Mcr_fcp.apis.stim_length_s * P.daqrate; % Stim length, adjusted for the DAQ rate
+
+% Get the superframe indices corresponding to the baseline and stim periods
+% within each trial
+for trial = 1:length(trial_windows)
+    trial_sf_baseline{trial} = find(sfStarts >= trial_windows{trial}(1) & sfStarts <= (trial_windows{trial}(1) + stim_prestart_baseline));
+    trial_sf_stimon{trial} = find(sfStarts >= (trial_windows{trial}(1) + stim_prestart_baseline) & sfStarts <= (trial_windows{trial}(1) + stim_prestart_baseline + stim_length));
+end
+clearvars trial
+
+% Store the actual CBVi or PDI etc. values within the baseline and stim periods
+max_CBVi_stimon = cell(size(trial_sf_stimon));
+avg_CBVi_baseline = cell(size(trial_sf_baseline));
+for trial = 1:length(trial_windows)
+    avg_CBVi_baseline{trial} = mean(CBViallSF(:, :, :, trial_sf_baseline{trial}), 4);
+    max_CBVi_stimon{trial} = max(CBViallSF(:, :, :, trial_sf_stimon{trial}), [], 4);
+end
+
+% Calculate the ratio of the max during the stim period to the mean during
+% the baseline
+temp_size = size(avg_CBVi_baseline{1});
+trialAvg_CBVi_stimon_vs_baseline = zeros(temp_size);
+clearvars temp_size
+
+for trial = 1:length(trial_sf)
+    trialAvg_CBVi_stimon_vs_baseline = trialAvg_CBVi_stimon_vs_baseline + max_CBVi_stimon{trial} ./ avg_CBVi_baseline{trial};
+end
+trialAvg_CBVi_stimon_vs_baseline = trialAvg_CBVi_stimon_vs_baseline ./ length(trial_sf);
+
+generateTiffStack_multi({trialAvg_CBVi_stimon_vs_baseline}, [8.8, 8.8, 8], 'hot', MIP_windowsize)
 
 %% Trial averaging
 temp_size = size(trial_CBVi{1}); temp_size(4) = minNumPts; % NEED TO THINK ABOUT THE ALIGNMENT
@@ -418,6 +451,20 @@ trialAvg_CBVi = trialAvg_CBVi ./ length(trial_sf);
 % generateTiffStack_multi([{trialAvg_CBVi(:, :, :, 10) .^ 0.7}], [8.8, 8.8, 8], 'hot', 5)
 % yr = 30:40;
 yr = 1:80;
-generateTiffStack_acrossframes(trialAvg_CBVi .^ 0.7, [8.8, 8.8, 8], 'hot', yr)
+% generateTiffStack_acrossframes(trialAvg_CBVi .^ 0.7, [8.8, 8.8, 8], 'hot', yr)
+figure; imagesc(squeeze(max(trialAvg_CBVi(1:80, :, :, 1), [], 1))'); colormap hot
 
+%% Plot the CBVi trial average at some point
+% Increasing y is going towards the back of the brain
+% Increasing x is going from the right to the left of the brain if we align
+% with -y (look towards the front)
+
+pt = [35, 26, 33];
+high_values_risingedges = squeeze(trialAvg_CBVi(pt(1), pt(2), pt(3), :));
+test_ma = movmean(high_values_risingedges, 1);
+% figure; plot(test, '-o')
+figure; plot(test_ma, '-o')
+title("CBVi at " + num2str(pt(1)) + ", " +  num2str(pt(2)) + ", " +num2str(pt(3)))
+xlabel('')
+ylabel('CBVi')
 %% Helper functions

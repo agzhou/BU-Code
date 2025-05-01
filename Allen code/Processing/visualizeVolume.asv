@@ -1,60 +1,25 @@
 % function visualizeVolume(volumeData)
-%% Plot a bubble density map and make a rotating 3D view gif
+
 % h = volshow(day7BDM, 'RenderingStyle', 'MaximumIntensityProjection')
 % h = volshow(day7BDM, 'RenderingStyle', 'GradientOpacity')
 % h = volshow(day7BDM, objectConfig, 'Alphamap', 'linear', 'BackgroundColor')
-
-filename = 'D:\Allen\Data\AZ02 Stroke ULM RC15gV\04-22-2025 7d left eye\ULM processing results\Pairing and tracking results\Bubble density map\rotating_view.gif';
-
 v = viewer3d(BackgroundColor="white", ...
     BackgroundGradient="off", ...
-    OrientationAxes="on");
-hFig = v.Parent;
-% startPosition = v.CameraPosition;
-% v.CameraPosition = startPosition;
-% v.CameraUpVector = [0 -1 -0.5];
-v.CameraUpVector = [1 -1 -1];
-v.CameraUpVector = [0 0 -1];
-% startPosition = v.CameraPosition;
-v.CameraZoom = 1.5;
+    OrientationAxes="off");
 sx = 55;
 sy = sx;
 sz = 28.3;
-sn = sqrt(sx^2 + sy ^2 + sz ^2);
-sx = sx / sn; sy = sy / sn; sz = sz / sn;
 A = [sx 0 0 0; 0 sy 0 0; 0 0 sz 0; 0 0 0 1];
 viewertform = affinetform3d(A);
-
 d = volshow(day7BDM, 'RenderingStyle', 'MaximumIntensityProjection', Parent=v, Transformation=viewertform);
-% cmap = colormap_ULM;
-% d = volshow(day7SM, 'RenderingStyle', 'VolumeRendering', 'Colormap', cmap, Parent=v, Transformation=viewertform);
 
-%
 % Make a rotating camera view
 numberOfFrames = 12;
 vec = linspace(0, 2*pi, numberOfFrames)';
-sz = size(day7BDM);
-% dist = sqrt(sz(1)^2 + sz(2)^2 + sz(3)^2);
-dist = sqrt(sum((startPosition - v.CameraTarget) .^2));
-myPosition = v.CameraTarget + ([cos(vec) sin(vec) ones(size(vec))]*dist);
+dist = sqrt(sz(1)^2 + sz(2)^2 + sz(3)^2);
+myPosition = center + ([cos(vec) sin(vec) ones(size(vec))]*dist);
 
-for idx = 1:length(vec)
-    % Update the current view
-    v.CameraPosition = myPosition(idx, :);
-    % v.CameraPosition = startPosition - myPosition(idx, :);
-    % Capture the image using the getframe function
-    I = getframe(hFig);
-    [indI,cm] = rgb2ind(I.cdata,256);
-    % Write the frame to the GIF file
-    if idx==1
-        % Do nothing. The first frame displays only the viewer, not the
-        % volume.
-    elseif idx == 2
-        imwrite(indI,cm,filename,"gif",Loopcount=inf,DelayTime=0)
-    else
-        imwrite(indI,cm,filename,"gif",WriteMode="append",DelayTime=0)
-    end
-end
+
 
 %%
 v1f = abs(IQf(:, :, :, 1));

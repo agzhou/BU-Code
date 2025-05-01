@@ -11,5 +11,17 @@ kernel_length = 16 * pps;
 
 duration = 30 * pps;
 
-t = linspace(0, duration, )
-HRF = 
+%%
+% temp to figure out what it does
+b = 1/10;
+c = 1;
+
+t = 0:duration;
+% HRF = 1 .* (t - delay_response).^2 .* exp(-b .* (t - delay_response).^c); % .* heaviside(t - delay_response)
+% HRF = gampdf(t, 3, 5);
+
+alpha = ;
+lambda = 0.001;
+% HRF = t .^ (alpha-1) .* exp(-lambda .* t) .* lambda .^ alpha ./ factorial(alpha-1);
+HRF = (t - delay_response) .^ (alpha-1) .* exp(-lambda .* (t - delay_response)) .* lambda .^ alpha ./ factorial(alpha-1);
+figure; plot(HRF)
