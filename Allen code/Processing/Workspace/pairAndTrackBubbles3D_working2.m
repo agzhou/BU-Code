@@ -787,9 +787,11 @@ BDM_SmoothedKFConstrained_LI_RSC = BDM_SmoothedKFConstrained_LI;
 BDM_SmoothedKFConstrained_LI_RSC = thresholdMaps(BDM_SmoothedKFConstrained_LI_RSC, BDM_SmoothedKFConstrained_LI_RSC, 2, 500);
 % volumeViewer(BDM_SmoothedKFConstrained_LI_RSC .^ 0.4)
 plotMIPs(BDM_SmoothedKFConstrained_LI_RSC, 0.4)
-%%
+
+%% Plot the interpolated density map with video
 actualSize = [lateral_width, lateral_width, axial_depth];
-test_dmi_v = interpolatedDensityMapWithVideo(bVelocityM, img_size, startFrame, maxPixelDistPerFrame, actualSize); % test density map interpolated
+BDM_video = interpolatedDensityMapWithVideo(bVelocityMSmoothedMMSConstrained, img_size, startFrame, maxPixelDistPerFrame, actualSize); % test density map interpolated
+% BDM_video = interpolatedDensityMapWithVideo(bVelocityM, img_size, startFrame, maxPixelDistPerFrame, actualSize); % test density map interpolated
 
 %% MIP plots for the interpolation test
 % yrange_plot_MIP = 75:85;
@@ -1335,7 +1337,7 @@ function [densityMapInterpolated] = interpolatedDensityMapWithVideo(bVelocityM, 
     vo = VideoWriter([savepath, 'volumeVideo']);
 
     vo.Quality = 100;
-    vo.FrameRate = 1;
+    vo.FrameRate = 30;
     open(vo);
 
     vf = figure;
@@ -1345,9 +1347,9 @@ function [densityMapInterpolated] = interpolatedDensityMapWithVideo(bVelocityM, 
     V.BackgroundColor = [1, 1, 1];  % Make background white
     V.ScaleFactors(3) = size(densityMapInterpolated, 1) / size(densityMapInterpolated, 3) * actualSize(1) / actualSize(3); % scale with # pixels and region size
 %     V.CameraPosition = V.CameraPosition ./ 2;
-    V.CameraPosition = [2.1161 -3.7332 -0.1764];
-    V.CameraUpVector = [0.1853 -0.3160 -0.9305];
-    V.CameraViewAngle = 15;
+%     V.CameraPosition = [2.1161 -3.7332 -0.1764];
+%     V.CameraUpVector = [0.1853 -0.3160 -0.9305];
+%     V.CameraViewAngle = 15;
 
 %     plotPower = 1;
 
@@ -1427,17 +1429,20 @@ function [densityMapInterpolated] = interpolatedDensityMapWithVideo(bVelocityM, 
     %     clear bvTemp
         
         %%%%%%%%%%%%%%%%
-        if mod(ti, 1000) == 0 % only get a video frame every N frames
+        if mod(ti, 100) == 0 % only get a video frame every N frames
             disp(ti)
-            V = volshow(densityMapInterpolatedCounter .^ 0.4);
+            V = volshow(densityMapInterpolatedCounter .^ 0.5, 'Renderer', 'MaximumIntensityProjection');
 
-            V.Alphamap(1:100) = 0;          % Change transparency
+%             V.Alphamap(1:100) = 0;          % Change transparency
             V.BackgroundColor = [1, 1, 1];  % Make background white
             V.ScaleFactors(3) = size(densityMapInterpolated, 1) / size(densityMapInterpolated, 3) * actualSize(1) / actualSize(3); % scale with # pixels and region size
         %     V.CameraPosition = V.CameraPosition ./ 2;
-            V.CameraPosition = [2.1161 -3.7332 -0.1764];
-            V.CameraUpVector = [0.1853 -0.3160 -0.9305];
+%             V.CameraPosition = [2.1161 -3.7332 -0.1764];
+%             V.CameraUpVector = [0.1853 -0.3160 -0.9305];
+            V.CameraUpVector = [0, 0, -1]; % Flip the z axis
             V.CameraViewAngle = 15;
+            V.ScaleFactors(3) = size(densityMapInterpolated, 1) / size(densityMapInterpolated, 3) * actualSize(1) / actualSize(3); % scale with # pixels and region size
+            V.ScaleFactors = V.ScaleFactors .* 1.5; % zoom
 
             cv = getframe(vf);     % get the current volume
             rgb = frame2im(cv);      % convert the frame to rgb data
