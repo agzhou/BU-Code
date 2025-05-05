@@ -76,14 +76,9 @@ addpath([cd, '\toolbox_nlmeans_version2'])
 %% Other parameters for processing the data
 
 % Region of interest
-% xrange = int16(36:50);
-% yrange = int16(30:50);
-% zrange = int16(25:45);
-
-xrange = int16(30:60);
-% yrange = int16(14:34);
-yrange = int16(14:44);
-zrange = int16(30:60);
+xrange = int16(36:50);
+yrange = int16(30:50);
+zrange = int16(25:45);
 
 % framerange = 1:200;
 % framerange = 1:size(IQf, 3);

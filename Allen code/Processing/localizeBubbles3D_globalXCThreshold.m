@@ -73,7 +73,9 @@ function [centers, refIQs, XC] = localizeBubbles3D_globalXCThreshold(IQf, refPSF
 %     y_mip_range = 60:100;
 %     figure; imagesc(abs(squeeze(max(XC(y_mip_range, :, :, 1), [], 1))' .^ 1))
 %     figure; imagesc(abs(squeeze(max(XCt(y_mip_range, :, :, 1), [], 1))' .^ 1))
-    %% attempt to graph centroids
+
+    
+   %% attempt to graph centroids
 
 %     xpts = [];
 %     ypts = [];

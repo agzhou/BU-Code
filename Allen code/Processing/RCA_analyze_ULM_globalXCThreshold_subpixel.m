@@ -9,6 +9,10 @@
 % clutter
 
 % ...
+
+% **** Make sure that the current directory is set to the directory where this
+% script is located!!! ****
+
 %% Use parallel processing for speed
 % https://www.mathworks.com/matlabcentral/answers/91744-how-can-i-check-if-matlabpool-is-running-when-using-parallel-computing-toolbox
 
@@ -22,7 +26,7 @@ end
 %% Load parameters and make folder for saving the processed data
 
 % Get data path of the reconstructed IQ data
-datapath = uigetdir('G:\Allen\Data\', 'Select the IQ data path');
+datapath = uigetdir('F:\Allen\Data\', 'Select the IQ data path');
 datapath = [datapath, '\'];
 
 % Load acquisition parameters: params.mat
@@ -39,7 +43,7 @@ end
 
 % Prompt for parameter user input
 parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Image refinement factor - x', 'Image refinement factor - y', 'Image refinement factor - z', 'XC Threshold Factor', 'x pixel spacing [um]', 'y pixel spacing [um]', 'z pixel spacing [um]'};
-parameterDefaults = {'1', '', '20', '150', '2', '2', '2', '0.25', num2str(PData.PDelta(1) * P.wl * 1e6), num2str(PData.PDelta(2) * P.wl * 1e6), num2str(PData.PDelta(3) * P.wl * 1e6)};
+parameterDefaults = {'1', '', '20', '150', '2', '2', '2', '0.2', num2str(PData.PDelta(1) * P.wl * 1e6), num2str(PData.PDelta(2) * P.wl * 1e6), num2str(PData.PDelta(3) * P.wl * 1e6)};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % define # of files manually for now
@@ -58,15 +62,8 @@ xpix_spacing = str2double(parameterUserInput{9});
 ypix_spacing = str2double(parameterUserInput{10});
 zpix_spacing = str2double(parameterUserInput{11});
 
-% IQfolderName = 'IQ Data - Verasonics Recon\'; % 'IQ data\'
-% saveFolderName = 'Processed Data 03-24-2025\';
-% savepath = [datapath, saveFolderName];
-% mkdir([datapath, saveFolderName])
-% savepath = ['F:\Allen\Data\03-17-2025 AZ02 ULM\RC15gV\run 2 right eye\', saveFolderName];
-% mkdir(savepath)
-savepath = uigetdir('G:\Allen\Data\', 'Select the save path');
+savepath = uigetdir(datapath, 'Select the save path');
 savepath = [savepath, '\'];
-% savepath = 'F:\Allen\Data\01-29-2025 AZ001 ULM\RC15gV\run 1 left eye\FMAS Processed Data\';
 
 filename_structure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 
@@ -76,19 +73,14 @@ addpath([cd, '\toolbox_nlmeans_version2'])
 %% Other parameters for processing the data
 
 % Region of interest
-% xrange = int16(36:50);
-% yrange = int16(30:50);
-% zrange = int16(25:45);
-
-xrange = int16(30:60);
-% yrange = int16(14:34);
-yrange = int16(14:44);
-zrange = int16(30:60);
+% xrange = int16(1:80);
+% yrange = int16(1:80);
+% zrange = int16(1:142);
 
 % framerange = 1:200;
 % framerange = 1:size(IQf, 3);
 % range = {xrange, yrange, zrange, framerange};
-range = {xrange, yrange, zrange};
+% range = {xrange, yrange, zrange};
 
 % Load and refine simulated PSF
 if ~exist('PSF', 'var')
@@ -100,8 +92,7 @@ if ~exist('PSF', 'var')
 end
 
 % PSFs = PSF(190:210, 118:138, :); % PSF section
-% PSFs = PSF(30:50, 30:50, 92:110); % PSF section
-PSFs = PSF(37:44, 37:44, 98:104); % PSF section
+PSFs = PSF(30:50, 30:50, 92:110); % PSF section
 refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) * imgRefinementFactor(2), size(PSFs, 3) * imgRefinementFactor(3)]);
 % volumeViewer(abs(refPSF))
 
@@ -110,10 +101,9 @@ refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) 
 % test = zeros([s(1:3) .* 4, s(4)]);
 %% Process the data
 
-% for filenum = startFile:endFile
-% for filenum = 50
-filenum = 50;
-% for filenum = [63:79, 81:endFile]
+for filenum = startFile:endFile
+% for filenum = 122:endFile
+% for filenum = 79:-1:15
     tic
 %     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
     load([datapath, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
@@ -124,6 +114,10 @@ filenum = 50;
     
 %     if filenum == 1
         [xp, yp, zp, nf] = size(IQ);
+        xrange = int16(1:xp);
+        yrange = int16(1:yp);
+        zrange = int16(1:zp);
+        range = {xrange, yrange, zrange};
         range{4} = int16(1:nf); % set frame range after rolling on the first file
 %     end
 
@@ -137,73 +131,21 @@ filenum = 50;
     [IQf] = applySVs2D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
     disp('SVD filtered images put together')
 
-%     clear PP EVs V_sort
+    clear PP EVs V_sort
 
-    % Temp variable to plot the sectioned filtered IQ
-    IQfs = IQf(range{1}, range{2}, range{3}, 10);
-    volumeViewer(abs(IQfs))
 %     IQd = diff(IQ, 1, 4); % Frame subtraction
 
-    [centers, refIQs, XC] = localizeBubbles3D_globalXCThreshold(IQf, refPSF, range, imgRefinementFactor, XCThreshold);
-    
+    [centersRC, ~, ~] = localizeBubbles3D_globalXCThreshold_subpixel(IQf, refPSF, range, imgRefinementFactor, XCThreshold);
+
 %     [coords, img_size, XCThresholdsAdaptive] = localizeBubbles3D_chunk(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
 
     %     save([savepath, 'IQf-', num2str(filenum)], 'IQf', "-v6")
 
 %     save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'centroidCoordinates', "-v6")
-    savefast([savepath, 'centers-', num2str(filenum)], 'centers')
+    savefast([savepath, 'centers-', num2str(filenum)], 'centersRC')
 %     savefast([savepath, 'coords-', num2str(filenum)], 'coords', 'img_size', 'XCThresholdsAdaptive')
 
     disp(strcat("Centroid finding done: file ", num2str(filenum)))
     toc
-% end
-% save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'XCThreshold', 'xpix_spacing', 'ypix_spacing', 'zpix_spacing')
-
-%% test bubble accumulation
-for filenum = 63:100
-    load([savepath, 'centers-', num2str(filenum)])
-    if filenum == 63
-        bubbleAccum = sum(centers, 4);
-    else
-        bubbleAccum = bubbleAccum + sum(centers, 4);
-    end
 end
-volumeViewer(bubbleAccum)
-figure; imagesc(squeeze(abs(sum(bubbleAccum, 1)))' .^ 1); colormap hot
-
-%% Try radial symmetry localization on a small region
-% sec = XC(22:33, 11:22, 12:20, 1); % section the XC
-sec = XC(:, :, :, 1);
-sect = sec; sect(sect <= XCThreshold) = 0; % section the thresholded XC
-secbinary = sect; secbinary(secbinary > 0) = 1;
-size_sec = size(sec);
-%%
-CC = bwconncomp(secbinary, 6);
-numBubbles = CC.NumObjects;
-% for bi = 1:numBubbles% bubble index
-for bi = 1
-%     min
-    linearInd = CC.PixelIdxList{bi};
-    [ssy, ssx, ssz] = ind2sub(size_sec, linearInd); % subscripts
-%     bubbleSection = sec(linearInd);
-%     bubbleSection = sec(ssy, ssx, ssz); 
-%     yr = min(ssy):max(ssy);
-%     xr = min(ssx):max(ssx);
-%     zr = min(ssz):max(ssz);
-%     g = ndgrid(yr, xr, zr);
-    g = ndgrid(ssy, ssx, ssz);
-    bubbleSection = sec(g);
-    % need to take the min and max to create a rectangular region...
-end
-
-%%
-% [rc, sigma] = radialcenter3D(sec, zpix_spacing/xpix_spacing);
-
-figure; imagesc(squeeze(max(sec, [], 1))); title('MIP across y'); xlabel('x'); ylabel('z')
-figure; imagesc(squeeze(max(sec, [], 2))); title('MIP across x'); xlabel('y'); ylabel('z')
-figure; imagesc(squeeze(max(sec, [], 3))); title('MIP across z'); xlabel('x'); ylabel('y')
-% volumeViewer(sec)
-%% 
-% test = XCt(1:30, :, 1:30, 1);
-% test = XC(1:30, :, 1:30, 1);
-[rc, sigma] = radialcenter3D(test, zpix_spacing/xpix_spacing);
+save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'XCThreshold', 'xpix_spacing', 'ypix_spacing', 'zpix_spacing')

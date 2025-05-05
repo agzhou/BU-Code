@@ -52,15 +52,15 @@ compareVolumes(day7SM, SMs_registered{3})
 %% Save MIPs
 
 cmap = colormap_ULM;
-speedRange = [0, 50];
+% speedRange = [0, 50];
+speedRange = [0, 5];
 MIP_windowsize = 10;
 region_size = [8.8, 8.8, 8];
-% speedMaps = {baselineBDM_registered, hour1SM, day3BDM_registered};
 
 % Bubble density map
-BDMs_registered = {baselineBDM_registered, hour1BDM_registered, day3BDM_registered, day7BDM};
-BDMs_registered_gamma = {baselineBDM_registered .^ 0.4, hour1BDM_registered .^ 0.5, day3BDM_registered .^ 0.5, day7BDM .^ 0.5};
-generateTiffStack_multi(BDMs_registered_gamma, region_size, 'hot', MIP_windowsize)
+% BDMs_registered = {baselineBDM_registered, hour1BDM_registered, day3BDM_registered, day7BDM};
+% BDMs_registered_gamma = {baselineBDM_registered .^ 0.4, hour1BDM_registered .^ 0.5, day3BDM_registered .^ 0.5, day7BDM .^ 0.5};
+% generateTiffStack_multi(BDMs_registered_gamma, region_size, 'hot', MIP_windowsize)
 
 % Speed map
 generateTiffStack_multi(SMs_registered, region_size, cmap, MIP_windowsize, speedRange)

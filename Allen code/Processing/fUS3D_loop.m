@@ -418,10 +418,13 @@ clearvars trial
 
 % Store the actual CBVi or PDI etc. values within the baseline and stim periods
 max_CBVi_stimon = cell(size(trial_sf_stimon));
+avg_CBVi_stimon = cell(size(trial_sf_stimon));
 avg_CBVi_baseline = cell(size(trial_sf_baseline));
 for trial = 1:length(trial_windows)
     avg_CBVi_baseline{trial} = mean(CBViallSF(:, :, :, trial_sf_baseline{trial}), 4);
     max_CBVi_stimon{trial} = max(CBViallSF(:, :, :, trial_sf_stimon{trial}), [], 4);
+    avg_CBVi_stimon{trial} = mean(CBViallSF(:, :, :, trial_sf_stimon{trial}), 4);
+
 end
 
 % Calculate the ratio of the max during the stim period to the mean during
@@ -430,20 +433,39 @@ temp_size = size(avg_CBVi_baseline{1});
 trialAvg_CBVi_stimon_vs_baseline = zeros(temp_size);
 trialAvg_CBVi_max_stimon = zeros(temp_size);
 trialAvg_CBVi_avg_baseline = zeros(temp_size);
+trialAvg_CBVi_avg_stimon = zeros(temp_size);
 clearvars temp_size
 
 for trial = 1:length(trial_sf)
     trialAvg_CBVi_stimon_vs_baseline = trialAvg_CBVi_stimon_vs_baseline + max_CBVi_stimon{trial} ./ avg_CBVi_baseline{trial};
     trialAvg_CBVi_max_stimon = trialAvg_CBVi_max_stimon + max_CBVi_stimon{trial};
     trialAvg_CBVi_avg_baseline = trialAvg_CBVi_avg_baseline + avg_CBVi_baseline{trial};
+    trialAvg_CBVi_avg_stimon = trialAvg_CBVi_avg_stimon + avg_CBVi_stimon{trial};
+
 end
 trialAvg_CBVi_stimon_vs_baseline = trialAvg_CBVi_stimon_vs_baseline ./ length(trial_sf);
-    trialAvg_CBVi_avg_baseline = trialAvg_CBVi_avg_baseline ./ length(trial_sf);
-    trialAvg_CBVi_max_stimon = trialAvg_CBVi_max_stimon ./ length(trial_sf);
+trialAvg_CBVi_avg_baseline = trialAvg_CBVi_avg_baseline ./ length(trial_sf);
+trialAvg_CBVi_max_stimon = trialAvg_CBVi_max_stimon ./ length(trial_sf);
+trialAvg_CBVi_avg_stimon = trialAvg_CBVi_avg_stimon ./ length(trial_sf);
+
+trialAvg_CBVi_stimon_vs_baseline_bothavg = trialAvg_CBVi_avg_stimon ./ trialAvg_CBVi_avg_baseline;
+
+% Try removing relative values above some cutoff. 
+
+vesselMask = trialAvg_CBVi(:, :, :, 10) > 0.3;
+% trialAvg_CBVi_stimon_vs_baseline_rfn = trialAvg_CBVi_stimon_vs_baseline;
+trialAvg_CBVi_stimon_vs_baseline_rfn = trialAvg_CBVi_stimon_vs_baseline_bothavg;
+trialAvg_CBVi_stimon_vs_baseline_rfn(~vesselMask) = 0;
+
+% We only expect the rCBV to be a max of around 150% or less.
+% trialAvg_CBVi_stimon_vs_baseline_rfn(trialAvg_CBVi_stimon_vs_baseline_rfn > 1.5) = 0;
+
 %%
-generateTiffStack_multi({trialAvg_CBVi_avg_baseline, trialAvg_CBVi_max_stimon}, [8.8, 8.8, 8], 'hot', 10)
+% generateTiffStack_multi({trialAvg_CBVi_avg_baseline, trialAvg_CBVi_max_stimon}, [8.8, 8.8, 8], 'hot', 10)
 % generateTiffStack_multi({trialAvg_CBVi_max_stimon}, [8.8, 8.8, 8], 'hot', 10)
-generateTiffStack_multi({trialAvg_CBVi_stimon_vs_baseline}, [8.8, 8.8, 8], 'hot', 10)
+% generateTiffStack_multi({trialAvg_CBVi_stimon_vs_baseline_rfn .^ 1}, [8.8, 8.8, 8], 'hot', 5, [0.95 1.5])
+generateTiffStack_multi({trialAvg_CBVi_stimon_vs_baseline_rfn .^ 1}, [8.8, 8.8, 8], 'hot', 5, [0.5 1.5])
+% generateTiffStack_multi({trialAvg_CBVi_stimon_vs_baseline_rfn .^ 1}, [8.8, 8.8, 8], 'hot', 5)
 
 %% Trial averaging
 temp_size = size(trial_CBVi{1}); temp_size(4) = minNumPts; % NEED TO THINK ABOUT THE ALIGNMENT
