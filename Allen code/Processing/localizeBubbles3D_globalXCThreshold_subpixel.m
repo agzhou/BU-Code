@@ -14,7 +14,7 @@
 %         binary image
 %         Threshold on connected component areas to use
 
-function [centersRC, refIQs, XC] = localizeBubbles3D_globalXCThreshold(IQf, refPSF, range, imgRefinementFactor, XCThreshold)
+function [centersRC, refIQs, XC] = localizeBubbles3D_globalXCThreshold_subpixel(IQf, refPSF, range, imgRefinementFactor, XCThreshold, zpixfactor)
     
     %% Use parallel processing for speed
     % https://www.mathworks.com/matlabcentral/answers/91744-how-can-i-check-if-matlabpool-is-running-when-using-parallel-computing-toolbox
@@ -161,10 +161,9 @@ function [centersRC, refIQs, XC] = localizeBubbles3D_globalXCThreshold(IQf, refP
             end
             
 %             XCsrp = padarray(XCsr, [length(srYL) - srY), 0, 0], 
-            [rc, sigma] = radialcenter3D(XCsrp);
-            %%%%%%%%%%%%%%%%%%%% CORRECT FOR HOW IT USES THE CORNER
-            %%%%%%%%%%%%%%%%%%%% COORDINATE AS A REFERENCE
-            centersRCbfiTemp(bi, :) = rc' + centerTemp; % Store each center (the 'rc' output is relative to the subregion size!!)
+            [rc, sigma] = radialcenter3D(XCsrp, zpixfactor);
+
+            centersRCbfiTemp(bi, :) = rc' + centerTemp - sr ./ 2; % Store each center (the 'rc' output is relative to the subregion size!!)
         end
         % Remove NaNs
         nanmask = ~isnan(centersRCbfiTemp);

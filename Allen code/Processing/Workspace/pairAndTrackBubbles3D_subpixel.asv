@@ -160,8 +160,7 @@ clear fi bufTemp
 
 %% 3.5 Plot the raw bubble density map
 img_size = [nyv, nxv, nzv];
-pad_dims = [20, 20, 20]; % # of voxels to pad with in each dimension
-bubbleDensityMapRaw = padarray(zeros(img_size(1), img_size(2), img_size(3)), pad_dims, 0, ['both']);
+bubbleDensityMapRaw = padarray(zeros(img_size(1), img_size(2), img_size(3));
 
 for cci = 1:length(centerCoords_corrected) % centerCoords index
     cc = centerCoords_corrected{cci};
@@ -175,7 +174,7 @@ end
 
 volumeViewer(bubbleDensityMapRaw .^ 0.5)
 figure; imagesc(squeeze(sum(bubbleDensityMapRaw, 1))' .^ 0.3); colormap hot; title('Raw bubble density, sum across y \^0.3'); colorbar
-% figure; imagesc(squeeze(sum(bubbleDensityMapRaw(70:90, :, :), 1))' .^ 0.25); colormap hot; title('Raw bubble density, MIP across y = 70:90 \^0.25'); colorbar
+figure; imagesc(squeeze(sum(bubbleDensityMapRaw(70:90, :, :), 1))' .^ 0.25); colormap hot; title('Raw bubble density, MIP across y = 70:90 \^0.25'); colorbar
 
 
 %% 4. Define max speed (distance per frame) threshold and initialize variables

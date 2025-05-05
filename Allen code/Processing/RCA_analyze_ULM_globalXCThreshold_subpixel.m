@@ -100,7 +100,6 @@ refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) 
 % s = size(IQ);
 % test = zeros([s(1:3) .* 4, s(4)]);
 %% Process the data
-
 for filenum = startFile:endFile
 % for filenum = 122:endFile
 % for filenum = 79:-1:15
@@ -120,6 +119,7 @@ for filenum = startFile:endFile
         range = {xrange, yrange, zrange};
         range{4} = int16(1:nf); % set frame range after rolling on the first file
 %     end
+    zpixfactor = zpix_spacing ./ xpix_spacing; % relative z pixel spacing vs x or y, for the radial centers algorithm
 
     % SVD proc part 1
 %     tic
@@ -135,7 +135,7 @@ for filenum = startFile:endFile
 
 %     IQd = diff(IQ, 1, 4); % Frame subtraction
 
-    [centersRC, ~, ~] = localizeBubbles3D_globalXCThreshold_subpixel(IQf, refPSF, range, imgRefinementFactor, XCThreshold);
+    [centersRC, ~, ~] = localizeBubbles3D_globalXCThreshold_subpixel(IQf, refPSF, range, imgRefinementFactor, XCThreshold, zpixfactor);
 
 %     [coords, img_size, XCThresholdsAdaptive] = localizeBubbles3D_chunk(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
 
@@ -148,4 +148,5 @@ for filenum = startFile:endFile
     disp(strcat("Centroid finding done: file ", num2str(filenum)))
     toc
 end
-save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'XCThreshold', 'xpix_spacing', 'ypix_spacing', 'zpix_spacing')
+img_size = [xp, yp, zp] .* imgRefinementFactor;
+save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'XCThreshold', 'xpix_spacing', 'ypix_spacing', 'zpix_spacing', 'img_size')
