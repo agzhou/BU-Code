@@ -26,7 +26,7 @@ end
 %% Load parameters and make folder for saving the processed data
 
 % Get data path of the reconstructed IQ data
-datapath = uigetdir('F:\Allen\Data\', 'Select the IQ data path');
+datapath = uigetdir('G:\Allen\Data\', 'Select the IQ data path');
 datapath = [datapath, '\'];
 
 % Load acquisition parameters: params.mat
@@ -68,7 +68,7 @@ savepath = [savepath, '\'];
 filename_structure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 
 addpath([cd, '\normxcorr3.m'])
-addpath([cd, '\toolbox_nlmeans_version2'])
+addpath([cd, '\Parthasarathy_Radial_Particle_Localization'])
 
 %% Other parameters for processing the data
 
@@ -100,8 +100,8 @@ refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) 
 % s = size(IQ);
 % test = zeros([s(1:3) .* 4, s(4)]);
 %% Process the data
-for filenum = startFile:endFile
-% for filenum = 122:endFile
+% for filenum = startFile:endFile
+for filenum = [59:endFile, 1:39]
 % for filenum = 79:-1:15
     tic
 %     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe

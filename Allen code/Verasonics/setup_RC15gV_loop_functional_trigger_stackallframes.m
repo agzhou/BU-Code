@@ -16,6 +16,8 @@ codeDir_split = split(string(codeDir), filesep);
 AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "Allen code"))), '\') + "\Verasonics");
 addpath(AllenVerasonicsCodePath)
 
+addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Air Puff\')
+
 cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 % cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
 activate
@@ -630,8 +632,8 @@ for nbuf = 1
     scInd = scInd + 1;
     SeqControl(scInd).command = 'waitForTransferComplete';
     SeqControl(scInd).argument = scInd - 1;
-    Event(n).seqControl = [4, scInd - 1, scInd];
-%     Event(n).seqControl = [scInd - 1, scInd];
+%     Event(n).seqControl = [4, scInd - 1, scInd];
+    Event(n).seqControl = [scInd - 1, scInd];
 
     if saveRcvDataFlag
         n = n + 1;

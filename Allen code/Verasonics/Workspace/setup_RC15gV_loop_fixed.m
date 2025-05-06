@@ -480,7 +480,7 @@ SeqControl(scInd).command = 'timeToNextAcq'; % In us, allowed range is from 10 -
                                          % the TPC (voltage) across acqs,
                                          % since it takes 800 us - 8 ms to
                                          % switch
-SeqControl(scInd).condition = 'ignore';  % don't print the warning message
+% SeqControl(scInd).condition = 'ignore';  % don't print the warning message
 
 timePerAcq = 1 / PRF * 1e6; % PRF in us
 
