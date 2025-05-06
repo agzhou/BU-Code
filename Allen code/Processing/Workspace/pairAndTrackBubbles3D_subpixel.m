@@ -73,6 +73,8 @@ end
 % [PData_filename, PData_pathname, ~] = uigetfile('*.mat', 'Select the PData file', [datapath, '..\PData.mat']);
 % load([PData_pathname, PData_filename])
 
+addpath([cd, '\munkres'])
+
 % Define some region sizes for adjusting the aspect ratio of figures
 lateral_width = P.Trans.elementLength * P.wl;
 axial_depth = (P.endDepthMM - P.startDepthMM) / 1e3;
@@ -103,7 +105,18 @@ numFiles = endFile - startFile + 1;  % # of files (superframes/buffers) to proce
 totalFrames = numFiles * P.numFramesPerBuffer; % Total frames to process
 
 % Cell array with an entry for each frame. Each entry contains (# bubbles) of coordinate pairs (z, x) of the detected bubble centers
-centerCoords = centersRC; 
+% centerCoords = cell(totalFrames, 1); 
+centerCoords = {};
+
+% Concatenate all the centers- files
+for n = startFile:endFile   % Go through each center file (for each buffer)
+% for n = startFile
+    tic
+    load([datapath, 'centers-', num2str(n)])
+    centerCoords = [centerCoords; centersRC];
+    disp(strcat("Center coordinates for file ", num2str(n), " stored."))
+    toc
+end
 
 old_img_size = img_size; % Save the old upsampled image size before we
 clearvars img_size
@@ -126,6 +139,7 @@ nyv = lateral_width / yvs; % # of x voxels
 nzv = axial_depth / zvs; % # of x voxels
 vs_factor = [nxv, nyv, nzv] ./ old_img_size; % Factor to multiply the old coordinates with to interpolate to the new grid
 
+% Map the coordinates to the new grid
 centerCoords_newgrid = cell(size(centerCoords));
 for f = 1:length(centerCoords)
     centerCoords_newgrid{f} = round(centerCoords{f} .* repmat(vs_factor, size(centerCoords{f}, 1), 1));
@@ -135,7 +149,7 @@ end
 bubbleCount = zeros(length(centerCoords_newgrid), 1);   % numFiles/# buffers x # frames per buffer. Count of bubbles in each frame
 centerCoords_corrected = centerCoords_newgrid;          % Correct the centerCoords because some frames have every pixel identified as        a bubble
 
-parfor fi = 1:length(centerCoords_corrected) % frame index - go through every frame
+parfor fi = 1:length(centerCoords_newgrid) % frame index - go through every frame
     bufTemp = centerCoords_newgrid{fi};
 
     % Correct for some error that makes every pixel a bubble
@@ -160,21 +174,29 @@ clear fi bufTemp
 
 %% 3.5 Plot the raw bubble density map
 img_size = [nyv, nxv, nzv];
-pad_dims = [20, 20, 20]; % # of voxels to pad with in each dimension
+numPadVoxels = 40;
+pad_dims = [numPadVoxels, numPadVoxels, numPadVoxels]; % # of voxels to pad with in each dimension
 bubbleDensityMapRaw = padarray(zeros(img_size(1), img_size(2), img_size(3)), pad_dims, 0, ['both']);
+img_size = size(bubbleDensityMapRaw);
+
+% Add the padding to the centerCoords to avoid negative values
+centerCoords_corrected = cell(size(centerCoords_newgrid));
+for f = 1:length(centerCoords_newgrid)
+    centerCoords_corrected{f} = centerCoords_newgrid{f} + pad_dims;
+end
 
 for cci = 1:length(centerCoords_corrected) % centerCoords index
     cc = centerCoords_corrected{cci};
+%     cc = cc + pad_dims;
 %     cc = round(cc); %%%%%%%%% FOR TESTING %%%%%%%%%
-%     cc(cc <= 0) = 1;
-%     cc(cc >= 62) = 62;
     for nbcci = 1:size(cc, 1) % # bubbles in centerCoords_corrected at index cci
         bubbleDensityMapRaw(cc(nbcci, 1), cc(nbcci, 2), cc(nbcci, 3)) = bubbleDensityMapRaw(cc(nbcci, 1), cc(nbcci, 2), cc(nbcci, 3)) + 1;
     end
 end
 
 volumeViewer(bubbleDensityMapRaw .^ 0.5)
-figure; imagesc(squeeze(sum(bubbleDensityMapRaw, 1))' .^ 0.3); colormap hot; title('Raw bubble density, sum across y \^0.3'); colorbar
+% figure; imagesc(squeeze(sum(bubbleDensityMapRaw, 1))' .^ 0.5); colormap hot; title('Raw bubble density, sum across y'); colorbar
+figure; imagesc(squeeze(max(bubbleDensityMapRaw, [], 1))' .^ 1); colormap hot; title('Raw bubble density, MIP across y'); colorbar
 % figure; imagesc(squeeze(sum(bubbleDensityMapRaw(70:90, :, :), 1))' .^ 0.25); colormap hot; title('Raw bubble density, MIP across y = 70:90 \^0.25'); colorbar
 
 
@@ -187,9 +209,9 @@ timePerFrame = 1 / P.frameRate;                                       % time ela
 maxDistPerFrameM = (maxSpeedExpectedMMPerS / 1000) * timePerFrame;    % max distance traveled per frame [m], according to the max expected flow speed and frame rate
 % pixelsPerM = 1 / pix_spacing * imgRefinementFactor(1);              % # of pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
 % maxPixelDistPerFrame = maxDistPerFrameM * pixelsPerM;               % max distance traveled per frame in units of pixels
-xpixelsPerM = 1 / (xpix_spacing) * imgRefinementFactor(1);      % # of x pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
-ypixelsPerM = 1 / (ypix_spacing) * imgRefinementFactor(2);      % # of y pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
-zpixelsPerM = 1 / (zpix_spacing) * imgRefinementFactor(3);      % # of z pixels per meter, which depends on the pixel spacing from reconstruction and the image refinement factor from the localization
+xpixelsPerM = 1 / (xvs);      % # of x pixels per meter
+ypixelsPerM = 1 / (yvs);      % # of y pixels per meter
+zpixelsPerM = 1 / (zvs);      % # of z pixels per meter
 maxXPixelDistPerFrame = maxDistPerFrameM * xpixelsPerM;               % max x distance traveled per frame in units of pixels
 maxYPixelDistPerFrame = maxDistPerFrameM * ypixelsPerM;               % max y distance traveled per frame in units of pixels
 maxZPixelDistPerFrame = maxDistPerFrameM * zpixelsPerM;               % max z distance traveled per frame in units of pixels
@@ -717,8 +739,11 @@ clear n tln tn trackAlreadyDeleted track vTrack vTrackTrimmedMean aThresholdMag 
 
 clear n tn iti trackTemp tempBuf
 
-% volumeViewer(bSum .^ 0.3)
-% volumeViewer(bSumConstrained .^ 0.5)
+% volumeViewer(BDM .^ 0.3)
+%%
+BDM_Constrained_Rfn = thresholdMaps(BDM_Constrained, BDM_Constrained, 2, 500);
+volumeViewer(BDM_Constrained .^ 0.3)
+%%
 volumeViewer(BDM_SmoothedMMS .^ 0.3)
 
 % volumeViewer(bSumSmoothedKF .^ 0.5)
@@ -745,7 +770,7 @@ volumeViewer(BDM_SmoothedKFConstrained .^ 0.3)
 
 % 2D sum plots
 % plotPower2D = 0.3;
-% figure; imagesc(squeeze(sum(bSum, 1).^ plotPower2D)'); colormap hot; title('bSum sum across y'); colorbar
+% figure; imagesc(squeeze(sum(BDM, 1).^ plotPower2D)'); colormap hot; title('BDM sum across y'); colorbar
 % figure; imagesc(squeeze(sum(bSum, 2).^ plotPower2D)'); colormap hot; title('bSum sum across x'); colorbar
 % figure; imagesc(squeeze(sum(bSum, 3).^ plotPower2D)'); colormap hot; title('bSum sum across z'); colorbar
 
@@ -821,7 +846,7 @@ title("bSum Maximum Intensity Projection from z = " + num2str(zrange_plot_MIP(1)
 
 %%
 BDM_LI_Rfn = BDM_LI;
-BDM_LI_Rfn = thresholdMaps(BDM_LI_Rfn, BDM_LI_Rfn, 2, 500);
+BDM_LI_Rfn = thresholdMaps(BDM_LI_Rfn, BDM_LI_Rfn, 2, 300);
 
 
 volumeViewer(BDM_LI_Rfn .^ 0.4)
