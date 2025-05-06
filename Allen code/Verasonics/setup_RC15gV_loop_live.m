@@ -15,9 +15,9 @@ cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 activate
 % numElements = 80;
 
-savepath = "F:\Allen\Data\04-24-2025 AZ03 ULM RC15gV stroke baseline\run 0\";
-savepath = char(savepath);
-mkdir(savepath)
+% savepath = "F:\Allen\Data\04-24-2025 AZ03 ULM RC15gV stroke baseline\run 0\";
+% savepath = char(savepath);
+% mkdir(savepath)
 
 ReconRegion = 1;
 
