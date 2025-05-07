@@ -194,7 +194,7 @@ for cci = 1:length(centerCoords_corrected) % centerCoords index
     end
 end
 
-% volumeViewer(bubbleDensityMapRaw .^ 0.5)
+volumeViewer(bubbleDensityMapRaw .^ 0.5)
 % figure; imagesc(squeeze(sum(bubbleDensityMapRaw, 1))' .^ 0.5); colormap hot; title('Raw bubble density, sum across y'); colorbar
 figure; imagesc(squeeze(max(bubbleDensityMapRaw, [], 1))' .^ 1); colormap hot; title('Raw bubble density, MIP across y'); colorbar
 % figure; imagesc(squeeze(sum(bubbleDensityMapRaw(70:90, :, :), 1))' .^ 0.25); colormap hot; title('Raw bubble density, MIP across y = 70:90 \^0.25'); colorbar
@@ -955,8 +955,7 @@ volumeViewer(SM_SmoothedKFConstrained_LI_RSC)
 cmap = colormap_ULM;
 % plotSpeedMIPs(SM_LI_RSC, 1)
 % generateTiffStack_multi([{SM_LI_RSC}], [8.8, 8.8, 8], cmap, 10)
-% generateTiffStack_multi([{SM_SC_LI_Rfn}], [8.8, 8.8, 8], cmap, 10, [0, 50])
-generateTiffStack_multi([{SM_SmoothedKFConstrained_LI_RSC}], [8.8, 8.8, 8], cmap, 50, [0, 40])
+generateTiffStack_multi([{SM_SC_LI_Rfn}], [8.8, 8.8, 8], cmap, 10, [0, 50])
 
 %% Convert the speed maps to a structure
 % SMs_AZ02_baseline.SM_LI = SM_LI;
