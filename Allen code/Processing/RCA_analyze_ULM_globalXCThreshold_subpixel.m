@@ -102,7 +102,7 @@ refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) 
 %% Process the data
 % for filenum = startFile:endFile
 % for filenum = [59:endFile, 1:39]
-for filenum = [50, 10:16, 1]
+for filenum = [135:endFile, 24:-1:17, 9:-1:2]
     tic
 %     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
     load([datapath, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe

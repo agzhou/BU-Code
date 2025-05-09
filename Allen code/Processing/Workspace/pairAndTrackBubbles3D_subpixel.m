@@ -174,7 +174,7 @@ clear fi bufTemp
 
 %% 3.5 Plot the raw bubble density map
 img_size = [nyv, nxv, nzv];
-numPadVoxels = 40;
+numPadVoxels = 50;
 pad_dims = [numPadVoxels, numPadVoxels, numPadVoxels]; % # of voxels to pad with in each dimension
 bubbleDensityMapRaw = padarray(zeros(img_size(1), img_size(2), img_size(3)), pad_dims, 0, ['both']);
 img_size = size(bubbleDensityMapRaw);
@@ -196,7 +196,7 @@ end
 
 % volumeViewer(bubbleDensityMapRaw .^ 0.5)
 % figure; imagesc(squeeze(sum(bubbleDensityMapRaw, 1))' .^ 0.5); colormap hot; title('Raw bubble density, sum across y'); colorbar
-figure; imagesc(squeeze(max(bubbleDensityMapRaw, [], 1))' .^ 1); colormap hot; title('Raw bubble density, MIP across y'); colorbar
+figure; imagesc(squeeze(max(bubbleDensityMapRaw, [], 1))' .^ 0.5); colormap hot; title('Raw bubble density, MIP across y'); colorbar
 % figure; imagesc(squeeze(sum(bubbleDensityMapRaw(70:90, :, :), 1))' .^ 0.25); colormap hot; title('Raw bubble density, MIP across y = 70:90 \^0.25'); colorbar
 
 
@@ -689,35 +689,6 @@ clear n tn tln k xk Pk yk Kku Iku xku Pku track
 
 %% 11. Acceleration and direction constraints
 
-
-% bVelocityMSmoothedKFConstrainedMMS = bVelocityMSmoothedKFMMS; % Initialize the variable for the smoothed, Kalman filtered, constrained velocity map
-% tic
-% for n = 1:size(bVelocityMSmoothedKFConstrainedMMS, 1)
-%     tln = bVelocityMSmoothedKFConstrainedMMS{n};    % Track list n
-%     for tn = size(tln, 1):-1:1                      % Go through each track number tn
-%         trackAlreadyDeleted = false;                % Reset the flag
-%         track = squeeze(tln(tn, :, :))';            % Get the track
-%         vTrack = track(:, 7:9);                     % Velocities of the track
-% 
-%         % Acceleration constraint
-%         vTrackTrimmedMean = trimmean(vTrack, vTrimmedMeanPercentage); % Exclude some percentage of the values when taking the mean. It goes across the first non-singleton dimension.
-%         aThresholdMag = abs(aThresholdFactor .* vTrackTrimmedMean ./ timePerFrame);
-%         aTrackMag = abs(diff(vTrack, 1) ./ timePerFrame); % Accelerations of the track
-%         if any(aTrackMag > aThresholdMag, 'all') % Remove the track if the acceleration constraint is violated
-%             bVelocityMSmoothedKFConstrainedMMS{n}(tn, :, :) = [];
-%             trackAlreadyDeleted = true;
-%         end
-% 
-%         % Direction constraint
-%         if ~trackAlreadyDeleted % Don't need to go through the direction calculation if the track was already deleted for the acceleration constraint
-%             angleTrack = atan2(vTrack(:, 2), vTrack(:, 1));         % Angle of each segment on the track
-%             angleTrackChanges = diff(angleTrack);                   % Change in angle between segments on the track
-%             if any(abs(angleTrackChanges) > angleChangeThreshold)   % Apply the threshold
-%                 bVelocityMSmoothedKFConstrainedMMS{n}(tn, :, :) = [];
-%             end
-%         end
-%     end
-% end
 tic
 bVelocityConstrained = applyConstraints(bVelocityM, vTrimmedMeanPercentage, aThresholdFactor, angleChangeThreshold, timePerFrame);
 
@@ -924,29 +895,31 @@ BDMs_AZ03_baseline.BDM_SmoothedMMS = BDM_SmoothedMMS;
 BDMs_AZ03_baseline.BDM_SmoothedKFConstrained = BDM_SmoothedKFConstrained;
 BDMs_AZ03_baseline.BDM_SmoothedKFConstrained_LI_RSC = BDM_SmoothedKFConstrained_LI_Rfn;
 %% Get the speed maps
-[SM_LI, SM_LI_counter] = interpolatedSpeedMap(bVelocityM, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
-% Refine the speed map
-SM_LI_Rfn = SM_LI;
-SM_LI_Rfn = thresholdMaps(SM_LI_Rfn, SM_LI_counter, 2, 300);
+% [SM_LI, SM_LI_counter] = interpolatedSpeedMap(bVelocityM, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
+% % Refine the speed map
+% SM_LI_Rfn = SM_LI;
+% SM_LI_Rfn = thresholdMaps(SM_LI_Rfn, SM_LI_counter, 2, 300);
 
 % Constrained KF
 [SM_SmoothedKFConstrained_LI, SM_SmoothedKFConstrained_LI_counter] = interpolatedSpeedMap(bVelocityMSmoothedKFConstrainedMMS, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
-
-SM_SmoothedKFConstrained_LI_RSC = SM_SmoothedKFConstrained_LI;
-SM_SmoothedKFConstrained_LI_RSC = thresholdMaps(SM_SmoothedKFConstrained_LI_RSC, SM_SmoothedKFConstrained_LI_counter, 2, 500);
+SM_SmoothedKFConstrained_LI_Rfn = SM_SmoothedKFConstrained_LI;
+SM_SmoothedKFConstrained_LI_Rfn = thresholdMaps(SM_SmoothedKFConstrained_LI_Rfn, SM_SmoothedKFConstrained_LI_counter, 2, 300);
 
 % Look at the smoothed constrained no KF data %%%%%%
-[SM_SC_LI, SM_SC_LI_counter] = interpolatedSpeedMap(bVelocityMSmoothedMMSConstrained, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
-
-SM_SC_LI_Rfn = SM_SC_LI;
-SM_SC_LI_Rfn = thresholdMaps(SM_SC_LI_Rfn, SM_SC_LI_counter, 2, 300);
+% [SM_SC_LI, SM_SC_LI_counter] = interpolatedSpeedMap(bVelocityMSmoothedMMSConstrained, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
+% 
+% SM_SC_LI_Rfn = SM_SC_LI;
+% SM_SC_LI_Rfn = thresholdMaps(SM_SC_LI_Rfn, SM_SC_LI_counter, 2, 300);
 
 %% Plot speed map
 
-volumeViewer(SM_LI_Rfn)
+% volumeViewer(SM_LI_Rfn)
 % plotMIPs(SM_LI_RSC, 1)
 
-volumeViewer(SM_SmoothedKFConstrained_LI_RSC)
+% volumeViewer(SM_SmoothedKFConstrained_LI_Rfn)
+
+cmap = colormap_ULM;
+figure; imagesc(squeeze(max(SM_SmoothedKFConstrained_LI_Rfn(400:600, :, :), [], 1))'); colormap(cmap)
 
 %% Make speed map MIPs
 % [cmap, ~, ~, ~, ~] = Colormaps_fUS;
@@ -956,7 +929,7 @@ cmap = colormap_ULM;
 % plotSpeedMIPs(SM_LI_RSC, 1)
 % generateTiffStack_multi([{SM_LI_RSC}], [8.8, 8.8, 8], cmap, 10)
 % generateTiffStack_multi([{SM_SC_LI_Rfn}], [8.8, 8.8, 8], cmap, 10, [0, 50])
-generateTiffStack_multi([{SM_SmoothedKFConstrained_LI_RSC}], [8.8, 8.8, 8], cmap, 50, [0, 40])
+generateTiffStack_multi([{SM_SmoothedKFConstrained_LI_Rfn}], [8.8, 8.8, 8], cmap, 50, [0, 40])
 
 %% Convert the speed maps to a structure
 % SMs_AZ02_baseline.SM_LI = SM_LI;
@@ -1039,7 +1012,7 @@ SMs_AZ03_baseline.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI
 
 function bVelocityConstrained = applyConstraints(bVelocity, vTrimmedMeanPercentage, aThresholdFactor, angleChangeThreshold, timePerFrame)
     bVelocityConstrained = bVelocity; % Initialize the variable for the smoothed, Kalman filtered, constrained velocity map
-    for n = 1:size(bVelocityConstrained, 1)
+    parfor n = 1:size(bVelocityConstrained, 1) % Changed to parfor 5/8/25
         tln = bVelocityConstrained{n};    % Track list n
         for tn = size(tln, 1):-1:1                      % Go through each track number tn
             trackAlreadyDeleted = false;                % Reset the flag
