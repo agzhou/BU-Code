@@ -34,8 +34,10 @@ load(timingFilePath)
 sv_threshold_lower = 10;
 sv_threshold_upper = 150;
 
+%%%%%%%%% add to a prompt!!! %%%%%%%
 startFile = 1;
-endFile = 148;
+endFile = 285;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 taustep = 1/P.frameRate;
 % tau = taustep:taustep:(P.numFramesPerBuffer * taustep);
@@ -74,19 +76,19 @@ for filenum = startFile:endFile
 %     g1_p = g1T(IQf_separated{2}, 10);
 %     [CBFi_p, CBVi_p] = g1_to_CBi(g1_p, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 % 
-%     % g1 = g1T(IQf, 10); % Only get the first 10 points
+    g1 = g1T(IQf, 10); % Only get the first 10 points
 %     g1 = g1T(IQf);
-%     [CBFi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+    [CBFSi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 % 
 % %     savefast([savepath, 'fUSdata-', num2str(filenum), '.mat'], g1, CBFi, CBVi);
-%     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFi', 'CBVi', '-v7.3', '-nocompression');
-%     disp("fUS result for file " + num2str(filenum) + " saved" )
 
     [PDI] = calcPowerDoppler(IQf_separated);
     [CDI] = calcColorDoppler(IQf_FT_separated, P);
 
-    save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
-    disp("PDI and CDI for file " + num2str(filenum) + " saved" )
+%     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
+%     disp("PDI and CDI for file " + num2str(filenum) + " saved" )
+    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFi', 'CBVi', 'PDI', 'CDI', '-v7.3', '-nocompression');
+    disp("fUS result for file " + num2str(filenum) + " saved" )
 
     toc
     
@@ -448,12 +450,13 @@ trialAvg_CBVi_avg_baseline = trialAvg_CBVi_avg_baseline ./ length(trial_sf);
 trialAvg_CBVi_max_stimon = trialAvg_CBVi_max_stimon ./ length(trial_sf);
 trialAvg_CBVi_avg_stimon = trialAvg_CBVi_avg_stimon ./ length(trial_sf);
 
-trialAvg_CBVi_stimon_vs_baseline_
+trialAvg_CBVi_stimon_vs_baseline_bothavg = trialAvg_CBVi_avg_stimon ./ trialAvg_CBVi_avg_baseline;
 
 % Try removing relative values above some cutoff. 
 
 vesselMask = trialAvg_CBVi(:, :, :, 10) > 0.3;
-trialAvg_CBVi_stimon_vs_baseline_rfn = trialAvg_CBVi_stimon_vs_baseline;
+% trialAvg_CBVi_stimon_vs_baseline_rfn = trialAvg_CBVi_stimon_vs_baseline;
+trialAvg_CBVi_stimon_vs_baseline_rfn = trialAvg_CBVi_stimon_vs_baseline_bothavg;
 trialAvg_CBVi_stimon_vs_baseline_rfn(~vesselMask) = 0;
 
 % We only expect the rCBV to be a max of around 150% or less.
@@ -462,8 +465,9 @@ trialAvg_CBVi_stimon_vs_baseline_rfn(~vesselMask) = 0;
 %%
 % generateTiffStack_multi({trialAvg_CBVi_avg_baseline, trialAvg_CBVi_max_stimon}, [8.8, 8.8, 8], 'hot', 10)
 % generateTiffStack_multi({trialAvg_CBVi_max_stimon}, [8.8, 8.8, 8], 'hot', 10)
-% generateTiffStack_multi({trialAvg_CBVi_stimon_vs_baseline_rfn}, [8.8, 8.8, 8], 'hot', 5, [0.95 1.5])
-generateTiffStack_multi({trialAvg_CBVi_stimon_vs_baseline_rfn .^ 1}, [8.8, 8.8, 8], 'hot', 5)
+% generateTiffStack_multi({trialAvg_CBVi_stimon_vs_baseline_rfn .^ 1}, [8.8, 8.8, 8], 'hot', 5, [0.95 1.5])
+generateTiffStack_multi({trialAvg_CBVi_stimon_vs_baseline_rfn .^ 1}, [8.8, 8.8, 8], 'hot', 5, [0.5 1.5])
+% generateTiffStack_multi({trialAvg_CBVi_stimon_vs_baseline_rfn .^ 1}, [8.8, 8.8, 8], 'hot', 5)
 
 %% Trial averaging
 temp_size = size(trial_CBVi{1}); temp_size(4) = minNumPts; % NEED TO THINK ABOUT THE ALIGNMENT

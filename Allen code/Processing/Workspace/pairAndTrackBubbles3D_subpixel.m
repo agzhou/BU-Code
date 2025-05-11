@@ -174,7 +174,7 @@ clear fi bufTemp
 
 %% 3.5 Plot the raw bubble density map
 img_size = [nyv, nxv, nzv];
-numPadVoxels = 50;
+numPadVoxels = 40;
 pad_dims = [numPadVoxels, numPadVoxels, numPadVoxels]; % # of voxels to pad with in each dimension
 bubbleDensityMapRaw = padarray(zeros(img_size(1), img_size(2), img_size(3)), pad_dims, 0, ['both']);
 img_size = size(bubbleDensityMapRaw);
@@ -185,19 +185,19 @@ for f = 1:length(centerCoords_newgrid)
     centerCoords_corrected{f} = centerCoords_newgrid{f} + pad_dims;
 end
 
-for cci = 1:length(centerCoords_corrected) % centerCoords index
-    cc = centerCoords_corrected{cci};
-%     cc = cc + pad_dims;
-%     cc = round(cc); %%%%%%%%% FOR TESTING %%%%%%%%%
-    for nbcci = 1:size(cc, 1) % # bubbles in centerCoords_corrected at index cci
-        bubbleDensityMapRaw(cc(nbcci, 1), cc(nbcci, 2), cc(nbcci, 3)) = bubbleDensityMapRaw(cc(nbcci, 1), cc(nbcci, 2), cc(nbcci, 3)) + 1;
-    end
-end
-
-% volumeViewer(bubbleDensityMapRaw .^ 0.5)
-% figure; imagesc(squeeze(sum(bubbleDensityMapRaw, 1))' .^ 0.5); colormap hot; title('Raw bubble density, sum across y'); colorbar
-figure; imagesc(squeeze(max(bubbleDensityMapRaw, [], 1))' .^ 0.5); colormap hot; title('Raw bubble density, MIP across y'); colorbar
-% figure; imagesc(squeeze(sum(bubbleDensityMapRaw(70:90, :, :), 1))' .^ 0.25); colormap hot; title('Raw bubble density, MIP across y = 70:90 \^0.25'); colorbar
+% for cci = 1:length(centerCoords_corrected) % centerCoords index
+%     cc = centerCoords_corrected{cci};
+% %     cc = cc + pad_dims;
+% %     cc = round(cc); %%%%%%%%% FOR TESTING %%%%%%%%%
+%     for nbcci = 1:size(cc, 1) % # bubbles in centerCoords_corrected at index cci
+%         bubbleDensityMapRaw(cc(nbcci, 1), cc(nbcci, 2), cc(nbcci, 3)) = bubbleDensityMapRaw(cc(nbcci, 1), cc(nbcci, 2), cc(nbcci, 3)) + 1;
+%     end
+% end
+% 
+% % volumeViewer(bubbleDensityMapRaw .^ 0.5)
+% % figure; imagesc(squeeze(sum(bubbleDensityMapRaw, 1))' .^ 0.5); colormap hot; title('Raw bubble density, sum across y'); colorbar
+% figure; imagesc(squeeze(max(bubbleDensityMapRaw, [], 1))' .^ 0.5); colormap hot; title('Raw bubble density, MIP across y'); colorbar
+% % figure; imagesc(squeeze(sum(bubbleDensityMapRaw(70:90, :, :), 1))' .^ 0.25); colormap hot; title('Raw bubble density, MIP across y = 70:90 \^0.25'); colorbar
 
 
 %% 4. Define max speed (distance per frame) threshold and initialize variables
@@ -690,9 +690,9 @@ clear n tn tln k xk Pk yk Kku Iku xku Pku track
 %% 11. Acceleration and direction constraints
 
 tic
-bVelocityConstrained = applyConstraints(bVelocityM, vTrimmedMeanPercentage, aThresholdFactor, angleChangeThreshold, timePerFrame);
+% bVelocityConstrained = applyConstraints(bVelocityM, vTrimmedMeanPercentage, aThresholdFactor, angleChangeThreshold, timePerFrame);
 
-bVelocityMSmoothedMMSConstrained = applyConstraints(bVelocityMSmoothedMMS, vTrimmedMeanPercentage, aThresholdFactor, angleChangeThreshold, timePerFrame);
+% bVelocityMSmoothedMMSConstrained = applyConstraints(bVelocityMSmoothedMMS, vTrimmedMeanPercentage, aThresholdFactor, angleChangeThreshold, timePerFrame);
 
 bVelocityMSmoothedKFConstrainedMMS = applyConstraints(bVelocityMSmoothedKFMMS, vTrimmedMeanPercentage, aThresholdFactor, angleChangeThreshold, timePerFrame);
 toc
@@ -911,6 +911,9 @@ SM_SmoothedKFConstrained_LI_Rfn = thresholdMaps(SM_SmoothedKFConstrained_LI_Rfn,
 % SM_SC_LI_Rfn = SM_SC_LI;
 % SM_SC_LI_Rfn = thresholdMaps(SM_SC_LI_Rfn, SM_SC_LI_counter, 2, 300);
 
+%% Generate a file for other software to read
+% writematrix(SM_SmoothedKFConstrained_LI_Rfn, 'D:\Allen\Data\AZ02 Stroke ULM RC15gV\04-22-2025 7d left eye\ULM subpixel processing results\Speed maps\vol.dat')
+
 %% Plot speed map
 
 % volumeViewer(SM_LI_Rfn)
@@ -919,7 +922,13 @@ SM_SmoothedKFConstrained_LI_Rfn = thresholdMaps(SM_SmoothedKFConstrained_LI_Rfn,
 % volumeViewer(SM_SmoothedKFConstrained_LI_Rfn)
 
 cmap = colormap_ULM;
-figure; imagesc(squeeze(max(SM_SmoothedKFConstrained_LI_Rfn(400:600, :, :), [], 1))'); colormap(cmap)
+figure; imagesc(squeeze(max(SM_SmoothedKFConstrained_LI_Rfn(400:600, :, :), [], 1))'); colormap(cmap); clim([0, 50])
+
+%%
+test = SM_SmoothedKFConstrained_LI_Rfn;
+testlim = 10;
+test(test >= testlim) = 0;
+figure; imagesc(squeeze(max(test(400:600, :, :), [], 1))'); colormap(cmap); clim([0, testlim])
 
 %% Make speed map MIPs
 % [cmap, ~, ~, ~, ~] = Colormaps_fUS;
@@ -929,7 +938,10 @@ cmap = colormap_ULM;
 % plotSpeedMIPs(SM_LI_RSC, 1)
 % generateTiffStack_multi([{SM_LI_RSC}], [8.8, 8.8, 8], cmap, 10)
 % generateTiffStack_multi([{SM_SC_LI_Rfn}], [8.8, 8.8, 8], cmap, 10, [0, 50])
-generateTiffStack_multi([{SM_SmoothedKFConstrained_LI_Rfn}], [8.8, 8.8, 8], cmap, 50, [0, 40])
+% generateTiffStack_multi([{SM_SmoothedKFConstrained_LI_Rfn}], [8.8, 8.8, 8], cmap, 50, [0, 40])
+generateTiffStack_multi([{test}], [8.8, 8.8, 8], cmap, 50, [0, testlim])
+
+% generateTiffStack_multi([{SM_SmoothedKFConstrained_LI_Rfn}], [8.8, 8.8, 8], cmap, 1)
 
 %% Convert the speed maps to a structure
 % SMs_AZ02_baseline.SM_LI = SM_LI;
@@ -965,18 +977,18 @@ generateTiffStack_multi([{SM_SmoothedKFConstrained_LI_Rfn}], [8.8, 8.8, 8], cmap
 % SMs_AZ02_day7.SM_LI_RSC = SM_LI_RSC;
 % SMs_AZ02_day7.SM_SC_LI_counter = SM_SC_LI_counter;
 % SMs_AZ02_day7.SM_SC_LI_RSC = SM_SC_LI_RSC;
-% SMs_AZ02_day7.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
-% SMs_AZ02_day7.SM_SmoothedKFConstrained_LI_RSC = SM_SmoothedKFConstrained_LI_RSC;
-% SMs_AZ02_day7.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
+SMs_AZ02_day7.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
+SMs_AZ02_day7.SM_SmoothedKFConstrained_LI_Rfn = SM_SmoothedKFConstrained_LI_Rfn;
+SMs_AZ02_day7.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
 
-SMs_AZ03_baseline.SM_LI = SM_LI;
-SMs_AZ03_baseline.SM_LI_counter = SM_LI_counter;
-SMs_AZ03_baseline.SM_LI_Rfn = SM_LI_Rfn;
-SMs_AZ03_baseline.SM_SC_LI_counter = SM_SC_LI_counter;
-SMs_AZ03_baseline.SM_SC_LI_Rfn = SM_SC_LI_Rfn;
-SMs_AZ03_baseline.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
-SMs_AZ03_baseline.SM_SmoothedKFConstrained_LI_Rfn = SM_SmoothedKFConstrained_LI_Rfn;
-SMs_AZ03_baseline.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
+% SMs_AZ03_baseline.SM_LI = SM_LI;
+% SMs_AZ03_baseline.SM_LI_counter = SM_LI_counter;
+% SMs_AZ03_baseline.SM_LI_Rfn = SM_LI_Rfn;
+% SMs_AZ03_baseline.SM_SC_LI_counter = SM_SC_LI_counter;
+% SMs_AZ03_baseline.SM_SC_LI_Rfn = SM_SC_LI_Rfn;
+% SMs_AZ03_baseline.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
+% SMs_AZ03_baseline.SM_SmoothedKFConstrained_LI_Rfn = SM_SmoothedKFConstrained_LI_Rfn;
+% SMs_AZ03_baseline.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
 
 
 
