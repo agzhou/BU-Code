@@ -34,8 +34,10 @@ load(timingFilePath)
 sv_threshold_lower = 10;
 sv_threshold_upper = 150;
 
+%%%%%%%%% add to a prompt!!! %%%%%%%
 startFile = 1;
-endFile = 148;
+endFile = 285;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 taustep = 1/P.frameRate;
 % tau = taustep:taustep:(P.numFramesPerBuffer * taustep);
@@ -69,30 +71,32 @@ for filenum = startFile:endFile
     % Use the IQf with separated negative and positive frequency components
     [IQf_separated, IQf_FT_separated] = separatePosNegFreqs(IQf);
     
-%     g1_n = g1T(IQf_separated{1}, 10);
-%     [CBFi_n, CBVi_n] = g1_to_CBi(g1_n, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
-%     g1_p = g1T(IQf_separated{2}, 10);
-%     [CBFi_p, CBVi_p] = g1_to_CBi(g1_p, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+    g1_n = g1T(IQf_separated{1}, 10);
+    [CBFSi_n, CBVi_n] = g1_to_CBi(g1_n, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+    g1_p = g1T(IQf_separated{2}, 10);
+    [CBFSi_p, CBVi_p] = g1_to_CBi(g1_p, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 % 
-%     % g1 = g1T(IQf, 10); % Only get the first 10 points
+    g1 = g1T(IQf, 10); % Only get the first 10 points
 %     g1 = g1T(IQf);
-%     [CBFi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+    [CBFSi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 % 
 % %     savefast([savepath, 'fUSdata-', num2str(filenum), '.mat'], g1, CBFi, CBVi);
-%     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFi', 'CBVi', '-v7.3', '-nocompression');
-%     disp("fUS result for file " + num2str(filenum) + " saved" )
 
     [PDI] = calcPowerDoppler(IQf_separated);
     [CDI] = calcColorDoppler(IQf_FT_separated, P);
 
-    save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
-    disp("PDI and CDI for file " + num2str(filenum) + " saved" )
+%     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
+%     disp("PDI and CDI for file " + num2str(filenum) + " saved" )
+%     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFSi', 'CBVi', 'PDI', 'CDI', '-v7.3', '-nocompression');
+    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFSi', 'CBVi', 'PDI', 'CDI', 'g1_n', 'g1_p', 'CBFSi_n', 'CBVi_n', 'CBFSi_p', 'CBVi_p',  '-v7.3', '-nocompression');
+
+    disp("fUS result for file " + num2str(filenum) + " saved" )
 
     toc
     
 end
-% savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'tau1_index_CBF', 'tau2_index_CBF', 'tau1_index_CBV');
-savefast([savepath, 'PDI_CDI_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
+savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'tau1_index_CBF', 'tau2_index_CBF', 'tau1_index_CBV');
+% savefast([savepath, 'PDI_CDI_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
 
 %% g1 adjustment test (see MAIN_g1fUS_invivo_annotated.m)
 g1_shift = g1(:, :, :, 2:end);
@@ -207,7 +211,7 @@ plotMIPs(CDI{3}, 1)
 % plotMIPs(CBFi_p, 1)
 
 plotMIPs(CBVi, 1)
-plotMIPs(CBFi, 1)
+plotMIPs(CBFSi, 1)
 
 %% Plot the magnitude of g1 at some point, of the adjusted g1
 figure; plot(tau_ms(2:size(g1, 4)), abs(squeeze(g1_shift(40, 45, 61, :))), '-o')
@@ -257,7 +261,7 @@ figure; imagesc(squeeze(max(CBFi_smoothed, [], 1))' .^ 1); colormap hot
 title('CBFi - xz MIP')
 xlabel('x pixels')
 ylabel('z pixels')
-figure; imagesc(squeeze(max(CBFi, [], 2))' .^ 1); colormap hot
+figure; imagesc(squeeze(max(CBFSi, [], 2))' .^ 1); colormap hot
 title('CBFi - yz MIP')
 xlabel('x pixels')
 ylabel('z pixels')

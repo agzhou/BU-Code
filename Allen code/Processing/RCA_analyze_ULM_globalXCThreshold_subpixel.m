@@ -100,9 +100,9 @@ refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) 
 % s = size(IQ);
 % test = zeros([s(1:3) .* 4, s(4)]);
 %% Process the data
-for filenum = startFile:endFile
+% for filenum = startFile:endFile
 % for filenum = [59:endFile, 1:39]
-% for filenum = 79:-1:15
+for filenum = [135:endFile, 24:-1:17, 9:-1:2]
     tic
 %     load([datapath, IQfolderName, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
     load([datapath, filename_structure, num2str(filenum), '.mat'])  % load each reconstructed buffer/batch/superframe
@@ -145,7 +145,7 @@ for filenum = startFile:endFile
     savefast([savepath, 'centers-', num2str(filenum)], 'centersRC')
 %     savefast([savepath, 'coords-', num2str(filenum)], 'coords', 'img_size', 'XCThresholdsAdaptive')
 
-    disp(strcat("Centroid finding done: file ", num2str(filenum)))
+    disp(strcat("Center finding done: file ", num2str(filenum)))
     toc
 end
 img_size = [xp, yp, zp] .* imgRefinementFactor;
