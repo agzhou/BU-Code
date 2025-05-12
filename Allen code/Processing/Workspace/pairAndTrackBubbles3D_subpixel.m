@@ -938,8 +938,8 @@ cmap = colormap_ULM;
 % plotSpeedMIPs(SM_LI_RSC, 1)
 % generateTiffStack_multi([{SM_LI_RSC}], [8.8, 8.8, 8], cmap, 10)
 % generateTiffStack_multi([{SM_SC_LI_Rfn}], [8.8, 8.8, 8], cmap, 10, [0, 50])
-% generateTiffStack_multi([{SM_SmoothedKFConstrained_LI_Rfn}], [8.8, 8.8, 8], cmap, 50, [0, 40])
-generateTiffStack_multi([{test}], [8.8, 8.8, 8], cmap, 50, [0, testlim])
+generateTiffStack_multi([{SM_SmoothedKFConstrained_LI_Rfn}], [8.8, 8.8, 8], cmap, 50, [0, 40])
+% generateTiffStack_multi([{test}], [8.8, 8.8, 8], cmap, 50, [0, testlim])
 
 % generateTiffStack_multi([{SM_SmoothedKFConstrained_LI_Rfn}], [8.8, 8.8, 8], cmap, 1)
 
