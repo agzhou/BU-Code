@@ -31,22 +31,32 @@ timingFilePath = [timingFilePath, timingFilePathFN];
 load(timingFilePath)
 % load(timingFilePath, 'acqStart', 'airPuffOutput', 'daqStartTimetag', 'sfTimeTags', 'sfTimeTagsDAQStart', 'sfTimeTagsDAQStart_adj', 'sfWidth', 'sfWidth_adj', 'timeStamp')
 %% Define some parameters (add this to a prompt later)
-sv_threshold_lower = 10;
-sv_threshold_upper = 150;
 
-%%%%%%%%% add to a prompt!!! %%%%%%%
-startFile = 1;
-endFile = 285;
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Tau 1 index for CBFspeed', 'Tau 2 index for CBFspeed', 'Tau 1 index for CBV'};
+parameterDefaults = {'1', '', '10', '150', '2', '6', '2'};
+parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
+
+% define # of files manually for now
+% str2double(parameterUserInput{});
+startFile = str2double(parameterUserInput{1});
+endFile = str2double(parameterUserInput{2});
+numFiles = endFile - startFile + 1;
+sv_threshold_lower = str2double(parameterUserInput{3});
+sv_threshold_upper = str2double(parameterUserInput{4});
+tau1_index_CBF = str2double(parameterUserInput{5});
+tau2_index_CBF = str2double(parameterUserInput{6});
+tau1_index_CBV = str2double(parameterUserInput{7});
+
+clearvars parameterPrompt parameterDefaults parameterUserInput
 
 taustep = 1/P.frameRate;
 % tau = taustep:taustep:(P.numFramesPerBuffer * taustep);
 tau = 0:taustep:((P.numFramesPerBuffer - 1) * taustep);
 tau_ms = tau .* 1000; % Assuming even time spacing between frames
 
-tau1_index_CBF = 2;
-tau2_index_CBF = 6;
-tau1_index_CBV = 2;
+% tau1_index_CBF = 2;
+% tau2_index_CBF = 6;
+% tau1_index_CBV = 2;
 
 %% Main loop
 for filenum = startFile:endFile

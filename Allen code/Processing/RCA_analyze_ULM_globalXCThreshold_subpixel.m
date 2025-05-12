@@ -62,6 +62,8 @@ xpix_spacing = str2double(parameterUserInput{9});
 ypix_spacing = str2double(parameterUserInput{10});
 zpix_spacing = str2double(parameterUserInput{11});
 
+clearvars parameterPrompt parameterDefaults parameterUserInput
+
 savepath = uigetdir([datapath, '..\'], 'Select the save path');
 savepath = [savepath, '\'];
 
