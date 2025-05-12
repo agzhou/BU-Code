@@ -62,7 +62,7 @@ xpix_spacing = str2double(parameterUserInput{9});
 ypix_spacing = str2double(parameterUserInput{10});
 zpix_spacing = str2double(parameterUserInput{11});
 
-savepath = uigetdir(datapath, 'Select the save path');
+savepath = uigetdir([datapath, '..\'], 'Select the save path');
 savepath = [savepath, '\'];
 
 filename_structure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
