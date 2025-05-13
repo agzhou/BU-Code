@@ -31,22 +31,32 @@ timingFilePath = [timingFilePath, timingFilePathFN];
 load(timingFilePath)
 % load(timingFilePath, 'acqStart', 'airPuffOutput', 'daqStartTimetag', 'sfTimeTags', 'sfTimeTagsDAQStart', 'sfTimeTagsDAQStart_adj', 'sfWidth', 'sfWidth_adj', 'timeStamp')
 %% Define some parameters (add this to a prompt later)
-sv_threshold_lower = 10;
-sv_threshold_upper = 150;
 
-%%%%%%%%% add to a prompt!!! %%%%%%%
-startFile = 1;
-endFile = 285;
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Tau 1 index for CBFspeed', 'Tau 2 index for CBFspeed', 'Tau 1 index for CBV'};
+parameterDefaults = {'1', '', '10', '150', '2', '6', '2'};
+parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
+
+% define # of files manually for now
+% str2double(parameterUserInput{});
+startFile = str2double(parameterUserInput{1});
+endFile = str2double(parameterUserInput{2});
+numFiles = endFile - startFile + 1;
+sv_threshold_lower = str2double(parameterUserInput{3});
+sv_threshold_upper = str2double(parameterUserInput{4});
+tau1_index_CBF = str2double(parameterUserInput{5});
+tau2_index_CBF = str2double(parameterUserInput{6});
+tau1_index_CBV = str2double(parameterUserInput{7});
+
+clearvars parameterPrompt parameterDefaults parameterUserInput
 
 taustep = 1/P.frameRate;
 % tau = taustep:taustep:(P.numFramesPerBuffer * taustep);
 tau = 0:taustep:((P.numFramesPerBuffer - 1) * taustep);
 tau_ms = tau .* 1000; % Assuming even time spacing between frames
 
-tau1_index_CBF = 2;
-tau2_index_CBF = 6;
-tau1_index_CBV = 2;
+% tau1_index_CBF = 2;
+% tau2_index_CBF = 6;
+% tau1_index_CBV = 2;
 
 %% Main loop
 for filenum = startFile:endFile
@@ -71,10 +81,10 @@ for filenum = startFile:endFile
     % Use the IQf with separated negative and positive frequency components
     [IQf_separated, IQf_FT_separated] = separatePosNegFreqs(IQf);
     
-%     g1_n = g1T(IQf_separated{1}, 10);
-%     [CBFi_n, CBVi_n] = g1_to_CBi(g1_n, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
-%     g1_p = g1T(IQf_separated{2}, 10);
-%     [CBFi_p, CBVi_p] = g1_to_CBi(g1_p, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+    g1_n = g1T(IQf_separated{1}, 10);
+    [CBFSi_n, CBVi_n] = g1_to_CBi(g1_n, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+    g1_p = g1T(IQf_separated{2}, 10);
+    [CBFSi_p, CBVi_p] = g1_to_CBi(g1_p, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 % 
     g1 = g1T(IQf, 10); % Only get the first 10 points
 %     g1 = g1T(IQf);
@@ -87,14 +97,16 @@ for filenum = startFile:endFile
 
 %     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
 %     disp("PDI and CDI for file " + num2str(filenum) + " saved" )
-    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFi', 'CBVi', 'PDI', 'CDI', '-v7.3', '-nocompression');
+%     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFSi', 'CBVi', 'PDI', 'CDI', '-v7.3', '-nocompression');
+    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFSi', 'CBVi', 'PDI', 'CDI', 'g1_n', 'g1_p', 'CBFSi_n', 'CBVi_n', 'CBFSi_p', 'CBVi_p',  '-v7.3', '-nocompression');
+
     disp("fUS result for file " + num2str(filenum) + " saved" )
 
     toc
     
 end
-% savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'tau1_index_CBF', 'tau2_index_CBF', 'tau1_index_CBV');
-savefast([savepath, 'PDI_CDI_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
+savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'tau1_index_CBF', 'tau2_index_CBF', 'tau1_index_CBV');
+% savefast([savepath, 'PDI_CDI_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
 
 %% g1 adjustment test (see MAIN_g1fUS_invivo_annotated.m)
 g1_shift = g1(:, :, :, 2:end);
@@ -209,7 +221,7 @@ plotMIPs(CDI{3}, 1)
 % plotMIPs(CBFi_p, 1)
 
 plotMIPs(CBVi, 1)
-plotMIPs(CBFi, 1)
+plotMIPs(CBFSi, 1)
 
 %% Plot the magnitude of g1 at some point, of the adjusted g1
 figure; plot(tau_ms(2:size(g1, 4)), abs(squeeze(g1_shift(40, 45, 61, :))), '-o')
@@ -259,7 +271,7 @@ figure; imagesc(squeeze(max(CBFi_smoothed, [], 1))' .^ 1); colormap hot
 title('CBFi - xz MIP')
 xlabel('x pixels')
 ylabel('z pixels')
-figure; imagesc(squeeze(max(CBFi, [], 2))' .^ 1); colormap hot
+figure; imagesc(squeeze(max(CBFSi, [], 2))' .^ 1); colormap hot
 title('CBFi - yz MIP')
 xlabel('x pixels')
 ylabel('z pixels')
@@ -303,21 +315,38 @@ for filenum = startFile + 1:endFile
 end
 
 %% Store all the PDI across the experiment into one matrix
-load([savepath, 'PDI_CDI-', num2str(1), '.mat'], 'PDI', 'CDI')
+% load([savepath, 'PDI_CDI-', num2str(1), '.mat'], 'PDI', 'CDI')
+load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI', 'CDI')
 % PDIallSF = cell([length(PDI), endFile - startFile + 1]); % Matrix with the CBVi for every superframe
 PDIallSF = cell([size(PDI)]); % Matrix with the CBVi for every superframe
 % PDIallSF(:,  1) = PDI;
 CDIallSF = cell([size(CDI)]); % Matrix with the CBVi for every superframe
 % CDIallSF(:,  1) = CDI;
 
+PDIallSF1 = ;
+CDIallSF1 = cat(4, CDIallSF1, CDI{1});
+PDIallSF2 = cat(4, PDIallSF2, PDI{2});
+CDIallSF2 = cat(4, CDIallSF2, CDI{2});
+PDIallSF3 = cat(4, PDIallSF3, PDI{3});
+CDIallSF3 = cat(4, CDIallSF3, CDI{3});
 
 % for filenum = startFile + 1:endFile
-for filenum = startFile:endFile
-    load([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI')
-    for i = 1:3
-        PDIallSF{i} = cat(4, PDIallSF{i}, PDI{i});
-        CDIallSF{i} = cat(4, CDIallSF{i}, CDI{i});
-    end
+parfor filenum = startFile:endFile
+%     load([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI')
+%     load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'CDI')
+    PDI = load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI')
+    CDI = load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'CDI')
+
+%     for i = 1:3
+        PDIallSF1 = cat(4, PDIallSF1, PDI{1});
+        CDIallSF1 = cat(4, CDIallSF1, CDI{1});
+        PDIallSF2 = cat(4, PDIallSF2, PDI{2});
+        CDIallSF2 = cat(4, CDIallSF2, CDI{2});
+        PDIallSF3 = cat(4, PDIallSF3, PDI{3});
+        CDIallSF3 = cat(4, CDIallSF3, CDI{3});
+%         PDIallSF{i} = cat(4, PDIallSF{i}, PDI{i});
+%         CDIallSF{i} = cat(4, CDIallSF{i}, CDI{i});
+%     end
 end
 
 %% Visualize the PDI and CDI across the experiment
@@ -430,9 +459,11 @@ for trial = 1:length(trial_windows)
 end
 
 % Calculate the ratio of the max during the stim period to the mean during
-% the baseline
+% the baseline 
+% Also get the percent change (and normalize by the baseline for each trial)
 temp_size = size(avg_CBVi_baseline{1});
 trialAvg_CBVi_stimon_vs_baseline = zeros(temp_size);
+trialAvg_CBVi_stimon_vs_baseline_pc = zeros(temp_size); % percent change
 trialAvg_CBVi_max_stimon = zeros(temp_size);
 trialAvg_CBVi_avg_baseline = zeros(temp_size);
 trialAvg_CBVi_avg_stimon = zeros(temp_size);
@@ -440,12 +471,14 @@ clearvars temp_size
 
 for trial = 1:length(trial_sf)
     trialAvg_CBVi_stimon_vs_baseline = trialAvg_CBVi_stimon_vs_baseline + max_CBVi_stimon{trial} ./ avg_CBVi_baseline{trial};
+    trialAvg_CBVi_stimon_vs_baseline_pc = trialAvg_CBVi_stimon_vs_baseline_pc + (max_CBVi_stimon{trial} ./ avg_CBVi_baseline{trial}) ./ avg_CBVi_baseline{trial};
     trialAvg_CBVi_max_stimon = trialAvg_CBVi_max_stimon + max_CBVi_stimon{trial};
     trialAvg_CBVi_avg_baseline = trialAvg_CBVi_avg_baseline + avg_CBVi_baseline{trial};
     trialAvg_CBVi_avg_stimon = trialAvg_CBVi_avg_stimon + avg_CBVi_stimon{trial};
 
 end
 trialAvg_CBVi_stimon_vs_baseline = trialAvg_CBVi_stimon_vs_baseline ./ length(trial_sf);
+trialAvg_CBVi_stimon_vs_baseline_pc = trialAvg_CBVi_stimon_vs_baseline_pc ./ length(trial_sf);
 trialAvg_CBVi_avg_baseline = trialAvg_CBVi_avg_baseline ./ length(trial_sf);
 trialAvg_CBVi_max_stimon = trialAvg_CBVi_max_stimon ./ length(trial_sf);
 trialAvg_CBVi_avg_stimon = trialAvg_CBVi_avg_stimon ./ length(trial_sf);

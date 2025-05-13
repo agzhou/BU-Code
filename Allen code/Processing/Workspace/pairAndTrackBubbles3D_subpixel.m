@@ -922,7 +922,7 @@ SM_SmoothedKFConstrained_LI_Rfn = thresholdMaps(SM_SmoothedKFConstrained_LI_Rfn,
 % volumeViewer(SM_SmoothedKFConstrained_LI_Rfn)
 
 cmap = colormap_ULM;
-figure; imagesc(squeeze(max(SM_SmoothedKFConstrained_LI_Rfn(400:600, :, :), [], 1))'); colormap(cmap); clim([0, 50])
+figure; imagesc(squeeze(max(SM_SmoothedKFConstrained_LI_Rfn(400:600, :, :), [], 1))'); colormap(cmap); clim([0, 40])
 
 %%
 test = SM_SmoothedKFConstrained_LI_Rfn;
@@ -977,9 +977,9 @@ generateTiffStack_multi([{SM_SmoothedKFConstrained_LI_Rfn}], [8.8, 8.8, 8], cmap
 % SMs_AZ02_day7.SM_LI_RSC = SM_LI_RSC;
 % SMs_AZ02_day7.SM_SC_LI_counter = SM_SC_LI_counter;
 % SMs_AZ02_day7.SM_SC_LI_RSC = SM_SC_LI_RSC;
-SMs_AZ02_day7.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
-SMs_AZ02_day7.SM_SmoothedKFConstrained_LI_Rfn = SM_SmoothedKFConstrained_LI_Rfn;
-SMs_AZ02_day7.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
+% SMs_AZ02_day7.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
+% SMs_AZ02_day7.SM_SmoothedKFConstrained_LI_Rfn = SM_SmoothedKFConstrained_LI_Rfn;
+% SMs_AZ02_day7.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
 
 % SMs_AZ03_baseline.SM_LI = SM_LI;
 % SMs_AZ03_baseline.SM_LI_counter = SM_LI_counter;
@@ -991,6 +991,9 @@ SMs_AZ02_day7.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_cou
 % SMs_AZ03_baseline.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
 
 
+SMs_AZ03_baseline.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
+SMs_AZ03_baseline.SM_SmoothedKFConstrained_LI_Rfn = SM_SmoothedKFConstrained_LI_Rfn;
+SMs_AZ03_baseline.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
 
 %% Helper functions
 
