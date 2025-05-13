@@ -1,0 +1,110 @@
+% registerULM
+
+% Get data path of the speed map data
+datapath = uigetdir('G:\Allen\Data\', 'Select the ULM speed map data path');
+datapath = [datapath, '\'];
+
+[ind, ~] = listdlg('PromptString', {'Select the files to register'}, ...
+    'SelectionMode', 'multiple', 'ListString', datapath);
+
+% Load the previously computed registrations from the bubble density maps
+[reg_filename, reg_pathname, ~] = uigetfile('*.mat', 'Select the file where the registration transformations are', ['D:\Allen\Data\AZ02 Stroke ULM RC15gV\baseline to day 7 comparison\Registration to day 7\registration_to_day7.mat']);
+% load([ws_pathname, ws_filename], 'R_reg_baselineBDM', 'R_reg_day3BDM', 'R_reg_day7BDM')
+load([reg_pathname, reg_filename])
+
+%% Choose which speed maps to use
+baselineSM = SMs_AZ02_baseline.SM_SC_LI_RSC;
+hour1SM = SMs_AZ02_hour1.SM_SC_LI_RSC;
+day3SM = SMs_AZ02_day3.SM_SC_LI_RSC;
+day7SM = SMs_AZ02_day7.SM_SC_LI_RSC;
+
+%% Base MIPs for the original data
+% mipPower = 1;
+% yr = 70:90; % y range for MIP
+% figure; imagesc(squeeze(max(baselineSM(yr, :, :), [], 1))' .^ mipPower); colormap hot
+% figure; imagesc(squeeze(max(hour1SM(yr, :, :), [], 1))' .^ mipPower); colormap hot
+% figure; imagesc(squeeze(max(day3SM(yr, :, :), [], 1))' .^ mipPower); colormap hot
+% figure; imagesc(squeeze(max(day7SM(yr, :, :), [], 1))' .^ mipPower); colormap hot
+% figure; imagesc(squeeze(max(day7SM(:, :, :), [], 1))' .^ mipPower); colormap hot
+
+%% Show two volumes on top of each other
+% viewerUnregistered = viewer3d(BackgroundColor="black",BackgroundGradient="off");
+% volshow(hour1BDM .^ mipPower, Parent=viewerUnregistered,RenderingStyle="Isosurface", ...
+%     Colormap=[1 0 1],Alphamap=1);
+% volshow(day3BDM .^ mipPower, Parent=viewerUnregistered,RenderingStyle="Isosurface", ...
+%     Colormap=[0 1 0],Alphamap=1);
+% volshow(baselineBDM .^ mipPower, Parent=viewerUnregistered,RenderingStyle="Isosurface", ...
+%     Colormap=[0 1 0],Alphamap=1);
+% volshow(day7BDM .^ mipPower, Parent=viewerUnregistered,RenderingStyle="Isosurface", ...
+%     Colormap=[0 1 0],Alphamap=1);
+
+compareVolumes(hour1SM, baselineSM .^ 0.7)
+
+%% Apply the registrations that we obtained from the bubble density maps
+
+% For AZ02, I have the registrations relative to day 7
+SMs_unregistered = {baselineSM, hour1SM, day3SM};
+tforms = {tf_baselineBDM, tf_hour1BDM, tf_day3BDM};
+SMs_registered = [applyTransforms(SMs_unregistered, tforms, day7SM), {day7SM}];
+
+%% Check the results of imregister
+
+compareVolumes(day7SM, SMs_registered{3})
+
+%% Save MIPs
+
+cmap = colormap_ULM;
+% speedRange = [0, 50];
+speedRange = [0, 5];
+MIP_windowsize = 10;
+region_size = [8.8, 8.8, 8];
+
+% Bubble density map
+% BDMs_registered = {baselineBDM_registered, hour1BDM_registered, day3BDM_registered, day7BDM};
+% BDMs_registered_gamma = {baselineBDM_registered .^ 0.4, hour1BDM_registered .^ 0.5, day3BDM_registered .^ 0.5, day7BDM .^ 0.5};
+% generateTiffStack_multi(BDMs_registered_gamma, region_size, 'hot', MIP_windowsize)
+
+% Speed map
+generateTiffStack_multi(SMs_registered, region_size, cmap, MIP_windowsize, speedRange)
+
+% is = size(hour1SM); % image size
+% uf = 2; % upsampling factor
+% volumeDataUpsampled = {imresize3(baselineBDM_registered, is .* uf), imresize3(hour1SM, is .* uf), imresize3(day3BDM_registered, is .* uf)};
+
+
+%% Helper functions
+function [img_reg, R_reg] = rigidReg(img, fixed)
+    [optimizer, metric] = imregconfig('monomodal');
+    % optimizer.GradientMagnitudeTolerance = 1e-7;
+    optimizer.MaximumIterations = 10000;
+    optimizer.MinimumStepLength = 1e-6;
+    
+    % Inputs: moving, fixed, transform type, optimizer, metric
+    % tic
+    % [day3BDM_registered, R_reg_day3BDM] = imregister(moving, fixed, 'rigid', optimizer, metric, 'DisplayOptimization', true);
+    % toc
+    
+    tic
+    [img_reg, R_reg] = imregister(img, fixed, 'rigid', optimizer, metric, 'DisplayOptimization', true);
+    toc
+end
+
+function compareVolumes(vol1, vol2) % Can change this so it has a cell array input and goes through more than 2 volumes
+
+    viewerThresholded = viewer3d(BackgroundColor = "black", BackgroundGradient="off");
+    volshow(vol1 .^ 1, Parent=viewerThresholded, RenderingStyle = "Isosurface", ...
+        Colormap=[1 0 1],Alphamap=1);
+    volshow(vol2 .^ 1, Parent=viewerThresholded, RenderingStyle = "Isosurface", ...
+        Colormap=[0 1 0],Alphamap=1);
+
+end
+
+% Apply previously obtained transforms 'tforms' to register each volume in the cell
+% array 'data' to the fixed volume 'fixed'. Output is a cell array of the
+% registered data.
+function [registeredData] = applyTransforms(data, tforms, fixed)
+    registeredData = cell(size(data));
+    for i = 1:length(data)
+        registeredData{i} = imwarp(data{i}, tforms{i}, "OutputView", imref3d(size(fixed)));
+    end
+end
