@@ -1,6 +1,13 @@
 % registerULM
 
-%
+%% Description:
+%       Load in 3D ULM speed maps, apply an initial transformation
+%       manually, and then register all of them to the first input.
+%       The registration is done on a downsampled version of the speed 
+%       maps for speed, and then the transformation is used on the
+%       full-sized data.
+
+%% Get data path
 % Get data path of the speed map data
 datapath = uigetdir('D:\Allen\Data\', 'Select the ULM speed map data path');
 datapath = [datapath, '\'];
@@ -63,7 +70,8 @@ end
 
 %% Show two of the downsampled base speed map volumes on top of each other
 
-compareVolumes(SMs_IT_ds{1}, SMs_IT_ds{2})
+% compareVolumes(SMs_IT_ds{1}, SMs_IT_ds{2})
+compareVolumes(SMs_IT_ds{2}, SMs_IT_ds{3})
 
 %% Register the bubble maps
 SMs_reg_ds = cell(size(SMs_IT_ds)); % Initialize the registered downsampled speed maps
@@ -155,9 +163,9 @@ end
 function [img_reg, tform] = rigidRegTF(img, fixed)
     [optimizer, metric] = imregconfig('monomodal');
     % optimizer.GradientMagnitudeTolerance = 1e-7;
-    optimizer.MaximumIterations = 1000; %%%%%%%%%%
+    optimizer.MaximumIterations = 10000; %%%%%%%%%%
     % optimizer.MaximumIterations = 10;
-    optimizer.MinimumStepLength = 1e-5;
+    optimizer.MinimumStepLength = 1e-6;
     % optimizer.MaximumStepLength = 10;
     
     % Inputs: moving, fixed, transform type, optimizer, metric
