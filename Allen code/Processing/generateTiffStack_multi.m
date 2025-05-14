@@ -143,8 +143,8 @@ function generateTiffStack_multi(volumeData, varargin)
             set(gca, 'box', 'off')
         end
 
-%         cv = getframe(tf); % Get the frame once all the tiles are populated for that MIP
-        cv = getframe(ax); % Get the frame once all the tiles are populated for that MIP
+        cv = getframe(tf); % Get the frame once all the tiles are populated for that MIP
+        % cv = getframe(ax); % Get the frame once all the tiles are populated for that MIP
         rgb = frame2im(cv);      % convert the frame to rgb data
 
         if y == 1 % Some stuff to get the tif correct
