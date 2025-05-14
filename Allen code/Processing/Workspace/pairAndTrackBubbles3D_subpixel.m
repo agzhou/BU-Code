@@ -1,15 +1,17 @@
 % Description: Part 2 of the ULM processing for a 2D array. This script
-%   takes the result of the bubble localization from 'RCA_analyze_ULM.m' ('centers-filenum.mat') and
+%   takes the result of the bubble localization from 'RCA_analyze_ULM_globalXCThreshold_subpixel.m' ('centers-filenum.mat') and
 %   performs pairing and tracking, plus further image refinement for
 %   plotting purposes.
 
-%   centers is a a logical matrix of dimensions (# refined x pixels, # refined y
-%   pixels, # refined z pixels, # frames per file) with ones at the pixels where a bubble
-%   center was localized. There is one 'centers' for each file that the
+%   centersRC is a a cell array of dimensions (# frames per file, 1) with each cell being an (N x 3)
+%   matrix. N corresponds to the number of bubbles detected, and each column corresponds to the
+%   y, x, and z coordinates where the bubbles were detected. The
+%   coordinates will be fractional from the subpixel method.
+%   There is one 'centers' for each file that the
 %   localization was performed on.
 
-%   This script turns that logical matrix into a cell array with their
-%   corresponding coordinates, then does pairing with the Hungarian method
+%   This script stacks all the coordinates across every frame in the measurement,
+%   then does pairing with the Hungarian method
 %   (assignmunkres). Tracks are created with a frame persistence condition (only keep a
 %   track if the same bubble is paired across p frames). Velocities are calculated on this data
 %   according to the change in bubble position and the time elapsed between frames. 
@@ -27,7 +29,7 @@
 %   assignmunkres (Sensor Fusion and Tracking Toolbox)
 %   trimmean (Statistics and Machine Learning Toolbox)
 %   ULM_interp3D_linear.m
-%   Colormaps_fUS (From Jianbo's code)
+%   colormap_ULM
 %   smoothn.m (From Damien Garcia: https://www.mathworks.com/matlabcentral/fileexchange/25634-smoothn/)
 %   densityMap3D.m      
 % Acknowledgement: using Jianbo Tang's ULM code, the Song group's ULM papers, and Jean-Yves Tinevez's simpletracker as references
