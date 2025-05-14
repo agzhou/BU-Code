@@ -1,5 +1,13 @@
 % registerULM
 
+%% Description:
+%       Load in 3D ULM speed maps, apply an initial transformation
+%       manually, and then register all of them to the first input.
+%       The registration is done on a downsampled version of the speed 
+%       maps for speed, and then the transformation is used on the
+%       full-sized data.
+
+%% Get data path
 % Get data path of the speed map data
 datapath = uigetdir('D:\Allen\Data\', 'Select the ULM speed map data path');
 datapath = [datapath, '\'];
