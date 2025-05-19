@@ -60,7 +60,7 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 
 %% Main loop
 % for filenum = startFile:endFile
-for filenum = [3:285]
+for filenum = [2:285]
 % for filenum = 7
     tic
     load([IQpath, IQfilenameStructure, num2str(filenum)])
@@ -101,7 +101,7 @@ for filenum = [3:285]
 %     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFSi', 'CBVi', 'PDI', 'CDI', '-v7.3', '-nocompression');
 %     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFSi', 'CBVi', 'PDI', 'CDI', 'g1_n', 'g1_p', 'CBFSi_n', 'CBVi_n', 'CBFSi_p', 'CBVi_p',  '-v7.3', '-nocompression');
 %     save([savepath, 'g1-', num2str(filenum), '.mat'], 'g1', 'g1_n', 'g1_p', '-v7.3', '-nocompression');
-    save([savepath, 'g1-', num2str(filenum), '.mat'], 'g1', '-v7.3', '-nocompression');
+    save([savepath, 'g1-', num2str(filenum), '.mat'], 'g1', 'g1_n', 'g1_p', '-v7.3', '-nocompression');
 
 %     disp("fUS result for file " + num2str(filenum) + " saved" )
     disp("g1 result for file " + num2str(filenum) + " saved" )

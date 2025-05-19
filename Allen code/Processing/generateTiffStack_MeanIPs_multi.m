@@ -13,11 +13,10 @@
 %                  - The stuff I added with aspect ratios might break if an
 %                    actualSize is not specified
 
-function generateTiffStack_multi(volumeData, varargin)
+function generateTiffStack_MeanIPs_multi(volumeData, varargin)
 
     % volumeData = volumeData ./ max(volumeData, [], 'all'); % Normalize intensities to be between 0 - 1
     showColorbar = true;
-    useAxes = true;
     scale = 5;
     
     mws = 1; % default MIP window size is 1 (no MIP)
@@ -89,7 +88,7 @@ function generateTiffStack_multi(volumeData, varargin)
     for y = 1:size(volumeData{vi}, 1) - mws + 1
         for vi = 1:numVolumes
             nexttile(vi) % cycle between tiles
-            planeTemp = squeeze(max(volumeData{vi}(y:y + mws - 1, :, :), [], 1));
+            planeTemp = squeeze(mean(volumeData{vi}(y:y + mws - 1, :, :), 1));
             figure(tf)
 
             % subplot(1, numVolumes, vi, 'Position', [0, 0, (vi - 1)/numVolumes, 0])
@@ -144,11 +143,8 @@ function generateTiffStack_multi(volumeData, varargin)
             set(gca, 'box', 'off')
         end
 
-        if useAxes
-            cv = getframe(ax); % Get the frame once all the tiles are populated for that MIP
-        else
-            cv = getframe(tf); % Get the frame once all the tiles are populated for that MIP
-        end
+        cv = getframe(tf); % Get the frame once all the tiles are populated for that MIP
+        % cv = getframe(ax); % Get the frame once all the tiles are populated for that MIP
         rgb = frame2im(cv);      % convert the frame to rgb data
 
         if y == 1 % Some stuff to get the tif correct
@@ -195,7 +191,7 @@ function generateTiffStack_multi(volumeData, varargin)
     for x = 1:size(volumeData{vi}, 2) - mws + 1
         for vi = 1:numVolumes
             nexttile(vi) % cycle between tiles
-            planeTemp = squeeze(max(volumeData{vi}(:, x:x + mws - 1, :), [], 2));
+            planeTemp = squeeze(mean(volumeData{vi}(:, x:x + mws - 1, :), 2));
 
             imagesc(squeeze(planeTemp)')
             axis tight
@@ -246,12 +242,7 @@ function generateTiffStack_multi(volumeData, varargin)
             set(gca, 'box', 'off')
         end
 
-        if useAxes
-            cv = getframe(ax); % Get the frame once all the tiles are populated for that MIP
-        else
-            cv = getframe(tf); % Get the frame once all the tiles are populated for that MIP
-        end
-
+        cv = getframe(tf);
         rgb = frame2im(cv);      % convert the frame to rgb data
         if x == 1
             yz_tagstruct.ImageLength = size(rgb, 1);
@@ -297,7 +288,7 @@ function generateTiffStack_multi(volumeData, varargin)
     for z = 1:size(volumeData{vi}, 3) - mws + 1
         for vi = 1:numVolumes
             nexttile(vi) % cycle between tiles
-            planeTemp = squeeze(max(volumeData{vi}(:, :, z:z + mws - 1), [], 3));
+            planeTemp = squeeze(mean(volumeData{vi}(:, :, z:z + mws - 1), 3));
 
             imagesc(squeeze(planeTemp)')
             axis tight
@@ -365,12 +356,7 @@ function generateTiffStack_multi(volumeData, varargin)
             set(gca, 'box', 'off')
 
         end
-        if useAxes
-            cv = getframe(ax); % Get the frame once all the tiles are populated for that MIP
-        else
-            cv = getframe(tf); % Get the frame once all the tiles are populated for that MIP
-        end
-        
+        cv = getframe(tf);
         rgb = frame2im(cv);      % convert the frame to rgb data
         if z == 1
             xy_tagstruct.ImageLength = size(rgb, 1);
