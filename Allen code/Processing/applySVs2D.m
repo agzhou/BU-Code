@@ -9,10 +9,17 @@ function [IQ_f] = applySVs2D(IQ_coherent_sum, PP, EVs, V_sort, sv_threshold_lowe
 
     EVs_f = EVs; % filtered eigenvalues
 
-    if length(EVs_f) > sv_threshold_upper
-        EVs_f([1:sv_threshold_lower - 1, sv_threshold_upper + 1:end]) = 0; % get rid of the data for eigenvalues past a threshold
-    else
+%     if length(EVs_f) > sv_threshold_upper
+%         EVs_f([1:sv_threshold_lower - 1, sv_threshold_upper + 1:end]) = 0; % get rid of the data for eigenvalues past a threshold
+%     else
+%         error('Upper threshold is larger than the number of eigenvalues (frames)')
+%     end
+    if length(EVs_f) < sv_threshold_upper
         error('Upper threshold is larger than the number of eigenvalues (frames)')
+    elseif length(EVs_f) == sv_threshold_upper
+        EVs_f(1:sv_threshold_lower - 1) = 0; % get rid of the data for eigenvalues past a threshold
+    else
+        EVs_f([1:sv_threshold_lower - 1, sv_threshold_upper + 1:end]) = 0; % get rid of the data for eigenvalues past a threshold
     end
 
     I_f = eye(size(diag(EVs_f)));

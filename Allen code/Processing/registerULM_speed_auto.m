@@ -24,14 +24,24 @@ datapath = [datapath, '\'];
 %     'SelectionMode', 'multiple', 'ListString', filenames);
 
 %% Temporary data loading until I figure out the automatic stuff
-load([datapath, 'speed_maps_baseline'])
-load([datapath, 'speed_maps_hour1'])
-load([datapath, 'speed_maps_day1'])
-load([datapath, 'speed_maps_day4'])
-load([datapath, 'speed_maps_day7'])
+speed_map_name = 'SM_SmoothedKFConstrained_LI_Rfn';
+load([datapath, 'speed_maps_baseline'], speed_map_name)
+load([datapath, 'speed_maps_hour1'], speed_map_name)
+load([datapath, 'speed_maps_day1'], speed_map_name)
+load([datapath, 'speed_maps_day4'], speed_map_name)
+load([datapath, 'speed_maps_day7'], speed_map_name)
 SMs_raw = {SMs_AZ03_baseline.SM_SmoothedKFConstrained_LI_Rfn, SMs_AZ03_hour1.SM_SmoothedKFConstrained_LI_Rfn, SMs_AZ03_day1.SM_SmoothedKFConstrained_LI_Rfn, SMs_AZ03_day4.SM_SmoothedKFConstrained_LI_Rfn, SMs_AZ03_day7.SM_SmoothedKFConstrained_LI_Rfn};
+% SMs_raw = {SMs_AZ03_baseline.SM_SmoothedKFConstrained_LI_Rfn, SMs_AZ03_hour1.SM_SmoothedKFConstrained_LI_Rfn};
 
-clearvars SMs_AZ03_baseline SMs_AZ03_hour1 SMs_AZ03_day1
+clearvars SMs_AZ03_baseline SMs_AZ03_hour1 SMs_AZ03_day1 SMs_AZ03_day4 SMs_AZ03_day7
+
+%% Plot the raw speed maps
+
+vcmap = colormap_ULM;
+
+for mn = 1:length(SMs_raw)
+    figure; imagesc(squeeze(max(SMs_raw{mn}(300:500, :, :), [], 1))'); colormap(vcmap); clim([0, 40])
+end
 
 %% rotate all speed maps manually so we can avoid smearing in our MIPs (think of some more robust way to do this)
 rx = 0;
@@ -48,7 +58,7 @@ baseline_tform = rigidtform3d([rx, ry, rz], [0, 0, 0]); % No translation
 SMs_IT = cell(size(SMs_raw)); % Speed maps with an Initial Transformation
 
 for mn = 1:length(SMs_raw) % Go through each map (number) 
-    SMs_IT{mn} = imwarp(SMs_raw{mn}, baseline_tform, "OutputView", imref3d(size(SMs_raw{mn})));
+    SMs_IT{mn} = imwarp(SMs_raw{mn}, baseline_tform, 'cubic', "OutputView", imref3d(size(SMs_raw{mn})));
 end
 
 %% Plot the rotated base speed maps
@@ -60,13 +70,24 @@ for mn = 1:length(SMs_IT)
     figure; imagesc(squeeze(max(SMs_IT{mn}(300:500, :, :), [], 1))'); colormap(vcmap); clim([0, 40])
 end
 
+% generateTiffStack_multi({SMs_IT{2}}, region_size, vcmap, MIP_windowsize, speedRange)
+
 %% Downsample before registering
 dsf = 5; % Downsampling factor
 SMs_IT_ds = cell(size(SMs_IT)); % Cell array of the downsampled speed maps
 
 % Downsample the speed maps
 for mn = 1:length(SMs_IT)
-    SMs_IT_ds{mn} = imresize3(SMs_IT{mn}, 1/dsf);
+    SMs_IT_ds{mn} = imresize3(SMs_IT{mn}, 1/dsf, "Method", "cubic");
+end
+
+%% Plot the downsampled base speed maps
+
+vcmap = colormap_ULM;
+
+for mn = 1:length(SMs_IT_ds)
+    % volumeSegmenter(SMs_IT{mn})
+    figure; imagesc(squeeze(max(SMs_IT_ds{mn}(30:50, :, :), [], 1))'); colormap(vcmap); clim([0, 40])
 end
 
 %% Show two of the downsampled base speed map volumes on top of each other
@@ -104,7 +125,7 @@ for mn = 2:length(SMs_reg_ds)
     tforms_reg{mn} = tforms_ds{mn};
     tforms_reg{mn}.Translation = tforms_reg{mn}.Translation .* dsf; % Adjust the transformation to account for the prior downsampling
 
-    SMs_reg{mn} = imwarp(SMs_IT{mn}, tforms_reg{mn}, "OutputView", imref3d(size(SMs_IT{mn}))); % Apply the full-sized transformation
+    SMs_reg{mn} = imwarp(SMs_IT{mn}, tforms_reg{mn}, 'cubic', "OutputView", imref3d(size(SMs_IT{mn}))); % Apply the full-sized transformation
 end
 
 %% MIPs of the final transformed data
@@ -164,7 +185,7 @@ function [img_reg, tform] = translRegTF(img, fixed)
 
     tic
     [tform] = imregtform(img, fixed, 'translation', optimizer, metric, 'DisplayOptimization', true, 'PyramidLevels', 3);
-    img_reg = imwarp(img, tform, "OutputView", imref3d(size(fixed)));
+    img_reg = imwarp(img, tform, 'cubic', "OutputView", imref3d(size(fixed)));
     disp('Registration done')
     toc
 end
@@ -183,7 +204,7 @@ function [img_reg, tform] = rigidRegTF(img, fixed)
 
     tic
     [tform] = imregtform(img, fixed, 'rigid', optimizer, metric, 'DisplayOptimization', true, 'PyramidLevels', 3);
-    img_reg = imwarp(img, tform, "OutputView", imref3d(size(fixed)));
+    img_reg = imwarp(img, tform, 'cubic', "OutputView", imref3d(size(fixed)));
     disp('Registration done')
     toc
 end
@@ -204,6 +225,6 @@ end
 function [registeredData] = applyTransforms(data, tforms, fixed)
     registeredData = cell(size(data));
     for i = 1:length(data)
-        registeredData{i} = imwarp(data{i}, tforms{i}, "OutputView", imref3d(size(fixed)));
+        registeredData{i} = imwarp(data{i}, tforms{i}, 'cubic', "OutputView", imref3d(size(fixed)));
     end
 end
