@@ -1,3 +1,7 @@
+%% Description:
+%       3D (tl-)fUS processing
+%       Timing data should be processed with plotfUStiming.m first
+
 %% load params and stuff
 IQpath = uigetdir('D:\Allen\Data\', 'Select the IQ data path');
 IQpath = [IQpath, '\'];
@@ -33,7 +37,7 @@ load(timingFilePath)
 %% Define some parameters (add this to a prompt later)
 
 parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Tau 1 index for CBFspeed', 'Tau 2 index for CBFspeed', 'Tau 1 index for CBV'};
-parameterDefaults = {'1', '', '20', '150', '2', '10', '2'};
+parameterDefaults = {'1', '', '10', '150', '2', '10', '2'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % define # of files manually for now
@@ -59,8 +63,8 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 % tau1_index_CBV = 2;
 
 %% Main loop
-% for filenum = startFile:endFile
-for filenum = [3:285]
+for filenum = startFile:endFile
+% for filenum = [285:-1:189]
 % for filenum = 7
     tic
     load([IQpath, IQfilenameStructure, num2str(filenum)])
@@ -79,37 +83,39 @@ for filenum = [3:285]
     clearvars IQ
 
     % Use the IQf with separated negative and positive frequency components
-%     [IQf_separated, IQf_FT_separated] = separatePosNegFreqs(IQf);
+    [IQf_separated, IQf_FT_separated] = separatePosNegFreqs(IQf);
     
     numg1pts = 20; % Only calculate the first N points
-%     g1_n = g1T(IQf_separated{1}, numg1pts);
-%     [CBFSi_n, CBVi_n] = g1_to_CBi(g1_n, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
-%     g1_p = g1T(IQf_separated{2}, numg1pts);
-%     [CBFSi_p, CBVi_p] = g1_to_CBi(g1_p, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+    g1_n = g1T(IQf_separated{1}, numg1pts);
+%     [CBFsi_n, CBVi_n] = g1_to_CBi(g1_n, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+    g1_p = g1T(IQf_separated{2}, numg1pts);
+%     [CBFsi_p, CBVi_p] = g1_to_CBi(g1_p, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 % 
     g1 = g1T(IQf, numg1pts);
 %     g1 = g1T(IQf);
-%     [CBFSi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+%     [CBFsi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 % 
 % %     savefast([savepath, 'fUSdata-', num2str(filenum), '.mat'], g1, CBFi, CBVi);
 
-%     [PDI] = calcPowerDoppler(IQf_separated);
-%     [CDI] = calcColorDoppler(IQf_FT_separated, P);
+    [PDI] = calcPowerDoppler(IQf_separated);
+    [CDI] = calcColorDoppler(IQf_FT_separated, P);
 
 %     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
 %     disp("PDI and CDI for file " + num2str(filenum) + " saved" )
-%     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFSi', 'CBVi', 'PDI', 'CDI', '-v7.3', '-nocompression');
-%     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFSi', 'CBVi', 'PDI', 'CDI', 'g1_n', 'g1_p', 'CBFSi_n', 'CBVi_n', 'CBFSi_p', 'CBVi_p',  '-v7.3', '-nocompression');
+%     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFsi', 'CBVi', 'PDI', 'CDI', '-v7.3', '-nocompression');
+%     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFsi', 'CBVi', 'PDI', 'CDI', 'g1_n', 'g1_p', 'CBFSi_n', 'CBVi_n', 'CBFSi_p', 'CBVi_p',  '-v7.3', '-nocompression');
+    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'g1_n', 'g1_p', 'PDI', 'CDI', '-v7.3', '-nocompression');
 %     save([savepath, 'g1-', num2str(filenum), '.mat'], 'g1', 'g1_n', 'g1_p', '-v7.3', '-nocompression');
-    save([savepath, 'g1-', num2str(filenum), '.mat'], 'g1', '-v7.3', '-nocompression');
+%     save([savepath, 'g1-', num2str(filenum), '.mat'], 'g1', '-v7.3', '-nocompression');
 
-%     disp("fUS result for file " + num2str(filenum) + " saved" )
-    disp("g1 result for file " + num2str(filenum) + " saved" )
+    disp("fUS result for file " + num2str(filenum) + " saved" )
+%     disp("g1 result for file " + num2str(filenum) + " saved" )
 
     toc
     
 end
-savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'tau1_index_CBF', 'tau2_index_CBF', 'tau1_index_CBV');
+% savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'tau1_index_CBF', 'tau2_index_CBF', 'tau1_index_CBV');
+savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'numg1pts');
 % savefast([savepath, 'PDI_CDI_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
 
 %% Convert g1 into CBV, CBFspeed, etc.
@@ -117,53 +123,59 @@ savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_
 g1_tau1_cutoff = 0.3;
 % tau_difference_cutoff = 0.2;
 
-% for filenum = startFile:endFile
-for filenum = [1:285]
-    load([savepath, 'g1-', num2str(filenum)], 'g1') % Load the saved g1 mat files
+for filenum = startFile:endFile
+%     load([savepath, 'g1-', num2str(filenum)], 'g1') % Load the saved g1 mat files
+    load([savepath, 'fUSdata-', num2str(filenum)], 'g1') % Load the saved g1 mat files
     
-    [g1A_mask] = createg1mask(g1, g1_tau1_cutoff);
+    [g1A_mask] = createg1mask(g1, g1_tau1_cutoff, tau1_index_CBF, tau2_index_CBF);
     
-    [CBFSi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+    [CBFsi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 
-    CBFSi(~g1A_mask) = 0; % Remove noisy points from the CBFspeed index (in theory)
+    CBFsi(~g1A_mask) = 0; % Remove noisy points from the CBFspeed index (in theory)
 
-    save([savepath, 'tlfUSdata-', num2str(filenum), '.mat'], 'CBFSi', 'CBVi', '-v7.3', '-nocompression');
+    save([savepath, 'tlfUSdata-', num2str(filenum), '.mat'], 'CBFsi', 'CBVi', '-v7.3', '-nocompression');
     disp("tl-fUS result for file " + num2str(filenum) + " saved" )
 
 end
-%% Building up some g1 treatments
-% figure; imagesc(squeeze(CBVi(32, :, :) .^ 0.5)'); colormap hot
 
-% figure; imagesc(squeeze(CBVi(40, :, :) .^ 0.5)'); colormap hot
-g1A = g1;
-g1_tau1_cutoff = 0.3;
-tau_difference_cutoff = 0.2;
-g1A_T = {};
+% figure; imagesc(squeeze(mean(CBFSi(30:50, :, :), 1))'); colormap(vcmap)
 
-g1A_T{1} = abs(g1(:, :, :, 2)) > g1_tau1_cutoff; % First treatment: tau1 is above some cutoff (make sure there is some actual blood signal there)
-g1A_T{2} = abs(g1(:, :, :, tau1_index_CBF)) > abs(g1(:, :, :, tau2_index_CBF)); % Keep the voxels where |g1(tau1)| > |g1(tau2)| (noise might have the g1 randomly increase with tau, but it should not happen with a voxel where there is a real blood signal)
-g1A_T{3} = abs(g1(:, :, :, tau1_index_CBF)) > 2 .* abs(g1(:, :, :, tau2_index_CBF)); % Keep the voxels where |g1(tau1)| > 2 * |g1(tau2)| (same as #2, but more severe)
-% g1A_T{4} = abs(g1(:, :, :, tau1_index_CBF)) - 1 .* abs(g1(:, :, :, tau2_index_CBF)) > tau_difference_cutoff; % Keep the voxels where |g1(tau1)| > 2 * |g1(tau2)| (same as #2, but more severe)
+%% Get and save PDI, CDI only
+% for filenum = startFile:endFile
+for filenum = 24:285
+% for filenum = [285:-1:189]
+    tic
+    load([IQpath, IQfilenameStructure, num2str(filenum)])
+%     load(['E:\Allen BME-BOAS-27 Data Backup\AZ03 Stroke RC15gV\fUS\05-06-2025 pre-stroke\IQ Data - Verasonics recon\', IQfilenameStructure, num2str(filenum)])
+    
+    IQ = squeeze(IData + 1i .* QData);
+    clearvars IData QData
+    
+    % SVD decluttering
+    [xp, yp, zp, nf] = size(IQ);
+    
+    [PP, EVs, V_sort] = getSVs2D(IQ);
+    disp('SVs decomposed')
+    [IQf] = applySVs2D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
+    disp('SVD filtered images put together')
 
-g1A_mask = true(size(g1A_T{1})); % Mask of voxels to keep for the g1 treatments
-for i = 1:length(g1A_T)
-    g1A_mask = and(g1A_mask, g1A_T{i});
+    clearvars IQ
+
+    % Use the IQf with separated negative and positive frequency components
+%     [IQf_separated, IQf_FT_separated] = separatePosNegFreqs(IQf);
+    
+    [PDI] = calcPowerDoppler(IQf);
+%     [CDI] = calcColorDoppler(IQf_FT_separated, P);
+
+%     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
+    save([savepath, 'PDI-', num2str(filenum), '.mat'], 'PDI', '-v7.3', '-nocompression');
+    disp("PDI and CDI for file " + num2str(filenum) + " saved" )
+
+    toc
+    
 end
-% Turn each treatment into a cell and multiply before converting back to a
-% logical
-% volumeViewer(g1A_mask)
+savefast([savepath, 'PDI_CDI_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
 
-%%
-CBFsi_all_test = squeeze(log(abs(g1(:, :, :, tau1_index_CBF))) - log(abs(g1(:, :, :, tau2_index_CBF)))); %./ (tau2_index_CBF - tau1_index_CBF);
-CBFsi_all_test(~g1A_mask) = 0;
-% g1A = g1A(g1A_mask);
-
-%%
-figure; imagesc(squeeze(max(CBFsi_all_test(30:50, :, :), [], 1))'); colormap(vcmap)
-
-figure; imagesc(squeeze(mean(CBFsi_all_test(30:50, :, :), 1))'); colormap(vcmap)
-
-% volumeViewer(CBFsi_all_test)
 
 %% CBFspeed index with the Derivative Method
 % vtest = sqrt( (abs(g1(:, :, :, tau1_index_CBF)) - abs(g1(:, :, :, tau2_index_CBF))) ./ (abs(g1(:, :, :, tau1_index_CBF)) .* ( tau(tau2_index_CBF)^2 - tau(tau1_index_CBF)^2 )) );
@@ -231,11 +243,6 @@ figure; plot(tau_ms(1:size(g1, 4)), squeeze(abs(g1_smoothdata(pt(1), pt(2), pt(3
 xlabel('tau [ms]')
 ylabel('|g1| with smoothdata')
 
-%% Differentiate
-g1_deriv = diff(g1, 1, 4); %./ diff(tau(1:size(g1, 4)));
-figure; plot(tau_ms(2:size(g1_deriv, 4) + 1), squeeze(abs(g1_deriv(pt(1), pt(2), pt(3), :))), '-o');
-xlabel('tau [ms]')
-ylabel('|g1|')
 %% Trying some alternate CBFspeed index calculations
 % CBFsi_all = squeeze(abs(g1(:, :, :, tau1_index_CBF)) - abs(g1(:, :, :, tau2_index_CBF)));
 % CBFsi_p = squeeze(abs(g1_p(:, :, :, tau1_index_CBF)) - abs(g1_p(:, :, :, tau2_index_CBF)));
@@ -375,7 +382,7 @@ plotMIPs(CDI{3}, 1)
 % plotMIPs(CBFi_p, 1)
 
 plotMIPs(CBVi, 1)
-plotMIPs(CBFSi, 1)
+plotMIPs(CBFsi, 1)
 
 %% Plot the magnitude of g1 at some point, of the adjusted g1
 figure; plot(tau_ms(2:size(g1, 4)), abs(squeeze(g1_shift(40, 45, 61, :))), '-o')
@@ -425,7 +432,7 @@ figure; imagesc(squeeze(max(CBFi_smoothed, [], 1))' .^ 1); colormap hot
 title('CBFi - xz MIP')
 xlabel('x pixels')
 ylabel('z pixels')
-figure; imagesc(squeeze(max(CBFSi, [], 2))' .^ 1); colormap hot
+figure; imagesc(squeeze(max(CBFsi, [], 2))' .^ 1); colormap hot
 title('CBFi - yz MIP')
 xlabel('x pixels')
 ylabel('z pixels')
@@ -468,6 +475,19 @@ for filenum = startFile + 1:endFile
     CBViallSF(:, :, :, filenum) = CBVi;
 end
 
+%% Store all the updated CBVi and CBFsi across the experiment into one matrix
+load([savepath, 'tlfUSdata-', num2str(1), '.mat'], 'CBFsi', 'CBVi')
+CBViallSF = zeros([size(CBVi), endFile - startFile + 1]); % Matrix with the CBVi for every superframe
+CBViallSF(:, :, :, 1) = CBVi;
+
+CBFsiallSF = zeros([size(CBFsi), endFile - startFile + 1]); % Matrix with the CBFsi for every superframe
+CBFsiallSF(:, :, :, 1) = CBFsi;
+
+for filenum = startFile + 1:endFile
+    load([savepath, 'tlfUSdata-', num2str(filenum), '.mat'], 'CBFsi', 'CBVi')
+    CBViallSF(:, :, :, filenum) = CBVi;
+    CBFsiallSF(:, :, :, filenum) = CBFsi;
+end
 %% Store all the PDI across the experiment into one matrix
 % load([savepath, 'PDI_CDI-', num2str(1), '.mat'], 'PDI', 'CDI')
 load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI', 'CDI')
@@ -540,7 +560,7 @@ ylabel('rCBV')
 
 %% Separate each trial
 ah = 3; % Approximate a cutoff value for analog high
-figure; plot(TD.airPuffOutput)
+
 ind_above_ah = find(TD.airPuffOutput > ah); % Get indices of the air puff output above analog high
 ind_shift_below_ah = find(TD.airPuffOutput(ind_above_ah - 1) < ah); % See which indices above analog high have an analog low when shifted by -1 (rising edge)
 ind_rising_edge = ind_above_ah(ind_shift_below_ah); % Store the original indices for the rising edges
@@ -551,8 +571,11 @@ ind_rising_edge = ind_above_ah(ind_shift_below_ah); % Store the original indices
 stim_starts_gap = (P.Mcr_fcp.apis.seq_length_s - P.Mcr_fcp.apis.stim_length_s) * P.daqrate; % How long we expect the stim gap to be between the end of one stim to the start of the next
 stim_prestart_baseline = (P.Mcr_fcp.apis.delay_time_ms / 1e3) * P.daqrate; % The duration between the baseline period and the corresponding stim start
 stim_starts = ind_rising_edge([true; diff(ind_rising_edge) > stim_starts_gap]); % Add a 1/true at the beginning index for the first stim
+
+% Plot the air puff signal and the calculated start points of each stim period
+figure; plot(TD.airPuffOutput)
 hold on
-plot(stim_starts, ones(size(stim_starts)) .* 5, 'o') % Plot the calculated start points of each stim period
+plot(stim_starts, ones(size(stim_starts)) .* 5, 'o')
 hold off
 
 clearvars ind_above_ah ind_shift_below_ah ind_rising_edge
@@ -572,16 +595,23 @@ end
 clearvars trial
 
 %% Assign the superframe trial binning to CBVi and PDI
+CBViallSFsmoothed = smoothdata(CBViallSF, 4, "sgolay", 3); % SMOOTH THE CBVi
+
 trial_CBVi = cell(size(trial_sf));
-trial_PDI = cell(size(trial_sf)); % use the all frequency PDI
+trial_CBFsi = cell(size(trial_sf));
+
+% trial_PDI = cell(size(trial_sf)); % use the all frequency PDI
 minNumPts = Inf;
 for trial = 1:length(trial_sf)
-    trial_CBVi{trial} = CBViallSF(:, :, :, trial_sf{trial});
+    trial_CBVi{trial} = CBViallSFsmoothed(:, :, :, trial_sf{trial});
+    trial_CBFsi{trial} = CBFsiallSF(:, :, :, trial_sf{trial});
 %     trial_PDI{trial} = PDIallSF{3}(:, :, :, trial_sf{trial});
     minNumPts = min(minNumPts, length(trial_sf{trial})); % Get the minimum number of measurement points across all trials
 end
 
-%% Get the max CBVi or PDI etc. within each trial's stimulation period
+%% Get the mean or max CBVi or PDI etc. within each trial's stimulation period
+
+
 trial_sf_stimon = cell(size(trial_windows));    % Cell array of size (# trials, 1). Each cell contains the superframe indices that correspond to the stimulus period within that trial.
 trial_sf_baseline = cell(size(trial_windows));    % Cell array of size (# trials, 1). Each cell contains the superframe indices that correspond to the baseline period within that trial.
 stim_length = P.Mcr_fcp.apis.stim_length_s * P.daqrate; % Stim length, adjusted for the DAQ rate
@@ -594,63 +624,169 @@ for trial = 1:length(trial_windows)
 end
 clearvars trial
 
+% Get a square wave approximation of when the stim period is, in the
+% superframe timing
+trial_stim_pattern = cell(size(trial_windows)); % Cell array of size (# trials, 1). Each cell contains a timeseries of the whole trial, with a square wave approximation of the stimulus within that trial.
+for trial = 1:length(trial_windows)
+    trial_stim_pattern{trial} = zeros(size(trial_sf{trial}));
+%     trial_stim_pattern{trial}(stim_starts(trial) : stim_starts(trial) + stim_length) = 1;
+    trial_stim_pattern{trial}(find(sfStarts >= (trial_windows{trial}(1) + stim_prestart_baseline) & sfStarts <= (trial_windows{trial}(1) + stim_prestart_baseline + stim_length)) - trial_sf{trial}(1) + 1) = 1;
+end
+    
 % Store the actual CBVi or PDI etc. values within the baseline and stim periods
-max_CBVi_stimon = cell(size(trial_sf_stimon));
+% max_CBVi_stimon = cell(size(trial_sf_stimon));
 avg_CBVi_stimon = cell(size(trial_sf_stimon));
 avg_CBVi_baseline = cell(size(trial_sf_baseline));
+avg_CBFsi_stimon = cell(size(trial_sf_stimon));
+avg_CBFsi_baseline = cell(size(trial_sf_baseline));
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+CBVi_relative_change = cell(size(trial_sf)); % Relative change of CBVi, per trial, compared to the mean at baseline of that trial
+CBFsi_relative_change = cell(size(trial_sf)); % Relative change of CBFsi, per trial, compared to the mean at baseline of that trial
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 for trial = 1:length(trial_windows)
-    avg_CBVi_baseline{trial} = mean(CBViallSF(:, :, :, trial_sf_baseline{trial}), 4);
-    max_CBVi_stimon{trial} = max(CBViallSF(:, :, :, trial_sf_stimon{trial}), [], 4);
-    avg_CBVi_stimon{trial} = mean(CBViallSF(:, :, :, trial_sf_stimon{trial}), 4);
+    avg_CBVi_baseline{trial} = mean(CBViallSFsmoothed(:, :, :, trial_sf_baseline{trial}), 4);
+%     max_CBVi_stimon{trial} = max(CBViallSFsmoothed(:, :, :, trial_sf_stimon{trial}), [], 4);
+    avg_CBVi_stimon{trial} = mean(CBViallSFsmoothed(:, :, :, trial_sf_stimon{trial}), 4);
+
+    avg_CBFsi_baseline{trial} = mean(CBFsiallSF(:, :, :, trial_sf_baseline{trial}), 4);
+    avg_CBFsi_stimon{trial} = mean(CBFsiallSF(:, :, :, trial_sf_stimon{trial}), 4);
 
 end
 
-% Calculate the ratio of the max during the stim period to the mean during
+% Percent change of CBVi for each trial, compared to the mean at baseline
+for trial = 1:length(trial_windows)
+    CBVi_relative_change{trial} = (trial_CBVi{trial} - avg_CBVi_baseline{trial}) ./ avg_CBVi_baseline{trial} .* 100;
+    CBFsi_relative_change{trial} = (trial_CBFsi{trial} - avg_CBFsi_baseline{trial}) ./ avg_CBFsi_baseline{trial} .* 100;
+end
+
+% Do the correlation stuff
+r_CBVi_relative_change = [];
+z_CBVi_relative_change = [];
+r_CBVi_relative_change = [];
+z_CBVi_relative_change = [];
+
+for trial = 1:length(trial_windows)
+    [r_CBVi_relative_change(:, :, :, trial), z_CBVi_relative_change(:, :, :, trial)] = corrCoef3D(CBVi_relative_change{trial}, trial_stim_pattern{trial});
+    [r_CBFsi_relative_change(:, :, :, trial), z_CBFsi_relative_change(:, :, :, trial)] = corrCoef3D(CBFsi_relative_change{trial}, trial_stim_pattern{trial});
+end
+
+r_CBVi_relative_change_trialavg = mean(r_CBVi_relative_change, 4);
+z_CBVi_relative_change_trialavg = mean(z_CBVi_relative_change, 4);
+
+r_CBFsi_relative_change_trialavg = mean(r_CBFsi_relative_change, 4);
+z_CBFsi_relative_change_trialavg = mean(z_CBFsi_relative_change, 4);
+
+zscore_mask = z_CBVi_relative_change_trialavg < 1;
+r_CBVi_relative_change_trialavg_thresholded = r_CBVi_relative_change_trialavg;
+r_CBVi_relative_change_trialavg_thresholded(zscore_mask) = 0;
+%% Plot the relative CBVi change
+tt = 1;
+figure; imagesc(squeeze(max(max(CBVi_relative_change{tt}(20:50, :, :, :), [], 1), [], 4))'); colormap hot
+
+
+figure;
+yyaxis left
+% plot(TD.sfTimeTagsDAQStart_adj, movmean(squeeze(CBViallSF(40, 58, 14, :)), 10))
+plot(movmean(squeeze(CBVi_relative_change{tt}(40, 58, 14, :)), 1))
+yyaxis right
+plot(trial_stim_pattern{tt})
+
+%% Calculate the ratio of the max during the stim period to the mean during
 % the baseline 
 % Also get the percent change (and normalize by the baseline for each trial)
 temp_size = size(avg_CBVi_baseline{1});
-trialAvg_CBVi_stimon_vs_baseline = zeros(temp_size);
+% trialAvg_CBVi_stimon_vs_baseline = zeros(temp_size);
 trialAvg_CBVi_stimon_vs_baseline_pc = zeros(temp_size); % percent change
-trialAvg_CBVi_max_stimon = zeros(temp_size);
-trialAvg_CBVi_avg_baseline = zeros(temp_size);
-trialAvg_CBVi_avg_stimon = zeros(temp_size);
+% trialAvg_CBVi_max_stimon = zeros(temp_size);
+% trialAvg_CBVi_avg_baseline = zeros(temp_size);
+% trialAvg_CBVi_avg_stimon = zeros(temp_size);
 clearvars temp_size
 
 for trial = 1:length(trial_sf)
-    trialAvg_CBVi_stimon_vs_baseline = trialAvg_CBVi_stimon_vs_baseline + max_CBVi_stimon{trial} ./ avg_CBVi_baseline{trial};
-    trialAvg_CBVi_stimon_vs_baseline_pc = trialAvg_CBVi_stimon_vs_baseline_pc + (max_CBVi_stimon{trial} - avg_CBVi_baseline{trial}) ./ avg_CBVi_baseline{trial};
-    trialAvg_CBVi_max_stimon = trialAvg_CBVi_max_stimon + max_CBVi_stimon{trial};
-    trialAvg_CBVi_avg_baseline = trialAvg_CBVi_avg_baseline + avg_CBVi_baseline{trial};
-    trialAvg_CBVi_avg_stimon = trialAvg_CBVi_avg_stimon + avg_CBVi_stimon{trial};
+%     trialAvg_CBVi_stimon_vs_baseline = trialAvg_CBVi_stimon_vs_baseline + max_CBVi_stimon{trial} ./ avg_CBVi_baseline{trial};
+    trialAvg_CBVi_stimon_vs_baseline_pc = trialAvg_CBVi_stimon_vs_baseline_pc + (avg_CBVi_stimon{trial} - avg_CBVi_baseline{trial}) ./ avg_CBVi_baseline{trial};
+%     trialAvg_CBVi_max_stimon = trialAvg_CBVi_max_stimon + max_CBVi_stimon{trial};
+%     trialAvg_CBVi_avg_baseline = trialAvg_CBVi_avg_baseline + avg_CBVi_baseline{trial};
+%     trialAvg_CBVi_avg_stimon = trialAvg_CBVi_avg_stimon + avg_CBVi_stimon{trial};
 
 end
-trialAvg_CBVi_stimon_vs_baseline = trialAvg_CBVi_stimon_vs_baseline ./ length(trial_sf);
-trialAvg_CBVi_stimon_vs_baseline_pc = trialAvg_CBVi_stimon_vs_baseline_pc ./ length(trial_sf);
-trialAvg_CBVi_avg_baseline = trialAvg_CBVi_avg_baseline ./ length(trial_sf);
-trialAvg_CBVi_max_stimon = trialAvg_CBVi_max_stimon ./ length(trial_sf);
-trialAvg_CBVi_avg_stimon = trialAvg_CBVi_avg_stimon ./ length(trial_sf);
+% trialAvg_CBVi_stimon_vs_baseline = trialAvg_CBVi_stimon_vs_baseline ./ length(trial_sf);
+trialAvg_CBVi_stimon_vs_baseline_pc = trialAvg_CBVi_stimon_vs_baseline_pc ./ length(trial_sf) .* 100;
+% trialAvg_CBVi_avg_baseline = trialAvg_CBVi_avg_baseline ./ length(trial_sf);
+% trialAvg_CBVi_max_stimon = trialAvg_CBVi_max_stimon ./ length(trial_sf);
+% trialAvg_CBVi_avg_stimon = trialAvg_CBVi_avg_stimon ./ length(trial_sf);
 
-trialAvg_CBVi_stimon_vs_baseline_bothavg = trialAvg_CBVi_avg_stimon ./ trialAvg_CBVi_avg_baseline;
+% trialAvg_CBVi_stimon_vs_baseline_bothavg = trialAvg_CBVi_avg_stimon ./ trialAvg_CBVi_avg_baseline;
 
 % Try removing relative values above some cutoff. 
 
-vesselMask = trialAvg_CBVi(:, :, :, 10) > 0.3;
-% trialAvg_CBVi_stimon_vs_baseline_rfn = trialAvg_CBVi_stimon_vs_baseline;
-trialAvg_CBVi_stimon_vs_baseline_rfn = trialAvg_CBVi_stimon_vs_baseline_bothavg;
-trialAvg_CBVi_stimon_vs_baseline_rfn(~vesselMask) = 0;
+% vesselMask = trialAvg_CBVi(:, :, :, 10) > 0.3;
+% % trialAvg_CBVi_stimon_vs_baseline_rfn = trialAvg_CBVi_stimon_vs_baseline;
+% trialAvg_CBVi_stimon_vs_baseline_rfn = trialAvg_CBVi_stimon_vs_baseline_bothavg;
+% trialAvg_CBVi_stimon_vs_baseline_rfn(~vesselMask) = 0;
 
 % We only expect the rCBV to be a max of around 150% or less.
 % trialAvg_CBVi_stimon_vs_baseline_rfn(trialAvg_CBVi_stimon_vs_baseline_rfn > 1.5) = 0;
+generateTiffStack_multi({trialAvg_CBVi_stimon_vs_baseline_pc .^ 1}, [8.8, 8.8, 8], 'hot', 10)
+generateTiffStack_MeanIPs_multi({trialAvg_CBVi_stimon_vs_baseline_pc .^ 1}, [8.8, 8.8, 8], 'hot', 10)
 
 %%
+
+testb = avg_CBFsi_baseline{1};
+teston = avg_CBFsi_stimon{1};
+figure; imagesc(squeeze(max(testb(20:40, :, :), [], 1))'); colormap hot
+
+bondiff = teston - testb; % baseline vs on difference
+volumeViewer(bondiff)
+figure; imagesc(squeeze(max(bondiff(20:40, :, :), [], 1))'); colormap hot
+
+bonreldiff = (teston - testb) ./ testb;
+bonreldiff(bonreldiff == Inf) = 0;
+figure; imagesc(squeeze(max(bonreldiff(20:40, :, :), [], 1))'); colormap hot
+figure; imagesc(squeeze(bonreldiff(40, :, :))'); colormap hot
+generateTiffStack_multi({bonreldiff .^ 1}, [8.8, 8.8, 8], 'hot', 10)
+
+figure; plot(squeeze(trial_CBVi{1}(40, 35, 62, :)))
+% figure; plot(movmean(squeeze(trial_CBVi{1}(40, 35, 62, :)), 3))
+
+figure; plot(squeeze(trial_CBVi{1}(40, 58, 14, :)))
+
+figure; plot(squeeze(CBViallSF(40, 58, 14, :)))
+figure; plot(TD.sfTimeTagsDAQStart, movmean(squeeze(CBViallSF(40, 58, 14, :)), 10))
+figure; plot(TD.sfTimeTagsDAQStart, movmean(squeeze(CBViallSF(40, 35, 62, :)), 10))
+
+
+figure;
+yyaxis left
+% plot(TD.sfTimeTagsDAQStart_adj, movmean(squeeze(CBViallSF(40, 58, 14, :)), 10))
+plot(TD.sfTimeTagsDAQStart_adj - TD.sfTimeTagsDAQStart_adj(1), movmean(squeeze(CBViallSFsmoothed(40, 58, 14, :)), 10))
+yyaxis right
+plot(TD.airPuffOutput + TD.sfTimeTagsDAQStart_adj(1))
+
+%%
+tt = 1; % trial test
+figure
+yyaxis left
+plot(trial_stim_pattern{tt})
+yyaxis right
+plot(squeeze(trial_CBVi{tt}(40, 58, 14, :)))
+
+% test = corrcoef(squeeze(trial_CBVi{tt}(40, 58, 14, :)), trial_stim_pattern{tt});
+%%
+% generateTiffStack_multi({trialAvg_CBVi_stimon_vs_baseline_pc .^ 1}, [8.8, 8.8, 8], 'hot', 10)
+
 % generateTiffStack_multi({trialAvg_CBVi_avg_baseline, trialAvg_CBVi_max_stimon}, [8.8, 8.8, 8], 'hot', 10)
 % generateTiffStack_multi({trialAvg_CBVi_max_stimon}, [8.8, 8.8, 8], 'hot', 10)
 % generateTiffStack_multi({trialAvg_CBVi_stimon_vs_baseline_rfn .^ 1}, [8.8, 8.8, 8], 'hot', 5, [0.95 1.5])
 % generateTiffStack_multi({trialAvg_CBVi_stimon_vs_baseline_rfn .^ 1}, [8.8, 8.8, 8], 'hot', 5, [0.5 1.5])
 % generateTiffStack_multi({trialAvg_CBVi_stimon_vs_baseline_rfn .^ 1}, [8.8, 8.8, 8], 'hot', 5)
 trialAvg_CBVi_stimon_vs_baseline_pc_thresholded = trialAvg_CBVi_stimon_vs_baseline_pc;
-trialAvg_CBVi_stimon_vs_baseline_pc_thresholded(trialAvg_CBVi_stimon_vs_baseline_pc_thresholded > 0.8) = 0;
-generateTiffStack_multi({trialAvg_CBVi_stimon_vs_baseline_pc_thresholded .^ 1}, [8.8, 8.8, 8], 'hot', 10, [-0.1, 0.8])
+testThreshold = 0.3;
+trialAvg_CBVi_stimon_vs_baseline_pc_thresholded(trialAvg_CBVi_stimon_vs_baseline_pc_thresholded > testThreshold) = 0;
+generateTiffStack_multi({trialAvg_CBVi_stimon_vs_baseline_pc_thresholded .^ 1}, [8.8, 8.8, 8], 'hot', 10, [-0.1, testThreshold])
+generateTiffStack_MeanIPs_multi({trialAvg_CBVi_stimon_vs_baseline_pc_thresholded .^ 1}, [8.8, 8.8, 8], 'hot', 10, [-0.1, testThreshold])
 
 %% Trial averaging
 temp_size = size(trial_CBVi{1}); temp_size(4) = minNumPts; % NEED TO THINK ABOUT THE ALIGNMENT
@@ -686,7 +822,7 @@ xlabel('')
 ylabel('CBVi')
 %% Helper functions
 
-function [g1A_mask] = createg1mask(g1, g1_tau1_cutoff)
+function [g1A_mask] = createg1mask(g1, g1_tau1_cutoff, tau1_index_CBF, tau2_index_CBF)
 
     g1A_T = {};
     

@@ -1,8 +1,8 @@
 %% Make a tiff stack
-% Input data is assumed to be (y, x, z)
+% Input data is assumed to be (y, x, z, frames)
 % Optional inputs: 1. actual image/physical size [y, x, z] in the same physical units
 %                  2. colormap (string)
-%                  3. MIP window size
+%                  3. MIP window range
 
 function generateTiffStack_acrossframes(volumeData, varargin)
 

@@ -141,7 +141,14 @@ generateTiffStack_multi({SMs_reg{2}}, region_size, vcmap, MIP_windowsize, speedR
 % uf = 2; % upsampling factor
 % volumeDataUpsampled = {imresize3(baselineBDM_registered, is .* uf), imresize3(hour1SM, is .* uf), imresize3(day3BDM_registered, is .* uf)};
 
+%% Subtraction to accentuate the stroke core?
+figure; imagesc(squeeze(max(SMs_reg{1}(300:500, :, :), [], 1))'); colormap(vcmap)
+figure; imagesc(squeeze(max(SMs_reg{2}(300:500, :, :), [], 1))'); colormap(vcmap)
 
+
+baseline_minus_hour1 = SMs_reg{1} - SMs_reg{2};
+% volumeViewer(baseline_minus_hour1)
+figure; imagesc(squeeze(max(baseline_minus_hour1(300:500, :, :), [], 1))'); colormap(vcmap)
 %% Helper functions
 % Get the registered image and the translation transformation for registering
 % 'img' to 'fixed'
