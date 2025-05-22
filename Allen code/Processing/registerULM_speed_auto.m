@@ -111,8 +111,8 @@ end
 %% Compare the downsampled registration to the fixed image
 % figure; imagesc(squeeze(max(SM_baseline_rotated(400:600, :, :), [], 1))'); colormap(cmap); clim([0, 40])
 % figure; imagesc(squeeze(max(SM_hour1_registered(400:600, :, :), [], 1))'); colormap(cmap); clim([0, 40])
-figure; imagesc(squeeze(max(SM_baseline_rotated_ds(80:120, :, :), [], 1))'); colormap(vcmap); clim([0, 40])
-figure; imagesc(squeeze(max(SM_hour1_ds_registered(80:120, :, :), [], 1))'); colormap(vcmap); clim([0, 40])
+figure; imagesc(squeeze(max(SMs_reg_ds{1}(80:120, :, :), [], 1))'); colormap(vcmap); clim([0, 40])
+figure; imagesc(squeeze(max(SMs_reg_ds{2}(80:120, :, :), [], 1))'); colormap(vcmap); clim([0, 40])
 
 % compareVolumes(SM_baseline_rotated_ds, SM_hour1_ds_registered)
 
@@ -141,8 +141,8 @@ end
 %% Save MIPs
 
 vcmap = colormap_ULM;
-% speedRange = [0, 40];
-speedRange = [0, 5];
+speedRange = [0, 40];
+% speedRange = [0, 5];
 MIP_windowsize = 50;
 % region_size = [8.8, 8.8, 8];
 total_padding = [80, 80, 80];
@@ -156,7 +156,7 @@ region_size = (1 + total_padding ./ (size(SMs_reg{1}) - total_padding)) .* [8.8,
 % SMs_registered = {SM_baseline_rotated, SM_hour1_registered};
 generateTiffStack_multi(SMs_reg, region_size, vcmap, MIP_windowsize, speedRange)
 
-generateTiffStack_multi({SMs_reg{2}}, region_size, vcmap, MIP_windowsize, speedRange)
+generateTiffStack_multi({SMs_reg{1}, SMs_reg{2}}, region_size, vcmap, MIP_windowsize, speedRange)
 
 % is = size(hour1SM); % image size
 % uf = 2; % upsampling factor

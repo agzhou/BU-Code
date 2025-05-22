@@ -64,6 +64,7 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 
 %% Main loop
 for filenum = startFile:endFile
+% for filenum = 283:285
 % for filenum = [285:-1:189]
 % for filenum = 7
     tic
@@ -124,6 +125,7 @@ g1_tau1_cutoff = 0.3;
 % tau_difference_cutoff = 0.2;
 
 for filenum = startFile:endFile
+% for filenum = 1
 %     load([savepath, 'g1-', num2str(filenum)], 'g1') % Load the saved g1 mat files
     load([savepath, 'fUSdata-', num2str(filenum)], 'g1') % Load the saved g1 mat files
     
@@ -317,7 +319,7 @@ figure; imagesc(squeeze(max(ggCR1_rs, [], 1))')
 ggCR2_rs = reshape(ggCR2, [size(g1_shift, 1), size(g1_shift, 2), size(g1_shift, 3)]); % ** unstack the spatial dimensions **
 figure; imagesc(squeeze(max(ggCR2_rs, [], 1))') %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% More smoothing from the previous code
-covB=ones(3,3); covB(3,3)=9; covB=covB/sum(covB(:)); % no clue wtf this is
+covB=ones(3,3); covB(3,3)=9; covB=covB/sum(covB(:));
 
 g1Smoothed = g1;
 for itau=1:size(g1, 4)
@@ -595,7 +597,7 @@ end
 clearvars trial
 
 %% Assign the superframe trial binning to CBVi and PDI
-CBViallSFsmoothed = smoothdata(CBViallSF, 4, "sgolay", 3); % SMOOTH THE CBVi
+CBViallSFsmoothed = smoothdata(CBViallSF, 4, "sgolay", 9); % SMOOTH THE CBVi
 
 trial_CBVi = cell(size(trial_sf));
 trial_CBFsi = cell(size(trial_sf));
@@ -754,6 +756,7 @@ figure; plot(squeeze(trial_CBVi{1}(40, 35, 62, :)))
 figure; plot(squeeze(trial_CBVi{1}(40, 58, 14, :)))
 
 figure; plot(squeeze(CBViallSF(40, 58, 14, :)))
+figure; plot(squeeze(CBViallSFsmoothed(40, 58, 14, :)))
 figure; plot(TD.sfTimeTagsDAQStart, movmean(squeeze(CBViallSF(40, 58, 14, :)), 10))
 figure; plot(TD.sfTimeTagsDAQStart, movmean(squeeze(CBViallSF(40, 35, 62, :)), 10))
 
@@ -798,14 +801,34 @@ for trial = 1:length(trial_sf)
 end
 trialAvg_CBVi = trialAvg_CBVi ./ length(trial_sf);
 
-% HRF_analytical = ;
-% generateTiffStack_multi([{trialAvg_CBVi(:, :, :, 10) .^ 0.7}], [8.8, 8.8, 8], 'hot', 5)
-% yr = 30:40;
-yr = 1:80;
-generateTiffStack_acrossframes(trialAvg_CBVi .^ 1, [8.8, 8.8, 8], 'hot', yr)
-% generateTiffStack_multi({(sum(trialAvg_CBVi, 4) ./ size(trialAvg_CBVi, 4)) .^ 0.5}, [8.8, 8.8, 8], 'hot', 5)
+% % HRF_analytical = ;
+% % generateTiffStack_multi([{trialAvg_CBVi(:, :, :, 10) .^ 0.7}], [8.8, 8.8, 8], 'hot', 5)
+% % yr = 30:40;
+% yr = 1:80;
+% generateTiffStack_acrossframes(trialAvg_CBVi .^ 1, [8.8, 8.8, 8], 'hot', yr)
+% % generateTiffStack_multi({(sum(trialAvg_CBVi, 4) ./ size(trialAvg_CBVi, 4)) .^ 0.5}, [8.8, 8.8, 8], 'hot', 5)
+% 
+% figure; imagesc(squeeze(max(trialAvg_CBVi(1:80, :, :, 1), [], 1))'); colormap hot
 
-figure; imagesc(squeeze(max(trialAvg_CBVi(1:80, :, :, 1), [], 1))'); colormap hot
+test_stim_pattern = zeros(size(trialAvg_CBVi, 4), 1);
+test_stim_pattern(5:11) = 1;
+
+trialAvg_CBVi_thicc = convn(trialAvg_CBVi, kernel, 'same');
+
+[test_r_CBVi_relative_change, test_z_CBVi_relative_change] = corrCoef3D(trialAvg_CBVi, test_stim_pattern);
+[test_r_CBVi_relative_change, test_z_CBVi_relative_change] = corrCoef3D(trialAvg_CBVi_thicc, test_stim_pattern);
+%% Plot activation at each slice
+for slice = 1:10
+    my_inds = (slice-1)*5:slice*5;
+    my_inds = my_inds+1;
+    figure; imagesc(squeeze(mean(test(my_inds, :, :), 1))')
+    title(num2str(mean(my_inds)))
+end
+
+kernel = ones(3, 3, 3);
+kernel(2, 2, 2) = 3;%sum(kernel, 'all');
+
+test_r_CBVi_relative_change_conv = convn(test_r_CBVi_relative_change, kernel, 'same');
 
 %% Plot the CBVi trial average at some point
 % Increasing y is going towards the back of the brain
