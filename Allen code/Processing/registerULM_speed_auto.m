@@ -23,17 +23,27 @@ datapath = [datapath, '\'];
 % [ind, ~] = listdlg('PromptString', {'Select the files to register'}, ...
 %     'SelectionMode', 'multiple', 'ListString', filenames);
 
+% %% Temporary data loading until I figure out the automatic stuff
+% speed_map_name = 'SM_SmoothedKFConstrained_LI_Rfn';
+% load([datapath, 'speed_maps_baseline'], speed_map_name)
+% load([datapath, 'speed_maps_hour1'], speed_map_name)
+% load([datapath, 'speed_maps_day1'], speed_map_name)
+% load([datapath, 'speed_maps_day4'], speed_map_name)
+% load([datapath, 'speed_maps_day7'], speed_map_name)
+% SMs_raw = {SMs_AZ03_baseline.SM_SmoothedKFConstrained_LI_Rfn, SMs_AZ03_hour1.SM_SmoothedKFConstrained_LI_Rfn, SMs_AZ03_day1.SM_SmoothedKFConstrained_LI_Rfn, SMs_AZ03_day4.SM_SmoothedKFConstrained_LI_Rfn, SMs_AZ03_day7.SM_SmoothedKFConstrained_LI_Rfn};
+% % SMs_raw = {SMs_AZ03_baseline.SM_SmoothedKFConstrained_LI_Rfn, SMs_AZ03_hour1.SM_SmoothedKFConstrained_LI_Rfn};
+% 
+% clearvars SMs_AZ03_baseline SMs_AZ03_hour1 SMs_AZ03_day1 SMs_AZ03_day4 SMs_AZ03_day7
+
 %% Temporary data loading until I figure out the automatic stuff
 speed_map_name = 'SM_SmoothedKFConstrained_LI_Rfn';
-load([datapath, 'speed_maps_baseline'], speed_map_name)
-load([datapath, 'speed_maps_hour1'], speed_map_name)
-load([datapath, 'speed_maps_day1'], speed_map_name)
-load([datapath, 'speed_maps_day4'], speed_map_name)
-load([datapath, 'speed_maps_day7'], speed_map_name)
-SMs_raw = {SMs_AZ03_baseline.SM_SmoothedKFConstrained_LI_Rfn, SMs_AZ03_hour1.SM_SmoothedKFConstrained_LI_Rfn, SMs_AZ03_day1.SM_SmoothedKFConstrained_LI_Rfn, SMs_AZ03_day4.SM_SmoothedKFConstrained_LI_Rfn, SMs_AZ03_day7.SM_SmoothedKFConstrained_LI_Rfn};
-% SMs_raw = {SMs_AZ03_baseline.SM_SmoothedKFConstrained_LI_Rfn, SMs_AZ03_hour1.SM_SmoothedKFConstrained_LI_Rfn};
+load([datapath, 'speed_maps_baseline'], SMs_AZ02_baseline.(speed_map_name))
+load([datapath, 'speed_maps_hour1'])
+load([datapath, 'speed_maps_day3'])
+load([datapath, 'speed_maps_day7'])
+SMs_raw = {SMs_AZ02_baseline.SM_SmoothedKFConstrained_LI_Rfn, SMs_AZ02_hour1.SM_SmoothedKFConstrained_LI_Rfn, SMs_AZ02_day3.SM_SmoothedKFConstrained_LI_Rfn, SMs_AZ02_day7.SM_SmoothedKFConstrained_LI_Rfn};
 
-clearvars SMs_AZ03_baseline SMs_AZ03_hour1 SMs_AZ03_day1 SMs_AZ03_day4 SMs_AZ03_day7
+clearvars SMs_AZ02_baseline SMs_AZ02_hour1 SMs_AZ02_day3 SMs_AZ02_day7
 
 %% Plot the raw speed maps
 
@@ -46,7 +56,8 @@ end
 %% rotate all speed maps manually so we can avoid smearing in our MIPs (think of some more robust way to do this)
 rx = 0;
 ry = 0;
-rz = -8; % z rotation in degrees
+% rz = -8; % z rotation in degrees
+rz = -4; % z rotation in degrees
 
 Rx = [1 0 0; 0 cosd(rx) -sind(rx); 0 sind(rx) cosd(rx)];
 Ry = [cosd(ry) 0 sind(ry); 0 1 0; -sind(ry) 0 cosd(ry)];
@@ -58,6 +69,7 @@ baseline_tform = rigidtform3d([rx, ry, rz], [0, 0, 0]); % No translation
 SMs_IT = cell(size(SMs_raw)); % Speed maps with an Initial Transformation
 
 for mn = 1:length(SMs_raw) % Go through each map (number) 
+% for mn = 2:length(SMs_raw)
     SMs_IT{mn} = imwarp(SMs_raw{mn}, baseline_tform, 'cubic', "OutputView", imref3d(size(SMs_raw{mn})));
 end
 
