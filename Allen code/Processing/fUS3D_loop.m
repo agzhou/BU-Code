@@ -37,7 +37,7 @@ load(timingFilePath)
 %% Define some parameters (add this to a prompt later)
 
 parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Tau 1 index for CBFspeed', 'Tau 2 index for CBFspeed', 'Tau 1 index for CBV'};
-parameterDefaults = {'1', '', '10', '150', '2', '10', '2'};
+parameterDefaults = {'1', '', '15', '180', '2', '10', '2'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % define # of files manually for now
@@ -66,7 +66,7 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 for filenum = startFile:endFile
 % for filenum = 283:285
 % for filenum = [285:-1:189]
-% for filenum = 7
+% for filenum = 1
     tic
     load([IQpath, IQfilenameStructure, num2str(filenum)])
     
@@ -119,18 +119,83 @@ end
 savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'numg1pts');
 % savefast([savepath, 'PDI_CDI_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
 
+%% Main loop but with the multiple g1 thing
+numg1curves = 100; % # of g1 curves to average
+for filenum = startFile:endFile
+% for filenum = [285:-1:189]
+% for filenum = 1
+    tic
+    load([IQpath, IQfilenameStructure, num2str(filenum)])
+    
+    IQ = squeeze(IData + 1i .* QData);
+    clearvars IData QData
+    
+    % SVD decluttering
+    [xp, yp, zp, nf] = size(IQ);
+    
+    [PP, EVs, V_sort] = getSVs2D(IQ);
+    disp('SVs decomposed')
+    [IQf] = applySVs2D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
+    disp('SVD filtered images put together')
+
+    clearvars IQ
+
+    g1s = cell(numg1curves, 1);
+
+    % Use the IQf with separated negative and positive frequency components
+%     [IQf_separated, IQf_FT_separated] = separatePosNegFreqs(IQf);
+    
+    numg1pts = 20; % Only calculate the first N points
+%     g1_n = g1T(IQf_separated{1}, numg1pts);
+%     [CBFsi_n, CBVi_n] = g1_to_CBi(g1_n, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+%     g1_p = g1T(IQf_separated{2}, numg1pts);
+%     [CBFsi_p, CBVi_p] = g1_to_CBi(g1_p, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+% 
+    parfor g1cn = 1:numg1curves % g1 curve number
+        g1s{g1cn} = g1T(IQf(:, :, :, g1cn:end), numg1pts);
+    end
+
+    g1Avg = zeros(size(g1s{1})); % g1 average
+    for g1cn = 1:numg1curves % g1 curve number
+        g1Avg = g1Avg + g1s{g1cn};
+    end
+    g1Avg = g1Avg ./ numg1curves;
+%     g1 = g1T(IQf);
+%     [CBFsi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+% 
+% %     savefast([savepath, 'fUSdata-', num2str(filenum), '.mat'], g1, CBFi, CBVi);
+
+%     [PDI] = calcPowerDoppler(IQf_separated);
+%     [CDI] = calcColorDoppler(IQf_FT_separated, P);
+
+%     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
+%     disp("PDI and CDI for file " + num2str(filenum) + " saved" )
+%     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFsi', 'CBVi', 'PDI', 'CDI', '-v7.3', '-nocompression');
+%     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFsi', 'CBVi', 'PDI', 'CDI', 'g1_n', 'g1_p', 'CBFsi_n', 'CBVi_n', 'CBFsi_p', 'CBVi_p',  '-v7.3', '-nocompression');
+%     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'g1_n', 'g1_p', 'PDI', 'CDI', '-v7.3', '-nocompression');
+%     save([savepath, 'g1-', num2str(filenum), '.mat'], 'g1', 'g1_n', 'g1_p', '-v7.3', '-nocompression');
+    save([savepath, 'g1Avg-', num2str(filenum), '.mat'], 'g1Avg', '-v7.3', '-nocompression');
+
+%     disp("fUS result for file " + num2str(filenum) + " saved" )
+    disp("g1 result for file " + num2str(filenum) + " saved" )
+
+    toc
+    
+end
+
 %% Convert g1 into CBV, CBFspeed, etc.
 
 g1_tau1_cutoff = 0.3;
 % tau_difference_cutoff = 0.2;
 
-for filenum = startFile:endFile
-% for filenum = 1
+% for filenum = startFile:endFile
+for filenum = 47
 %     load([savepath, 'g1-', num2str(filenum)], 'g1') % Load the saved g1 mat files
     load([savepath, 'fUSdata-', num2str(filenum)], 'g1') % Load the saved g1 mat files
-    
+
     [g1A_mask] = createg1mask(g1, g1_tau1_cutoff, tau1_index_CBF, tau2_index_CBF);
-    
+%     [g1A_mask] = createg1mask(g1Avg, g1_tau1_cutoff, tau1_index_CBF, tau2_index_CBF);
+
     [CBFsi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 
     CBFsi(~g1A_mask) = 0; % Remove noisy points from the CBFspeed index (in theory)
@@ -230,11 +295,16 @@ figure; imagesc(squeeze(mean(CBFsi_all_masked(30:50, :, :), 1))'); colormap(vcma
 generateTiffStack_MeanIPs_multi({CBFsi_all_masked .^ 1, CBFspeed_DM_masked}, [8.8, 8.8, 8], vcmap, 20)
 
 %% plot the base g1 at some point
-% pt = [40, 58, 18];
+% pt = [40, 58, 14];
 % pt = [32, 34, 17];
 pt = [32, 31, 35];
 % pt = [40, 36, 128];
-figure; plot(tau_ms(1:size(g1, 4)), squeeze(abs(g1(pt(1), pt(2), pt(3), :))), '-o');
+% figure; plot(tau_ms(1:size(g1, 4)), squeeze(abs(g1(pt(1), pt(2), pt(3), :))), '-o');
+figure; plot(tau_ms(1:size(g1s{1}, 4)), squeeze(abs(g1s{1}(pt(1), pt(2), pt(3), :))), '-o');
+hold on
+plot(tau_ms(1:size(g1Avg, 4)), squeeze(abs(g1Avg(pt(1), pt(2), pt(3), :))), '-o');
+% plot(tau_ms(1:size(g1s{2}, 4)), squeeze(abs(g1s{2}(pt(1), pt(2), pt(3), :))), '-o');
+hold off
 xlabel('tau [ms]')
 ylabel('|g1|')
 

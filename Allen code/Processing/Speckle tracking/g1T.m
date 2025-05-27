@@ -45,7 +45,7 @@ function [g1] = g1T(data, varargin)
     end
 
     tend = clock;
-    disp(strcat("Temporal g_{1} processing done, elapsed time is ", num2str(etime(tend, tstart)), "s"))
+%     disp(strcat("Temporal g_{1} processing done, elapsed time is ", num2str(etime(tend, tstart)), "s"))
 end
 
 % function [g1] = g1T(data)
