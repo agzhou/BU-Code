@@ -780,7 +780,7 @@ BDM_LI = interpolatedDensityMap(bVelocityM, img_size, startFrame, maxPixelDistPe
 % Probably should only do this if we're confident about the max speed input
 % volumeViewer(test_dmi .^ 0.3)
 % volumeViewer(BDM_LI .^ 0.3)
-%%
+%
 plotMIPs(BDM_LI , 0.4)
 %%
 % BDM_SmoothedKFConstrained_LI = interpolatedDensityMap(bVelocityMSmoothedKFConstrainedMMS, img_size, startFrame, maxPixelDistPerFrame); % density map, linearly interpolated
@@ -902,14 +902,18 @@ BDMs_AZ03_baseline.BDM_SmoothedKFConstrained_LI_RSC = BDM_SmoothedKFConstrained_
 % SM_LI_Rfn = SM_LI;
 % SM_LI_Rfn = thresholdMaps(SM_LI_Rfn, SM_LI_counter, 2, 300);
 
+% Non-constrained KF
+[SM_SmoothedKF_LI, SM_SmoothedKF_LI_counter] = interpolatedSpeedMap(bVelocityMSmoothedKFMMS, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
+SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI;
+SM_SmoothedKF_LI_Rfn = thresholdMaps(SM_SmoothedKF_LI_Rfn, SM_SmoothedKF_LI_counter, 2, 300);
+
 % Constrained KF
-[SM_SmoothedKFConstrained_LI, SM_SmoothedKFConstrained_LI_counter] = interpolatedSpeedMap(bVelocityMSmoothedKFConstrainedMMS, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
-SM_SmoothedKFConstrained_LI_Rfn = SM_SmoothedKFConstrained_LI;
-SM_SmoothedKFConstrained_LI_Rfn = thresholdMaps(SM_SmoothedKFConstrained_LI_Rfn, SM_SmoothedKFConstrained_LI_counter, 2, 300);
+% [SM_SmoothedKFConstrained_LI, SM_SmoothedKFConstrained_LI_counter] = interpolatedSpeedMap(bVelocityMSmoothedKFConstrainedMMS, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
+% SM_SmoothedKFConstrained_LI_Rfn = SM_SmoothedKFConstrained_LI;
+% SM_SmoothedKFConstrained_LI_Rfn = thresholdMaps(SM_SmoothedKFConstrained_LI_Rfn, SM_SmoothedKFConstrained_LI_counter, 2, 300);
 
 % Look at the smoothed constrained no KF data %%%%%%
 % [SM_SC_LI, SM_SC_LI_counter] = interpolatedSpeedMap(bVelocityMSmoothedMMSConstrained, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
-% 
 % SM_SC_LI_Rfn = SM_SC_LI;
 % SM_SC_LI_Rfn = thresholdMaps(SM_SC_LI_Rfn, SM_SC_LI_counter, 2, 300);
 
@@ -925,7 +929,12 @@ SM_SmoothedKFConstrained_LI_Rfn = thresholdMaps(SM_SmoothedKFConstrained_LI_Rfn,
 
 cmap = colormap_ULM;
 % figure; imagesc(squeeze(max(SM_SmoothedKFConstrained_LI_Rfn(400:600, :, :), [], 1))'); colormap(cmap); clim([0, 40])
-figure; imagesc(squeeze(max(SM_SmoothedKFConstrained_LI_Rfn(300:600, :, :), [], 1))'); colormap(cmap); clim([0, 40])
+figure; imagesc(squeeze(max(SM_SmoothedKFConstrained_LI_Rfn(300:500, :, :), [], 1))'); colormap(cmap); clim([0, 40])
+% figure; imagesc(squeeze(max(SM_SmoothedKFConstrained_LI_Rfn(300:400, :, :), [], 1))'); colormap(cmap); clim([0, 40])
+figure; imagesc(squeeze(max(SM_SmoothedKF_LI_Rfn(300:500, :, :), [], 1))'); colormap(cmap); clim([0, 40])
+figure; imagesc(squeeze(max(SM_SmoothedKF_LI_counter(300:500, :, :), [], 1) .^ 0.7)'); colormap hot
+
+% figure; imagesc(squeeze(max(SM_LI_Rfn(300:500, :, :), [], 1))'); colormap(cmap);
 
 %%
 test = SM_SmoothedKFConstrained_LI_Rfn;
@@ -941,7 +950,8 @@ cmap = colormap_ULM;
 % plotSpeedMIPs(SM_LI_RSC, 1)
 % generateTiffStack_multi([{SM_LI_RSC}], [8.8, 8.8, 8], cmap, 10)
 % generateTiffStack_multi([{SM_SC_LI_Rfn}], [8.8, 8.8, 8], cmap, 10, [0, 50])
-generateTiffStack_multi([{SM_SmoothedKFConstrained_LI_Rfn}], [8.8, 8.8, 8], cmap, 50, [0, 40])
+% generateTiffStack_multi([{SM_SmoothedKFConstrained_LI_Rfn}], [8.8, 8.8, 8], cmap, 50, [0, 40])
+generateTiffStack_multi([{SM_SmoothedKF_LI_Rfn}], [8.8, 8.8, 8], cmap, 50, [0, 40])
 % generateTiffStack_multi([{test}], [8.8, 8.8, 8], cmap, 50, [0, testlim])
 
 % generateTiffStack_multi([{SM_SmoothedKFConstrained_LI_Rfn}], [8.8, 8.8, 8], cmap, 1)
@@ -952,9 +962,9 @@ generateTiffStack_multi([{SM_SmoothedKFConstrained_LI_Rfn}], [8.8, 8.8, 8], cmap
 % SMs_AZ02_baseline.SM_LI_RSC = SM_LI_RSC;
 % SMs_AZ02_baseline.SM_SC_LI_counter = SM_SC_LI_counter;
 % SMs_AZ02_baseline.SM_SC_LI_RSC = SM_SC_LI_RSC;
-% SMs_AZ02_baseline.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
-% SMs_AZ02_baseline.SM_SmoothedKFConstrained_LI_Rfn = SM_SmoothedKFConstrained_LI_Rfn;
-% SMs_AZ02_baseline.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
+SMs_AZ02_baseline.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
+SMs_AZ02_baseline.SM_SmoothedKFConstrained_LI_Rfn = SM_SmoothedKFConstrained_LI_Rfn;
+SMs_AZ02_baseline.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
 
 % % SMs_AZ02_hour1.SM = SM;
 % SMs_AZ02_hour1.SM_LI = SM_LI;
