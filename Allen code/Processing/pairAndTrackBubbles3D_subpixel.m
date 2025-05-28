@@ -929,10 +929,10 @@ SM_SmoothedKF_LI_Rfn = thresholdMaps(SM_SmoothedKF_LI_Rfn, SM_SmoothedKF_LI_coun
 
 cmap = colormap_ULM;
 % figure; imagesc(squeeze(max(SM_SmoothedKFConstrained_LI_Rfn(400:600, :, :), [], 1))'); colormap(cmap); clim([0, 40])
-figure; imagesc(squeeze(max(SM_SmoothedKFConstrained_LI_Rfn(300:500, :, :), [], 1))'); colormap(cmap); clim([0, 40])
+% figure; imagesc(squeeze(max(SM_SmoothedKFConstrained_LI_Rfn(300:500, :, :), [], 1))'); colormap(cmap); clim([0, 40])
 % figure; imagesc(squeeze(max(SM_SmoothedKFConstrained_LI_Rfn(300:400, :, :), [], 1))'); colormap(cmap); clim([0, 40])
 figure; imagesc(squeeze(max(SM_SmoothedKF_LI_Rfn(300:500, :, :), [], 1))'); colormap(cmap); clim([0, 40])
-figure; imagesc(squeeze(max(SM_SmoothedKF_LI_counter(300:500, :, :), [], 1) .^ 0.7)'); colormap hot
+% figure; imagesc(squeeze(max(SM_SmoothedKF_LI_counter(300:500, :, :), [], 1) .^ 0.7)'); colormap hot
 
 % figure; imagesc(squeeze(max(SM_LI_Rfn(300:500, :, :), [], 1))'); colormap(cmap);
 
@@ -952,6 +952,7 @@ cmap = colormap_ULM;
 % generateTiffStack_multi([{SM_SC_LI_Rfn}], [8.8, 8.8, 8], cmap, 10, [0, 50])
 % generateTiffStack_multi([{SM_SmoothedKFConstrained_LI_Rfn}], [8.8, 8.8, 8], cmap, 50, [0, 40])
 generateTiffStack_multi([{SM_SmoothedKF_LI_Rfn}], [8.8, 8.8, 8], cmap, 50, [0, 40])
+generateTiffStack_multi([{SM_SmoothedKF_LI_Rfn}], [8.8, 8.8, 8], cmap, 1, [0, 40])
 % generateTiffStack_multi([{test}], [8.8, 8.8, 8], cmap, 50, [0, testlim])
 
 % generateTiffStack_multi([{SM_SmoothedKFConstrained_LI_Rfn}], [8.8, 8.8, 8], cmap, 1)
