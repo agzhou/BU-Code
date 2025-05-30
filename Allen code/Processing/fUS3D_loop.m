@@ -188,8 +188,8 @@ end
 g1_tau1_cutoff = 0.3;
 % tau_difference_cutoff = 0.2;
 
-% for filenum = startFile:endFile
-for filenum = 47
+for filenum = startFile:endFile
+% for filenum = [1:46, 103:endFile]
 %     load([savepath, 'g1-', num2str(filenum)], 'g1') % Load the saved g1 mat files
     load([savepath, 'fUSdata-', num2str(filenum)], 'g1') % Load the saved g1 mat files
 
@@ -204,7 +204,7 @@ for filenum = 47
     disp("tl-fUS result for file " + num2str(filenum) + " saved" )
 
 end
-
+save([savepath, 'tlfUS_proc_params.mat'], 'tau1_index_CBV', 'tau1_index_CBF', 'tau2_index_CBF', 'g1_tau1_cutoff');
 % figure; imagesc(squeeze(mean(CBFsi(30:50, :, :), 1))'); colormap(vcmap)
 
 %% Get and save PDI, CDI only

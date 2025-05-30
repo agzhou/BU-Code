@@ -17,8 +17,8 @@ function generateTiffStack_multi(volumeData, varargin)
 
     % volumeData = volumeData ./ max(volumeData, [], 'all'); % Normalize intensities to be between 0 - 1
     showColorbar = true;
-    useAxes = true;
-    % useAxes = false;
+    % useAxes = true;
+    useAxes = false;
     scale = 5;
     
     mws = 1; % default MIP window size is 1 (no MIP)
