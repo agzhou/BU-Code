@@ -98,9 +98,6 @@ PSFs = PSF(30:50, 30:50, 92:110); % PSF section
 refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) * imgRefinementFactor(2), size(PSFs, 3) * imgRefinementFactor(3)]);
 % volumeViewer(abs(refPSF))
 
-%% resampling size test
-% s = size(IQ);
-% test = zeros([s(1:3) .* 4, s(4)]);
 %% Process the data
 for filenum = startFile:endFile
 % for filenum = endFile:-1:startFile
