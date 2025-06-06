@@ -48,7 +48,7 @@ Mcr_filenameStructure = ['RF-', num2str(P.maxAngle), '-', num2str(P.na), '-', nu
 Mcr_IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 
 %%%%%%%%%%
-saveAllAngles = 0; % choose if you want to save the matrix with pages for each angle or not
+saveAllAngles = false; % choose if you want to save the matrix with pages for each angle or not
 
 %% Get the updated parameter structure for unstacked data
 [P_unstacked] = updateParams_unstackedFrames(P);
@@ -251,6 +251,8 @@ if ~exist('Mcr_P', 'var')
     Mcr_P = P; % VSX_auto will clear the P, so set it to not be cleared because unstackFrames needs it
 end
 
+savefast([Mcr_savepath, 'PData'], 'PData') % Save the PData structure
+
 for Mcr_filenum = Mcr_startFile:Mcr_endFile
 % for Mcr_filenum = 142:Mcr_endFile
 % for Mcr_filenum = [37, 110, 111]
@@ -285,7 +287,6 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
 
     clear IData QData RcvData
 end
-savefast([Mcr_savepath, 'PData'], 'PData') % Save the PData structure
 
 %% saving speed test
 % tic
