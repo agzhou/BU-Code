@@ -37,7 +37,7 @@ load(timingFilePath)
 %% Define some parameters (add this to a prompt later)
 
 parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Tau 1 index for CBFspeed', 'Tau 2 index for CBFspeed', 'Tau 1 index for CBV'};
-parameterDefaults = {'1', '', '15', '180', '2', '10', '2'};
+parameterDefaults = {'1', '', '15', '180', '2', '6', '2'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % define # of files manually for now
@@ -63,8 +63,8 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 % tau1_index_CBV = 2;
 
 %% Main loop
-for filenum = startFile:endFile
-% for filenum = 283:285
+% for filenum = startFile:endFile
+for filenum = 2:endFile
 % for filenum = [285:-1:189]
 % for filenum = 1
     tic
@@ -189,7 +189,7 @@ g1_tau1_cutoff = 0.3;
 % tau_difference_cutoff = 0.2;
 
 % for filenum = startFile:endFile
-for filenum = 47
+for filenum = [1]
 %     load([savepath, 'g1-', num2str(filenum)], 'g1') % Load the saved g1 mat files
     load([savepath, 'fUSdata-', num2str(filenum)], 'g1') % Load the saved g1 mat files
 
@@ -198,18 +198,24 @@ for filenum = 47
 
     [CBFsi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 
+%     CBFsi(~g1A_mask) = -Inf; % Remove noisy points from the CBFspeed index (in theory)
     CBFsi(~g1A_mask) = 0; % Remove noisy points from the CBFspeed index (in theory)
 
     save([savepath, 'tlfUSdata-', num2str(filenum), '.mat'], 'CBFsi', 'CBVi', '-v7.3', '-nocompression');
+%     save([savepath, 'tlfUSdatatest-', num2str(filenum), '.mat'], 'CBFsi', 'CBVi', '-v7.3', '-nocompression');
     disp("tl-fUS result for file " + num2str(filenum) + " saved" )
 
 end
+save([savepath, 'tlfUS_proc_params.mat'], 'tau1_index_CBV', 'tau1_index_CBF', 'tau2_index_CBF', 'g1_tau1_cutoff');
+% save([savepath, 'tlfUStest_proc_params.mat'], 'tau1_index_CBV', 'tau1_index_CBF', 'tau2_index_CBF', 'g1_tau1_cutoff');
+figure; imagesc(squeeze(max(CBVi(30:50, :, :), [], 1) .^ 0.5)'); colormap hot
+vcmap = colormap_ULM;
+figure; imagesc(squeeze(mean(CBFsi(30:50, :, :), 1))'); colormap(vcmap)
 
-% figure; imagesc(squeeze(mean(CBFsi(30:50, :, :), 1))'); colormap(vcmap)
-
+% generateTiffStack_multi({CBVi .^ 0.7}, [8.8, 8.8, 8], 'hot', 5)
 %% Get and save PDI, CDI only
 % for filenum = startFile:endFile
-for filenum = 24:285
+for filenum = 1
 % for filenum = [285:-1:189]
     tic
     load([IQpath, IQfilenameStructure, num2str(filenum)])
@@ -423,6 +429,8 @@ plotMIPs(PDI{3}, 0.8)
 
 % volumeViewer(PDI{3})
 % volumeSegmenter(PDI{3})
+figure; imagesc(squeeze(max(PDI{3}(30:50, :, :), [], 1) .^ 0.7)'); colormap hot
+% generateTiffStack_multi({PDI{3} .^ 0.9}, [8.8, 8.8, 8], 'hot', 5)
 %% Plot Power Doppler results
 PDIn = PDI{3}; % normalized PDI of all frequencies
 PDIn = PDIn ./ max(PDIn, [], 'all');
@@ -612,7 +620,7 @@ rCBV = CBViallSF ./ CBViallSF(:, :, :, 1); % Measure relative to the "baseline",
 % CBViMIPStack = zeros(newsize);
 CBViMIPStack = squeeze(max(CBViallSF(30:50, :, :, :), [], 1));
 %% Check different MIPs across superframes
-yr = 30:40;
+yr = 20:40;
 generateTiffStack_acrossframes(CBViallSF .^ 0.7, [8.8, 8.8, 8], 'hot', yr)
 % generateTiffStack_acrossframes(CBViallSF .^ 1, [8.8, 8.8, 8], 'hot', yr)
 %% Plot the rCBV at some point
@@ -667,7 +675,9 @@ end
 clearvars trial
 
 %% Assign the superframe trial binning to CBVi and PDI
-CBViallSFsmoothed = smoothdata(CBViallSF, 4, "sgolay", 9); % SMOOTH THE CBVi
+% CBViallSFadj = smoothdata(CBViallSF, 4, "sgolay", 9); % SMOOTH THE CBVi
+CBViallSFadj = CBViallSF;
+% CBViallSFadj = smoothdata(CBViallSF, 4, "movmean", 3); % SMOOTH THE CBVi
 
 trial_CBVi = cell(size(trial_sf));
 trial_CBFsi = cell(size(trial_sf));
@@ -675,14 +685,13 @@ trial_CBFsi = cell(size(trial_sf));
 % trial_PDI = cell(size(trial_sf)); % use the all frequency PDI
 minNumPts = Inf;
 for trial = 1:length(trial_sf)
-    trial_CBVi{trial} = CBViallSFsmoothed(:, :, :, trial_sf{trial});
+    trial_CBVi{trial} = CBViallSFadj(:, :, :, trial_sf{trial});
     trial_CBFsi{trial} = CBFsiallSF(:, :, :, trial_sf{trial});
 %     trial_PDI{trial} = PDIallSF{3}(:, :, :, trial_sf{trial});
     minNumPts = min(minNumPts, length(trial_sf{trial})); % Get the minimum number of measurement points across all trials
 end
 
 %% Get the mean or max CBVi or PDI etc. within each trial's stimulation period
-
 
 trial_sf_stimon = cell(size(trial_windows));    % Cell array of size (# trials, 1). Each cell contains the superframe indices that correspond to the stimulus period within that trial.
 trial_sf_baseline = cell(size(trial_windows));    % Cell array of size (# trials, 1). Each cell contains the superframe indices that correspond to the baseline period within that trial.
@@ -718,19 +727,56 @@ CBFsi_relative_change = cell(size(trial_sf)); % Relative change of CBFsi, per tr
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 for trial = 1:length(trial_windows)
-    avg_CBVi_baseline{trial} = mean(CBViallSFsmoothed(:, :, :, trial_sf_baseline{trial}), 4);
+    avg_CBVi_baseline{trial} = mean(CBViallSFadj(:, :, :, trial_sf_baseline{trial}), 4);
 %     max_CBVi_stimon{trial} = max(CBViallSFsmoothed(:, :, :, trial_sf_stimon{trial}), [], 4);
-    avg_CBVi_stimon{trial} = mean(CBViallSFsmoothed(:, :, :, trial_sf_stimon{trial}), 4);
+    avg_CBVi_stimon{trial} = mean(CBViallSFadj(:, :, :, trial_sf_stimon{trial}), 4);
 
     avg_CBFsi_baseline{trial} = mean(CBFsiallSF(:, :, :, trial_sf_baseline{trial}), 4);
     avg_CBFsi_stimon{trial} = mean(CBFsiallSF(:, :, :, trial_sf_stimon{trial}), 4);
 
 end
 
-% Percent change of CBVi for each trial, compared to the mean at baseline
+% Percent change of CBVi and CBFsi for each trial, compared to the mean at baseline
 for trial = 1:length(trial_windows)
+    temp_avg_CBFsi_baseline_trial = avg_CBFsi_baseline{trial};
+    temp_avg_CBFsi_baseline_trial(temp_avg_CBFsi_baseline_trial == 0) = 1;
     CBVi_relative_change{trial} = (trial_CBVi{trial} - avg_CBVi_baseline{trial}) ./ avg_CBVi_baseline{trial} .* 100;
-    CBFsi_relative_change{trial} = (trial_CBFsi{trial} - avg_CBFsi_baseline{trial}) ./ avg_CBFsi_baseline{trial} .* 100;
+%     CBFsi_relative_change{trial} = (trial_CBFsi{trial} - avg_CBFsi_baseline{trial}) ./ avg_CBFsi_baseline{trial} .* 100;
+    CBFsi_relative_change{trial} = (trial_CBFsi{trial} - avg_CBFsi_baseline{trial}) ./ temp_avg_CBFsi_baseline_trial .* 100;
+end
+
+
+%% Smoothed percent change of CBVi and CBFsi for each trial, compared to the mean at baseline
+CBVi_relative_change_smoothed = cell(size(trial_sf)); % Relative change of CBVi, per trial, compared to the mean at baseline of that trial
+CBFsi_relative_change_smoothed = cell(size(trial_sf)); % Relative change of CBFsi, per trial, compared to the mean at baseline of that trial
+rCBparam_smoothing_window = 5; % smoothing window size for rCBV and rCBFspeed
+
+for trial = 1:length(trial_windows)
+
+    CBVi_relative_change_smoothed{trial} = smoothdata(CBVi_relative_change{trial}, 4, "movmean", rCBparam_smoothing_window);
+    CBFsi_relative_change_smoothed{trial} = smoothdata(CBFsi_relative_change{trial}, 4, "movmean", rCBparam_smoothing_window);
+end
+
+%%
+% testinvessel = squeeze(CBVi_relative_change{1}(40, 47, 18:38, :));
+testinvessel = squeeze(CBVi_relative_change_smoothed{1}(40, 47, 18:38, :));
+testinvessel_avg = mean(testinvessel, 1);
+figure; plot(testinvessel_avg)
+
+% test1 = squeeze(CBVi_relative_change{1}(40, 47, 28, :));
+test1 = squeeze(CBVi_relative_change_smoothed{1}(40, 47, 28, :));
+figure; plot(test1)
+test2 = squeeze(CBVi_relative_change_smoothed{1}(40, 47, 27, :));
+figure; plot(test2)
+test3 = squeeze(CBVi_relative_change_smoothed{1}(40, 47, 29, :));
+figure; plot(test3)
+
+for trial = 1:length(trial_windows)
+%     figure; imagesc(squeeze(max(max(CBVi_relative_change{trial}(1:60, :, :, :), [], 4), [], 1) .^ 0.7)'); colormap hot
+    figure; imagesc(squeeze(max(max(CBVi_relative_change_smoothed{trial}(1:60, :, :, :), [], 4), [], 1) .^ 0.7)'); colormap hot
+%     figure; imagesc(squeeze(max(mean(CBVi_relative_change{trial}, 4), [], 1) .^ 0.7)'); colormap hot
+%     figure; imagesc(squeeze(max(max(CBFsi_relative_change{trial}, [], 4), [], 1) .^ 1)'); colormap hot
+%     figure; imagesc(squeeze(mean(max(CBFsi_relative_change{trial}, [], 4), 1) .^ 2)'); colormap hot
 end
 
 % Do the correlation stuff
@@ -739,9 +785,17 @@ z_CBVi_relative_change = [];
 r_CBVi_relative_change = [];
 z_CBVi_relative_change = [];
 
+r_CBVi_relative_change_smoothed = [];
+z_CBVi_relative_change_smoothed = [];
+r_CBVi_relative_change_smoothed = [];
+z_CBVi_relative_change_smoothed = [];
+
 for trial = 1:length(trial_windows)
-    [r_CBVi_relative_change(:, :, :, trial), z_CBVi_relative_change(:, :, :, trial)] = corrCoef3D(CBVi_relative_change{trial}, trial_stim_pattern{trial});
-    [r_CBFsi_relative_change(:, :, :, trial), z_CBFsi_relative_change(:, :, :, trial)] = corrCoef3D(CBFsi_relative_change{trial}, trial_stim_pattern{trial});
+%     [r_CBVi_relative_change(:, :, :, trial), z_CBVi_relative_change(:, :, :, trial)] = corrCoef3D(CBVi_relative_change{trial}, trial_stim_pattern{trial});
+%     [r_CBFsi_relative_change(:, :, :, trial), z_CBFsi_relative_change(:, :, :, trial)] = corrCoef3D(CBFsi_relative_change{trial}, trial_stim_pattern{trial});
+    [r_CBVi_relative_change_smoothed(:, :, :, trial), z_CBVi_relative_change_smoothed(:, :, :, trial)] = corrCoef3D(CBVi_relative_change_smoothed{trial}, trial_stim_pattern{trial});
+    [r_CBFsi_relative_change_smoothed(:, :, :, trial), z_CBFsi_relative_change_smoothed(:, :, :, trial)] = corrCoef3D(CBFsi_relative_change_smoothed{trial}, trial_stim_pattern{trial});
+
 end
 
 r_CBVi_relative_change_trialavg = mean(r_CBVi_relative_change, 4);
@@ -826,7 +880,7 @@ figure; plot(squeeze(trial_CBVi{1}(40, 35, 62, :)))
 figure; plot(squeeze(trial_CBVi{1}(40, 58, 14, :)))
 
 figure; plot(squeeze(CBViallSF(40, 58, 14, :)))
-figure; plot(squeeze(CBViallSFsmoothed(40, 58, 14, :)))
+figure; plot(squeeze(CBViallSFadj(40, 58, 14, :)))
 figure; plot(TD.sfTimeTagsDAQStart, movmean(squeeze(CBViallSF(40, 58, 14, :)), 10))
 figure; plot(TD.sfTimeTagsDAQStart, movmean(squeeze(CBViallSF(40, 35, 62, :)), 10))
 
@@ -834,7 +888,7 @@ figure; plot(TD.sfTimeTagsDAQStart, movmean(squeeze(CBViallSF(40, 35, 62, :)), 1
 figure;
 yyaxis left
 % plot(TD.sfTimeTagsDAQStart_adj, movmean(squeeze(CBViallSF(40, 58, 14, :)), 10))
-plot(TD.sfTimeTagsDAQStart_adj - TD.sfTimeTagsDAQStart_adj(1), movmean(squeeze(CBViallSFsmoothed(40, 58, 14, :)), 10))
+plot(TD.sfTimeTagsDAQStart_adj - TD.sfTimeTagsDAQStart_adj(1), movmean(squeeze(CBViallSFadj(40, 58, 14, :)), 10))
 yyaxis right
 plot(TD.airPuffOutput + TD.sfTimeTagsDAQStart_adj(1))
 

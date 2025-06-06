@@ -16,16 +16,26 @@ datapath = [datapath, '\'];
 %     'SelectionMode', 'multiple', 'ListString', filenames);
 
 %%
-load([datapath, 'speed_maps_baseline'])
-load([datapath, 'speed_maps_hour1'])
+load([datapath, 'speed_maps_baseline_SmoothedKF'])
+load([datapath, 'speed_maps_hour1_SmoothedKF'])
+load([datapath, 'speed_maps_day3_SmoothedKF'])
+load([datapath, 'speed_maps_day7_SmoothedKF'])
 
-BDM_baseline = SMs_AZ03_baseline.SM_SmoothedKFConstrained_counter;
-SM_baseline = SMs_AZ03_baseline.SM_SmoothedKFConstrained_LI_Rfn;
+SMs_raw = {SMs_AZ02_day7.SM_SmoothedKF_LI_Rfn, SMs_AZ02_baseline.SM_SmoothedKF_LI_Rfn, SMs_AZ02_hour1.SM_SmoothedKF_LI_Rfn, SMs_AZ02_day3.SM_SmoothedKF_LI_Rfn};
 
-BDM_hour1 = SMs_AZ03_hour1.SM_SmoothedKFConstrained_counter;
-SM_hour1 = SMs_AZ03_hour1.SM_SmoothedKFConstrained_LI_Rfn;
+% clearvars SMs_AZ02_baseline SMs_AZ02_hour1 SMs_AZ02_day3 SMs_AZ02_day7
 
-clearvars SMs_AZ03_baseline SMs_AZ03_hour1
+%%
+% load([datapath, 'speed_maps_baseline'])
+% load([datapath, 'speed_maps_hour1'])
+% 
+% BDM_baseline = SMs_AZ03_baseline.SM_SmoothedKFConstrained_counter;
+% SM_baseline = SMs_AZ03_baseline.SM_SmoothedKFConstrained_LI_Rfn;
+% 
+% BDM_hour1 = SMs_AZ03_hour1.SM_SmoothedKFConstrained_counter;
+% SM_hour1 = SMs_AZ03_hour1.SM_SmoothedKFConstrained_LI_Rfn;
+% 
+% clearvars SMs_AZ03_baseline SMs_AZ03_hour1
 %% rotate baseline manually
 rx = 0;
 ry = 0;
