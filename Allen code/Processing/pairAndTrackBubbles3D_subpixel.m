@@ -896,7 +896,6 @@ BDMs_AZ03_baseline.BDM_Constrained = BDM_Constrained;
 BDMs_AZ03_baseline.BDM_SmoothedMMS = BDM_SmoothedMMS;
 BDMs_AZ03_baseline.BDM_SmoothedKFConstrained = BDM_SmoothedKFConstrained;
 BDMs_AZ03_baseline.BDM_SmoothedKFConstrained_LI_RSC = BDM_SmoothedKFConstrained_LI_Rfn;
-
 %% Get the speed maps
 % [SM_LI, SM_LI_counter] = interpolatedSpeedMap(bVelocityM, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
 % % Refine the speed map
@@ -933,6 +932,7 @@ cmap = colormap_ULM;
 % figure; imagesc(squeeze(max(SM_SmoothedKFConstrained_LI_Rfn(300:500, :, :), [], 1))'); colormap(cmap); clim([0, 40])
 % figure; imagesc(squeeze(max(SM_SmoothedKFConstrained_LI_Rfn(300:400, :, :), [], 1))'); colormap(cmap); clim([0, 40])
 figure; imagesc(squeeze(max(SM_SmoothedKF_LI_Rfn(300:500, :, :), [], 1))'); colormap(cmap); clim([0, 40])
+figure; imagesc(squeeze(max(SM_SmoothedKF_LI_Rfn(:, :, :), [], 3))'); colormap(cmap); clim([0, 40])
 % figure; imagesc(squeeze(max(SM_SmoothedKF_LI_counter(300:500, :, :), [], 1) .^ 0.7)'); colormap hot
 
 % figure; imagesc(squeeze(max(SM_LI_Rfn(300:500, :, :), [], 1))'); colormap(cmap);
@@ -952,8 +952,9 @@ cmap = colormap_ULM;
 % generateTiffStack_multi([{SM_LI_RSC}], [8.8, 8.8, 8], cmap, 10)
 % generateTiffStack_multi([{SM_SC_LI_Rfn}], [8.8, 8.8, 8], cmap, 10, [0, 50])
 % generateTiffStack_multi([{SM_SmoothedKFConstrained_LI_Rfn}], [8.8, 8.8, 8], cmap, 50, [0, 40])
-% generateTiffStack_multi([{SM_SmoothedKF_LI_Rfn}], [8.8, 8.8, 8], cmap, 50, [0, 40])
+generateTiffStack_multi([{SM_SmoothedKF_LI_Rfn}], [8.8, 8.8, 8], cmap, 50, [0, 40])
 generateTiffStack_multi([{SM_SmoothedKF_LI_Rfn}], [8.8, 8.8, 8], cmap, 1, [0, 40])
+generateTiffStack_multi([{SMs_AZ04_baseline.SM_SmoothedKF_LI_Rfn}], [8.8, 8.8, 8], cmap, 1, [0, 40])
 % generateTiffStack_multi([{test}], [8.8, 8.8, 8], cmap, 50, [0, testlim])
 
 % generateTiffStack_multi([{SM_SmoothedKFConstrained_LI_Rfn}], [8.8, 8.8, 8], cmap, 1)
@@ -967,9 +968,6 @@ generateTiffStack_multi([{SM_SmoothedKF_LI_Rfn}], [8.8, 8.8, 8], cmap, 1, [0, 40
 % SMs_AZ02_baseline.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
 % SMs_AZ02_baseline.SM_SmoothedKFConstrained_LI_Rfn = SM_SmoothedKFConstrained_LI_Rfn;
 % SMs_AZ02_baseline.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
-SMs_AZ02_baseline.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
-SMs_AZ02_baseline.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
-SMs_AZ02_baseline.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 
 % % SMs_AZ02_hour1.SM = SM;
 % SMs_AZ02_hour1.SM_LI = SM_LI;
@@ -977,9 +975,6 @@ SMs_AZ02_baseline.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 % SMs_AZ02_hour1.SM_LI_RSC = SM_LI_RSC;
 % SMs_AZ02_hour1.SM_SC_LI_counter = SM_SC_LI_counter;
 % SMs_AZ02_hour1.SM_SC_LI_RSC = SM_SC_LI_RSC;
-% SMs_AZ02_hour1.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
-% SMs_AZ02_hour1.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
-% SMs_AZ02_hour1.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 % SMs_AZ02_hour1.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
 % SMs_AZ02_hour1.SM_SmoothedKFConstrained_LI_Rfn = SM_SmoothedKFConstrained_LI_Rfn;
 % SMs_AZ02_hour1.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
@@ -992,9 +987,6 @@ SMs_AZ02_baseline.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 % SMs_AZ02_day3.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
 % SMs_AZ02_day3.SM_SmoothedKFConstrained_LI_Rfn = SM_SmoothedKFConstrained_LI_Rfn;
 % SMs_AZ02_day3.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
-% SMs_AZ02_day3.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
-% SMs_AZ02_day3.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
-% SMs_AZ02_day3.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 
 % SMs_AZ02_day7.SM_LI = SM_LI;
 % SMs_AZ02_day7.SM_LI_counter = SM_LI_counter;
@@ -1004,9 +996,6 @@ SMs_AZ02_baseline.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 % SMs_AZ02_day7.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
 % SMs_AZ02_day7.SM_SmoothedKFConstrained_LI_Rfn = SM_SmoothedKFConstrained_LI_Rfn;
 % SMs_AZ02_day7.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
-% SMs_AZ02_day7.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
-% SMs_AZ02_day7.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
-% SMs_AZ02_day7.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 
 % SMs_AZ03_baseline.SM_LI = SM_LI;
 % SMs_AZ03_baseline.SM_LI_counter = SM_LI_counter;
@@ -1016,31 +1005,42 @@ SMs_AZ02_baseline.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 % SMs_AZ03_baseline.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
 % SMs_AZ03_baseline.SM_SmoothedKFConstrained_LI_Rfn = SM_SmoothedKFConstrained_LI_Rfn;
 % SMs_AZ03_baseline.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
-
-
-% SMs_AZ03_baseline.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
-% SMs_AZ03_baseline.SM_SmoothedKFConstrained_LI_Rfn = SM_SmoothedKFConstrained_LI_Rfn;
-% SMs_AZ03_baseline.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
+SMs_AZ03_baseline.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
+SMs_AZ03_baseline.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
+SMs_AZ03_baseline.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 
 % SMs_AZ03_hour1.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
 % SMs_AZ03_hour1.SM_SmoothedKFConstrained_LI_Rfn = SM_SmoothedKFConstrained_LI_Rfn;
 % SMs_AZ03_hour1.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
-% SMs_AZ03_hour1.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
-% SMs_AZ03_hour1.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
-% SMs_AZ03_hour1.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 
 % SMs_AZ03_day1.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
 % SMs_AZ03_day1.SM_SmoothedKFConstrained_LI_Rfn = SM_SmoothedKFConstrained_LI_Rfn;
 % SMs_AZ03_day1.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
+% SMs_AZ03_day1.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
+% SMs_AZ03_day1.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
+% SMs_AZ03_day1.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 
 % SMs_AZ03_day4.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
 % SMs_AZ03_day4.SM_SmoothedKFConstrained_LI_Rfn = SM_SmoothedKFConstrained_LI_Rfn;
 % SMs_AZ03_day4.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
+% SMs_AZ03_day4.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
+% SMs_AZ03_day4.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
+% SMs_AZ03_day4.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 
 % SMs_AZ03_day7.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
 % SMs_AZ03_day7.SM_SmoothedKFConstrained_LI_Rfn = SM_SmoothedKFConstrained_LI_Rfn;
 % SMs_AZ03_day7.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
+% SMs_AZ03_day7.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
+% SMs_AZ03_day7.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
+% SMs_AZ03_day7.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 
+SMs_AZ04_baseline.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
+SMs_AZ04_baseline.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
+SMs_AZ04_baseline.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
+
+% SMs_AZ04_day3.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
+% SMs_AZ04_day3.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
+% SMs_AZ04_day3.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 %% Helper functions
 
 % function MIPvideo(bSum, xws, yws, zws, framerate, power) % Define x, y, z window sizes for a MIP flythrough video of the bubble density map
@@ -1256,6 +1256,14 @@ function [speedMapInterpolated, speedMapInterpolatedCounter] = interpolatedSpeed
     %                 speedMapCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) = speedMapCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) + 1;
     %             end
             end
+    %     else
+    %         interpPts = [];
+    %         coordsStart = [];
+    %         coordsEnd = [];
+    %         zvTemp = [];
+    %         bvTemp = [];
+    %         zVelTemp = [];
+    %         interpPtsTemp = [];
         end
     %     clear bvTemp
     end
