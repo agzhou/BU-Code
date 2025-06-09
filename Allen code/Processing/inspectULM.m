@@ -92,3 +92,35 @@ figure; st_right_hist = histogram(st_out, nbins, 'BinLimits', bin_limits, 'Norma
 
 
 % end
+
+%% Blob and gradient for finding the stroke core?
+% ULMData = SMs_AZ04_day3.SM_SmoothedKF_LI_Rfn;
+
+% ULMData_blurred = imgaussfilt3(ULMData, 4);
+ULMData_blurred = imboxfilt3(ULMData, 11, 'padding', 'symmetric');
+
+% Need a box filter of only the nonzero values within a window...
+vcmap = colormap_ULM;
+% figure; imagesc(squeeze(max(ULMData(300:500, :, :), [], 1))'); colormap(vcmap); clim([0, 40])
+figure; imagesc(squeeze(max(ULMData_blurred(300:500, :, :), [], 1))'); colormap(vcmap); clim([0, 40])
+
+%% Do a box filter but emphasize nonzero values
+wss = 5; % window size scalar
+window_size = [wss, wss, wss]; % should all be odd scalars [y, x, z]
+
+for yi = 1:size(ULMData, 1)
+    for xi = 1:size(ULMData, 2)
+        for zi = 1:size(ULMData, 3)
+            voxelTempCoords = [yi, xi, zi];
+            voxelTempInitValue = ULMData(yi, xi, zi);
+                    
+            Xll = max(1, voxelTempCoords(2) - round(window_size(2)/2));                 % X lower limit
+            Xul = min(size(ULMData, 2), voxelTempCoords(2) + round(window_size(2)/2));  % X upper limit
+            Yll = max(1, voxelTempCoords(1) - round(window_size(1)/2));
+            Yul = min(size(ULMData, 1), voxelTempCoords(1) + round(window_size(1)/2));
+            Zll = max(1, voxelTempCoords(3) - round(window_size(3)/2));
+            Zul = min(size(ULMData, 3), voxelTempCoords(3) + round(window_size(3)/2));
+        end
+    end
+end
+

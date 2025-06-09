@@ -188,8 +188,8 @@ end
 g1_tau1_cutoff = 0.3;
 % tau_difference_cutoff = 0.2;
 
-% for filenum = startFile:endFile
-for filenum = [1]
+for filenum = startFile:endFile
+% for filenum = [1]
 %     load([savepath, 'g1-', num2str(filenum)], 'g1') % Load the saved g1 mat files
     load([savepath, 'fUSdata-', num2str(filenum)], 'g1') % Load the saved g1 mat files
 
@@ -547,13 +547,13 @@ ylabel('z pixels')
 
 
 %% Store all the CBVi across the experiment into one matrix
-load([savepath, 'fUSdata-', num2str(1), '.mat'], 'CBVi')
-CBViallSF = zeros([size(CBVi), endFile - startFile + 1]); % Matrix with the CBVi for every superframe
-CBViallSF(:, :, :, 1) = CBVi;
-for filenum = startFile + 1:endFile
-    load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'CBVi')
-    CBViallSF(:, :, :, filenum) = CBVi;
-end
+% load([savepath, 'fUSdata-', num2str(1), '.mat'], 'CBVi')
+% CBViallSF = zeros([size(CBVi), endFile - startFile + 1]); % Matrix with the CBVi for every superframe
+% CBViallSF(:, :, :, 1) = CBVi;
+% for filenum = startFile + 1:endFile
+%     load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'CBVi')
+%     CBViallSF(:, :, :, filenum) = CBVi;
+% end
 
 %% Store all the updated CBVi and CBFsi across the experiment into one matrix
 load([savepath, 'tlfUSdata-', num2str(1), '.mat'], 'CBFsi', 'CBVi')
