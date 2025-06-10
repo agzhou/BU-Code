@@ -122,24 +122,26 @@ wss = 51; % window size scalar
 window_size = [wss, wss, wss]; % should all be odd scalars [y, x, z]
 ULMData_box = zeros(size(ULMData));
 
+%%%% COULD TRY DOWNSAMPLING FIRST %%%%%
+
 tic
 ds = size(ULMData); % data size
 yds = ds(1);
 xds = ds(2);
 zds = ds(3);
-% parfor yi = 1:yds
-for yi = 300:410
+for yi = 1:yds
+% for yi = 300:410
     Yll = max(1, voxelTempCoords(1) - round(window_size(1)/2));
     Yul = min(yds, voxelTempCoords(1) + floor(window_size(1)/2));
             
-%     for xi = 1:xds
-    for xi = 400:510
-%         for zi = 1:zds
+    for xi = 1:xds
+%     for xi = 400:510
         Xll = max(1, voxelTempCoords(2) - round(window_size(2)/2));                 % X lower limit
         Xul = min(xds, voxelTempCoords(2) + floor(window_size(2)/2));  % X upper limit
         
+        for zi = 1:zds
 %         tic
-        for zi = 400:510
+%         for zi = 400:510
             voxelTempCoords = [yi, xi, zi];
             voxelTempInitValue = ULMData(yi, xi, zi);
                     
