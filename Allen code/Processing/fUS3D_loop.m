@@ -63,8 +63,8 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 % tau1_index_CBV = 2;
 
 %% Main loop
-% for filenum = startFile:endFile
-for filenum = 55:endFile
+for filenum = startFile:endFile
+% for filenum = 55:endFile
 % for filenum = [285:-1:189]
 % for filenum = 1
     tic
