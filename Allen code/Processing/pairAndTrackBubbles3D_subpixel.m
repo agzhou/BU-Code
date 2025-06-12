@@ -954,7 +954,7 @@ cmap = colormap_ULM;
 % generateTiffStack_multi([{SM_SmoothedKFConstrained_LI_Rfn}], [8.8, 8.8, 8], cmap, 50, [0, 40])
 generateTiffStack_multi([{SM_SmoothedKF_LI_Rfn}], [8.8, 8.8, 8], cmap, 50, [0, 40])
 generateTiffStack_multi([{SM_SmoothedKF_LI_Rfn}], [8.8, 8.8, 8], cmap, 1, [0, 40])
-generateTiffStack_multi([{SMs_AZ04_baseline.SM_SmoothedKF_LI_Rfn}], [8.8, 8.8, 8], cmap, 1, [0, 40])
+% generateTiffStack_multi([{SMs_AZ04_baseline.SM_SmoothedKF_LI_Rfn}], [8.8, 8.8, 8], cmap, 1, [0, 40])
 % generateTiffStack_multi([{test}], [8.8, 8.8, 8], cmap, 50, [0, testlim])
 
 % generateTiffStack_multi([{SM_SmoothedKFConstrained_LI_Rfn}], [8.8, 8.8, 8], cmap, 1)
@@ -1034,13 +1034,17 @@ SMs_AZ03_baseline.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 % SMs_AZ03_day7.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
 % SMs_AZ03_day7.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 
-SMs_AZ04_baseline.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
-SMs_AZ04_baseline.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
-SMs_AZ04_baseline.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
+% SMs_AZ04_baseline.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
+% SMs_AZ04_baseline.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
+% SMs_AZ04_baseline.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 
 % SMs_AZ04_day3.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
 % SMs_AZ04_day3.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
 % SMs_AZ04_day3.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
+
+SMs_AZ04_day7.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
+SMs_AZ04_day7.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
+SMs_AZ04_day7.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 %% Helper functions
 
 % function MIPvideo(bSum, xws, yws, zws, framerate, power) % Define x, y, z window sizes for a MIP flythrough video of the bubble density map

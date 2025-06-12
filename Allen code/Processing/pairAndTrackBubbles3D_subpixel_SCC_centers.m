@@ -109,13 +109,14 @@ totalFrames = numFiles * P.numFramesPerBuffer; % Total frames to process
 % Cell array with an entry for each frame. Each entry contains (# bubbles) of coordinate pairs (z, x) of the detected bubble centers
 % centerCoords = cell(totalFrames, 1); 
 centerCoords = {};
+centers_filename = ['Centers-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 
 % Concatenate all the centers- files
 for n = startFile:endFile   % Go through each center file (for each buffer)
 % for n = startFile
     tic
-    load([datapath, 'centers-', num2str(n)])
-    centerCoords = [centerCoords; centersRC];
+    load([datapath, centers_filename, num2str(n)])
+    centerCoords = [centerCoords; centers];
     disp(strcat("Center coordinates for file ", num2str(n), " stored."))
     toc
 end
@@ -187,18 +188,18 @@ for f = 1:length(centerCoords_newgrid)
     centerCoords_corrected{f} = centerCoords_newgrid{f} + pad_dims;
 end
 
-% for cci = 1:length(centerCoords_corrected) % centerCoords index
-%     cc = centerCoords_corrected{cci};
-% %     cc = cc + pad_dims;
-% %     cc = round(cc); %%%%%%%%% FOR TESTING %%%%%%%%%
-%     for nbcci = 1:size(cc, 1) % # bubbles in centerCoords_corrected at index cci
-%         bubbleDensityMapRaw(cc(nbcci, 1), cc(nbcci, 2), cc(nbcci, 3)) = bubbleDensityMapRaw(cc(nbcci, 1), cc(nbcci, 2), cc(nbcci, 3)) + 1;
-%     end
-% end
+for cci = 1:length(centerCoords_corrected) % centerCoords index
+    cc = centerCoords_corrected{cci};
+%     cc = cc + pad_dims;
+%     cc = round(cc); %%%%%%%%% FOR TESTING %%%%%%%%%
+    for nbcci = 1:size(cc, 1) % # bubbles in centerCoords_corrected at index cci
+        bubbleDensityMapRaw(cc(nbcci, 1), cc(nbcci, 2), cc(nbcci, 3)) = bubbleDensityMapRaw(cc(nbcci, 1), cc(nbcci, 2), cc(nbcci, 3)) + 1;
+    end
+end
 % 
 % % volumeViewer(bubbleDensityMapRaw .^ 0.5)
 % % figure; imagesc(squeeze(sum(bubbleDensityMapRaw, 1))' .^ 0.5); colormap hot; title('Raw bubble density, sum across y'); colorbar
-% figure; imagesc(squeeze(max(bubbleDensityMapRaw, [], 1))' .^ 0.5); colormap hot; title('Raw bubble density, MIP across y'); colorbar
+figure; imagesc(squeeze(max(bubbleDensityMapRaw, [], 1))' .^ 0.5); colormap hot; title('Raw bubble density, MIP across y'); colorbar
 % % figure; imagesc(squeeze(sum(bubbleDensityMapRaw(70:90, :, :), 1))' .^ 0.25); colormap hot; title('Raw bubble density, MIP across y = 70:90 \^0.25'); colorbar
 
 
