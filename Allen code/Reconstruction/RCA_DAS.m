@@ -10,7 +10,7 @@
 %           - can use a gain for increasing depths according to some
 %             known/estimated attenuation coefficient
 
-function [IQ] = RCA_DAS(RcvData, P, zpix_spacing)
+function [IQ] = RCA_DAS(RcvData, P, ypixspacing, xpixspacing, zpix_spacing)
     
     
     %%
@@ -146,19 +146,19 @@ function [IQ] = RCA_DAS(RcvData, P, zpix_spacing)
     
     %% Define reconstruction region and get time delays for each pixel
     pixsizez = zpix_spacing;
-%     pixsizex = xypix_spacing;
-%     pixsizey = xypix_spacing;
+    pixsizex = xpix_spacing;
+    pixsizey = ypix_spacing;
     
     xsize = numElements * Trans.spacingMm / 1e3; % region's x in m
     ysize = numElements * Trans.spacingMm / 1e3; % region's y in m
     zsize = (endDepth - startDepth) * wl;    % region's z in m
     
     znumpix = ceil(zsize / pixsizez);         % # rows
-%     xnumpix = ceil(xsize / pixsizex);         % # cols
-%     ynumpix = ceil(ysize / pixsizey);         % # cols
+    xnumpix = ceil(xsize / pixsizex);         % # cols
+    ynumpix = ceil(ysize / pixsizey);         % # cols
     
-    xnumpix = nxs_nopad*1;
-    ynumpix = nys_nopad*1;
+    % xnumpix = nxs_nopad*1;
+    % ynumpix = nys_nopad*1;
 %     znumpix = nzs_nopad;
     
     arrayLength = numElements * Trans.spacingMm / 1e3;

@@ -128,12 +128,15 @@ z_PDI_relative_change = [];
 r_CDI_relative_change_smoothed = [];
 z_CDI_relative_change_smoothed = [];
 
+activationMap = [];
+zt = 1;
+
 for trial = 1:length(trial_windows)
 %     [r_CBVi_relative_change(:, :, :, trial), z_CBVi_relative_change(:, :, :, trial)] = corrCoef3D(CBVi_relative_change{trial}, trial_stim_pattern{trial});
 %     [r_CBFsi_relative_change(:, :, :, trial), z_CBFsi_relative_change(:, :, :, trial)] = corrCoef3D(CBFsi_relative_change{trial}, trial_stim_pattern{trial});
-    [r_PDI_relative_change_smoothed(:, :, :, trial), z_PDI_relative_change_smoothed(:, :, :, trial)] = corrCoef3D(PDI_relative_change_smoothed{trial}, trial_stim_pattern{trial});
-    [r_CDI_relative_change_smoothed(:, :, :, trial), z_CDI_relative_change_smoothed(:, :, :, trial)] = corrCoef3D(CDI_relative_change_smoothed{trial}, trial_stim_pattern{trial});
-
+    % [r_PDI_relative_change_smoothed(:, :, :, trial), z_PDI_relative_change_smoothed(:, :, :, trial)] = corrCoef3D(PDI_relative_change_smoothed{trial}, trial_stim_pattern{trial});
+    % [r_CDI_relative_change_smoothed(:, :, :, trial), z_CDI_relative_change_smoothed(:, :, :, trial)] = corrCoef3D(CDI_relative_change_smoothed{trial}, trial_stim_pattern{trial});
+    [r_PDI_relative_change_smoothed(:, :, :, trial), z_PDI_relative_change_smoothed(:, :, :, trial), activationMap(:, :, :, trial)] = activationMap3D(PDI_relative_change_smoothed{trial}, trial_stim_pattern{trial}, zt)
 end
 
 %% Plot some slices of the correlation coefficient

@@ -183,7 +183,7 @@ for filenum = startFile:endFile
     
 end
 %% Testing
-testIQf = applySVs2D(IQ, PP, EVs, V_sort, 15, sv_threshold_upper);
+testIQf = applySVs2D(IQ, PP, EVs, V_sort, 35, sv_threshold_upper);
 figure; imagesc(squeeze(max(abs(testIQf(30:50, :, :, 1)), [], 1) .^ 0.5)'); colormap hot
 % volumeViewer(abs(testIQf(:, :, :, 1)))
 testPDI = mean(abs(IQf) .^ 2, 4);
