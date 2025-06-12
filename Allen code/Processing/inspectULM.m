@@ -92,3 +92,81 @@ figure; st_right_hist = histogram(st_out, nbins, 'BinLimits', bin_limits, 'Norma
 
 
 % end
+
+%% Use parallel processing for speed
+% https://www.mathworks.com/matlabcentral/answers/91744-how-can-i-check-if-matlabpool-is-running-when-using-parallel-computing-toolbox
+
+pp = gcp('nocreate');
+if isempty(pp)
+    % There is no parallel pool
+    parpool LocalProfile1
+
+end
+
+%% Blob and gradient for finding the stroke core?
+% ULMData = SMs_AZ04_day3.SM_SmoothedKF_LI_Rfn;
+
+% ULMData_blurred = imgaussfilt3(ULMData, 4);
+ULMData_test = ULMData;
+ULMData_test(ULMData_test < 0) = 0;
+ULMData_test(ULMData_test == 0) = min(ULMData_test(ULMData_test > 0), [], 'all');
+ULMData_blurred = imboxfilt3(ULMData_test, 11, 'padding', 'symmetric');
+
+% Need a box filter of only the nonzero values within a window...
+vcmap = colormap_ULM;
+figure; imagesc(squeeze(max(ULMData(300:500, :, :), [], 1))'); colormap(vcmap); clim([0, 40])
+figure; imagesc(squeeze(max(ULMData_blurred(300:500, :, :), [], 1))'); colormap(vcmap); clim([0, 40])
+
+%% Do a box filter but emphasize nonzero values
+wss = 51; % window size scalar
+window_size = [wss, wss, wss]; % should all be odd scalars [y, x, z]
+ULMData_box = zeros(size(ULMData));
+
+%%%% COULD TRY DOWNSAMPLING FIRST %%%%%
+
+tic
+ds = size(ULMData); % data size
+yds = ds(1);
+xds = ds(2);
+zds = ds(3);
+for yi = 1:yds
+% for yi = 300:410
+    Yll = max(1, voxelTempCoords(1) - round(window_size(1)/2));
+    Yul = min(yds, voxelTempCoords(1) + floor(window_size(1)/2));
+            
+    for xi = 1:xds
+%     for xi = 400:510
+        Xll = max(1, voxelTempCoords(2) - round(window_size(2)/2));                 % X lower limit
+        Xul = min(xds, voxelTempCoords(2) + floor(window_size(2)/2));  % X upper limit
+        
+        for zi = 1:zds
+%         tic
+%         for zi = 400:510
+            voxelTempCoords = [yi, xi, zi];
+            voxelTempInitValue = ULMData(yi, xi, zi);
+                    
+            Zll = max(1, voxelTempCoords(3) - round(window_size(3)/2));
+            Zul = min(zds, voxelTempCoords(3) + floor(window_size(3)/2));
+
+            windowTemp = ULMData(Yll:Yul, Xll:Xul, Zll:Zul);
+%             windowTempNonzero = windowTemp(windowTemp > 0);
+            if isempty(windowTempNonzero) % If there are no nonzero values in the window
+                windowTempAvg = 0;
+            else % If there are nonzero values in the window, store the average
+%                 windowTempAvg = mean(windowTempNonzero);
+                windowTempAvg = mean(windowTemp(windowTemp > 0));
+            end
+            ULMData_box(yi, xi, zi) = windowTempAvg;
+        end
+%         toc
+    end
+end
+toc
+figure; imagesc(squeeze(max(ULMData_box(300:500, :, :), [], 1))'); colormap(vcmap); clim([0, 40])
+figure; imagesc(squeeze(max(ULMData_box(300, :, :), [], 1))'); colormap(vcmap); clim([0, 40])
+
+%% testing other filters
+filter_LP = fspecial3("laplacian", 0.0, 1);
+test_LP = imfilter(ULMData, filter_LP);
+
+figure; imagesc(squeeze(max(test_LP(300:500, :, :), [], 1))'); colormap(vcmap); clim([0, 40])
