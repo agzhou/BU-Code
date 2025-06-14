@@ -128,20 +128,23 @@ z_PDI_relative_change = [];
 r_CDI_relative_change_smoothed = [];
 z_CDI_relative_change_smoothed = [];
 
+activationMap = [];
+zt = 1;
+
 for trial = 1:length(trial_windows)
 %     [r_CBVi_relative_change(:, :, :, trial), z_CBVi_relative_change(:, :, :, trial)] = corrCoef3D(CBVi_relative_change{trial}, trial_stim_pattern{trial});
 %     [r_CBFsi_relative_change(:, :, :, trial), z_CBFsi_relative_change(:, :, :, trial)] = corrCoef3D(CBFsi_relative_change{trial}, trial_stim_pattern{trial});
-    [r_PDI_relative_change_smoothed(:, :, :, trial), z_PDI_relative_change_smoothed(:, :, :, trial)] = corrCoef3D(PDI_relative_change_smoothed{trial}, trial_stim_pattern{trial});
-    [r_CDI_relative_change_smoothed(:, :, :, trial), z_CDI_relative_change_smoothed(:, :, :, trial)] = corrCoef3D(CDI_relative_change_smoothed{trial}, trial_stim_pattern{trial});
-
+    % [r_PDI_relative_change_smoothed(:, :, :, trial), z_PDI_relative_change_smoothed(:, :, :, trial)] = corrCoef3D(PDI_relative_change_smoothed{trial}, trial_stim_pattern{trial});
+    % [r_CDI_relative_change_smoothed(:, :, :, trial), z_CDI_relative_change_smoothed(:, :, :, trial)] = corrCoef3D(CDI_relative_change_smoothed{trial}, trial_stim_pattern{trial});
+    [r_PDI_relative_change_smoothed(:, :, :, trial), z_PDI_relative_change_smoothed(:, :, :, trial), activationMap(:, :, :, trial)] = activationMap3D(PDI_relative_change_smoothed{trial}, trial_stim_pattern{trial}, zt)
 end
 
 %% Plot some slices of the correlation coefficient
 % figure; imagesc(squeeze(max(PDIallSF{3}(:, :, :, 1), [], 3)) .^ 0.5); colormap hot
 % Trial n
 for test_trialnum = 1:length(trial_windows)
-    figure; imagesc(squeeze(max(r_PDI_relative_change_smoothed(30:50, :, :, test_trialnum), [], 1))'); colormap hot; clim([0, 1])
-    % figure; imagesc(squeeze(max(z_PDI_relative_change_smoothed(30:50, :, :, test_trialnum), [], 1))')
+    % figure; imagesc(squeeze(max(r_PDI_relative_change_smoothed(30:50, :, :, test_trialnum), [], 1))'); colormap hot; clim([0, 1])
+    figure; imagesc(squeeze(max(z_PDI_relative_change_smoothed(30:50, :, :, test_trialnum), [], 1))')
 end
 
 %% Correlation of the trial average and stim
@@ -155,8 +158,12 @@ z_PDI_relative_change_trialavg = mean(z_PDI_relative_change_smoothed, 4);
 r_CDI_relative_change_trialavg = mean(r_CDI_relative_change_smoothed, 4);
 z_CDI_relative_change_trialavg = mean(z_CDI_relative_change_smoothed, 4);
 
-volumeViewer(r_PDI_relative_change_trialavg)
+% volumeViewer(r_PDI_relative_change_trialavg)
+volumeViewer(z_PDI_relative_change_trialavg)
+
 %%
-zscore_mask = z_PDI_relative_change_trialavg < 1;
+zscore_mask = z_PDI_relative_change_trialavg < 2.5;
 r_CBVi_relative_change_trialavg_thresholded = r_PDI_relative_change_trialavg;
 r_CBVi_relative_change_trialavg_thresholded(zscore_mask) = 0;
+
+volumeViewer(r_CBVi_relative_change_trialavg_thresholded)

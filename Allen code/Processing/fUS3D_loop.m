@@ -37,7 +37,7 @@ load(timingFilePath)
 %% Define some parameters (add this to a prompt later)
 
 parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Tau 1 index for CBFspeed', 'Tau 2 index for CBFspeed', 'Tau 1 index for CBV'};
-parameterDefaults = {'1', '', '15', '180', '2', '6', '2'};
+parameterDefaults = {'1', '', '20', '180', '2', '6', '2'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % define # of files manually for now
@@ -66,7 +66,7 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 for filenum = startFile:endFile
 % for filenum = 55:endFile
 % for filenum = [285:-1:189]
-% for filenum = 1
+% for filenum = 2
     tic
     load([IQpath, IQfilenameStructure, num2str(filenum)])
     
@@ -81,7 +81,7 @@ for filenum = startFile:endFile
     [IQf] = applySVs2D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
     disp('SVD filtered images put together')
 
-    clearvars IQ
+    % clearvars IQ
 
     % Use the IQf with separated negative and positive frequency components
     [IQf_separated, IQf_FT_separated] = separatePosNegFreqs(IQf);
@@ -182,6 +182,13 @@ for filenum = startFile:endFile
     toc
     
 end
+%% Testing
+testIQf = applySVs2D(IQ, PP, EVs, V_sort, 35, sv_threshold_upper);
+figure; imagesc(squeeze(max(abs(testIQf(30:50, :, :, 1)), [], 1) .^ 0.5)'); colormap hot
+% volumeViewer(abs(testIQf(:, :, :, 1)))
+testPDI = mean(abs(IQf) .^ 2, 4);
+figure; imagesc(squeeze(max(testPDI(30:50, :, :, 1), [], 1) .^ 0.5)'); colormap hot
+figure; imagesc(squeeze(max(testPDI(:, :, :, 1), [], 3) .^ 0.5)'); colormap hot
 
 %% Convert g1 into CBV, CBFspeed, etc.
 
@@ -209,6 +216,7 @@ end
 save([savepath, 'tlfUS_proc_params.mat'], 'tau1_index_CBV', 'tau1_index_CBF', 'tau2_index_CBF', 'g1_tau1_cutoff');
 % save([savepath, 'tlfUStest_proc_params.mat'], 'tau1_index_CBV', 'tau1_index_CBF', 'tau2_index_CBF', 'g1_tau1_cutoff');
 figure; imagesc(squeeze(max(CBVi(30:50, :, :), [], 1) .^ 0.5)'); colormap hot
+figure; imagesc(squeeze(max(CBVi(:, :, :), [], 3) .^ 0.5)'); colormap hot
 vcmap = colormap_ULM;
 figure; imagesc(squeeze(mean(CBFsi(30:50, :, :), 1))'); colormap(vcmap)
 
@@ -596,6 +604,7 @@ for filenum = startFile:endFile
     end
 end
 
+
 %% Visualize the PDI and CDI across the experiment
 % mwr = 30:50; % MIP window range
 % mdim = 1; % MIP dimension
@@ -770,6 +779,13 @@ test2 = squeeze(CBVi_relative_change_smoothed{1}(40, 47, 27, :));
 figure; plot(test2)
 test3 = squeeze(CBVi_relative_change_smoothed{1}(40, 47, 29, :));
 figure; plot(test3)
+
+testns1 = squeeze(CBVi_relative_change{1}(40, 47, 28, :));
+figure; plot(testns1)
+testns2 = squeeze(CBVi_relative_change{1}(40, 47, 27, :));
+figure; plot(testns2)
+testns3 = squeeze(CBVi_relative_change{1}(40, 47, 29, :));
+figure; plot(testns3)
 
 for trial = 1:length(trial_windows)
 %     figure; imagesc(squeeze(max(max(CBVi_relative_change{trial}(1:60, :, :, :), [], 4), [], 1) .^ 0.7)'); colormap hot

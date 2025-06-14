@@ -10,7 +10,7 @@
 %           - can use a gain for increasing depths according to some
 %             known/estimated attenuation coefficient
 
-function [IQ] = RCA_DAS(RcvData, P, zpix_spacing)
+function [IQ] = RCA_DAS(RcvData, P, ypix_spacing, xpix_spacing, zpix_spacing)
     
     
     %%
@@ -33,6 +33,9 @@ function [IQ] = RCA_DAS(RcvData, P, zpix_spacing)
     
     end
     
+    %%%%%%%%%%%%%
+    % addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Verasonics')
+
     %% Load variables into the function space so you don't waste more time accessing the structure each time
     % have to initialize like this or it doesn't work...
     tw_peak = [];
@@ -62,7 +65,11 @@ function [IQ] = RCA_DAS(RcvData, P, zpix_spacing)
 
     assignStructVars(P)
 
-    nf = numSubFrames;
+    if exist('numSubFrames', 'var')
+        nf = numSubFrames;
+    else
+        nf = numFramesPerBuffer;
+    end
     tw_peak = TW.peak;
     
 %     assignFromParameterStructure;
@@ -110,7 +117,7 @@ function [IQ] = RCA_DAS(RcvData, P, zpix_spacing)
     nzs_nopad = s(1) / na / 2;
     nxs_nopad = numElements;
     nys_nopad = nxs_nopad;
-    d = zeros(nzs_nopad, numElements, na * 2, nf); % reorganize RcvData into (# z samples, # x or y samples, # acquisitions (2 * # angles), # frames)
+    d = zeros(nzs_nopad, numElements, na * 2, nf, 'single'); % reorganize RcvData into (# z samples, # x or y samples, # acquisitions (2 * # angles), # frames)
     
     for f = 1:nf
     
@@ -146,19 +153,19 @@ function [IQ] = RCA_DAS(RcvData, P, zpix_spacing)
     
     %% Define reconstruction region and get time delays for each pixel
     pixsizez = zpix_spacing;
-%     pixsizex = xypix_spacing;
-%     pixsizey = xypix_spacing;
+    pixsizex = xpix_spacing;
+    pixsizey = ypix_spacing;
     
     xsize = numElements * Trans.spacingMm / 1e3; % region's x in m
     ysize = numElements * Trans.spacingMm / 1e3; % region's y in m
     zsize = (endDepth - startDepth) * wl;    % region's z in m
     
     znumpix = ceil(zsize / pixsizez);         % # rows
-%     xnumpix = ceil(xsize / pixsizex);         % # cols
-%     ynumpix = ceil(ysize / pixsizey);         % # cols
+    xnumpix = ceil(xsize / pixsizex);         % # cols
+    ynumpix = ceil(ysize / pixsizey);         % # cols
     
-    xnumpix = nxs_nopad*1;
-    ynumpix = nys_nopad*1;
+    % xnumpix = nxs_nopad*1;
+    % ynumpix = nys_nopad*1;
 %     znumpix = nzs_nopad;
     
     arrayLength = numElements * Trans.spacingMm / 1e3;
