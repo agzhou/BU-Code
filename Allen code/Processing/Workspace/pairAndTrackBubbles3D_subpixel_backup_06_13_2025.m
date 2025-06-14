@@ -701,16 +701,201 @@ toc
 disp('Acceleration and direction constraints applied')
 clear n tln tn trackAlreadyDeleted track vTrack vTrackTrimmedMean aThresholdMag aTrackMag angleTrack angelTrackChanges
 
+%% 12. Plot bubble density map(s) with the paired bubbles after persistence
+
+[BDM] = densityMap3D(bVelocityM, img_size, startFrame);
+[BDM_Constrained] = densityMap3D(bVelocityConstrained, img_size, startFrame);
+[BDM_SmoothedMMS] = densityMap3D(bVelocityMSmoothedMMS, img_size, startFrame);
+
+[BDM_SmoothedKF] = densityMap3D(bVelocityMSmoothedKFMMS, img_size, startFrame);
+[BDM_SmoothedKFConstrained] = densityMap3D(bVelocityMSmoothedKFConstrainedMMS, img_size, startFrame);
+
+clear n tn iti trackTemp tempBuf
+
+% volumeViewer(BDM .^ 0.3)
 %%
+BDM_Constrained_Rfn = thresholdMaps(BDM_Constrained, BDM_Constrained, 2, 500);
+volumeViewer(BDM_Constrained .^ 0.3)
+%%
+volumeViewer(BDM_SmoothedMMS .^ 0.3)
+
+% volumeViewer(bSumSmoothedKF .^ 0.5)
+volumeViewer(BDM_SmoothedKFConstrained .^ 0.3)
+
+% imgRefinementFactor_map = [2, 2, 2];
+% refineMap = @(map, imgRefinementFactor_map) imresize3(map, [size(map, 1) * imgRefinementFactor_map(1), size(map, 2) * imgRefinementFactor_map(2), size(map, 3) * imgRefinementFactor_map(3)]);
+% bSumRefined = refineMap(bSum, imgRefinementFactor_map);
+% volumeViewer(bSumRefined .^ 1)
+
+% yrange_plot_MIP = 140:180;
+% figure; imagesc(abs(squeeze(max(bSumRefined(yrange_plot_MIP, :, :), [], 1) .^ 0.3)')); colormap hot; colorbar
+% title("bSumRefined Maximum Intensity Projection from y = " + num2str(yrange_plot_MIP(1)) + " to " + num2str(yrange_plot_MIP(end)) + " \^ 0.3")
+
+% figure; imagesc(sum(bSumSmoothedKFConstrained .^ 0.5, 3))
+% holeMaskThreshold = 10;
+% maskHole = sum(bSumSmoothedKFConstrained .^ 0.5, 3) < holeMaskThreshold;
+% figure; imagesc(maskHole)
+
+% Set voxels with a bubble count of 2 or less = 0
+% bSumSmoothedKFConstrainedTest = bSumSmoothedKFConstrained;
+% bSumSmoothedKFConstrainedTest(bSumSmoothedKFConstrainedTest <= 2) = 0;
+% volumeViewer(bSumSmoothedKFConstrainedTest .^ 0.3)
+
+% 2D sum plots
+% plotPower2D = 0.3;
+% figure; imagesc(squeeze(sum(BDM, 1).^ plotPower2D)'); colormap hot; title('BDM sum across y'); colorbar
+% figure; imagesc(squeeze(sum(bSum, 2).^ plotPower2D)'); colormap hot; title('bSum sum across x'); colorbar
+% figure; imagesc(squeeze(sum(bSum, 3).^ plotPower2D)'); colormap hot; title('bSum sum across z'); colorbar
+
+% 2D selected slice plots or max intensity projection from a small range of
+% slices
+% figure; imagesc(squeeze(bSum(80, :, :) .^ 0.5)'); colormap hot
+% figure; imagesc(squeeze(max(bSum, [], 1).^ 0.5)'); colormap hot; title('bSum MIP across y')
+% yrange_plot_MIP = 70:90;
+% yrange_plot_MIP = 45:55;
+yrange_plot_MIP = 75:85;
+figure; imagesc(squeeze(max(BDM(yrange_plot_MIP, :, :), [], 1) .^ 0.3)'); colormap hot; colorbar
+title("bSum Maximum Intensity Projection from y = " + num2str(yrange_plot_MIP(1)) + " to " + num2str(yrange_plot_MIP(end)) + " \^ 0.3")
+
+xrange_plot_MIP = 70:90;
+figure; imagesc(squeeze(max(BDM(:, xrange_plot_MIP, :), [], 2) .^ 0.3)'); colormap hot; colorbar
+title("bSum Maximum Intensity Projection from x = " + num2str(xrange_plot_MIP(1)) + " to " + num2str(xrange_plot_MIP(end)) + " \^ 0.3")
+
+zrange_plot_MIP = 100:150;
+figure; imagesc(squeeze(max(BDM(:, :, zrange_plot_MIP), [], 3) .^ 0.5)'); colormap hot; colorbar
+title("bSum Maximum Intensity Projection from z = " + num2str(zrange_plot_MIP(1)) + " to " + num2str(zrange_plot_MIP(end)) + " \^ 0.3")
+
+% figure; imagesc(squeeze(max(bSumSmoothedKFConstrainedTest(yrange_plot_MIP, :, :), [], 1) .^ 0.3)'); colormap hot
+% title("bSumSmoothedKFConstrained count<=2 removed Maximum Intensity Projection from y = " + num2str(yrange_plot_MIP(1)) + " to " + num2str(yrange_plot_MIP(end)) + " \^0.3")
+
 % addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Processing\Jerman Enhancement Filter\')
 % test = vesselness3D(bSum .^ 0.5, 1:5, [xpix_spacing; ypix_spacing; zpix_spacing], 0.5, true);
 % volumeViewer(test)
+%%
+% test_dmi = interpolatedDensityMap(bVelocityMSmoothedKFConstrainedMMS, img_size, startFrame); % test density map interpolated
+% test_dmi = interpolatedDensityMap(bVelocityM, img_size, startFrame); % test density map interpolated
+
+BDM_LI = interpolatedDensityMap(bVelocityM, img_size, startFrame, maxPixelDistPerFrame); % density map, linearly interpolated
+% BDM_LI = interpolatedDensityMap(bVelocityM, img_size, startFrame, maxPixelDistPerFrame ./ 2); % density map, linearly interpolated
+% Probably should only do this if we're confident about the max speed input
+% volumeViewer(test_dmi .^ 0.3)
+% volumeViewer(BDM_LI .^ 0.3)
+%
+plotMIPs(BDM_LI , 0.4)
+%%
+% BDM_SmoothedKFConstrained_LI = interpolatedDensityMap(bVelocityMSmoothedKFConstrainedMMS, img_size, startFrame, maxPixelDistPerFrame); % density map, linearly interpolated
+BDM_SmoothedKFConstrained_LI_Rfn = BDM_SmoothedKFConstrained_LI;
+BDM_SmoothedKFConstrained_LI_Rfn = thresholdMaps(BDM_SmoothedKFConstrained_LI_Rfn, BDM_SmoothedKFConstrained_LI_Rfn, 2, 100);
+% volumeViewer(BDM_SmoothedKFConstrained_LI_RSC .^ 0.4)
+plotMIPs(BDM_SmoothedKFConstrained_LI_Rfn, 0.7)
+
+generateTiffStack_multi([{BDM_SmoothedKFConstrained_LI_Rfn .^ 0.5}], [8.8, 8.8, 8], 'hot', 5)
 
 %% Plot the interpolated density map with video
 actualSize = [lateral_width, lateral_width, axial_depth];
 BDM_video = interpolatedDensityMapWithVideo(bVelocityMSmoothedMMSConstrained, img_size, startFrame, maxPixelDistPerFrame, actualSize); % test density map interpolated
 % BDM_video = interpolatedDensityMapWithVideo(bVelocityM, img_size, startFrame, maxPixelDistPerFrame, actualSize); % test density map interpolated
 
+%% MIP plots for the interpolation test
+% yrange_plot_MIP = 75:85;
+yrange_plot_MIP = 70:90;
+figure; imagesc(squeeze(max(test_dmi_2(yrange_plot_MIP, :, :), [], 1) .^ 0.3)'); colormap hot; colorbar
+% figure; imagesc(squeeze(max(test_dmi(yrange_plot_MIP, :, :), [], 1) .^ 1)'); colormap hot; colorbar
+title("test_dmi_2 Maximum Intensity Projection from y = " + num2str(yrange_plot_MIP(1)) + " to " + num2str(yrange_plot_MIP(end)) + " \^ 0.3")
+
+figure; imagesc(squeeze(max(BDM(yrange_plot_MIP, :, :), [], 1) .^ 0.3)'); colormap hot; colorbar
+% figure; imagesc(squeeze(max(test_dmi(yrange_plot_MIP, :, :), [], 1) .^ 1)'); colormap hot; colorbar
+title("bSum Maximum Intensity Projection from y = " + num2str(yrange_plot_MIP(1)) + " to " + num2str(yrange_plot_MIP(end)) + " \^ 0.3")
+
+xrange_plot_MIP = 75:85;
+figure; imagesc(squeeze(max(test_dmi_2(:, xrange_plot_MIP, :), [], 2) .^ 0.3)'); colormap hot; colorbar
+title("test_dmi_2 Maximum Intensity Projection from x = " + num2str(xrange_plot_MIP(1)) + " to " + num2str(xrange_plot_MIP(end)) + " \^ 0.3")
+
+% zrange_plot_MIP = 100:150;
+zrange_plot_MIP = 110:130;
+figure; imagesc(squeeze(max(test_dmi_2(:, :, zrange_plot_MIP), [], 3) .^ 0.5)'); colormap hot; colorbar
+title("test_dmi_2 Maximum Intensity Projection from z = " + num2str(zrange_plot_MIP(1)) + " to " + num2str(zrange_plot_MIP(end)) + " \^ 0.3")
+
+figure; imagesc(squeeze(max(BDM(:, :, zrange_plot_MIP), [], 3) .^ 0.4)'); colormap hot; colorbar
+title("bSum Maximum Intensity Projection from z = " + num2str(zrange_plot_MIP(1)) + " to " + num2str(zrange_plot_MIP(end)) + " \^ 0.3")
+
+%%
+BDM_LI_Rfn = BDM_LI;
+BDM_LI_Rfn = thresholdMaps(BDM_LI_Rfn, BDM_LI_Rfn, 2, 300);
+
+
+volumeViewer(BDM_LI_Rfn .^ 0.4)
+
+%% generate Tiff stacks
+% generateTiffStack(BDM_LI_Rfn .^ 1, [lateral_width, lateral_width, axial_depth], 'gray')
+generateTiffStack_multi([{BDM_LI_Rfn .^ 0.5}], [8.8, 8.8, 8], 'hot', 10)
+
+%%
+yrange_plot_MIP = 70:90;
+figure; imagesc(squeeze(max(BDM_LI_Rfn(yrange_plot_MIP, :, :), [], 1) .^ 0.4)'); colormap hot; colorbar
+% figure; imagesc(squeeze(max(test_dmi(yrange_plot_MIP, :, :), [], 1) .^ 1)'); colormap hot; colorbar
+title("test_dmi_remove_smallcounts Maximum Intensity Projection from y = " + num2str(yrange_plot_MIP(1)) + " to " + num2str(yrange_plot_MIP(end)) + " \^ 0.3")
+
+xrange_plot_MIP = 70:90;
+figure; imagesc(squeeze(max(BDM_LI_Rfn(:, xrange_plot_MIP, :), [], 2) .^ 0.3)'); colormap hot; colorbar
+title("test_dmi_remove_smallcounts Maximum Intensity Projection from x = " + num2str(xrange_plot_MIP(1)) + " to " + num2str(xrange_plot_MIP(end)) + " \^ 0.3")
+
+zrange_plot_MIP = 100:150;
+figure; imagesc(squeeze(max(BDM_LI_Rfn(:, :, zrange_plot_MIP), [], 3) .^ 0.5)'); colormap hot; colorbar
+title("test_dmi_remove_smallcounts Maximum Intensity Projection from z = " + num2str(zrange_plot_MIP(1)) + " to " + num2str(zrange_plot_MIP(end)) + " \^ 0.3")
+
+% figure; imagesc(squeeze(test_dmi(80, :, :))' .^ plotPower2D); colormap hot
+% figure; imagesc(squeeze(sum(test_dmi, 1))' .^ plotPower2D); colormap hot
+% findfigs
+% bw = imbinarize(bSum .^ 1);
+
+%% convert outdated names to new ones
+% BDM_LI = test_dmi_2;
+% clear test_dmi_2
+% BDM = bSum; clear bSum
+% BDM_Constrained = bSumConstrained; clear bSumConstrained
+% BDM_SmoothedMMS = bSumSmoothedMMS; clear bSumSmoothedMMS
+% BDM_SmoothedKF = bSumSmoothedKF; clear bSumSmoothedKF
+% BDM_SmoothedKFConstrained = bSumSmoothedKFConstrained; clear bSumSmoothedKFConstrained
+
+% Structure to make it easier
+% BDMs_AZ02_day3.BDM = BDM;
+% BDMs_AZ02_day3.BDM_LI = BDM_LI;
+% BDMs_AZ02_day3.BDM_LI_RSC = BDM_LI_RSC;
+% BDMs_AZ02_day3.BDM_Constrained = BDM_Constrained;
+% BDMs_AZ02_day3.BDM_SmoothedMMS = BDM_SmoothedMMS;
+% BDMs_AZ02_day3.BDM_SmoothedKFConstrained = BDM_SmoothedKFConstrained;
+
+% BDMs_AZ02_hour1.BDM = BDM;
+% BDMs_AZ02_hour1.BDM_LI = BDM_LI;
+% BDMs_AZ02_hour1.BDM_LI_RSC = BDM_LI_RSC;
+% BDMs_AZ02_hour1.BDM_Constrained = BDM_Constrained;
+% BDMs_AZ02_hour1.BDM_SmoothedMMS = BDM_SmoothedMMS;
+% BDMs_AZ02_hour1.BDM_SmoothedKFConstrained = BDM_SmoothedKFConstrained;
+
+% BDMs_AZ02_baseline.BDM = BDM;
+% BDMs_AZ02_baseline.BDM_LI = BDM_LI;
+% BDMs_AZ02_baseline.BDM_LI_RSC = BDM_LI_RSC;
+% BDMs_AZ02_baseline.BDM_Constrained = BDM_Constrained;
+% BDMs_AZ02_baseline.BDM_SmoothedMMS = BDM_SmoothedMMS;
+% BDMs_AZ02_baseline.BDM_SmoothedKFConstrained = BDM_SmoothedKFConstrained;
+% BDMs_AZ02_baseline.BDM_SmoothedKFConstrained_LI_RSC = BDM_SmoothedKFConstrained_LI_RSC;
+
+% BDMs_AZ02_day7.BDM = BDM;
+% BDMs_AZ02_day7.BDM_LI = BDM_LI;
+% BDMs_AZ02_day7.BDM_LI_RSC = BDM_LI_Rfn;
+% BDMs_AZ02_day7.BDM_Constrained = BDM_Constrained;
+% BDMs_AZ02_day7.BDM_SmoothedMMS = BDM_SmoothedMMS;
+% BDMs_AZ02_day7.BDM_SmoothedKFConstrained = BDM_SmoothedKFConstrained;
+% BDMs_AZ02_day7.BDM_SmoothedKFConstrained_LI_RSC = BDM_SmoothedKFConstrained_LI_RSC;
+
+BDMs_AZ03_baseline.BDM = BDM;
+BDMs_AZ03_baseline.BDM_LI = BDM_LI;
+BDMs_AZ03_baseline.BDM_LI_Rfn = BDM_LI_Rfn;
+BDMs_AZ03_baseline.BDM_Constrained = BDM_Constrained;
+BDMs_AZ03_baseline.BDM_SmoothedMMS = BDM_SmoothedMMS;
+BDMs_AZ03_baseline.BDM_SmoothedKFConstrained = BDM_SmoothedKFConstrained;
+BDMs_AZ03_baseline.BDM_SmoothedKFConstrained_LI_RSC = BDM_SmoothedKFConstrained_LI_Rfn;
 %% Get the speed maps
 % [SM_LI, SM_LI_counter] = interpolatedSpeedMap(bVelocityM, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
 % % Refine the speed map
@@ -857,13 +1042,9 @@ SMs_AZ03_baseline.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 % SMs_AZ04_day3.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
 % SMs_AZ04_day3.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 
-% SMs_AZ04_day7.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
-% SMs_AZ04_day7.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
-% SMs_AZ04_day7.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
-
-SMs_AZ04_day14.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
-SMs_AZ04_day14.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
-SMs_AZ04_day14.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
+SMs_AZ04_day7.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
+SMs_AZ04_day7.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
+SMs_AZ04_day7.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 %% Helper functions
 
 % function MIPvideo(bSum, xws, yws, zws, framerate, power) % Define x, y, z window sizes for a MIP flythrough video of the bubble density map
