@@ -21,11 +21,11 @@ cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 % cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
 activate
 
-savepath = uigetdir('G:\', 'Select the save path');
+savepath = uigetdir('F:\', 'Select the save path');
 savepath = [savepath, '\'];
 
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe'}; % 'Save RF data (0-no, 1-yes)', 
-parameterDefaults = {'20', '2', '10', '60000', '5000', '5', '5', '15.625', '1540', '0', '1', '1000'};
+parameterDefaults = {'20', '2', '10', '50000', '5000', '5', '5', '15.625', '1540', '0', '1', '1000'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % Store the user inputs for parameters into the corresponding variables
@@ -163,21 +163,21 @@ PData.Origin = [-half_probe_dist, 0, startDepth];
 PData.Region(1) = struct('Shape',struct('Name','PData'));
 PData.Region = computeRegions(PData);
 
-% xz display window
-Resource.DisplayWindow(1).Type = 'Verasonics';
-Resource.DisplayWindow(1).Title = 'xz plane';
-Resource.DisplayWindow(1).pdelta = 0.4; % pixel spacing (in wavelengths) on the display window, for all dimensions
-llx = 100; % lower left corner x on screen
-xmult = 200;
-lly = 150; % lower left corner y
-Resource.DisplayWindow(1).Position = [llx, lly, ...
-                                      ceil(PData.Size(2).* PData.PDelta(1) ./ Resource.DisplayWindow(1).pdelta), ... % width (x)
-                                      ceil(PData.Size(1).* PData.PDelta(3) ./ Resource.DisplayWindow(1).pdelta)]; % height (z)
-Resource.DisplayWindow(1).ReferencePt = [PData.Origin(1), 0, PData.Origin(3)]; % Display Window location wrt transducer coords
-Resource.DisplayWindow(1).AxesUnits = 'wavelengths'; % can change to mm
-Resource.DisplayWindow(1).Colormap = gray(256);
-% Resource.DisplayWindow(1).Orientation = 'xz';
-Resource.DisplayWindow(1).numFrames = numSupFrames; % Define buffer size for a history of displayed frames
+% % xz display window
+% Resource.DisplayWindow(1).Type = 'Verasonics';
+% Resource.DisplayWindow(1).Title = 'xz plane';
+% Resource.DisplayWindow(1).pdelta = 0.4; % pixel spacing (in wavelengths) on the display window, for all dimensions
+% llx = 100; % lower left corner x on screen
+% xmult = 200;
+% lly = 150; % lower left corner y
+% Resource.DisplayWindow(1).Position = [llx, lly, ...
+%                                       ceil(PData.Size(2).* PData.PDelta(1) ./ Resource.DisplayWindow(1).pdelta), ... % width (x)
+%                                       ceil(PData.Size(1).* PData.PDelta(3) ./ Resource.DisplayWindow(1).pdelta)]; % height (z)
+% Resource.DisplayWindow(1).ReferencePt = [PData.Origin(1), 0, PData.Origin(3)]; % Display Window location wrt transducer coords
+% Resource.DisplayWindow(1).AxesUnits = 'wavelengths'; % can change to mm
+% Resource.DisplayWindow(1).Colormap = gray(256);
+% % Resource.DisplayWindow(1).Orientation = 'xz';
+% Resource.DisplayWindow(1).numFrames = numSupFrames; % Define buffer size for a history of displayed frames
 
 %     'Position', [0, 0, 10], ...
 %                      'width', PData.Size(2), 'height', PData.Size(1)./2);
