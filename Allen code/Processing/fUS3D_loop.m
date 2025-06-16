@@ -222,8 +222,8 @@ figure; imagesc(squeeze(mean(CBFsi(30:50, :, :), 1))'); colormap(vcmap)
 
 % generateTiffStack_multi({CBVi .^ 0.7}, [8.8, 8.8, 8], 'hot', 5)
 %% Get and save PDI, CDI only
-% for filenum = startFile:endFile
-for filenum = 1
+for filenum = startFile:endFile
+% for filenum = 1
 % for filenum = [285:-1:189]
     tic
     load([IQpath, IQfilenameStructure, num2str(filenum)])
@@ -273,8 +273,8 @@ CBFspeed_DM_masked(~g1A_mask) = 0;
 %% Random phase test
 phasetest = atan2(imag(IQf), real(IQf));
 
-figure; imagesc(squeeze(phasetest(40, :, :))'); % colormap(vcmap)
-figure; imagesc(squeeze(abs(IQf(40, :, :)))'); % colormap(vcmap)
+figure; imagesc(squeeze(phasetest(40, :, :, 1))'); % colormap(vcmap)
+figure; imagesc(squeeze(abs(IQf(40, :, :, 1)))'); % colormap(vcmap)
 
 % figure; imagesc(squeeze(mean(phasetest(30:50, :, :), 1))'); % colormap(vcmap)
 
