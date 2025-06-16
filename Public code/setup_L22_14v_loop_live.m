@@ -14,7 +14,7 @@ activate
 
 savepath = uigetdir('F:\', 'Select the save path');
 savepath = [savepath, '\'];
-mkdir(savepath)
+% mkdir(savepath)
 
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save IQ data (0-no, 1-yes)'}; % 'Save RF data (0-no, 1-yes)', 
 parameterDefaults = {'5', '0', '10', '500', '21', '5', '15.625', '0', '0'};

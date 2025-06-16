@@ -160,7 +160,7 @@ PData.Origin = [-half_probe_dist, 0, startDepth];
 % PData.Origin = [-half_probe_dist, -half_probe_dist, startDepth];
 
 % Set a local region to view/use for processing
-PData.Region(1) = struct('Shape',struct('Name','PData'));
+PData.Region(1) = struct('Shape', struct('Name', 'PData'));
 PData.Region = computeRegions(PData);
 
 % % xz display window
