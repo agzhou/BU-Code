@@ -1,8 +1,7 @@
 
 %% 0. Description
-% Continuous acquisition and saving of RF data with the RC15gV probe
+% Continuous acquisition and saving of RF data with the L22-14v probe
 % CPWC, stacks all frames per superframe in one transfer/file
-% C-R and R-C pairs of TX-RX
 % Uses saveRcvData external function for saving
 % Starts on an external trigger
 
@@ -26,10 +25,7 @@ savepath = uigetdir('G:\', 'Select the save path');
 savepath = [savepath, '\'];
 
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe'}; % 'Save RF data (0-no, 1-yes)', 
-% parameterDefaults = {'5', '0', '10', '40000', '2000', '11', '5', '13.6', '1540', '0', '0', '1000'};
-% parameterDefaults = {'5', '0', '10', '50000', '2000', '11', '5', '13.6', '1540', '0', '1', '500'};
-parameterDefaults = {'20', '2', '10', '60000', '2500', '11', '5', '13.6', '1540', '0', '1', '180'};
-% parameterDefaults = {'20', '0', '20', '30000', '1000', '11', '5', '13.6', '1540', '0', '1', '80'};
+parameterDefaults = {'20', '2', '10', '60000', '5000', '5', '5', '15.625', '1540', '0', '1', '1000'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % Store the user inputs for parameters into the corresponding variables
@@ -50,7 +46,7 @@ numFramesPerSF = str2double(parameterUserInput{12});
 bufferIndex = 0;
 runVSX = 1;
 movePointsOrNot = 0;
-numChannels = 256; % enable channels
+numChannels = 128; % enable channels
 
 % Set up buffers
 % numBuffers = ceil(frameRate / numFramesPerBuffer);
@@ -69,9 +65,6 @@ else
     angles = 0;
 end
 
-% numAngles = length(angles);
-pair = 2; % The R-C and C-R pair of acquisitions per angle
-
 % Resource is a structure, define system parameters
 Resource.Parameters.numTransmit = numChannels; % number of transmit channels
 Resource.Parameters.numRcvChannels = numChannels; % number of receive channels
@@ -81,16 +74,17 @@ Resource.Parameters.speedOfSound = speedOfSound; % speed of sound in m/s, the 15
 %% 1.5. Specify the functional stimulus parameters
 
 [apis, vts, daqrate, numTrials] = functionalParameterInputPrompt;
+
 %% 2. Define Transducer structure
 
-Trans.name = 'RC15gV'; 
+Trans.name = 'L22-14v'; 
 Trans.frequency = probe_freq; % Not needed if using the default center frequency
 Trans.units = 'wavelengths'; % or mm
 
 Trans = computeTrans(Trans); % Generate required attributes for the probe into the Trans structure; e.g., the transducer element positions
 % Trans.maxHighVoltage = ; % set maximum high voltage that is allowed to the transducer
 
-L = Trans.spacingMm*Trans.numelements/2/1e3; % Probe width, in m
+L = Trans.spacingMm*Trans.numelements/1e3; % Probe width, in m
 wl = Resource.Parameters.speedOfSound / Trans.frequency / 1e6; % Wavelength, in m
 
 startDepth = startDepthMM/1e3/wl; % start depth in wavelengths
@@ -137,85 +131,60 @@ Media.function = 'movePointsZ3D'; % move points in _ dimension after each frame
 % For 2D scans and slices of 3D scans, it's always a rectangular area at a
 % fixed location in the transducer coord system
 
-numElements = Trans.numelements./2; % the structure gives # row elements + # column elements
+numElements = Trans.numelements; % the structure gives # row elements + # column elements
 
-PData.PDelta = [Trans.spacing, Trans.spacing, 0.5]; % Spacing between pixels in x, y, z, in wavelengths
+% PData.PDelta = [Trans.spacing, 0, 0.5]; % Spacing between pixels in x, y, z, in wavelengths
+pixelspacingPrompt = {'z (axial) pixel spacing [wl]', 'x (lateral) pixel spacing [wl]'};
+% pixelspacingDefaults = {num2str(wl/2 * 1e6), num2str(Trans.spacingMm * 1e3)};
+pixelspacingDefaults = {num2str(Trans.spacing/2), num2str(Trans.spacing)};
+pixelspacingUserInput = inputdlg(pixelspacingPrompt, 'Pixel Spacing Parameters', 1, pixelspacingDefaults);
+
+z_pix_spacing = str2double(pixelspacingUserInput{1});
+x_pix_spacing = str2double(pixelspacingUserInput{2});
+
+% PData.PDelta = [x_pix_spacing * wl, 0, z_pix_spacing * wl]; % Spacing between pixels in x, y, z, in wavelengths
+PData.PDelta = [x_pix_spacing, 0, z_pix_spacing]; % Spacing between pixels in x, y, z, in wavelengths
 
 PData.Coord = 'rectangular'; % rectangular coords, could change to polar or spherical
 % Set PData array dimensions --> # of rows, columns, sections (planes
 % parallel to the xy plane)
 % For a 3D scan, rows - y axis, columns - x axis, sections - z axis
-PData.Size(1) = ceil(numElements.*Trans.spacing./PData.PDelta(2)); % # rows
+PData.Size(1) = floor((endDepth - startDepth)./PData.PDelta(3)); % # rows
 PData.Size(2) = ceil(numElements.*Trans.spacing./PData.PDelta(1)); % # cols
-PData.Size(3) = ceil((endDepth - startDepth)./PData.PDelta(3)); % sections
+PData.Size(3) = 1; % depth, is 1 unit deep for a 2D image
 
 % Define the location (x, y, z) of the upper left corner of the array
-half_probe_dist = (numElements-1)./2.*Trans.spacing;
-PData.Origin = [-half_probe_dist, half_probe_dist, startDepth];
-% PData.Origin = [-half_probe_dist, -half_probe_dist, startDepth];
-
 % Upper left corner if you look aligned with positive z
+half_probe_dist = (numElements-1)./2.*Trans.spacing;
+PData.Origin = [-half_probe_dist, 0, startDepth];
+% PData.Origin = [-half_probe_dist, -half_probe_dist, startDepth];
 
 % Set a local region to view/use for processing
 PData.Region(1) = struct('Shape',struct('Name','PData'));
+PData.Region = computeRegions(PData);
 
-PData.Region(2).Shape = struct('Name', 'Slice', 'Orientation', 'xz', ...
-                            'oPAIntersect', PData.Origin(2) - (numElements-1).*Trans.spacing./2); % out of Plane Axis Intersection
-PData.Region(3).Shape = struct('Name', 'Slice', 'Orientation', 'yz', ...
-                            'oPAIntersect', PData.Origin(1) + (numElements-1).*Trans.spacing./2);
-PData.Region(4).Shape = struct('Name', 'Slice', 'Orientation', 'xy', ...
-                            'oPAIntersect', Media.MP(3)); % currently set to the plane intersecting the only scatter point
+% xz display window
+Resource.DisplayWindow(1).Type = 'Verasonics';
+Resource.DisplayWindow(1).Title = 'xz plane';
+Resource.DisplayWindow(1).pdelta = 0.4; % pixel spacing (in wavelengths) on the display window, for all dimensions
+llx = 100; % lower left corner x on screen
+xmult = 200;
+lly = 150; % lower left corner y
+Resource.DisplayWindow(1).Position = [llx, lly, ...
+                                      ceil(PData.Size(2).* PData.PDelta(1) ./ Resource.DisplayWindow(1).pdelta), ... % width (x)
+                                      ceil(PData.Size(1).* PData.PDelta(3) ./ Resource.DisplayWindow(1).pdelta)]; % height (z)
+Resource.DisplayWindow(1).ReferencePt = [PData.Origin(1), 0, PData.Origin(3)]; % Display Window location wrt transducer coords
+Resource.DisplayWindow(1).AxesUnits = 'wavelengths'; % can change to mm
+Resource.DisplayWindow(1).Colormap = gray(256);
+% Resource.DisplayWindow(1).Orientation = 'xz';
+Resource.DisplayWindow(1).numFrames = numSupFrames; % Define buffer size for a history of displayed frames
 
 %     'Position', [0, 0, 10], ...
 %                      'width', PData.Size(2), 'height', PData.Size(1)./2);
                     % Position is relative to the global coords
-% PData.Region = computeRegions(PData);
+
 
 % Display window
-
-xd = 70;
-% 
-% xz
-% Resource.DisplayWindow(1).Title = 'Slice xz plane';
-% Resource.DisplayWindow(1).pdelta = 0.3; % pixel spacing (in wavelengths) on the display window, for all dimensions
-% llx = 100; % lower left corner x on screen
-% xmult = 200;
-% lly = 150; % lower left corner y
-% Resource.DisplayWindow(1).Position = [llx, lly, ...
-%                                       ceil(PData.Size(2).* PData.PDelta(1) ./ Resource.DisplayWindow(1).pdelta), ... % width (x)
-%                                       ceil(PData.Size(3).* PData.PDelta(3) ./ Resource.DisplayWindow(1).pdelta)]; % height (z)
-% Resource.DisplayWindow(1).ReferencePt = [PData.Origin(1), 0, PData.Origin(3)]; % Display Window location wrt transducer coords
-% Resource.DisplayWindow(1).AxesUnits = 'wavelengths'; % can change to mm
-% Resource.DisplayWindow(1).Colormap = gray(256);
-% Resource.DisplayWindow(1).Orientation = 'xz';
-% Resource.DisplayWindow(1).numFrames = numFrames; % Define buffer size for a history of displayed frames
-% 
-% % xy
-% Resource.DisplayWindow(2).Title = 'Slice xy plane';
-% Resource.DisplayWindow(2).pdelta = 0.3; % pixel spacing (in wavelengths) on the display window, for all dimensions
-% 
-% Resource.DisplayWindow(2).Position = [llx + 2.*xmult, lly, ...
-%                                       ceil(PData.Size(2).* PData.PDelta(1) ./ Resource.DisplayWindow(1).pdelta), ... % width (x)
-%                                       ceil(PData.Size(1).* PData.PDelta(2) ./ Resource.DisplayWindow(1).pdelta)]; % height (z)
-% Resource.DisplayWindow(2).ReferencePt = [PData.Origin(1), -PData.Origin(2), xd]; % Display Window location wrt transducer coords
-% Resource.DisplayWindow(2).AxesUnits = 'wavelengths'; % can change to mm
-% Resource.DisplayWindow(2).Colormap = gray(256);
-% Resource.DisplayWindow(2).Orientation = 'xy';
-% Resource.DisplayWindow(2).numFrames = numFrames; % Define buffer size for a history of displayed frames
-% 
-% % yz
-% Resource.DisplayWindow(3).Title = 'Slice yz plane';
-% Resource.DisplayWindow(3).pdelta = 0.3; % pixel spacing (in wavelengths) on the display window, for all dimensions
-% 
-% Resource.DisplayWindow(3).Position = [llx + 4.*xmult, lly, ...
-%                                       ceil(PData.Size(1).* PData.PDelta(2) ./ Resource.DisplayWindow(1).pdelta), ... % width (x)
-%                                       ceil(PData.Size(3).* PData.PDelta(3) ./ Resource.DisplayWindow(1).pdelta)]; % height (z)
-% Resource.DisplayWindow(3).ReferencePt = [0, -PData.Origin(2), PData.Origin(3)]; % Display Window location wrt transducer coords
-% Resource.DisplayWindow(3).AxesUnits = 'wavelengths'; % can change to mm
-% Resource.DisplayWindow(3).Colormap = gray(256);
-% Resource.DisplayWindow(3).Orientation = 'yz';
-% Resource.DisplayWindow(3).numFrames = numFrames; % Define buffer size for a history of displayed frames
-
 
 %% Transmission Waveform (TW)
 tw.A = Trans.frequency; % frequency of transmission pulse, sets half cycle period of the waveform...
@@ -243,22 +212,15 @@ TPC.hv = initialVoltage;
 % Need a TX structure for each unique transmit action in the imaging
 % sequence
 
-% na*2 transmissions of a plane wave in pairs, one by all row elements and then one by all
+% na transmissions of a plane wave
 % column elements
 TX = repmat(struct('waveform', 1, ...
                    'focus', 0, ... % plane wave
                    'Steer', [0.0, 0.0], ... % theta, alpha (beam angle projected in xz from +z axis, beam angle wrt xz)
-                   'Apod', zeros(1, Trans.numelements)), 1, na*2);
+                   'Apod', ones(1, Trans.numelements)), 1, na);
 for n = 1:na
-    TX(n).Apod(1:Trans.numelements/2) = ones(1, Trans.numelements/2); % Turn on columns (y)
     TX(n).Steer = [angles(n), 0];
     TX(n).Delay = computeTXDelays(TX(n));
-end
-
-for n = 1:na
-    TX(na + n).Apod(Trans.numelements/2 + 1 : end) = ones(1, Trans.numelements/2); % Turn on rows (x)
-    TX(na + n).Steer = [0, angles(n)];
-    TX(na + n).Delay = computeTXDelays(TX(na + n));
 end
 
 
@@ -282,8 +244,8 @@ TGC(1).Waveform = computeTGCWaveform(TGC); % Parameters can be adjusted later wi
 
 %% Receiver array object
 
-maxAcqLength = ceil(sqrt(endDepth^2 + 2*(numElements*Trans.spacing)^2)); % account for the longest distance an echo could travel
-Receive = repmat(struct('Apod', zeros(1, Trans.numelements), ... 
+maxAcqLength = ceil(sqrt(endDepth^2 + (numElements*Trans.spacing)^2)); % account for the longest distance an echo could travel
+Receive = repmat(struct('Apod', ones(1, Trans.numelements), ... 
                         'startDepth', startDepth, ...
                         'endDepth', maxAcqLength, ...
                         'TGC', 1, ...
@@ -294,7 +256,7 @@ Receive = repmat(struct('Apod', zeros(1, Trans.numelements), ...
                         'mode', 0, ...
                         'callMediaFunc', 0, ...
                         'LowPassCoef', [], ...
-                        'InputFilter', []), 1, pair * numFramesPerSF * na);
+                        'InputFilter', []), 1, numFramesPerSF * na);
 j = 1;
 % an = 0;
 for nbuf = 1:numBuffers
@@ -313,21 +275,9 @@ for nbuf = 1:numBuffers
 %             Receive(j).framenum = nbuf;
             Receive(j).framenum = 1; % 1 stacked frame per buffer
             Receive(j).acqNum = an;
-            Receive(j).Apod(Trans.numelements/2 + 1 : end) = ones(1, Trans.numelements/2);
             j = j + 1;
         end
     
-        for n = 1:na
-            an = an + 1;
-            Receive(j).bufnum = nbuf;
-%             Receive(j).framenum = nf;
-%             Receive(j).framenum = nbuf;
-            Receive(j).framenum = 1; % 1 chunked frame per buffer
-            Receive(j).acqNum = an;
-            Receive(j).Apod(1:Trans.numelements/2) = ones(1, Trans.numelements/2);
-            j = j + 1;
-        end
-        
     end
 end
 
@@ -373,7 +323,7 @@ end
 maxAcqLength_adjusted = numRcvSamples / samplesPerWave / 2;
 
 for nbuf = 1:numBuffers
-    Resource.RcvBuffer(nbuf).rowsPerFrame = numRcvSamples * na * 2 * numFramesPerSF;
+    Resource.RcvBuffer(nbuf).rowsPerFrame = numRcvSamples * na * numFramesPerSF;
     Resource.RcvBuffer(nbuf).colsPerFrame = Resource.Parameters.numRcvChannels; % Usually 1:1 to # of receive channels available in the system. Can change to 256 with the 2D probe and new connector plate.
 %     Resource.RcvBuffer(nbuf).colsPerFrame = 160; % Usually 1:1 to # of receive channels available in the system. Can change to 256 with the 2D probe and new connector plate.
 %     Resource.RcvBuffer(nbuf).numFrames = numFramesPerSF; % minimum # frames of RF data to acquire; RcvBuffer contains all the data needed for a whole frame, including multiple acquisition passes needed for reconstruction. Software can re-process RcvBuffer frames
@@ -477,7 +427,7 @@ SeqControl(scInd).argument = 2;     % second event
 SeqControl(scInd).condition = 'exitAfterJump'; % Normally, jumping auto returns to Matlab if it returns to the first event, but not for other events
 
 % Set the frame/volume rate
-timePerFrame = SeqControl(scInd-2).argument * na * 2;     % Time to acquire all the acquisitions for one frame/volume based on the PRF [us]
+timePerFrame = SeqControl(scInd-2).argument * na;     % Time to acquire all the acquisitions for one frame/volume based on the PRF [us]
 % frameTimeGap = 1 / frameRate * 1e6 - timePerFrame;      % Add delays to account for the frame/volume rate set above
 frameTimeGap = 1 / frameRate * 1e6 - timePerFrame + SeqControl(scInd-2).argument;      % Add delays to account for the frame/volume rate set above. Add the PRF time because this value replaces one of those delays too.
 
@@ -570,8 +520,8 @@ for nbuf = 1
         for a = 1:na % go through all the angles for each frame
             n = n + 1;
             Event(n).info = 'Transmit all columns and receive all rows';
-            Event(n).tx = a.*2 - 1; % Use ath TX structure
-            Event(n).rcv = (nbuf - 1) .* numFramesPerSF .* pair .* na + (nf - 1).*pair.*na + a.*2 - 1; % Use nth Receive structure % need to make this alternate between (1 and 2) * numframes or something
+            Event(n).tx = a; % Use ath TX structure
+            Event(n).rcv = (nbuf - 1) * numFramesPerSF * na + (nf - 1)*na + a; % Use nth Receive structure % need to make this alternate between (1 and 2) * numframes or something
             Event(n).recon = 0; % 0 means no reconstruction
             Event(n).process = 0; % 0 means no processing
             Event(n).seqControl = 1;
@@ -579,23 +529,6 @@ for nbuf = 1
 %             Event(n).seqControl = [1, 11];
 
 %               if mod(n, 90) == 0 & n > 0
-%                 scInd = scInd + 1; 
-%                 SeqControl(scInd).command = 'transferToHost'; % sub-DMA
-%                 Event(n).seqControl = [1, scInd];
-%               end
-
-            n = n + 1;
-            Event(n).info = 'Transmit all rows and receive all columns';
-            Event(n).tx = a.*2; 
-            Event(n).rcv = (nbuf - 1) .* numFramesPerSF .* pair .* na + (nf - 1).*pair.*na + a.*2; 
-            Event(n).recon = 0; 
-            Event(n).process = 0; 
-            Event(n).seqControl = 1;
-%             Event(n).seqControl = 11;
-%             Event(n).seqControl = [1, 11];
-
-%               if mod(n, 90) == 0 & n > 0
-% %               if mod(n, n) == 0 & n > 0
 %                 scInd = scInd + 1; 
 %                 SeqControl(scInd).command = 'transferToHost'; % sub-DMA
 %                 Event(n).seqControl = [1, scInd];
@@ -683,7 +616,7 @@ Event(n).seqControl = 3;
 
 %% Save all the data/structures to a .mat file.
 currentDir = cd; currentDir = regexp(currentDir, filesep, 'split');
-filename = 'RC15gV_Allen_loop_functional.mat';
+filename = 'L22_14v_Allen_loop_functional.mat';
 
 save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+filename);
 
