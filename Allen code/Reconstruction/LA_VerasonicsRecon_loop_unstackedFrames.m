@@ -270,7 +270,7 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
     VsClose  % close the GUI window. runAcq stops automatically after one loop.
 
     disp(strcat("IQ file ", num2str(Mcr_filenum), " reconstructed."))
-%     IQ = IData{1} + 1i .* QData{1};                                         % Merge the I and Q into one variable
+%     IQ = squeeze(IData{1} + 1i .* QData{1});                                         % Merge the I and Q into one variable
     IData = IData{1};
     QData = QData{1};
 

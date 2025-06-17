@@ -673,7 +673,7 @@ end
 %% Save post-acquisition parameters in a structure P
 
 makeParameterStructure;
-savefast([savepath, 'params.mat'], 'P')
+% savefast([savepath, 'params.mat'], 'P')
 % savefast([savepath, 'data.mat'], 'RcvData', 'ImgData')
 % saveRcvData(RcvData{1})
 
