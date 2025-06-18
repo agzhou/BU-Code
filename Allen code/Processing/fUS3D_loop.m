@@ -769,6 +769,7 @@ end
 %%
 % testinvessel = squeeze(CBVi_relative_change{1}(40, 47, 18:38, :));
 testinvessel = squeeze(CBVi_relative_change_smoothed{1}(40, 47, 18:38, :));
+% testinvessel = squeeze(CBFsi_relative_change_smoothed{1}(40, 47, 18:38, :));
 testinvessel_avg = mean(testinvessel, 1);
 figure; plot(testinvessel_avg)
 
@@ -780,6 +781,10 @@ figure; plot(test2)
 test3 = squeeze(CBVi_relative_change_smoothed{1}(40, 47, 29, :));
 figure; plot(test3)
 
+% test4 = squeeze(CBFsi_relative_change_smoothed{1}(40, 47, 27, :));
+test4 = squeeze(CBFsi_relative_change{1}(40, 47, 27, :));
+figure; plot(test4)
+
 testns1 = squeeze(CBVi_relative_change{1}(40, 47, 28, :));
 figure; plot(testns1)
 testns2 = squeeze(CBVi_relative_change{1}(40, 47, 27, :));
@@ -789,31 +794,40 @@ figure; plot(testns3)
 
 for trial = 1:length(trial_windows)
 %     figure; imagesc(squeeze(max(max(CBVi_relative_change{trial}(1:60, :, :, :), [], 4), [], 1) .^ 0.7)'); colormap hot
-    figure; imagesc(squeeze(max(max(CBVi_relative_change_smoothed{trial}(1:60, :, :, :), [], 4), [], 1) .^ 0.7)'); colormap hot
+%     figure; imagesc(squeeze(max(max(CBVi_relative_change_smoothed{trial}(1:60, :, :, :), [], 4), [], 1) .^ 0.7)'); colormap hot
 %     figure; imagesc(squeeze(max(mean(CBVi_relative_change{trial}, 4), [], 1) .^ 0.7)'); colormap hot
 %     figure; imagesc(squeeze(max(max(CBFsi_relative_change{trial}, [], 4), [], 1) .^ 1)'); colormap hot
-%     figure; imagesc(squeeze(mean(max(CBFsi_relative_change{trial}, [], 4), 1) .^ 2)'); colormap hot
+    figure; imagesc(squeeze(mean(max(CBFsi_relative_change_smoothed{trial}, [], 4), 1) .^ 1)'); colormap hot
 end
 
-% Do the correlation stuff
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Median filter on the CBFsi itself???
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Do the correlation stuff
 r_CBVi_relative_change = [];
 z_CBVi_relative_change = [];
-r_CBVi_relative_change = [];
-z_CBVi_relative_change = [];
+r_CBFsi_relative_change = [];
+z_CBFsi_relative_change = [];
 
 r_CBVi_relative_change_smoothed = [];
 z_CBVi_relative_change_smoothed = [];
-r_CBVi_relative_change_smoothed = [];
-z_CBVi_relative_change_smoothed = [];
+r_CBFsi_relative_change_smoothed = [];
+z_CBFsi_relative_change_smoothed = [];
+
+activationMaps_CBVi = [];
+activationMaps_CBFsi = [];
+
+zt = 1;
 
 for trial = 1:length(trial_windows)
 %     [r_CBVi_relative_change(:, :, :, trial), z_CBVi_relative_change(:, :, :, trial)] = corrCoef3D(CBVi_relative_change{trial}, trial_stim_pattern{trial});
 %     [r_CBFsi_relative_change(:, :, :, trial), z_CBFsi_relative_change(:, :, :, trial)] = corrCoef3D(CBFsi_relative_change{trial}, trial_stim_pattern{trial});
-    [r_CBVi_relative_change_smoothed(:, :, :, trial), z_CBVi_relative_change_smoothed(:, :, :, trial)] = corrCoef3D(CBVi_relative_change_smoothed{trial}, trial_stim_pattern{trial});
-    [r_CBFsi_relative_change_smoothed(:, :, :, trial), z_CBFsi_relative_change_smoothed(:, :, :, trial)] = corrCoef3D(CBFsi_relative_change_smoothed{trial}, trial_stim_pattern{trial});
+%     [r_CBVi_relative_change_smoothed(:, :, :, trial), z_CBVi_relative_change_smoothed(:, :, :, trial)] = corrCoef3D(CBVi_relative_change_smoothed{trial}, trial_stim_pattern{trial});
+%     [r_CBFsi_relative_change_smoothed(:, :, :, trial), z_CBFsi_relative_change_smoothed(:, :, :, trial)] = corrCoef3D(CBFsi_relative_change_smoothed{trial}, trial_stim_pattern{trial});
+    [r_CBVi_relative_change_smoothed(:, :, :, trial), z_CBVi_relative_change_smoothed(:, :, :, trial), activationMaps_CBVi(:, :, :, trial)] = activationMap3D(CBVi_relative_change_smoothed{trial}, trial_stim_pattern{trial}, zt);
+    [r_CBFsi_relative_change_smoothed(:, :, :, trial), z_CBFsi_relative_change_smoothed(:, :, :, trial), activationMaps_CBFsi(:, :, :, trial)] = activationMap3D(CBFsi_relative_change_smoothed{trial}, trial_stim_pattern{trial}, zt);
 
 end
-
+%%
 r_CBVi_relative_change_trialavg = mean(r_CBVi_relative_change, 4);
 z_CBVi_relative_change_trialavg = mean(z_CBVi_relative_change, 4);
 
