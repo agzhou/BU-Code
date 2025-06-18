@@ -29,9 +29,15 @@ function [IQf_separated, IQf_FT_separated]  = separatePosNegFreqs(IQf)
     positiveComponent = ifft(positiveFTComponent, np, frameDim);
     allComponents = ifft(allFTComponents, np, frameDim);
 
-    negativeComponent = negativeComponent(:, :, :, 1:nf);
-    positiveComponent = positiveComponent(:, :, :, 1:nf);
-    allComponents = allComponents(:, :, :, 1:nf);
+    if frameDim == 4 % 3D data
+        negativeComponent = negativeComponent(:, :, :, 1:nf);
+        positiveComponent = positiveComponent(:, :, :, 1:nf);
+        allComponents = allComponents(:, :, :, 1:nf);
+    elseif frameDim == 3 % 2D data
+        negativeComponent = negativeComponent(:, :, 1:nf);
+        positiveComponent = positiveComponent(:, :, 1:nf);
+        allComponents = allComponents(:, :, 1:nf);
+    end
 
     IQf_separated = [{negativeComponent}; {positiveComponent}; {allComponents}];
 

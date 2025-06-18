@@ -22,23 +22,7 @@ function [RcvData_unstacked, P_unstacked] = unstackFrames(RcvData, P)
     end
 
     nspa = P.Receive(1).endSample; % # samples per acquisition
-
-    % Set up flags according to which type of probe is used
-    if isequal(P.Trans.name, 'RC15gV')
-        probeType = 'RCA';
-    elseif isequal(P.Trans.name, 'L22-14v')
-        probeType = 'LA';
-    else
-        error('Probe name not coded into the script')
-    end
-
-
-    switch probeType
-        case 'RCA'
-            nspf = nspa * P.na * 2; % # samples per frame
-        case 'LA'
-            nspf = nspa * P.na; % # samples per frame
-    end
+    nspf = nspa * P.na * 2; % # samples per frame
     
     RcvData_unstacked = zeros(nspf, P.Resource.Parameters.numRcvChannels, nsf, 'int16');
 

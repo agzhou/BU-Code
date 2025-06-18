@@ -24,9 +24,14 @@ function [CDI] = calcColorDoppler(IQf_FT_separated, P)
         end
         fi = linspace(Flim(1), Flim(2), size(IQf_FT_separated{i}, freqDim)); % frequencies
         
-        % Note: this line only works for 3D right now
-        fi = repmat(permute(fi, [1, 4, 3, 2]), size(IQf_FT_separated{i}, 1), size(IQf_FT_separated{i}, 2), size(IQf_FT_separated{i}, 3), 1);
-%         fDi = sum( abs(IQf_FT_separated{i} .^ 2) .* fi, freqDim) ./ sum( abs(IQf_FT_separated{i} .^ 2), freqDim); % Estimate the Doppler frequency
+%         % Note: this line only works for 3D right now
+        if freqDim == 4
+            fi = repmat(permute(fi, [1, 4, 3, 2]), size(IQf_FT_separated{i}, 1), size(IQf_FT_separated{i}, 2), size(IQf_FT_separated{i}, 3), 1);
+        elseif freqDim == 3
+            fi = repmat(permute(fi, [1, 3, 2]), size(IQf_FT_separated{i}, 1), size(IQf_FT_separated{i}, 2), 1);
+        end
+
+            %         fDi = sum( abs(IQf_FT_separated{i} .^ 2) .* fi, freqDim) ./ sum( abs(IQf_FT_separated{i} .^ 2), freqDim); % Estimate the Doppler frequency
 %         fDi = sum( abs(IQf_FT_separated{i}) .^ 2 .* fi, freqDim) ./ sum( abs(IQf_FT_separated{i}) .^ 2, freqDim); % Estimate the Doppler frequency
         
         % Apply the threshold
