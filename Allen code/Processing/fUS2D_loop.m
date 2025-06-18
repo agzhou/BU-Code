@@ -510,6 +510,18 @@ for filenum = startFile:endFile
     end
 end
 
+%% Testing some filtering on the tl-fUS indices
+CBViallSF_mf = CBViallSF;
+CBFsiallSF_mf = CBFsiallSF;
+mf_kernel = [3, 3];
+
+for i = 1:size(CBViallSF, 3)
+    CBViallSF_mf(:, :, i) = medfilt2(CBViallSF(:, :, i), mf_kernel);
+end
+for i = 1:size(CBFsiallSF, 3)
+    CBFsiallSF_mf(:, :, i) = medfilt2(CBFsiallSF(:, :, i), mf_kernel);
+end
+
 
 %% Plot the rCBV at some point
 % Increasing y is going towards the back of the brain
@@ -564,6 +576,7 @@ clearvars trial
 %% Assign the superframe trial binning to CBVi and PDI
 % CBViallSFadj = smoothdata(CBViallSF, 4, "sgolay", 9); % SMOOTH THE CBVi
 CBViallSFadj = CBViallSF;
+% CBViallSFadj = CBViallSF_mf;
 % CBViallSFadj = smoothdata(CBViallSF, 4, "movmean", 3); % SMOOTH THE CBVi
 
 trial_CBVi = cell(size(trial_sf));
@@ -669,30 +682,43 @@ for trial = 1:length(trial_windows)
     figure; imagesc(squeeze(max(CBVi_relative_change_smoothed{trial}(:, :, :), [], 3))); colormap hot
 end
 
-% Do the correlation stuff
-r_CBVi_relative_change = [];
-z_CBVi_relative_change = [];
-r_CBVi_relative_change = [];
-z_CBVi_relative_change = [];
+%% Do the correlation stuff
+% r_CBVi_relative_change = [];
+% z_CBVi_relative_change = [];
+% r_CBFsi_relative_change = [];
+% z_CBFsi_relative_change = [];
 
 r_CBVi_relative_change_smoothed = [];
 z_CBVi_relative_change_smoothed = [];
-r_CBVi_relative_change_smoothed = [];
-z_CBVi_relative_change_smoothed = [];
+r_CBFsi_relative_change_smoothed = [];
+z_CBFsi_relative_change_smoothed = [];
+
+activationMaps_CBVi = [];
+activationMaps_CBFsi = [];
+
+zt = 3.1;
 
 for trial = 1:length(trial_windows)
-%     [r_CBVi_relative_change(:, :, :, trial), z_CBVi_relative_change(:, :, :, trial)] = corrCoef3D(CBVi_relative_change{trial}, trial_stim_pattern{trial});
-%     [r_CBFsi_relative_change(:, :, :, trial), z_CBFsi_relative_change(:, :, :, trial)] = corrCoef3D(CBFsi_relative_change{trial}, trial_stim_pattern{trial});
-    [r_CBVi_relative_change_smoothed(:, :, :, trial), z_CBVi_relative_change_smoothed(:, :, :, trial)] = corrCoef3D(CBVi_relative_change_smoothed{trial}, trial_stim_pattern{trial});
-    [r_CBFsi_relative_change_smoothed(:, :, :, trial), z_CBFsi_relative_change_smoothed(:, :, :, trial)] = corrCoef3D(CBFsi_relative_change_smoothed{trial}, trial_stim_pattern{trial});
+    [r_CBVi_relative_change_smoothed(:, :, trial), z_CBVi_relative_change_smoothed(:, :, trial), activationMaps_CBVi(:, :, trial)] = activationMap2D(CBVi_relative_change_smoothed{trial}, trial_stim_pattern{trial}, zt);
+    [r_CBFsi_relative_change_smoothed(:, :, trial), z_CBFsi_relative_change_smoothed(:, :, trial), activationMaps_CBFsi(:, :, trial)] = activationMap2D(CBFsi_relative_change_smoothed{trial}, trial_stim_pattern{trial}, zt);
 
 end
 
-r_CBVi_relative_change_trialavg = mean(r_CBVi_relative_change, 4);
-z_CBVi_relative_change_trialavg = mean(z_CBVi_relative_change, 4);
+%% Plot each trial's activation maps
+for trial = 1:length(trial_windows)
 
-r_CBFsi_relative_change_trialavg = mean(r_CBFsi_relative_change, 4);
-z_CBFsi_relative_change_trialavg = mean(z_CBFsi_relative_change, 4);
+    figure; imagesc(activationMaps_CBVi(:, :, trial))
+end
+
+%% Trial averaging... Should probably do this before correlating
+r_CBVi_relative_change_trialavg = mean(r_CBVi_relative_change_smoothed, 3);
+z_CBVi_relative_change_trialavg = mean(z_CBVi_relative_change_smoothed, 3);
+
+r_CBFsi_relative_change_trialavg = mean(r_CBFsi_relative_change_smoothed, 3);
+z_CBFsi_relative_change_trialavg = mean(z_CBFsi_relative_change_smoothed, 3);
+
+activationMaps_CBVi_trialavg = mean(activationMaps_CBVi, 3);
+activationMaps_CBFsi_trialavg = mean(activationMaps_CBFsi, 3);
 
 zscore_mask = z_CBVi_relative_change_trialavg < 1;
 r_CBVi_relative_change_trialavg_thresholded = r_CBVi_relative_change_trialavg;
