@@ -54,13 +54,13 @@ function [r, z, activationMap] = activationMap3D(volumeData, stim, zt)
         end
     end
 
-    activationMap = r_mf .* z_mf_mask_thresholded;
+    activationMap_nonconv = r_mf .* z_mf_mask_thresholded;
 
     % Convolve the activation map
     conv_kernel = ones(7, 7, 7);
     conv_kernel(4, 4, 4) = 49;
     conv_kernel = conv_kernel ./ 49;
-    activationMap_covn = convn(activationMap, conv_kernel, 'same');
+    activationMap = convn(activationMap_nonconv, conv_kernel, 'same');
     
 end
 
