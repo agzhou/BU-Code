@@ -24,9 +24,9 @@ activate
 savepath = uigetdir('F:\', 'Select the save path');
 savepath = [savepath, '\'];
 
-parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use air puff (0-no, 1-yes)'}; % 'Save RF data (0-no, 1-yes)', 
+parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe'}; % 'Save RF data (0-no, 1-yes)', 
 % parameterDefaults = {'20', '0', '10', '50000', '5000', '5', '5', '15.625', '1540', '0', '1', '1000'};
-parameterDefaults = {'20', '0', '10', '50000', '1000', '15', '5', '15.625', '1540', '0', '1', '100', '0'};
+parameterDefaults = {'20', '0', '10', '50000', '1000', '15', '5', '15.625', '1540', '0', '1', '100'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % Store the user inputs for parameters into the corresponding variables
@@ -42,7 +42,6 @@ speedOfSound = str2double(parameterUserInput{9});
 simMode = str2double(parameterUserInput{10});
 saveRcvDataFlag = str2double(parameterUserInput{11});
 numFramesPerSF = str2double(parameterUserInput{12});
-useTriggers = str2double(parameterUserInput{13});
 
 % tagtest = Hardware.enableAcquisitionTimeTagging(1);
 bufferIndex = 0;
@@ -73,10 +72,9 @@ Resource.Parameters.numRcvChannels = numChannels; % number of receive channels
 % Resource.Parameters.connector = 1; % transducer connector to use since the current plate for the 256 bit system is split into two 128 bit connectors. 1 is left and 2 is right
 Resource.Parameters.speedOfSound = speedOfSound; % speed of sound in m/s, the 1540 is for average human tissue
 
-%% 1.5. Specify the functional stimulus parameters (if using)
-if useTriggers
-    [apis, vts, daqrate, numTrials] = functionalParameterInputPrompt;
-end
+%% 1.5. Specify the functional stimulus parameters
+
+[apis, vts, daqrate, numTrials] = functionalParameterInputPrompt;
 
 %% 2. Define Transducer structure
 
@@ -130,64 +128,64 @@ Media.attenuation = -0.7; % media attenuation in dB/cm/MHz
 
 Media.function = 'movePointsZ3D'; % move points in _ dimension after each frame
 
-% %% PData structure (Pixel Data --> image reconstruction range)
-% % For 2D scans and slices of 3D scans, it's always a rectangular area at a
-% % fixed location in the transducer coord system
-% 
+%% PData structure (Pixel Data --> image reconstruction range)
+% For 2D scans and slices of 3D scans, it's always a rectangular area at a
+% fixed location in the transducer coord system
+
 numElements = Trans.numelements; % the structure gives # row elements + # column elements
-% 
-% % PData.PDelta = [Trans.spacing, 0, 0.5]; % Spacing between pixels in x, y, z, in wavelengths
-% pixelspacingPrompt = {'z (axial) pixel spacing [wl]', 'x (lateral) pixel spacing [wl]'};
-% % pixelspacingDefaults = {num2str(wl/2 * 1e6), num2str(Trans.spacingMm * 1e3)};
-% pixelspacingDefaults = {num2str(Trans.spacing/2), num2str(Trans.spacing)};
-% pixelspacingUserInput = inputdlg(pixelspacingPrompt, 'Pixel Spacing Parameters', 1, pixelspacingDefaults);
-% 
-% z_pix_spacing = str2double(pixelspacingUserInput{1});
-% x_pix_spacing = str2double(pixelspacingUserInput{2});
-% 
-% % PData.PDelta = [x_pix_spacing * wl, 0, z_pix_spacing * wl]; % Spacing between pixels in x, y, z, in wavelengths
-% PData.PDelta = [x_pix_spacing, 0, z_pix_spacing]; % Spacing between pixels in x, y, z, in wavelengths
-% 
-% PData.Coord = 'rectangular'; % rectangular coords, could change to polar or spherical
-% % Set PData array dimensions --> # of rows, columns, sections (planes
-% % parallel to the xy plane)
-% % For a 3D scan, rows - y axis, columns - x axis, sections - z axis
-% PData.Size(1) = floor((endDepth - startDepth)./PData.PDelta(3)); % # rows
-% PData.Size(2) = ceil(numElements.*Trans.spacing./PData.PDelta(1)); % # cols
-% PData.Size(3) = 1; % depth, is 1 unit deep for a 2D image
-% 
-% % Define the location (x, y, z) of the upper left corner of the array
-% % Upper left corner if you look aligned with positive z
-% half_probe_dist = (numElements-1)./2.*Trans.spacing;
-% PData.Origin = [-half_probe_dist, 0, startDepth];
-% % PData.Origin = [-half_probe_dist, -half_probe_dist, startDepth];
-% 
-% % Set a local region to view/use for processing
-% PData.Region(1) = struct('Shape', struct('Name', 'PData'));
-% PData.Region = computeRegions(PData);
-% 
-% % % xz display window
-% % Resource.DisplayWindow(1).Type = 'Verasonics';
-% % Resource.DisplayWindow(1).Title = 'xz plane';
-% % Resource.DisplayWindow(1).pdelta = 0.4; % pixel spacing (in wavelengths) on the display window, for all dimensions
-% % llx = 100; % lower left corner x on screen
-% % xmult = 200;
-% % lly = 150; % lower left corner y
-% % Resource.DisplayWindow(1).Position = [llx, lly, ...
-% %                                       ceil(PData.Size(2).* PData.PDelta(1) ./ Resource.DisplayWindow(1).pdelta), ... % width (x)
-% %                                       ceil(PData.Size(1).* PData.PDelta(3) ./ Resource.DisplayWindow(1).pdelta)]; % height (z)
-% % Resource.DisplayWindow(1).ReferencePt = [PData.Origin(1), 0, PData.Origin(3)]; % Display Window location wrt transducer coords
-% % Resource.DisplayWindow(1).AxesUnits = 'wavelengths'; % can change to mm
-% % Resource.DisplayWindow(1).Colormap = gray(256);
-% % % Resource.DisplayWindow(1).Orientation = 'xz';
-% % Resource.DisplayWindow(1).numFrames = numSupFrames; % Define buffer size for a history of displayed frames
-% 
-% %     'Position', [0, 0, 10], ...
-% %                      'width', PData.Size(2), 'height', PData.Size(1)./2);
-%                     % Position is relative to the global coords
-% 
-% 
-% % Display window
+
+% PData.PDelta = [Trans.spacing, 0, 0.5]; % Spacing between pixels in x, y, z, in wavelengths
+pixelspacingPrompt = {'z (axial) pixel spacing [wl]', 'x (lateral) pixel spacing [wl]'};
+% pixelspacingDefaults = {num2str(wl/2 * 1e6), num2str(Trans.spacingMm * 1e3)};
+pixelspacingDefaults = {num2str(Trans.spacing/2), num2str(Trans.spacing)};
+pixelspacingUserInput = inputdlg(pixelspacingPrompt, 'Pixel Spacing Parameters', 1, pixelspacingDefaults);
+
+z_pix_spacing = str2double(pixelspacingUserInput{1});
+x_pix_spacing = str2double(pixelspacingUserInput{2});
+
+% PData.PDelta = [x_pix_spacing * wl, 0, z_pix_spacing * wl]; % Spacing between pixels in x, y, z, in wavelengths
+PData.PDelta = [x_pix_spacing, 0, z_pix_spacing]; % Spacing between pixels in x, y, z, in wavelengths
+
+PData.Coord = 'rectangular'; % rectangular coords, could change to polar or spherical
+% Set PData array dimensions --> # of rows, columns, sections (planes
+% parallel to the xy plane)
+% For a 3D scan, rows - y axis, columns - x axis, sections - z axis
+PData.Size(1) = floor((endDepth - startDepth)./PData.PDelta(3)); % # rows
+PData.Size(2) = ceil(numElements.*Trans.spacing./PData.PDelta(1)); % # cols
+PData.Size(3) = 1; % depth, is 1 unit deep for a 2D image
+
+% Define the location (x, y, z) of the upper left corner of the array
+% Upper left corner if you look aligned with positive z
+half_probe_dist = (numElements-1)./2.*Trans.spacing;
+PData.Origin = [-half_probe_dist, 0, startDepth];
+% PData.Origin = [-half_probe_dist, -half_probe_dist, startDepth];
+
+% Set a local region to view/use for processing
+PData.Region(1) = struct('Shape', struct('Name', 'PData'));
+PData.Region = computeRegions(PData);
+
+% % xz display window
+% Resource.DisplayWindow(1).Type = 'Verasonics';
+% Resource.DisplayWindow(1).Title = 'xz plane';
+% Resource.DisplayWindow(1).pdelta = 0.4; % pixel spacing (in wavelengths) on the display window, for all dimensions
+% llx = 100; % lower left corner x on screen
+% xmult = 200;
+% lly = 150; % lower left corner y
+% Resource.DisplayWindow(1).Position = [llx, lly, ...
+%                                       ceil(PData.Size(2).* PData.PDelta(1) ./ Resource.DisplayWindow(1).pdelta), ... % width (x)
+%                                       ceil(PData.Size(1).* PData.PDelta(3) ./ Resource.DisplayWindow(1).pdelta)]; % height (z)
+% Resource.DisplayWindow(1).ReferencePt = [PData.Origin(1), 0, PData.Origin(3)]; % Display Window location wrt transducer coords
+% Resource.DisplayWindow(1).AxesUnits = 'wavelengths'; % can change to mm
+% Resource.DisplayWindow(1).Colormap = gray(256);
+% % Resource.DisplayWindow(1).Orientation = 'xz';
+% Resource.DisplayWindow(1).numFrames = numSupFrames; % Define buffer size for a history of displayed frames
+
+%     'Position', [0, 0, 10], ...
+%                      'width', PData.Size(2), 'height', PData.Size(1)./2);
+                    % Position is relative to the global coords
+
+
+% Display window
 
 %% Transmission Waveform (TW)
 tw.A = Trans.frequency; % frequency of transmission pulse, sets half cycle period of the waveform...
@@ -425,11 +423,8 @@ SeqControl(scInd).command = 'returnToMatlab';
 % Jump to some event to keep the acquisition looping
 scInd = scInd + 1;
 SeqControl(scInd).command = 'jump'; % jump to
-if useTriggers
-    SeqControl(scInd).argument = 2;     % second event
-else
-    SeqControl(scInd).argument = 1;     % first event
-end
+% SeqControl(scInd).argument = 1;     % first event
+SeqControl(scInd).argument = 2;     % second event
 SeqControl(scInd).condition = 'exitAfterJump'; % Normally, jumping auto returns to Matlab if it returns to the first event, but not for other events
 
 % Set the frame/volume rate
@@ -508,23 +503,16 @@ SeqControl(scInd).argument = 10000000; % 10 s
 % Sync for aligning the hardware to when the data is done saving
 scInd = scInd + 1;
 SeqControl(scInd).command = 'sync';
-if useTriggers
-    SeqControl(scInd).argument = 1000000 * vts.delay_s*5; % Timeout set to 5x the input delay just in case
-else
-    SeqControl(scInd).argument = 10000000; % 10 s
-end
-  
-if useTriggers
-    n = 1;
-    Event(n).info = 'Wait for external trigger to start the acquisition sequence';
-    Event(n).tx = 1; % It seems to not work properly if there isn't some acquisition event combined here
-    Event(n).rcv = 0; 
-    Event(n).recon = 0;
-    Event(n).process = 1; % save the initial timetag
-    Event(n).seqControl = [8, 10];
-else
-    n = 0;
-end
+% SeqControl(scInd).argument = 10000000; % 10 s
+SeqControl(scInd).argument = 1000000 * vts.delay_s*5; % Timeout set to 5x the input delay just in case
+
+n = 1;
+Event(n).info = 'Wait for external trigger to start the acquisition sequence';
+Event(n).tx = 1; % It seems to not work properly if there isn't some acquisition event combined here
+Event(n).rcv = 0; 
+Event(n).recon = 0;
+Event(n).process = 1; % save the initial timetag
+Event(n).seqControl = [8, 10];
 
 for nbuf = 1
 % for nbuf = 1:numBuffers
@@ -634,43 +622,41 @@ filename = 'L22_14v_Allen_loop_functional.mat';
 save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+filename);
 
 %% Run the air puff script before running VSX
-if useTriggers
-    [Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts, daqrate, numTrials); % Need to use Mcr_ because VSX will autoclear most variables
-    daqStartTimetag = datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss.SSS');
-    savefast([savepath, 'daqStartTimetag'], 'daqStartTimetag')
-end
+[Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts, daqrate, numTrials); % Need to use Mcr_ because VSX will autoclear most variables
+daqStartTimetag = datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss.SSS');
+savefast([savepath, 'daqStartTimetag'], 'daqStartTimetag')
 
 %% Initialize time tagging if enabled
-% import com.verasonics.hal.hardware.*
-% switch TimeTagEna
-%     case 0
-%         % disable time tag
-%         rc = Hardware.enableAcquisitionTimeTagging(false);
-%         if ~rc
-%             error('Error from enableAcqTimeTagging')
-%         end
-%         tagstr = 'off';
-%     case 1
-%         % enable time tag
-%         rc = Hardware.enableAcquisitionTimeTagging(true);
-%         if ~rc
-%             error('Error from enableAcqTimeTagging')
-%         end
-%         tagstr = 'on';
-%         disp('**** Time tagging enabled on mode 1 ****')
-%     case 2
-%         % enable time tag and reset counter
-%         rc = Hardware.enableAcquisitionTimeTagging(true);
-%         if ~rc
-%             error('Error from enableAcqTimeTagging')
-%         end
-%         rc = Hardware.setTimeTaggingAttributes(false, true); % reset hardware counter to 0 (otherwise, it continuously counts up from system bootup until it gets to 107,000s - see p37 of User Manual
-%         if ~rc
-%             error('Error from setTimeTaggingAttributes')
-%         end
-%         tagstr = 'on, reset';
-%         disp('**** Time tagging enabled on mode 2 ****')
-% end
+import com.verasonics.hal.hardware.*
+switch TimeTagEna
+    case 0
+        % disable time tag
+        rc = Hardware.enableAcquisitionTimeTagging(false);
+        if ~rc
+            error('Error from enableAcqTimeTagging')
+        end
+        tagstr = 'off';
+    case 1
+        % enable time tag
+        rc = Hardware.enableAcquisitionTimeTagging(true);
+        if ~rc
+            error('Error from enableAcqTimeTagging')
+        end
+        tagstr = 'on';
+        disp('**** Time tagging enabled on mode 1 ****')
+    case 2
+        % enable time tag and reset counter
+        rc = Hardware.enableAcquisitionTimeTagging(true);
+        if ~rc
+            error('Error from enableAcqTimeTagging')
+        end
+        rc = Hardware.setTimeTaggingAttributes(false, true); % reset hardware counter to 0 (otherwise, it continuously counts up from system bootup until it gets to 107,000s - see p37 of User Manual
+        if ~rc
+            error('Error from setTimeTaggingAttributes')
+        end
+        tagstr = 'on, reset';
+        disp('**** Time tagging enabled on mode 2 ****')
+end
 
 %% Run VSX automatically and make parameter structure for RF file naming
 
@@ -680,18 +666,15 @@ if runVSX
 end
 
 %% Read the air puff data - may need to put this in the saveRcvData Processing...
-if useTriggers
-    [inScanData, timeStamp, triggerTime] = read(Mcr_d, seconds(Mcr_d.NumScansAvailable / Mcr_d.Rate), "OutputFormat", "Matrix");
-end
+[inScanData, timeStamp, triggerTime] = read(Mcr_d, seconds(Mcr_d.NumScansAvailable / Mcr_d.Rate), "OutputFormat", "Matrix");
 
 %% Save post-acquisition parameters in a structure P
 
 makeParameterStructure_functional;
 savefast([savepath, 'params.mat'], 'P')
-if useTriggers
-    savefast([savepath, 'triggerData.mat'], 'inScanData', 'timeStamp', 'triggerTime')
-end
-clearvars RcvData
+savefast([savepath, 'triggerData.mat'], 'inScanData', 'timeStamp', 'triggerTime')
+% saveRcvData(RcvData{1})
+clear RcvData
 save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
 
 %% **** Callback routines used by UIControls (UI) ****

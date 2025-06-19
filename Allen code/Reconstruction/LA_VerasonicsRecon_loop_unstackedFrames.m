@@ -121,7 +121,8 @@ numElements = Trans.numelements; % the structure gives # row elements + # column
 % PData.PDelta = [Trans.spacing, 0, 0.5]; % Spacing between pixels in x, y, z, in wavelengths
 pixelspacingPrompt = {'z (axial) pixel spacing [wl]', 'x (lateral) pixel spacing [wl]'};
 % pixelspacingDefaults = {num2str(wl/2 * 1e6), num2str(Trans.spacingMm * 1e3)};
-pixelspacingDefaults = {num2str(Trans.spacing/2), num2str(Trans.spacing)};
+% pixelspacingDefaults = {num2str(Trans.spacing/2), num2str(Trans.spacing)};
+pixelspacingDefaults = {num2str(Trans.spacing/4), num2str(Trans.spacing/4)};
 pixelspacingUserInput = inputdlg(pixelspacingPrompt, 'Pixel Spacing Parameters', 1, pixelspacingDefaults);
 
 z_pix_spacing = str2double(pixelspacingUserInput{1});
@@ -247,9 +248,9 @@ end
 
 savefast([Mcr_savepath, 'PData'], 'PData') % Save the PData structure
 
-for Mcr_filenum = Mcr_startFile:Mcr_endFile
+% for Mcr_filenum = Mcr_startFile:Mcr_endFile
 % for Mcr_filenum = 142:Mcr_endFile
-% for Mcr_filenum = [1]
+for Mcr_filenum = [1]
     tic
 
     load([Mcr_datapath, Mcr_filenameStructure, num2str(Mcr_filenum)], 'RcvData');
@@ -271,6 +272,8 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
 
     disp(strcat("IQ file ", num2str(Mcr_filenum), " reconstructed."))
 %     IQ = squeeze(IData{1} + 1i .* QData{1});                                         % Merge the I and Q into one variable
+%     IQ = squeeze(IData + 1i .* QData);                                         % Merge the I and Q into one variable
+%     figure; imagesc(squeeze(abs(IQ(:, :, 1))) .^ 0.5)
     IData = IData{1};
     QData = QData{1};
 

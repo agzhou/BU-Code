@@ -75,12 +75,14 @@ for filenum = startFile:endFile
     clearvars IData QData
     
     % SVD decluttering
-    [xp, yp, zp, nf] = size(IQ);
+%     [xp, yp, zp, nf] = size(IQ);
     
     [PP, EVs, V_sort] = getSVs1D(IQ);
     disp('SVs decomposed')
     [IQf] = applySVs1D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
     disp('SVD filtered images put together')
+
+    figure; imagesc(squeeze(abs(IQf(:, :, 1))) .^ 0.5)
 
     % clearvars IQ
 
@@ -102,6 +104,7 @@ for filenum = startFile:endFile
     [PDI] = calcPowerDoppler(IQf_separated);
     [CDI] = calcColorDoppler(IQf_FT_separated, P);
 
+    PDI_test = sum(abs(IQf) .^ 2, 3);
 %     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
 %     disp("PDI and CDI for file " + num2str(filenum) + " saved" )
 %     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFsi', 'CBVi', 'PDI', 'CDI', '-v7.3', '-nocompression');
