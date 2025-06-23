@@ -25,8 +25,8 @@ savepath = uigetdir('F:\', 'Select the save path');
 savepath = [savepath, '\'];
 
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use air puff (0-no, 1-yes)'}; % 'Save RF data (0-no, 1-yes)', 
-% parameterDefaults = {'20', '0', '10', '50000', '5000', '5', '5', '15.625', '1540', '0', '1', '1000'};
-parameterDefaults = {'20', '0', '10', '50000', '1000', '15', '5', '15.625', '1540', '0', '1', '100', '0'};
+parameterDefaults = {'20', '2', '10', '50000', '5000', '5', '5', '15.625', '1540', '0', '1', '1000', '0'};
+% parameterDefaults = {'20', '2', '10', '50000', '2000', '17', '16', '15.625', '1540', '0', '1', '200', '0'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % Store the user inputs for parameters into the corresponding variables
@@ -193,7 +193,8 @@ numElements = Trans.numelements; % the structure gives # row elements + # column
 tw.A = Trans.frequency; % frequency of transmission pulse, sets half cycle period of the waveform...
 tw.B = 0.67; % amount of time (0.1 - 1.0) that the transmission drivers are active in the half cycle period. Controsl how much power is delivered.
              % Apparently using B = 0.67 approximates a sine wave.
-tw.C = 2; % number of half cycles in the transmission waveform. 2 half cycles = 1 full cycle burst
+% tw.C = 2; % number of half cycles in the transmission waveform. 2 half cycles = 1 full cycle burst
+tw.C = 3; % number of half cycles in the transmission waveform. 2 half cycles = 1 full cycle burst
 tw.D = 1; % initial polarity of the first half cycle (1 = +, 0 = -)
 TW(1).type = 'parametric';
 TW(1).Parameters = [tw.A, tw.B, tw.C, tw.D];
@@ -215,12 +216,18 @@ TPC.hv = initialVoltage;
 % Need a TX structure for each unique transmit action in the imaging
 % sequence
 
+emitElem = ones(1, Trans.numelements);
+% nTrans = 120;
+% emitElem=kaiser(Resource.Parameters.numTransmit, 1)';
+% emitElem(1:(128-nTrans)/2) = 0;
+% emitElem(end-(128-nTrans)/2+1:end) = 0;
+
 % na transmissions of a plane wave
 % column elements
 TX = repmat(struct('waveform', 1, ...
                    'focus', 0, ... % plane wave
                    'Steer', [0.0, 0.0], ... % theta, alpha (beam angle projected in xz from +z axis, beam angle wrt xz)
-                   'Apod', ones(1, Trans.numelements)), 1, na);
+                   'Apod', emitElem), 1, na);
 for n = 1:na
     TX(n).Steer = [angles(n), 0];
     TX(n).Delay = computeTXDelays(TX(n));
@@ -233,6 +240,8 @@ end
 % TGC curve definition
 % TGC.CntrlPts = [0 785.2216 1023 1023 1023 1023 1023 1023];
 TGC.CntrlPts = [1023 1023 1023 1023 1023 1023 1023 1023];
+% TGC.CntrlPts = [750,820,880,910,970,980,1000,1000]; % From Bingxue/Jianbo code
+
 % TGC(1).CntrlPts = [500,590,650,710,770,830,890,950]; % 0 to 1023, minimum to maximum gain
                                                      % Values represent the
                                                      % gain at increasing
@@ -245,12 +254,25 @@ TGC.CntrlPts = [1023 1023 1023 1023 1023 1023 1023 1023];
 TGC(1).rangeMax = endDepth;
 TGC(1).Waveform = computeTGCWaveform(TGC); % Parameters can be adjusted later with GUI sliders
 
+%% RcvProfile from Bingxue/Jianbo
+RcvProfile.antiAliasCutoff = 30;
+RcvProfile.LnaZinSel = 25;
+
 %% Receiver array object
+BPF1 = [ -0.00009 -0.00128 +0.00104 +0.00085 +0.00159 +0.00244 -0.00955 ...
+         +0.00079 -0.00476 +0.01108 +0.02103 -0.01892 +0.00281 -0.05206 ...
+         +0.01358 +0.06165 +0.00735 +0.09698 -0.27612 -0.10144 +0.48608 ];
+
+
+rcvElem = ones(1, Trans.numelements);
+% nRcv = 120;
+% rcvElem(1:(128-nRcv)/2)=0;
+% rcvElem((end-(128-nRcv)/2+1):end)=0;
 
 maxAcqLength = ceil(sqrt(endDepth^2 + (numElements*Trans.spacing)^2)); % account for the longest distance an echo could travel
-Receive = repmat(struct('Apod', ones(1, Trans.numelements), ... 
+Receive = repmat(struct('Apod', rcvElem, ... 
                         'startDepth', startDepth, ...
-                        'endDepth', maxAcqLength, ...
+                        'endDepth', maxAcqLength + startDepth, ...
                         'TGC', 1, ...
                         'bufnum', 1, ...
                         'framenum', 1, ...
@@ -259,7 +281,7 @@ Receive = repmat(struct('Apod', ones(1, Trans.numelements), ...
                         'mode', 0, ...
                         'callMediaFunc', 0, ...
                         'LowPassCoef', [], ...
-                        'InputFilter', []), 1, numFramesPerSF * na);
+                        'InputFilter', BPF1), 1, numFramesPerSF * na);
 j = 1;
 % an = 0;
 for nbuf = 1:numBuffers
@@ -306,7 +328,8 @@ end
 
 % if statement included to match verasonics automatic extension to
 % multiples of 128 samples
-nSmpls = 2*(maxAcqLength - startDepth) * samplesPerWave; % maxAcqLength is the Receive(1).endDepth
+% nSmpls = 2*(maxAcqLength - startDepth) * samplesPerWave; % maxAcqLength is the Receive(1).endDepth
+nSmpls = 2*(maxAcqLength) * samplesPerWave; % maxAcqLength is the Receive(1).endDepth % CHANGED 6/9/25
 % nSmpls = 2*(Receive(1).endDepth - Receive(1).startDepth) * samplesPerWave;
 if abs(round(nSmpls/128) - nSmpls/128) < .01
     numRcvSamples = 128*round(nSmpls/128);

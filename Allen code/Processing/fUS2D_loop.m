@@ -82,7 +82,7 @@ for filenum = startFile:endFile
     [IQf] = applySVs1D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
     disp('SVD filtered images put together')
 
-    figure; imagesc(squeeze(abs(IQf(:, :, 1))) .^ 0.5)
+%     figure; imagesc(squeeze(abs(IQf(:, :, 1))) .^ 0.5)
 
     % clearvars IQ
 
@@ -105,6 +105,8 @@ for filenum = startFile:endFile
     [CDI] = calcColorDoppler(IQf_FT_separated, P);
 
     PDI_test = sum(abs(IQf) .^ 2, 3);
+    figure; imagesc(squeeze(PDI_test .^ 0.5)); colormap hot
+
 %     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
 %     disp("PDI and CDI for file " + num2str(filenum) + " saved" )
 %     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFsi', 'CBVi', 'PDI', 'CDI', '-v7.3', '-nocompression');

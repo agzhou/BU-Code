@@ -122,7 +122,8 @@ numElements = Trans.numelements; % the structure gives # row elements + # column
 pixelspacingPrompt = {'z (axial) pixel spacing [wl]', 'x (lateral) pixel spacing [wl]'};
 % pixelspacingDefaults = {num2str(wl/2 * 1e6), num2str(Trans.spacingMm * 1e3)};
 % pixelspacingDefaults = {num2str(Trans.spacing/2), num2str(Trans.spacing)};
-pixelspacingDefaults = {num2str(Trans.spacing/4), num2str(Trans.spacing/4)};
+pixelspacingDefaults = {num2str(Trans.spacing/2), num2str(Trans.spacing/2)};
+% pixelspacingDefaults = {num2str(Trans.spacing/4), num2str(Trans.spacing/4)};
 pixelspacingUserInput = inputdlg(pixelspacingPrompt, 'Pixel Spacing Parameters', 1, pixelspacingDefaults);
 
 z_pix_spacing = str2double(pixelspacingUserInput{1});
@@ -248,9 +249,9 @@ end
 
 savefast([Mcr_savepath, 'PData'], 'PData') % Save the PData structure
 
-% for Mcr_filenum = Mcr_startFile:Mcr_endFile
+for Mcr_filenum = Mcr_startFile:Mcr_endFile
 % for Mcr_filenum = 142:Mcr_endFile
-for Mcr_filenum = [1]
+% for Mcr_filenum = [1]
     tic
 
     load([Mcr_datapath, Mcr_filenameStructure, num2str(Mcr_filenum)], 'RcvData');
