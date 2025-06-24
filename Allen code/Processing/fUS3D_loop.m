@@ -63,8 +63,8 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 % tau1_index_CBV = 2;
 
 %% Main loop
-for filenum = startFile:endFile
-% for filenum = 55:endFile
+% for filenum = startFile:endFile
+for filenum = [3:endFile]
 % for filenum = [285:-1:189]
 % for filenum = 2
     tic
@@ -84,12 +84,12 @@ for filenum = startFile:endFile
     % clearvars IQ
 
     % Use the IQf with separated negative and positive frequency components
-    [IQf_separated, IQf_FT_separated] = separatePosNegFreqs(IQf);
+%     [IQf_separated, IQf_FT_separated] = separatePosNegFreqs(IQf);
     
     numg1pts = 20; % Only calculate the first N points
-    g1_n = g1T(IQf_separated{1}, numg1pts);
-%     [CBFsi_n, CBVi_n] = g1_to_CBi(g1_n, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
-    g1_p = g1T(IQf_separated{2}, numg1pts);
+%     g1_n = g1T(IQf_separated{1}, numg1pts);
+% %     [CBFsi_n, CBVi_n] = g1_to_CBi(g1_n, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+%     g1_p = g1T(IQf_separated{2}, numg1pts);
 %     [CBFsi_p, CBVi_p] = g1_to_CBi(g1_p, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 % 
     g1 = g1T(IQf, numg1pts);
@@ -98,14 +98,16 @@ for filenum = startFile:endFile
 % 
 % %     savefast([savepath, 'fUSdata-', num2str(filenum), '.mat'], g1, CBFi, CBVi);
 
-    [PDI] = calcPowerDoppler(IQf_separated);
-    [CDI] = calcColorDoppler(IQf_FT_separated, P);
+%     [PDI] = calcPowerDoppler(IQf_separated);
+    PDI = sum(abs(IQf) .^ 2, 4);
+%     [CDI] = calcColorDoppler(IQf_FT_separated, P);
 
 %     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
 %     disp("PDI and CDI for file " + num2str(filenum) + " saved" )
 %     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFsi', 'CBVi', 'PDI', 'CDI', '-v7.3', '-nocompression');
 %     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFsi', 'CBVi', 'PDI', 'CDI', 'g1_n', 'g1_p', 'CBFsi_n', 'CBVi_n', 'CBFsi_p', 'CBVi_p',  '-v7.3', '-nocompression');
-    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'g1_n', 'g1_p', 'PDI', 'CDI', '-v7.3', '-nocompression');
+%     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'g1_n', 'g1_p', 'PDI', 'CDI', '-v7.3', '-nocompression');
+    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'PDI', '-v7.3', '-nocompression');
 %     save([savepath, 'g1-', num2str(filenum), '.mat'], 'g1', 'g1_n', 'g1_p', '-v7.3', '-nocompression');
 %     save([savepath, 'g1-', num2str(filenum), '.mat'], 'g1', '-v7.3', '-nocompression');
 
@@ -767,30 +769,31 @@ for trial = 1:length(trial_windows)
 end
 
 %%
-% testinvessel = squeeze(CBVi_relative_change{1}(40, 47, 18:38, :));
-testinvessel = squeeze(CBVi_relative_change_smoothed{1}(40, 47, 18:38, :));
-% testinvessel = squeeze(CBFsi_relative_change_smoothed{1}(40, 47, 18:38, :));
+trialtest = 2;
+% testinvessel = squeeze(CBVi_relative_change{trialtest}(40, 47, 18:38, :));
+testinvessel = squeeze(CBVi_relative_change_smoothed{trialtest}(40, 47, 18:38, :));
+% testinvessel = squeeze(CBFsi_relative_change_smoothed{trialtest}(40, 47, 18:38, :));
 testinvessel_avg = mean(testinvessel, 1);
 figure; plot(testinvessel_avg)
 
-% test1 = squeeze(CBVi_relative_change{1}(40, 47, 28, :));
-test1 = squeeze(CBVi_relative_change_smoothed{1}(40, 47, 28, :));
+% test1 = squeeze(CBVi_relative_change{trialtest}(40, 47, 28, :));
+test1 = squeeze(CBVi_relative_change_smoothed{trialtest}(40, 47, 28, :));
 figure; plot(test1)
-test2 = squeeze(CBVi_relative_change_smoothed{1}(40, 47, 27, :));
+test2 = squeeze(CBVi_relative_change_smoothed{trialtest}(40, 47, 27, :));
 figure; plot(test2)
-test3 = squeeze(CBVi_relative_change_smoothed{1}(40, 47, 29, :));
+test3 = squeeze(CBVi_relative_change_smoothed{trialtest}(40, 47, 29, :));
 figure; plot(test3)
 
 % test4 = squeeze(CBFsi_relative_change_smoothed{1}(40, 47, 27, :));
-test4 = squeeze(CBFsi_relative_change{1}(40, 47, 27, :));
+test4 = squeeze(CBFsi_relative_change{trialtest}(40, 47, 27, :));
 figure; plot(test4)
 
-testns1 = squeeze(CBVi_relative_change{1}(40, 47, 28, :));
-figure; plot(testns1)
-testns2 = squeeze(CBVi_relative_change{1}(40, 47, 27, :));
-figure; plot(testns2)
-testns3 = squeeze(CBVi_relative_change{1}(40, 47, 29, :));
-figure; plot(testns3)
+% testns1 = squeeze(CBVi_relative_change{trialtest}(40, 47, 28, :));
+% figure; plot(testns1)
+% testns2 = squeeze(CBVi_relative_change{trialtest}(40, 47, 27, :));
+% figure; plot(testns2)
+% testns3 = squeeze(CBVi_relative_change{trialtest}(40, 47, 29, :));
+% figure; plot(testns3)
 
 for trial = 1:length(trial_windows)
 %     figure; imagesc(squeeze(max(max(CBVi_relative_change{trial}(1:60, :, :, :), [], 4), [], 1) .^ 0.7)'); colormap hot
@@ -826,6 +829,12 @@ for trial = 1:length(trial_windows)
     [r_CBVi_relative_change_smoothed(:, :, :, trial), z_CBVi_relative_change_smoothed(:, :, :, trial), activationMaps_CBVi(:, :, :, trial)] = activationMap3D(CBVi_relative_change_smoothed{trial}, trial_stim_pattern{trial}, zt);
     [r_CBFsi_relative_change_smoothed(:, :, :, trial), z_CBFsi_relative_change_smoothed(:, :, :, trial), activationMaps_CBFsi(:, :, :, trial)] = activationMap3D(CBFsi_relative_change_smoothed{trial}, trial_stim_pattern{trial}, zt);
 
+end
+
+%% Plot the activation maps
+% figure; imagesc(squeeze(max(r_CBVi_relative_change_smoothed(:, :, :, 1), [], 1))')
+for trial = 1:length(trial_windows)
+    figure; imagesc(squeeze(max(activationMaps_CBVi(:, :, :, trial), [], 1))')
 end
 %%
 r_CBVi_relative_change_trialavg = mean(r_CBVi_relative_change, 4);

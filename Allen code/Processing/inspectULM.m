@@ -4,13 +4,92 @@
 
 
 
-%%
+%% Manually define the input data for now
 % function [] = inspectULM(ULMData)
-ULMData = SMs_reg{4};
+% ULMData = SMs_reg{4};
+% ULMData = SMs_AZ04_day3.SM_SmoothedKF_LI_Rfn;
+% ULMData = SMs_AZ02_day7.SM_SmoothedKF_LI_Rfn;
+ULMData = SMs_AZ02_day7.SM_SmoothedKF_LI;
+lowspeed_lim = 5; % [mm/s]
+ULMData_lowspeed = ULMData;
+ULMData_lowspeed(ULMData_lowspeed > lowspeed_lim) = 0;
 
 vcmap = colormap_ULM;
 figure; imagesc(squeeze(max(ULMData(300:500, :, :), [], 1))'); colormap(vcmap); clim([0, 40])
-figure; imagesc(squeeze(max(ULMData(:, :, :), [], 3))'); colormap(vcmap); clim([0, 40])
+% figure; imagesc(squeeze(max(ULMData(:, :, :), [], 3))'); colormap(vcmap); clim([0, 40])
+figure; imagesc(squeeze(max(ULMData_lowspeed(300:500, :, :), [], 1))'); colormap(vcmap); clim([0, lowspeed_lim])
+
+% generateTiffStack_multi({ULMData}, [8.8, 8.8, 8], vcmap, 50, [0, 40])
+%% Define the stroke core ROI manually
+% AZ04 day 3 non-registered
+yr = 430:520;
+xr = 500:700;
+% figure; imagesc(squeeze(max(ULMData(yr, xr, :), [], 1))'); colormap(vcmap); clim([0, 40])
+zr = 200:450;
+figure; imagesc(squeeze(max(ULMData(yr, xr, zr), [], 1))'); colormap(vcmap); clim([0, 40])
+
+% AZ02 day 7 non-registered
+yr = 330:380;
+xr = 720:800;  figure; imagesc(squeeze(max(ULMData(yr, xr, :), [], 1))'); colormap(vcmap); clim([0, 40])
+zr = 420:550;
+figure; imagesc(squeeze(max(ULMData(yr, xr, zr), [], 1))'); colormap(vcmap); clim([0, 40])
+
+ROI_stroke = ULMData(yr, xr, zr);
+ROI_stroke_lowspeed = ULMData_lowspeed(yr, xr, zr);
+%%
+
+% ROI_stroke_lowflow_nz = ROI_stroke(:); % Get (vectorized) values with low nonzero flow 
+% ROI_stroke_lowflow_nz = ROI_stroke_lowflow_nz(ROI_stroke_lowflow_nz > 0 & ROI_stroke_lowflow_nz < lowspeed_lim);
+
+figure; histogram(ROI_stroke)
+figure; histogram(ROI_stroke_lowspeed)
+% figure; histogram(ROI_stroke_lowflow_nz)
+
+%% Look at the region corresponding to the stroke core, but flipped across the midline
+% midline_x = 410; % AZ04 day 3
+midline_x = 490; % AZ02 day 7
+ROI_flipped = ULMData(yr, xr - midline_x, zr);
+ROI_flipped_lowspeed = ULMData_lowspeed(yr, xr - midline_x, zr);
+% figure; imagesc(squeeze(max(ROI_flipped, [], 1))'); colormap(vcmap); clim([0, 40])
+
+figure; histogram(ROI_flipped)
+figure; histogram(ROI_flipped_lowspeed)
+%%
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 %% Convolve ULMData with a small blob to fill in missing parts of a vessel
 FWHM_X = 30; % x resolution, FWHM-Amplitude, um
 FWHM_Y = 30; % x resolution, FWHM-Amplitude, um
