@@ -1,0 +1,310 @@
+
+%% Description
+% Verasonics reconstruction of RF data with the L22-14v probe that loops
+% over all the files in a folder
+
+% Output of IQ data for all subframes with SVD filtering applied to the RF
+
+% This version uses the same Recon structure (assumes the same Receive
+% parameters) for each subframe
+
+% Last updated on 06/16/2025 and working for an input of one superframe
+
+%% TO DO
+% make into a function
+% add adjustable pixel spacing
+% Add some regexp thing to automatically get the # of raw data files in the folder
+%% Activate the Verasonics folder
+clearvars
+
+cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
+% cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
+addpath 'C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Reconstruction'
+addpath 'C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Processing'
+
+activate
+clearvars
+%% Load parameters, create save path, choose some options for recon
+
+% Mcr_datapath = 'G:\Allen\Data\03-17-2025 AZ02 ULM\RC15gV\run 2 right eye\';
+Mcr_datapath = uigetdir('F:\Allen\Data\', 'Select the raw data path');
+Mcr_datapath = [Mcr_datapath, '\'];
+if ~exist('P', 'var')
+    load([Mcr_datapath, 'params.mat']) % load acquisition parameters
+end
+
+Mcr_savepath = uigetdir('F:\Allen\Data\', 'Select the folder to save reconstructed data to');
+Mcr_savepath = [Mcr_savepath, '\'];
+
+% Prompt for parameter user input
+parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound'};
+parameterDefaults = {'1', '', '20', '500'};
+parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
+
+Mcr_startFile = str2double(parameterUserInput{1}); % File to start reconstructing from
+Mcr_endFile = str2double(parameterUserInput{2});   % File to stop reconstructing on
+Mcr_sv_threshold_lower = str2double(parameterUserInput{3}); % SVD lower bound
+Mcr_sv_threshold_upper = str2double(parameterUserInput{4});   % SVD upper bound
+
+Mcr_filenameStructure = ['RF-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
+Mcr_IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
+
+%%%%%%%%%%
+saveAllAngles = false; % choose if you want to save the matrix with pages for each angle or not
+
+%% Get the updated parameter structure for unstacked data
+[P_unstacked] = updateParams_unstackedFrames(P);
+
+%% autorun VSX flag
+% Uncomment/initialize this variable to some arbitrary value if you want
+% the script to autoquit runAcq
+
+Mcr_AutoScriptTest = 1;
+% Mcr_GuiHide = 1;
+
+%% Assign variables and structures
+
+numChannels = P_unstacked.Resource.Parameters.numTransmit;
+
+% assignFromParameterStructure;
+assignStructVars(P_unstacked);                                                        % Assign parameters from P structure into the workspace
+
+maxAcqLength = maxAcqLength_adjusted;
+Trans_acq = Trans;
+TX_acq = TX;
+TW_acq = TW;
+% Resource = P_unstacked.Resource;
+% Receive_acq = Receive;
+% Receive = Receive(1:numFramesPerBuffer * na * pair);
+% Receive = P_unstacked.Receive;
+clear Event Process Recon ReconInfo SeqControl Trans TW TX
+
+
+%% Resource, define system parameters
+% Resource.Parameters.numTransmit = numChannels;                              % number of transmit channels
+% Resource.Parameters.numRcvChannels = numChannels;                           % number of receive channels
+% % Resource.Parameters.connector = 1;                                        % transducer connector to use since the current plate for the 256 bit system is split into two 128 bit connectors. 1 is left and 2 is right
+% Resource.Parameters.speedOfSound = Resource_acq.Parameters.speedOfSound;    % speed of sound in m/s
+% 
+% Resource.RcvBuffer = Resource_acq.RcvBuffer(1);
+% 
+% % load the first one to get this size
+% load([Mcr_datapath, Mcr_filenameStructure, '1']);
+% rpf = size(RcvData, 1);
+% clear RcvData
+% Resource.RcvBuffer.rowsPerFrame = rpf;
+% 
+% Resource.RcvBuffer.numFrames = numFramesPerBuffer;
+Resource.RcvBuffer.lastFrame = 1; % reset the counter
+Resource.Parameters.simulateMode = 2; % Enable mode 2, which processes data in the buffers
+
+% Resource.Parameters.verbose = 2; % Describe errors in varying levels
+%% Define Transducer
+
+Trans.name = Trans_acq.name; 
+Trans.frequency = Trans_acq.frequency;
+Trans.units = Trans_acq.units;
+
+Trans = computeTrans(Trans); % Generate required attributes for the probe into the Trans structure; e.g., the transducer element positions
+
+%% TW
+TW(1).type = TW_acq.type;
+TW(1).Parameters = TW_acq.Parameters;
+
+%% TX
+TX_fn = fieldnames(TX_acq);
+TX = rmfield(TX_acq, TX_fn(6:14));
+
+%% PData structure (Pixel Data --> image reconstruction range)
+% For 2D scans and slices of 3D scans, it's always a rectangular area at a
+% fixed location in the transducer coord system
+
+numElements = Trans.numelements; % the structure gives # row elements + # column elements
+
+% PData.PDelta = [Trans.spacing, 0, 0.5]; % Spacing between pixels in x, y, z, in wavelengths
+pixelspacingPrompt = {'z (axial) pixel spacing [wl]', 'x (lateral) pixel spacing [wl]'};
+% pixelspacingDefaults = {num2str(wl/2 * 1e6), num2str(Trans.spacingMm * 1e3)};
+% pixelspacingDefaults = {num2str(Trans.spacing/2), num2str(Trans.spacing)};
+pixelspacingDefaults = {num2str(Trans.spacing/2), num2str(Trans.spacing/2)};
+% pixelspacingDefaults = {num2str(Trans.spacing/4), num2str(Trans.spacing/4)};
+pixelspacingUserInput = inputdlg(pixelspacingPrompt, 'Pixel Spacing Parameters', 1, pixelspacingDefaults);
+
+z_pix_spacing = str2double(pixelspacingUserInput{1});
+x_pix_spacing = str2double(pixelspacingUserInput{2});
+
+% PData.PDelta = [x_pix_spacing * wl, 0, z_pix_spacing * wl]; % Spacing between pixels in x, y, z, in wavelengths
+PData.PDelta = [x_pix_spacing, 0, z_pix_spacing]; % Spacing between pixels in x, y, z, in wavelengths
+
+PData.Coord = 'rectangular'; % rectangular coords, could change to polar or spherical
+% Set PData array dimensions --> # of rows, columns, sections (planes
+% parallel to the xy plane)
+% For a 3D scan, rows - y axis, columns - x axis, sections - z axis
+PData.Size(1) = floor((endDepth - startDepth)./PData.PDelta(3)); % # rows
+PData.Size(2) = ceil(numElements.*Trans.spacing./PData.PDelta(1)); % # cols
+PData.Size(3) = 1; % depth, is 1 unit deep for a 2D image
+
+% Define the location (x, y, z) of the upper left corner of the array
+% Upper left corner if you look aligned with positive z
+half_probe_dist = (numElements-1)./2.*Trans.spacing;
+PData.Origin = [-half_probe_dist, 0, startDepth];
+
+% Set a local region to view/use for processing
+PData.Region(1) = struct('Shape', struct('Name', 'PData'));
+PData.Region = computeRegions(PData);
+
+%% Reconstruction
+
+Resource.ImageBuffer(1).numFrames = numFramesPerBuffer; % Define an ImageBuffer with a # of frames
+Resource.InterBuffer(1).numFrames = numFramesPerBuffer;
+
+if saveAllAngles
+    Resource.InterBuffer(1).pagesPerFrame = na;
+end
+% Recon = struct('senscutoff', 0.6, ... % Threshold for which the reconstruction doesn't consider an element's contribution due to directivity of the element, for a certain pixel (whose echoes are at an angle to the element). Should be in radians.
+%                'pdatanum', 1, ... % Which PData structure to use
+%                'rcvBufFrame', -1, ... % Use the most recently transferred frame
+%                'IntBufDest', [1, 1], ... % idk but it's for the IQ (complex) data
+%                'ImgBufDest', [1, -1], ... % [buffer #, frame #] Auto-increment ImageBuffer for each reconstruction???? % something is [first/oldest frame, last/newest frame]
+%                'RINums', [1:2*na]); % The ReconInfo structure #(s). Each Recon must have its own unique set of ReconInfo #s
+
+sco = 0.6; %%%%
+
+Recon = repmat(struct('senscutoff', sco, ... % Threshold for which the reconstruction doesn't consider an element's contribution due to directivity of the element, for a certain pixel (whose echoes are at an angle to the element). Should be in radians.
+               'pdatanum', 1, ... % Which PData structure to use
+               'rcvBufFrame', -1, ... % Use the most recently transferred frame
+               'IntBufDest', [1, -1], ... % IQ (complex) data, [buffer, frame], -1 means use the next available frame as output
+               'ImgBufDest', [1, -1], ... % [buffer #, frame #]
+               'RINums', [1:na]), 1, 1); % The ReconInfo structure #(s). Each Recon must have its own unique set of ReconInfo #s
+
+ReconInfo = repmat(struct('mode', 'accumIQ', ... % reconstruct, and replace intensity data in ImageBuffer and IQ data in InterBuffer (see Table 12.4 in Tutorial)
+                   'txnum', 1, ...                 % TX structure to use
+                   'rcvnum', 1, ...                % RX structure to use
+                   'regionnum', 1), 1, na);                % PData Region to process in
+
+rii = 0; % recon info index
+
+% Modify ReconInfo
+for n = 1:na
+    rii = rii + 1;
+    
+    ReconInfo(rii).txnum = n;
+    ReconInfo(rii).rcvnum = rii;
+    if saveAllAngles
+        ReconInfo(rii).pagenum = n;
+        ReconInfo(rii).mode = 'replaceIQ'; % replace IQ data
+    end
+%     ReconInfo(1).regionnum = 1; %1 for the whole volume, 5 for the slices
+
+end
+
+if ~saveAllAngles
+    ReconInfo(1).mode = 'replaceIQ'; % replace IQ in the buffer for each new frame processed
+    ReconInfo(end).mode = 'accumIQ_replaceIntensity'; % at the last acquisition, update the ImgData
+end
+
+%% New Event structure
+
+% Flow:
+% 1. Transmit (TX)
+% 2. Receive (Receive)
+% 3. Reconstruction (Recon)
+% 4. Processing (Process)
+% 5. Control (SeqControl)
+
+SeqControl(1).command = 'noop'; % VSX errors if there is no SeqControl structure
+
+n = 0;
+Event = struct('info', {}, 'tx', {}, 'rcv', {}, 'recon', {}, 'process', {}, 'SeqControl', {});
+
+for nf = 1:numFramesPerBuffer
+    n = n + 1;
+
+    Event(n).info = ['Frame ' num2str(nf) ': Reconstruction'];
+    Event(n).tx = 0; 
+    Event(n).rcv = 0; 
+    Event(n).recon = 1;
+    Event(n).process = 0; 
+    Event(n).seqControl = 0; 
+end
+
+% 
+% n = n + 1;
+% 
+% Event(n).info = 'Save data - ext proc func';
+% Event(n).tx = 0; 
+% Event(n).rcv = 0; 
+% Event(n).recon = 0;
+% Event(n).process = 1; 
+% Event(n).seqControl = 0; 
+
+
+%% Save all the data/structures to a .mat file.
+currentDir = cd; currentDir = regexp(currentDir, filesep, 'split');
+Mcr_filename = 'L22_14v_Allen_recon_unstackedFrames_RF_SVD.mat';
+
+save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+Mcr_filename, "Event", "SeqControl", "ReconInfo", "Recon", "Resource", "Media", "PData", "Receive", "TGC", "TPC", "Trans", "TW", "TX");
+
+
+%% Run VSX automatically and reconstruct/save each file
+if ~exist('Mcr_P', 'var')
+    Mcr_P = P; % VSX_auto will clear the P, so set it to not be cleared because unstackFrames needs it
+end
+
+savefast([Mcr_savepath, 'PData'], 'PData') % Save the PData structure
+
+for Mcr_filenum = Mcr_startFile:Mcr_endFile
+% for Mcr_filenum = 142:Mcr_endFile
+% for Mcr_filenum = [1]
+    tic
+
+    % Load the RF data
+    load([Mcr_datapath, Mcr_filenameStructure, num2str(Mcr_filenum)], 'RcvData');
+    disp(strcat("Raw data file ", num2str(Mcr_filenum), " loaded."))
+    
+    % Store the RF data in a temporary variable 'RFData'
+    RFData = unstackFrames(RcvData, Mcr_P);
+    clearvars RcvData;
+
+    % Apply the SVD filter to the RF data
+    [PP, EVs, V_sort] = getSVsRF(RFData);
+    [RFData_cf] = applySVsRF(RFData, PP, EVs, V_sort, Mcr_sv_threshold_lower, Mcr_sv_threshold_upper);
+    
+    RcvData{1} = int16(RFData_cf); % Put the clutter-filtered RF data into a cell array for VSX
+    clearvars RFData;
+
+    filename = Mcr_filename; % VSX clears variables without the Mcr_ prefix, so redefine "filename" so VSX can autorun
+    Mcr_AutoScriptTest = 1;  % VSX also specially clears this, so redefine it
+
+%     disp("running VSX_auto")
+    VSX_auto % this is in the Verasonics folder
+    VsClose  % close the GUI window. runAcq stops automatically after one loop.
+
+    disp(strcat("IQ file ", num2str(Mcr_filenum), " reconstructed."))
+%     IQ = squeeze(IData{1} + 1i .* QData{1});                                         % Merge the I and Q into one variable
+%     IQ = squeeze(IData + 1i .* QData);                                         % Merge the I and Q into one variable
+%     figure; imagesc(squeeze(abs(IQ(:, :, 1))) .^ 0.5)
+    IData = IData{1};
+    QData = QData{1};
+
+    savefast([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData')
+    disp(strcat("IQ file ", num2str(Mcr_filenum), " saved."))
+    
+    toc
+
+    clear IData QData RcvData
+end
+
+%% saving speed test
+% tic
+% test = IData{1};
+% savefast([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'test')
+% save([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IQ', '-v7.3')
+% toc
+%% random stuff and plotting
+% IQ = IData{1} + 1i .* QData{1};
+% figure; imagesc(abs(squeeze(IQ(40, :, :, 1, 1)))')
+% figure; imagesc(abs(squeeze(IQ(:, 40, :, 1, 1)))')
+% saveRcvData(RcvData{1})
+% ImgData_temp = ImgData{1};
+% figure; imagesc(squeeze(ImgData_temp(40, :, :, 2))')
+% IQ = single(IQ ./ 1000);
