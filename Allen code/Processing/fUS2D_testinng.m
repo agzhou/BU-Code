@@ -11,7 +11,7 @@ tau1_index_CBF = 2;
 tau2_index_CBF = 6;
 tau1_index_CBV = 2;
 
-%%
+%% Using SVD applied to IQ data
 % sv_threshold_lower = 10;
 % sv_threshold_upper = 32;
 
@@ -39,4 +39,17 @@ g1 = g1T(IQf, numg1pts);
 figure; imagesc(squeeze(CBVi .^ 0.5)); colormap hot
 
 PDI_test = sum(abs(IQf) .^ 2, 3);
+figure; imagesc(squeeze(PDI_test .^ 0.5)); colormap hot
+
+%% Using SVD applied to RF data
+
+figure; imagesc(squeeze(abs(IQ(:, :, 1))) .^ 0.5); colormap hot
+
+% numg1pts = 10; % Only calculate the first N points
+% g1 = g1T(IQ, numg1pts);
+% 
+% [CBFsi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+% figure; imagesc(squeeze(CBVi .^ 0.5)); colormap hot
+
+PDI_test = sum(abs(IQ) .^ 2, 3);
 figure; imagesc(squeeze(PDI_test .^ 0.5)); colormap hot

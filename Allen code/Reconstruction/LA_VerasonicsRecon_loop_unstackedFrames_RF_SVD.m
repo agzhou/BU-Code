@@ -267,6 +267,7 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
 
     % Apply the SVD filter to the RF data
     [PP, EVs, V_sort] = getSVsRF(RFData);
+    plot_FFT_SVs_function(V_sort, Mcr_P)
     [RFData_cf] = applySVsRF(RFData, PP, EVs, V_sort, Mcr_sv_threshold_lower, Mcr_sv_threshold_upper);
     
     RcvData{1} = int16(RFData_cf); % Put the clutter-filtered RF data into a cell array for VSX
@@ -280,7 +281,7 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
     VsClose  % close the GUI window. runAcq stops automatically after one loop.
 
     disp(strcat("IQ file ", num2str(Mcr_filenum), " reconstructed."))
-%     IQ = squeeze(IData{1} + 1i .* QData{1});                                         % Merge the I and Q into one variable
+    IQ = squeeze(IData{1} + 1i .* QData{1});                                         % Merge the I and Q into one variable
 %     IQ = squeeze(IData + 1i .* QData);                                         % Merge the I and Q into one variable
 %     figure; imagesc(squeeze(abs(IQ(:, :, 1))) .^ 0.5)
     IData = IData{1};
@@ -291,7 +292,7 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
     
     toc
 
-    clear IData QData RcvData
+%     clearvars IData QData RcvData
 end
 
 %% saving speed test
