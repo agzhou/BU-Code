@@ -11,7 +11,7 @@ function [PP, EVs, V_sort] = getSVsRF(RFData)
     [ns, nc, nf] = size(RFData); % The RF data should have the dimensions [# samples, # channels, # frames]
     
     % Main data matrix PP to be manipulated
-    PP = zeros(ns*nc, nf); % # samples * # channels by nf matrix
+%     PP = zeros(ns*nc, nf); % # samples * # channels by nf matrix
     
 %     % stack all the data for each x value
 %     for x = 1:xp

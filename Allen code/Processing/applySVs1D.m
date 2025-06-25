@@ -27,10 +27,11 @@ function [IQ_f] = applySVs1D(IQ_coherent_sum, PP, EVs, V_sort, sv_threshold_lowe
 
     P_f = PP * V_sort * I_f * V_sort'; % filtered beamformed/reconstructed data
 
-    IQ_f = zeros(zp, xp, nf);
+%     IQ_f = zeros(zp, xp, nf);
     % Unstack the spatial dimension
-    for x = 1:xp
-        IQ_f(:, x, :) = P_f( (x-1)*zp + 1:x*zp, :);
-    end
+%     for x = 1:xp
+%         IQ_f(:, x, :) = P_f( (x-1)*zp + 1:x*zp, :);
+%     end
+    IQ_f = reshape(P_f, [zp, xp, nf]); % Change 06/25/2025
 
 end
