@@ -1,10 +1,15 @@
 IQ = squeeze(IData + 1i .* QData);
 figure; imagesc(squeeze(abs(IQ(:, :, 1))) .^ 0.5); colormap hot
 
+% % For use with my P structure
+% taustep = 1/P.frameRate;
+% % tau = taustep:taustep:(P.numFramesPerBuffer * taustep);
+% tau = 0:taustep:((P.numFramesPerBuffer - 1) * taustep);
 
-taustep = 1/P.frameRate;
-% tau = taustep:taustep:(P.numFramesPerBuffer * taustep);
-tau = 0:taustep:((P.numFramesPerBuffer - 1) * taustep);
+% Legacy P structure
+taustep = 1/P.CCFR;
+tau = 0:taustep:((P.numCCframes - 1) * taustep);
+
 tau_ms = tau .* 1000; % Assuming even time spacing between frames
 
 tau1_index_CBF = 2;
@@ -15,7 +20,7 @@ tau1_index_CBV = 2;
 % sv_threshold_lower = 10;
 % sv_threshold_upper = 32;
 
-sv_threshold_lower = 90;
+sv_threshold_lower = 20;
 % sv_threshold_upper = 200;
 sv_threshold_upper = 500;
 
@@ -32,6 +37,7 @@ disp('SVD filtered images put together')
 
 figure; imagesc(squeeze(abs(IQf(:, :, 1))) .^ 0.5); colormap hot
 
+addpath([cd, 'Speckle tracking\'])
 numg1pts = 10; % Only calculate the first N points
 g1 = g1T(IQf, numg1pts);
 
