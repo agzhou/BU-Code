@@ -7,38 +7,41 @@ IQpath = uigetdir('D:\Allen\Data\', 'Select the IQ data path');
 IQpath = [IQpath, '\'];
 
 % Load parameters
-% if ~exist('P', 'var')
-%     load([IQpath, '..\params.mat'])
-% end
+
 % Load acquisition parameters: params.mat
 if ~exist('P', 'var')
-    % Choose and load the params.mat file (from the acquisition)
-    [params_filename, params_pathname, ~] = uigetfile('*.mat', 'Select the params file', [IQpath, '..\params.mat']);
-    load([params_pathname, params_filename])
+    % Choose and load an IQ mat file (from the acquisition)
+    [IQ_filename, IQ_pathname, ~] = uigetfile('*.mat', 'Select an IQ file', [IQpath]);
+    load([IQ_pathname, IQ_filename], 'P')
 end
 
-% Load Verasonics reconstruction parameters: datapath\PData.mat
-if ~exist('PData', 'var')
-    load([IQpath, 'PData.mat'])
-end
+% Remove the last (file) number from the IQ filename to define the general
+% filename structure
+IQ_filename_split = strsplit(IQ_filename, "-");
+IQ_filename_join = strjoin(IQ_filename_split(1:end - 1), "-");
+IQ_filename_join = IQ_filename_join + "-"; % add the dash at the end
+IQfilenameStructure = IQ_filename_join;
 
-IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
+
+% % Load Verasonics reconstruction parameters: datapath\PData.mat
+% if ~exist('PData', 'var')
+%     load([IQpath, 'PData.mat'])
+% end
 
 savepath = uigetdir('D:\Allen\Data\', 'Select the save path');
 savepath = [savepath, '\'];
 
 addpath([cd, '\Speckle tracking']) % add path for the g1 calculation functions
 
-% Load the timing data
-[timingFilePathFN, timingFilePath] = uigetfile([IQpath, '..\Timing data\TD.mat'], 'Select the timing data');
-timingFilePath = [timingFilePath, timingFilePathFN];
-load(timingFilePath)
-% load(timingFilePath, 'acqStart', 'airPuffOutput', 'daqStartTimetag', 'sfTimeTags', 'sfTimeTagsDAQStart', 'sfTimeTagsDAQStart_adj', 'sfWidth', 'sfWidth_adj', 'timeStamp')
+% % Load the timing data
+% [timingFilePathFN, timingFilePath] = uigetfile([IQpath, '..\Timing data\TD.mat'], 'Select the timing data');
+% timingFilePath = [timingFilePath, timingFilePathFN];
+% load(timingFilePath)
 
 %% Define some parameters (add this to a prompt later)
 
 parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Tau 1 index for CBFspeed', 'Tau 2 index for CBFspeed', 'Tau 1 index for CBV'};
-parameterDefaults = {'1', '', '20', '1000', '2', '6', '2'};
+parameterDefaults = {'1', '', '20', '500', '2', '6', '2'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % define # of files manually for now
@@ -54,9 +57,9 @@ tau1_index_CBV = str2double(parameterUserInput{7});
 
 clearvars parameterPrompt parameterDefaults parameterUserInput
 
-taustep = 1/P.frameRate;
+taustep = 1/P.CCFR;
 % tau = taustep:taustep:(P.numFramesPerBuffer * taustep);
-tau = 0:taustep:((P.numFramesPerBuffer - 1) * taustep);
+tau = 0:taustep:((P.numCCframes - 1) * taustep);
 tau_ms = tau .* 1000; % Assuming even time spacing between frames
 
 % tau1_index_CBF = 2;

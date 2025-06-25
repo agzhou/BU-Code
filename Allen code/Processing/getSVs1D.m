@@ -11,12 +11,13 @@ function [PP, EVs, V_sort] = getSVs1D(IQ_coherent_sum)
     [zp, xp, nf] = size(IQ_coherent_sum);
     
     % Main data matrix PP to be manipulated
-    PP = zeros(xp*zp, nf); % x*z pixels by nf matrix
-    
-    % stack all the data for each x value
-    for x = 1:xp
-        PP((x-1)*zp + 1:x*zp, :) = IQ_coherent_sum(:, x, :);
-    end
+%     PP = zeros(xp*zp, nf); % x*z pixels by nf matrix
+%     
+%     % stack all the data for each x value
+%     for x = 1:xp
+%         PP((x-1)*zp + 1:x*zp, :) = IQ_coherent_sum(:, x, :);
+%     end
+    PP = reshape(IQ_coherent_sum, [zp*xp, nf]); % Change 06/25/2025
 
     CM_V = PP'*PP; % covariance matrix for V
 
