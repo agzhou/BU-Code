@@ -30,8 +30,8 @@ function [r, z, activationMap] = activationMap2D(planarData, stim, zt)
 
     % Calculate the Pearson's correlation coefficient for every voxel
     r = sum( (planarData - mean(planarData, timeDim)) .* (stim_3D - mean(stim_3D, timeDim)) , timeDim) ...
-        ./ sqrt ( sum( (planarData - mean(planarData, timeDim)) .^ 2, timeDim) ) ...
-        ./ sqrt ( sum( (stim_3D - mean(stim_3D, timeDim)) .^ 2, timeDim) );
+        ./ sqrt ( sum( abs((planarData - mean(planarData, timeDim))) .^ 2, timeDim) ) ...
+        ./ sqrt ( sum( abs((stim_3D - mean(stim_3D, timeDim))) .^ 2, timeDim) );
 
     % z score using Fisher's transform
     z = fisherTransform(r, ntp);
