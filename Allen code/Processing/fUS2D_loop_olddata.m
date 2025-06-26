@@ -68,7 +68,7 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 
 %% Main loop
 % for filenum = startFile:endFile
-for filenum = 3:endFile
+for filenum = 2:endFile
 % for filenum = [285:-1:189]
 % for filenum = 1
     tic
@@ -189,13 +189,6 @@ for filenum = startFile:endFile
     toc
     
 end
-%% Testing
-testIQf = applySVs2D(IQ, PP, EVs, V_sort, 35, sv_threshold_upper);
-figure; imagesc(squeeze(max(abs(testIQf(30:50, :, :, 1)), [], 1) .^ 0.5)'); colormap hot
-% volumeViewer(abs(testIQf(:, :, :, 1)))
-testPDI = mean(abs(IQf) .^ 2, 4);
-figure; imagesc(squeeze(max(testPDI(30:50, :, :, 1), [], 1) .^ 0.5)'); colormap hot
-figure; imagesc(squeeze(max(testPDI(:, :, :, 1), [], 3) .^ 0.5)'); colormap hot
 
 %% Convert g1 into CBV, CBFspeed, etc.
 
