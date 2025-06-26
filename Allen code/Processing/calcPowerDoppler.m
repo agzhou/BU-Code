@@ -9,11 +9,11 @@ function [PDI] = calcPowerDoppler(IQf_separated)
         frameDim = length(size(IQf_separated{1})); % Usually the frame dimension is the last dimension. 3 for 2D data and 4 for 3D data.
     
         for i = 1:length(PDI)
-            PDI{i} = mean(abs(IQf_separated{i}) .^ 2, frameDim);
+            PDI{i} = mean(abs(IQf_separated{i}) .^ 2, frameDim) ./ size(IQf_separated{i}, frameDim);
         end
     else
         frameDim = length(size(IQf_separated));
-        PDI = mean(abs(IQf_separated) .^ 2, frameDim);
+        PDI = mean(abs(IQf_separated) .^ 2, frameDim) ./ size(IQf_separated, frameDim);
     end
 
 end
