@@ -17,8 +17,14 @@
     toc
 
     %% Test "std" speed
+    clearvars std_test std_func_test
+    u_m_length = length(abs_u_m);
+    fac = u_m_length - 1;
     tic
-    std_test = sqrt ( sum( abs((abs_u_m - mean_abs_u_m)) .^ 2) ./ (nf - 1) );
+%     std_test = sqrt ( sum( abs((abs_u_m - mean_abs_u_m)) .^ 2) ./ (u_m_length - 1) );
+%     std_test = sqrt ( sum( (abs_u_m - mean_abs_u_m) .^ 2) ./ (u_m_length - 1) );
+    std_test = sqrt ( sum( (abs_u_m - mean_abs_u_m) .^ 2) ./ fac );
+%     std_test = ( sum( (abs_u_m - mean_abs_u_m) .^ 2) ./ fac ) .^ 0.5;
     toc
 
     tic
