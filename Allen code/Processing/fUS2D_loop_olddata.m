@@ -439,6 +439,7 @@ for filenum = startFile + 1:endFile
     CBFsiallSF(:, :, filenum) = CBFsi;
 end
 
+% generateTiffStack_acrossframes(CBViallSF .^ 0.5, [8.8, 8.8, 8], 'hot')
 %% Store all the PDI across the experiment into one matrix - with the separated frequency components
 % % load([savepath, 'PDI_CDI-', num2str(1), '.mat'], 'PDI', 'CDI')
 % load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI', 'CDI')
@@ -505,41 +506,28 @@ ylabel('CBVi')
 % xlabel('Superframe index #')
 % ylabel('CBVi')
 
-%% Separate each trial
-ah = 3; % Approximate a cutoff value for analog high
+%% Separate trials with the hard coded stim parameters
+% *** This is all based on a 1 Hz superframe/measurement rate ***
+stim_pattern.duration_baseline_onetime = 25; % One time baseline period of 25 s
+stim_pattern.numTrials = 10; % # of trials
+stim_pattern.duration_stim = 5; % Stim period of 5 s
+stim_pattern.duration_recovery = 25; % Recovery period of 25 s
+stim_pattern.duration_rest = 5; % included in duration_recovery
+stim_pattern.trial_duration = stim_pattern.duration_stim + stim_pattern.duration_recovery;
+stim_pattern.stim = zeros(stim_pattern.trial_duration, 1); % define the stim pattern timecourse for one trial
+stim_pattern.stim(1:stim_pattern.duration_stim) = 1;
 
-ind_above_ah = find(TD.airPuffOutput > ah); % Get indices of the air puff output above analog high
-ind_shift_below_ah = find(TD.airPuffOutput(ind_above_ah - 1) < ah); % See which indices above analog high have an analog low when shifted by -1 (rising edge)
-ind_rising_edge = ind_above_ah(ind_shift_below_ah); % Store the original indices for the rising edges
-% hold on
-% plot(ind_rising_edge, ones(size(ind_rising_edge)) .* 5, 'o')
-% hold off
+CBVi_baseline = CBViallSF(:, :, 1:stim_pattern.duration_baseline_onetime); % Get the CBVi from the baseline period
+CBVi_baseline_average = mean(CBVi_baseline, 3); % Average over the time/frame dimension
 
-stim_starts_gap = (P.Mcr_fcp.apis.seq_length_s - P.Mcr_fcp.apis.stim_length_s) * P.daqrate; % How long we expect the stim gap to be between the end of one stim to the start of the next
-stim_prestart_baseline = (P.Mcr_fcp.apis.delay_time_ms / 1e3) * P.daqrate; % The duration between the baseline period and the corresponding stim start
-stim_starts = ind_rising_edge([true; diff(ind_rising_edge) > stim_starts_gap]); % Add a 1/true at the beginning index for the first stim
 
-% Plot the air puff signal and the calculated start points of each stim period
-figure; plot(TD.airPuffOutput)
-hold on
-plot(stim_starts, ones(size(stim_starts)) .* 5, 'o')
-hold off
-
-clearvars ind_above_ah ind_shift_below_ah ind_rising_edge
-% figure; plot(TD.sfTimeTagsDAQStart_adj) % plot the time tags for each superframe, adjusted to match the DAQ sampling rate
-
-trial_windows = cell(size(stim_starts)); % Cell array of size (# trials, 1). Each cell contains the time points (according to the DAQ rate) that correspond to that trial.
-trial_sf = cell(size(trial_windows));    % Cell array of size (# trials, 1). Each cell contains the superframe indices that started within that trial.
-
-sfStarts = (TD.sfTimeTagsDAQStart_adj - TD.sfWidth_adj); % Adjust the superframe time tags so each index is at the start of the superframe acquisition
+% trial_windows = cell(stim_pattern.numTrials, 1); % Cell array of size (# trials, 1). Each cell contains the time points (according to the DAQ rate) that correspond to that trial.
+trial_sf = cell(stim_pattern.numTrials, 1);    % Cell array of size (# trials, 1). Each cell contains the superframe indices that started within that trial.
 
 % Go through each trial within the run and assign the trial timepoints and the corresponding superframe indices
-for trial = 1:length(trial_windows)
-    trial_windows{trial} = stim_starts(trial) - stim_prestart_baseline : stim_starts(trial) + stim_starts_gap;
-
-    trial_sf{trial} = find(sfStarts >= trial_windows{trial}(1) & sfStarts <= trial_windows{trial}(end));
+for trial = 1:length(trial_sf)
+    trial_sf{trial} = stim_pattern.duration_baseline_onetime + (trial - 1)*stim_pattern.trial_duration + 1 : stim_pattern.duration_baseline_onetime + (trial)*stim_pattern.trial_duration;
 end
-clearvars trial
 
 %% Assign the superframe trial binning to CBVi and PDI
 % CBViallSFadj = smoothdata(CBViallSF, 4, "sgolay", 9); % SMOOTH THE CBVi
@@ -561,92 +549,35 @@ end
 
 %% Get the mean or max CBVi or PDI etc. within each trial's stimulation period
 
-trial_sf_stimon = cell(size(trial_windows));    % Cell array of size (# trials, 1). Each cell contains the superframe indices that correspond to the stimulus period within that trial.
-trial_sf_baseline = cell(size(trial_windows));    % Cell array of size (# trials, 1). Each cell contains the superframe indices that correspond to the baseline period within that trial.
-stim_length = P.Mcr_fcp.apis.stim_length_s * P.daqrate; % Stim length, adjusted for the DAQ rate
-
-% Get the superframe indices corresponding to the baseline and stim periods
-% within each trial
-for trial = 1:length(trial_windows)
-    trial_sf_baseline{trial} = find(sfStarts >= trial_windows{trial}(1) & sfStarts <= (trial_windows{trial}(1) + stim_prestart_baseline));
-    trial_sf_stimon{trial} = find(sfStarts >= (trial_windows{trial}(1) + stim_prestart_baseline) & sfStarts <= (trial_windows{trial}(1) + stim_prestart_baseline + stim_length));
-end
-clearvars trial
-
-% Get a square wave approximation of when the stim period is, in the
-% superframe timing
-trial_stim_pattern = cell(size(trial_windows)); % Cell array of size (# trials, 1). Each cell contains a timeseries of the whole trial, with a square wave approximation of the stimulus within that trial.
-for trial = 1:length(trial_windows)
-    trial_stim_pattern{trial} = zeros(size(trial_sf{trial}));
-%     trial_stim_pattern{trial}(stim_starts(trial) : stim_starts(trial) + stim_length) = 1;
-    trial_stim_pattern{trial}(find(sfStarts >= (trial_windows{trial}(1) + stim_prestart_baseline) & sfStarts <= (trial_windows{trial}(1) + stim_prestart_baseline + stim_length)) - trial_sf{trial}(1) + 1) = 1;
-end
-    
-% Store the actual CBVi or PDI etc. values within the baseline and stim periods
-% max_CBVi_stimon = cell(size(trial_sf_stimon));
-avg_CBVi_stimon = cell(size(trial_sf_stimon));
-avg_CBVi_baseline = cell(size(trial_sf_baseline));
-avg_CBFsi_stimon = cell(size(trial_sf_stimon));
-avg_CBFsi_baseline = cell(size(trial_sf_baseline));
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 CBVi_relative_change = cell(size(trial_sf)); % Relative change of CBVi, per trial, compared to the mean at baseline of that trial
 CBFsi_relative_change = cell(size(trial_sf)); % Relative change of CBFsi, per trial, compared to the mean at baseline of that trial
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-for trial = 1:length(trial_windows)
-    avg_CBVi_baseline{trial} = mean(CBViallSFadj(:, :, trial_sf_baseline{trial}), 3);
-%     max_CBVi_stimon{trial} = max(CBViallSFsmoothed(:, :, trial_sf_stimon{trial}), [], 3);
-    avg_CBVi_stimon{trial} = mean(CBViallSFadj(:, :, trial_sf_stimon{trial}), 3);
-
-    avg_CBFsi_baseline{trial} = mean(CBFsiallSF(:, :, trial_sf_baseline{trial}), 3);
-    avg_CBFsi_stimon{trial} = mean(CBFsiallSF(:, :, trial_sf_stimon{trial}), 3);
-
-end
-
 % Percent change of CBVi and CBFsi for each trial, compared to the mean at baseline
-for trial = 1:length(trial_windows)
-    temp_avg_CBFsi_baseline_trial = avg_CBFsi_baseline{trial};
-    temp_avg_CBFsi_baseline_trial(temp_avg_CBFsi_baseline_trial == 0) = 1;
-    CBVi_relative_change{trial} = (trial_CBVi{trial} - avg_CBVi_baseline{trial}) ./ avg_CBVi_baseline{trial} .* 100;
-%     CBFsi_relative_change{trial} = (trial_CBFsi{trial} - avg_CBFsi_baseline{trial}) ./ avg_CBFsi_baseline{trial} .* 100;
-    CBFsi_relative_change{trial} = (trial_CBFsi{trial} - avg_CBFsi_baseline{trial}) ./ temp_avg_CBFsi_baseline_trial .* 100;
+for trial = 1:length(trial_sf)
+%     temp_avg_CBFsi_baseline_trial = avg_CBFsi_baseline{trial};
+%     temp_avg_CBFsi_baseline_trial(temp_avg_CBFsi_baseline_trial == 0) = 1;
+    CBVi_relative_change{trial} = (trial_CBVi{trial} - CBVi_baseline_average) ./ CBVi_baseline_average .* 100;
+% %     CBFsi_relative_change{trial} = (trial_CBFsi{trial} - avg_CBFsi_baseline{trial}) ./ avg_CBFsi_baseline{trial} .* 100;
+%     CBFsi_relative_change{trial} = (trial_CBFsi{trial} - avg_CBFsi_baseline{trial}) ./ temp_avg_CBFsi_baseline_trial .* 100;
 end
 
 
 %% Smoothed percent change of CBVi and CBFsi for each trial, compared to the mean at baseline
 CBVi_relative_change_smoothed = cell(size(trial_sf)); % Relative change of CBVi, per trial, compared to the mean at baseline of that trial
-CBFsi_relative_change_smoothed = cell(size(trial_sf)); % Relative change of CBFsi, per trial, compared to the mean at baseline of that trial
+% CBFsi_relative_change_smoothed = cell(size(trial_sf)); % Relative change of CBFsi, per trial, compared to the mean at baseline of that trial
 rCBparam_smoothing_window = 5; % smoothing window size for rCBV and rCBFspeed
 
-for trial = 1:length(trial_windows)
+for trial = 1:length(trial_sf)
 
     CBVi_relative_change_smoothed{trial} = smoothdata(CBVi_relative_change{trial}, 3, "movmean", rCBparam_smoothing_window);
-    CBFsi_relative_change_smoothed{trial} = smoothdata(CBFsi_relative_change{trial}, 3, "movmean", rCBparam_smoothing_window);
+%     CBFsi_relative_change_smoothed{trial} = smoothdata(CBFsi_relative_change{trial}, 3, "movmean", rCBparam_smoothing_window);
 end
 
 %%
-figure; imagesc(CBVi); colormap hot
-testinvessel = squeeze(CBVi_relative_change_smoothed{1}(10:16, 79:82, :));
-testinvessel_avg = squeeze(mean(testinvessel, [1, 2]));
-figure; plot(testinvessel_avg)
 
-% test1 = squeeze(CBVi_relative_change{1}(40, 47, 28, :));
-test1 = squeeze(CBVi_relative_change_smoothed{1}(40, 47, 28, :));
-figure; plot(test1)
-test2 = squeeze(CBVi_relative_change_smoothed{1}(40, 47, 27, :));
-figure; plot(test2)
-test3 = squeeze(CBVi_relative_change_smoothed{1}(40, 47, 29, :));
-figure; plot(test3)
-
-testns1 = squeeze(CBVi_relative_change{1}(40, 47, 28, :));
-figure; plot(testns1)
-testns2 = squeeze(CBVi_relative_change{1}(40, 47, 27, :));
-figure; plot(testns2)
-testns3 = squeeze(CBVi_relative_change{1}(40, 47, 29, :));
-figure; plot(testns3)
-
-for trial = 1:length(trial_windows)
+for trial = 1:length(trial_sf)
     figure; imagesc(squeeze(max(CBVi_relative_change_smoothed{trial}(:, :, :), [], 3))); colormap hot
 end
 
@@ -664,18 +595,20 @@ z_CBFsi_relative_change_smoothed = [];
 activationMaps_CBVi = [];
 activationMaps_CBFsi = [];
 
-zt = 3.1;
+% zt = 3.1;
+zt = 1;
 
-for trial = 1:length(trial_windows)
-    [r_CBVi_relative_change_smoothed(:, :, trial), z_CBVi_relative_change_smoothed(:, :, trial), activationMaps_CBVi(:, :, trial)] = activationMap2D(CBVi_relative_change_smoothed{trial}, trial_stim_pattern{trial}, zt);
-    [r_CBFsi_relative_change_smoothed(:, :, trial), z_CBFsi_relative_change_smoothed(:, :, trial), activationMaps_CBFsi(:, :, trial)] = activationMap2D(CBFsi_relative_change_smoothed{trial}, trial_stim_pattern{trial}, zt);
+for trial = 1:length(trial_sf)
+    [r_CBVi_relative_change_smoothed(:, :, trial), z_CBVi_relative_change_smoothed(:, :, trial), activationMaps_CBVi(:, :, trial)] = activationMap2D(CBVi_relative_change_smoothed{trial}, stim_pattern.stim, zt);
+%     [r_CBFsi_relative_change_smoothed(:, :, trial), z_CBFsi_relative_change_smoothed(:, :, trial), activationMaps_CBFsi(:, :, trial)] = activationMap2D(CBFsi_relative_change_smoothed{trial}, trial_stim_pattern{trial}, zt);
 
 end
 
 %% Plot each trial's activation maps
-for trial = 1:length(trial_windows)
+for trial = 1:length(trial_sf)
+%     figure; imagesc(r_CBVi_relative_change_smoothed(:, :, trial)); clim([-1, 1]); colormap jet
 
-    figure; imagesc(activationMaps_CBVi(:, :, trial))
+    figure; imagesc(activationMaps_CBVi(:, :, trial)); clim([-1, 1]); colormap jet
 end
 
 %% Trial averaging... Should probably do this before correlating
