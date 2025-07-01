@@ -45,6 +45,7 @@ for iRpt=startRpt:startRpt+nRpt-1
         SkipFile(indSkipped)=iRpt;
         indSkipped=indSkipped+1;  
     end
+    % **** Reshape the data ****
     GG0(:,:,:,k) = GG;
     % VV0(:,:,:,k) = VV;
     %  Numer0(:,:,:,k) = Numer;

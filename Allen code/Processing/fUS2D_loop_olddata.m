@@ -78,9 +78,9 @@ end
 
 %% Main loop
 % for filenum = startFile:endFile
-% for filenum = 2:endFile
+for filenum = 2:endFile
 % for filenum = [285:-1:189]
-for filenum = 1
+% for filenum = 1
     tic
     load([IQpath, IQfilenameStructure, num2str(filenum)], 'IQ')
     
@@ -90,34 +90,44 @@ for filenum = 1
     [IQf] = applySVs1D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
     disp('SVD filtered images put together')
 
-    % Determine the optimal SV thresholds with the spatial similarity matrix
-    [zp, xp, nf] = size(IQ);
-    PP = reshape(IQ, [zp*xp, nf]);
-    [U, S, V] = svd(PP); % Already sorted in decreasing order
-    
-    SSM = zeros(nf, nf); % Initialize the spatial similarity matrix
+%     % Determine the optimal SV thresholds with the spatial similarity matrix
+%     [zp, xp, nf] = size(IQ);
+%     PP = reshape(IQ, [zp*xp, nf]);
+%     tic
+%     [U, S, V] = svd(PP); % Already sorted in decreasing order
+%     disp('Full SVD done')
+%     toc
+%     
+% %     %% Testing to do eigen decomposition instead of the full SVD
+% %     tic
+% %     [U_sort] = spatialEDC(PP);
+% %     toc
+%     %%
+%     SSM = zeros(nf, nf); % Initialize the spatial similarity matrix
+% 
+%     SSM_const = 1/(zp * xp); % constant in front of the summation term
+% %%
+%     tic
+%     for n = 1:nf
+% %     for n = 1:200
+%         abs_u_n = abs(U(:, n)); % The nth column vector from U
+%         mean_abs_u_n = sum(abs_u_n) / length(abs_u_n);
+%         stddev_abs_u_n = std(abs_u_n);
+% %         for m = 1:nf
+%         for m = 1:n % leverage the symmetry of the SSM
+%             abs_u_m = abs(U(:, m)); % The mth column vector from U
+%             mean_abs_u_m = sum(abs_u_m) / length(abs_u_m);
+%             SSM(n, m) = sum( ((abs_u_n - mean_abs_u_n) .* (abs_u_m - mean_abs_u_m)) ...
+%                         ./ stddev_abs_u_n ...
+%                         ./ std(abs_u_m) );
+%         end
+%     end
+%     SSM = SSM .* SSM_const; % Normalize
+%     SSM = SSM + SSM'; % Apply the symmetry to fill out the "missing" values
+%     toc
+%     figure; imagesc(SSM); axis square
 
-    SSM_const = 1/(zp * xp); % constant in front of the summation term
-%%
-    tic
-    for n = 1:nf
-%     for n = 1:10
-        abs_u_n = abs(U(:, n)); % The nth column vector from U
-        mean_abs_u_n = sum(abs_u_n) / length(abs_u_n);
-        stddev_abs_u_n = std(abs_u_n);
-%         for m = 1:nf
-        for m = 1:n % leverage the symmetry of the SSM
-            abs_u_m = abs(U(:, m)); % The mth column vector from U
-            mean_abs_u_m = sum(abs_u_m) / length(abs_u_m);
-            SSM(n, m) = sum( ((abs_u_n - mean_abs_u_n) .* (abs_u_m - mean_abs_u_m)) ...
-                        ./ stddev_abs_u_n ...
-                        ./ std(abs_u_m) );
-        end
-    end
-    SSM = SSM .* SSM_const;
-    toc
-    figure; imagesc(SSM)
-%%
+%
     % Test to look at the individual "weighted images"
 %     k_test = 40; % Which column vector to use
 %     test = reshape(U(:, k_test) * V(:, k_test)', [zp, xp, nf]);
@@ -131,7 +141,7 @@ for filenum = 1
     % Use the IQf with separated negative and positive frequency components
     [IQf_separated, IQf_FT_separated] = separatePosNegFreqs(IQf);
     
-    numg1pts = 20; % Only calculate the first N points
+    numg1pts = 100; % Only calculate the first N points
     g1_n = g1T(IQf_separated{1}, numg1pts);
 % %     [CBFsi_n, CBVi_n] = g1_to_CBi(g1_n, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
     g1_p = g1T(IQf_separated{2}, numg1pts);
@@ -439,7 +449,9 @@ for filenum = startFile + 1:endFile
     CBFsiallSF(:, :, filenum) = CBFsi;
 end
 
+vcmap = colormap_ULM;
 % generateTiffStack_acrossframes(CBViallSF .^ 0.5, [8.8, 8.8, 8], 'hot')
+% generateTiffStack_acrossframes(CBFsiallSF, [8.8, 8.8, 8], vcmap)
 %% Store all the PDI across the experiment into one matrix - with the separated frequency components
 % % load([savepath, 'PDI_CDI-', num2str(1), '.mat'], 'PDI', 'CDI')
 % load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI', 'CDI')
@@ -551,8 +563,8 @@ end
 %% Get the mean or max CBVi or PDI etc. within each trial's stimulation period
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-CBVi_relative_change = cell(size(trial_sf)); % Relative change of CBVi, per trial, compared to the mean at baseline of that trial
-CBFsi_relative_change = cell(size(trial_sf)); % Relative change of CBFsi, per trial, compared to the mean at baseline of that trial
+CBVi_relative_change = cell(size(trial_sf)); % Relative change of CBVi, per trial, compared to the mean at baseline of that experiment
+CBFsi_relative_change = cell(size(trial_sf)); % Relative change of CBFsi, per trial, compared to the mean at baseline of that experiment
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Percent change of CBVi and CBFsi for each trial, compared to the mean at baseline
@@ -564,6 +576,13 @@ for trial = 1:length(trial_sf)
 %     CBFsi_relative_change{trial} = (trial_CBFsi{trial} - avg_CBFsi_baseline{trial}) ./ temp_avg_CBFsi_baseline_trial .* 100;
 end
 
+%% CBVi relative change trial average
+CBVi_relative_change_TA = CBVi_relative_change{1}; % Relative change of CBVi, Trial Averaged
+
+for trial = 2:length(trial_sf)
+    CBVi_relative_change_TA = CBVi_relative_change_TA + CBVi_relative_change{trial};
+end
+CBVi_relative_change_TA = CBVi_relative_change_TA ./ length(trial_sf);
 
 %% Smoothed percent change of CBVi and CBFsi for each trial, compared to the mean at baseline
 CBVi_relative_change_smoothed = cell(size(trial_sf)); % Relative change of CBVi, per trial, compared to the mean at baseline of that trial
@@ -605,16 +624,42 @@ for trial = 1:length(trial_sf)
 
 end
 
+%% Correlation on trial averaged data
+zt = 1;
+[r_CBVi_relative_change_TA, z_CBVi_relative_change_TA, activationMaps_CBVi_TA] = activationMap2D(CBVi_relative_change_TA, stim_pattern.stim, zt);
+
+figure; imagesc(r_CBVi_relative_change_TA); clim([-1, 1]); colormap jet
+figure; imagesc(activationMaps_CBVi_TA); clim([-1, 1]); colormap jet
+
+%% Use the activation map to define an ROI for getting timecourses
+
+am_rCBV = figure; imagesc(activationMaps_CBVi_TA); clim([-1, 1]); colormap jet % rCBV activation map
+roi_mask = roipoly; % manually define the ROI
+figure; imagesc(roi_mask)
+
+% Calculate the timecourse from the average within that ROI
+roi_rCBV_TA = zeros(stim_pattern.trial_duration, 1);
+% repmat(roi_mask, [1, 1, stim_pattern.trial_duration])
+for t = 1:stim_pattern.trial_duration
+% for t = 1
+     temp_rCBV_TA = CBVi_relative_change_TA(:, :, t);
+     temp_roi_rCBV_avg = mean(temp_rCBV_TA(roi_mask));
+     roi_rCBV_TA(t) = temp_roi_rCBV_avg;
+end
+
+% Plot the average timecourse in the ROI
+% figure; plot(roi_rCBV_TA)
+figure; plot(smoothdata(roi_rCBV_TA, 'movmean', 3))
 %% Plot each trial's activation maps
 for trial = 1:length(trial_sf)
-    figure; imagesc(r_CBVi_relative_change_smoothed(:, :, trial)); clim([-1, 1]); colormap jet
+%     figure; imagesc(r_CBVi_relative_change_smoothed(:, :, trial)); clim([-1, 1]); colormap jet
 
-%     figure; imagesc(activationMaps_CBVi(:, :, trial)); clim([-1, 1]); colormap jet
+    figure; imagesc(activationMaps_CBVi(:, :, trial)); clim([-1, 1]); colormap jet
 end
 
 %% Trial averaging... Should probably do this before correlating
-r_CBVi_relative_change_trialavg = mean(r_CBVi_relative_change_smoothed, 3);
-z_CBVi_relative_change_trialavg = mean(z_CBVi_relative_change_smoothed, 3);
+r_CBVi_relative_change_trialavg_after_correlating = mean(r_CBVi_relative_change_smoothed, 3);
+z_CBVi_relative_change_trialavg_after_correlating = mean(z_CBVi_relative_change_smoothed, 3);
 
 r_CBFsi_relative_change_trialavg = mean(r_CBFsi_relative_change_smoothed, 3);
 z_CBFsi_relative_change_trialavg = mean(z_CBFsi_relative_change_smoothed, 3);
@@ -759,18 +804,6 @@ trialAvg_CBVi_thicc = convn(trialAvg_CBVi, kernel, 'same');
 
 [test_r_CBVi_relative_change, test_z_CBVi_relative_change] = corrCoef3D(trialAvg_CBVi, test_stim_pattern);
 [test_r_CBVi_relative_change, test_z_CBVi_relative_change] = corrCoef3D(trialAvg_CBVi_thicc, test_stim_pattern);
-%% Plot activation at each slice
-for slice = 1:10
-    my_inds = (slice-1)*5:slice*5;
-    my_inds = my_inds+1;
-    figure; imagesc(squeeze(mean(test(my_inds, :, :), 1))')
-    title(num2str(mean(my_inds)))
-end
-
-kernel = ones(3, 3, 3);
-kernel(2, 2, 2) = 3;%sum(kernel, 'all');
-
-test_r_CBVi_relative_change_conv = convn(test_r_CBVi_relative_change, kernel, 'same');
 
 %% Plot the CBVi trial average at some point
 % Increasing y is going towards the back of the brain
@@ -800,5 +833,22 @@ function [g1A_mask] = createg1mask(g1, g1_tau1_cutoff, tau1_index_CBF, tau2_inde
     for i = 1:length(g1A_T)
         g1A_mask = and(g1A_mask, g1A_T{i});
     end
+
+end
+
+% Spatial eigen decomposition
+function [U_sort] = spatialEDC(PP)
+
+    M = PP*PP'; % square "kinda covariance matrix" for the Casorati data matrix
+
+    [U, D_U] = eig(M); % get the angular eigenvectors that are also the left singular vectors Ui of PP
+    % U: eigenvectors
+    % D_U: (unsorted) eigenvalues
+
+    [D_U_Sort, ind_D_U_Sort]= sort(diag(D_U), 'descend'); % get the eigenvalues in descending order
+
+    U_sort = U(:, ind_D_U_Sort); % rearrange V to be with the descending eigenvalues
+
+%     EVs = D_U_Sort;
 
 end
