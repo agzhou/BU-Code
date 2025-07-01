@@ -65,9 +65,9 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 
 %% Main loop
 for filenum = startFile:endFile
-% for filenum = 3:endFile
+% for filenum = 2:endFile
 % for filenum = [285:-1:189]
-% for filenum = 1
+% for filenum = 2
     tic
     load([IQpath, IQfilenameStructure, num2str(filenum)])
     
@@ -87,12 +87,12 @@ for filenum = startFile:endFile
     % clearvars IQ
 
     % Use the IQf with separated negative and positive frequency components
-    [IQf_separated, IQf_FT_separated] = separatePosNegFreqs(IQf);
-    
-    numg1pts = 20; % Only calculate the first N points
-    g1_n = g1T(IQf_separated{1}, numg1pts);
-%     [CBFsi_n, CBVi_n] = g1_to_CBi(g1_n, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
-    g1_p = g1T(IQf_separated{2}, numg1pts);
+%     [IQf_separated, IQf_FT_separated] = separatePosNegFreqs(IQf);
+%     
+%     numg1pts = 20; % Only calculate the first N points
+%     g1_n = g1T(IQf_separated{1}, numg1pts);
+% %     [CBFsi_n, CBVi_n] = g1_to_CBi(g1_n, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+%     g1_p = g1T(IQf_separated{2}, numg1pts);
 %     [CBFsi_p, CBVi_p] = g1_to_CBi(g1_p, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 % 
     g1 = g1T(IQf, numg1pts);
@@ -100,18 +100,19 @@ for filenum = startFile:endFile
 %     [CBFsi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 % 
 % %     savefast([savepath, 'fUSdata-', num2str(filenum), '.mat'], g1, CBFi, CBVi);
+% 
+%     [PDI] = calcPowerDoppler(IQf_separated);
+%     [CDI] = calcColorDoppler(IQf_FT_separated, P);
 
-    [PDI] = calcPowerDoppler(IQf_separated);
-    [CDI] = calcColorDoppler(IQf_FT_separated, P);
-
-    PDI_test = sum(abs(IQf) .^ 2, 3);
-    figure; imagesc(squeeze(PDI_test .^ 0.5)); colormap hot
+    PDI = sum(abs(IQf) .^ 2, 3);
+%     figure; imagesc(squeeze(PDI_test .^ 0.5)); colormap hot
 
 %     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
 %     disp("PDI and CDI for file " + num2str(filenum) + " saved" )
 %     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFsi', 'CBVi', 'PDI', 'CDI', '-v7.3', '-nocompression');
 %     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFsi', 'CBVi', 'PDI', 'CDI', 'g1_n', 'g1_p', 'CBFsi_n', 'CBVi_n', 'CBFsi_p', 'CBVi_p',  '-v7.3', '-nocompression');
-    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'g1_n', 'g1_p', 'PDI', 'CDI', '-v7.3', '-nocompression');
+%     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'g1_n', 'g1_p', 'PDI', 'CDI', '-v7.3', '-nocompression');
+    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'PDI', '-v7.3', '-nocompression');
 %     save([savepath, 'g1-', num2str(filenum), '.mat'], 'g1', 'g1_n', 'g1_p', '-v7.3', '-nocompression');
 %     save([savepath, 'g1-', num2str(filenum), '.mat'], 'g1', '-v7.3', '-nocompression');
 
@@ -188,13 +189,6 @@ for filenum = startFile:endFile
     toc
     
 end
-%% Testing
-testIQf = applySVs2D(IQ, PP, EVs, V_sort, 35, sv_threshold_upper);
-figure; imagesc(squeeze(max(abs(testIQf(30:50, :, :, 1)), [], 1) .^ 0.5)'); colormap hot
-% volumeViewer(abs(testIQf(:, :, :, 1)))
-testPDI = mean(abs(IQf) .^ 2, 4);
-figure; imagesc(squeeze(max(testPDI(30:50, :, :, 1), [], 1) .^ 0.5)'); colormap hot
-figure; imagesc(squeeze(max(testPDI(:, :, :, 1), [], 3) .^ 0.5)'); colormap hot
 
 %% Convert g1 into CBV, CBFspeed, etc.
 
