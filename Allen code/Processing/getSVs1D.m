@@ -19,7 +19,7 @@ function [PP, EVs, V_sort] = getSVs1D(IQ_coherent_sum)
 %     end
     PP = reshape(IQ_coherent_sum, [zp*xp, nf]); % Change 06/25/2025
 
-    CM_V = PP'*PP; % covariance matrix for V
+    CM_V = PP'*PP; % covariance matrix for the Casorati data matrix
 
     [V, D_V] = eig(CM_V); % get the angular eigenvectors that are also the right singular vector Vi of P
     % V: eigenvectors

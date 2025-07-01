@@ -66,22 +66,62 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 % tau2_index_CBF = 6;
 % tau1_index_CBV = 2;
 
+%% Use parallel processing for speed
+% https://www.mathworks.com/matlabcentral/answers/91744-how-can-i-check-if-matlabpool-is-running-when-using-parallel-computing-toolbox
+
+pp = gcp('nocreate');
+if isempty(pp)
+    % There is no parallel pool
+    parpool LocalProfile1
+
+end
+
 %% Main loop
 % for filenum = startFile:endFile
-for filenum = 2:endFile
+% for filenum = 2:endFile
 % for filenum = [285:-1:189]
-% for filenum = 1
+for filenum = 1
     tic
     load([IQpath, IQfilenameStructure, num2str(filenum)], 'IQ')
     
     % SVD decluttering
-%     [xp, yp, zp, nf] = size(IQ);
-    
     [PP, EVs, V_sort] = getSVs1D(IQ);
     disp('SVs decomposed')
     [IQf] = applySVs1D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
     disp('SVD filtered images put together')
 
+    % Determine the optimal SV thresholds with the spatial similarity matrix
+    [zp, xp, nf] = size(IQ);
+    PP = reshape(IQ, [zp*xp, nf]);
+    [U, S, V] = svd(PP); % Already sorted in decreasing order
+    
+    SSM = zeros(nf, nf); % Initialize the spatial similarity matrix
+
+    SSM_const = 1/(zp * xp); % constant in front of the summation term
+%%
+    tic
+%     for n = 1:nf
+    for n = 1:10
+        abs_u_n = abs(U(:, n)); % The nth column vector from U
+        mean_abs_u_n = sum(abs_u_n) / length(abs_u_n);
+        stddev_abs_u_n = std(abs_u_n);
+        for m = 1:nf
+            abs_u_m = abs(U(:, m)); % The mth column vector from U
+            mean_abs_u_m = sum(abs_u_m) / length(abs_u_m);
+            SSM(n, m) = sum( ((abs_u_n - mean_abs_u_n) .* (abs_u_m - mean_abs_u_m)) ...
+                        ./ stddev_abs_u_n ...
+                        ./ std(abs_u_m) );
+        end
+    end
+    SSM = SSM .* SSM_const;
+    toc
+%%
+    % Test to look at the individual "weighted images"
+%     k_test = 40; % Which column vector to use
+%     test = reshape(U(:, k_test) * V(:, k_test)', [zp, xp, nf]);
+%     figure; imagesc(abs(mean(test, 3)))
+
+    
 %     figure; imagesc(squeeze(abs(IQf(:, :, 1))) .^ 0.5)
 
     clearvars IQ
