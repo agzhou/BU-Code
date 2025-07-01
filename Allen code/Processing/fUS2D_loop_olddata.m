@@ -515,7 +515,8 @@ stim_pattern.duration_recovery = 25; % Recovery period of 25 s
 stim_pattern.duration_rest = 5; % included in duration_recovery
 stim_pattern.trial_duration = stim_pattern.duration_stim + stim_pattern.duration_recovery;
 stim_pattern.stim = zeros(stim_pattern.trial_duration, 1); % define the stim pattern timecourse for one trial
-stim_pattern.stim(1:stim_pattern.duration_stim) = 1;
+% stim_pattern.stim(1:stim_pattern.duration_stim) = 1;
+stim_pattern.stim(stim_pattern.duration_rest + 1: stim_pattern.duration_rest + stim_pattern.duration_stim + 1) = 1;
 
 CBVi_baseline = CBViallSF(:, :, 1:stim_pattern.duration_baseline_onetime); % Get the CBVi from the baseline period
 CBVi_baseline_average = mean(CBVi_baseline, 3); % Average over the time/frame dimension
@@ -606,9 +607,9 @@ end
 
 %% Plot each trial's activation maps
 for trial = 1:length(trial_sf)
-%     figure; imagesc(r_CBVi_relative_change_smoothed(:, :, trial)); clim([-1, 1]); colormap jet
+    figure; imagesc(r_CBVi_relative_change_smoothed(:, :, trial)); clim([-1, 1]); colormap jet
 
-    figure; imagesc(activationMaps_CBVi(:, :, trial)); clim([-1, 1]); colormap jet
+%     figure; imagesc(activationMaps_CBVi(:, :, trial)); clim([-1, 1]); colormap jet
 end
 
 %% Trial averaging... Should probably do this before correlating
