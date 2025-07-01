@@ -487,6 +487,7 @@ for filenum = startFile + 1:endFile
     CBFsiallSF(:, :, filenum) = CBFsi;
 end
 
+% generateTiffStack_acrossframes(CBViallSF .^ 0.5, [8.8, 8.8, 8], 'hot')
 %% Store all the PDI across the experiment into one matrix
 % load([savepath, 'PDI_CDI-', num2str(1), '.mat'], 'PDI', 'CDI')
 load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI', 'CDI')
