@@ -1,12 +1,12 @@
 
 %% Description
-% Continuous acquisition and saving of RF data with the RC15gV probe
+% Actual continuous acquisition and saving of RF data with the RC15gV probe
 % Saves all defined # of frames in one file
 % C-R and R-C pairs of TX-RX
 % Uses saveRcvData external function for saving
 % Note: update the savepath variable as needed
 
-% Collects nbuf buffers of nf frames with some duty cycle for saving delays
+% Collects nbuf buffers of nf frames to keep the continuous data flow
 
 %% Specify system parameters
 clearvars
@@ -46,7 +46,16 @@ bufferIndex = 0;
 runVSX = 1;
 movePointsOrNot = 0;
 numChannels = 256; % enable channels
+pair = 2; % The R-C and C-R pair of acquisitions per angle
 
+% Look at the estimated saving time
+st_pa_200BW_est = 3e-4; % Estimated save time per angle, for 200% BW and 2-10 mm, from testing savefast on previous RF data [s]
+st_psf_200BW_est = st_pa_200BW_est * (na * pair) * numFramesPerSF; % Estimated save time per superframe
+
+if st_psf_200BW_est >= 0.8 * (numFramesPerSF/frameRate)
+    error('The estimated save time exceeds the acquisition time')
+    return
+end
 
 angleRange = [-maxAngle, maxAngle].*pi/180; % Angle range in radians
 
@@ -59,7 +68,7 @@ else
 end
 
 % numAngles = length(angles);
-pair = 2; % The R-C and C-R pair of acquisitions per angle
+
 
 % Resource is a structure, define system parameters
 Resource.Parameters.numTransmit = numChannels; % number of transmit channels

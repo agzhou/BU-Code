@@ -4,6 +4,12 @@ filename1 = 'sf';
 tic
 savefast([savepath, filename1], 'RcvData')
 toc
+%%
+filenameh = 'sf_half';
+RcvData_half = RcvData(:, :, 1:size(RcvData, 3)/2);
+tic
+savefast([savepath, filenameh], 'RcvData_half')
+toc
 %% This one is too slow
 filename2 = 'v7.3noc';
 tic
