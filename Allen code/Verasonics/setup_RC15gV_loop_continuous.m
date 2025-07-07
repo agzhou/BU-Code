@@ -23,8 +23,8 @@ activate
 savepath = uigetdir('F:\', 'Select the save path');
 savepath = [savepath, '\'];
 
-parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe'}; % 'Save RF data (0-no, 1-yes)', 
-parameterDefaults = {'20', '2', '10', '60000', '500', '11', '5', '13.6', '1540', '0', '1', '180'};
+parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Number of buffers'}; % 'Save RF data (0-no, 1-yes)', 
+parameterDefaults = {'20', '2', '10', '30000', '100', '11', '5', '13.6', '1540', '0', '1', '100', '2'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % Store the user inputs for parameters into the corresponding variables
@@ -40,15 +40,13 @@ speedOfSound = str2double(parameterUserInput{9});
 simMode = str2double(parameterUserInput{10});
 saveRcvDataFlag = str2double(parameterUserInput{11});
 numFramesPerSF = str2double(parameterUserInput{12});
+numBuffers = str2double(parameterUserInput{13}); % Default of 3 buffers. The basic idea is to have two buffers so we can do continuous acquisition/saving, but adding a 3rd buffer to give us some *buffer room*
 
 bufferIndex = 0;
 runVSX = 1;
 movePointsOrNot = 0;
 numChannels = 256; % enable channels
 
-numBuffers = 1;
-bufferDutyCycle = 1/3;
-% disp(num2str(numFramesPerBuffer / frameRate / bufferDutyCycle))
 
 angleRange = [-maxAngle, maxAngle].*pi/180; % Angle range in radians
 
@@ -97,9 +95,6 @@ TimeTagEna = 2;
 %% Simulation things - Media structure (define scattering points and attenuation)
 Resource.Parameters.simulateMode = simMode; % run script in simulate mode. Set to 0 if not
 
-% xd_mm = 5; % in mm
-% xd = xd_mm/wl/1e3;
-
 % Set up Media model for the simulation, which generates the scattering points with 3D location
 % and reflectivity. For 1D transducer arrays, they are aligned on the
 % x-axis with the center at x = 0, and scan depth is in z.
@@ -108,12 +103,9 @@ Media.MP(1, :) = [0, 0, 50, 1.0]; % [x, y, z, reflectivity]. x, y, z are defined
 % Media.MP(3, :) = [20, -20, 100, 1.0]; % [x, y, z, reflectivity]. x, y, z are defined as # of wavelengths.
 % Media.MP(1, :) = [30, 30, 70, 1.0]; % [x, y, z, reflectivity]. x, y, z are defined as # of wavelengths.
 
-% new %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % vesselX = 30e-6;    % x dimension
 % vesselY = 30e-6;    % x dimension
 % vesselZ = endDepthMM * 1e-3; % z dimension
-% flow_v_mm_s = 300;
-%  
 % Media.MP = randomPts3D_func(vesselX, vesselY, vesselZ, wl);
 
 % Media.attenuation = 0;
@@ -354,6 +346,12 @@ end
 
 maxAcqLength_adjusted = numRcvSamples / samplesPerWave / 2;
 
+% Check if the PRF is too high
+if ((maxAcqLength_adjusted + (endDepth))*wl / speedOfSound) > 1/PRF
+    error('Error: the PRF is too high, it will send the next transmission before the previous transmission reflects from the deepest part of the region')
+end
+
+% Set up the RcvBuffer fields
 for nbuf = 1:numBuffers
     Resource.RcvBuffer(nbuf).rowsPerFrame = numRcvSamples * na * 2;
     Resource.RcvBuffer(nbuf).colsPerFrame = Resource.Parameters.numRcvChannels; % Usually 1:1 to # of receive channels available in the system. Can change to 256 with the 2D probe and new connector plate.
@@ -382,10 +380,6 @@ numGBPerBufferFrame = numSamplesPerBufferFrame ./ 1024^3 * 2 % # samples * (2 by
 if numGBPerBufferFrame > 2
     warning('Buffer size per frame is too large, exiting')
     return
-end
-
-if ((maxAcqLength_adjusted + (endDepth))*wl / speedOfSound) > 1/PRF
-    error('Error: the PRF is too high, it will send the next transmission before the previous transmission reflects from the deepest part of the region')
 end
 
 %% Reconstruction
@@ -480,11 +474,12 @@ SeqControl(scInd).command = 'timeToNextAcq'; % In us, allowed range is from 10 -
                                          % the TPC (voltage) across acqs,
                                          % since it takes 800 us - 8 ms to
                                          % switch
-SeqControl(scInd).condition = 'ignore';  % don't print the warning message
+% SeqControl(scInd).condition = 'ignore';  % don't print the warning message
 
+
+% 1. Set up the time per plane wave
 timePerAcq = 1 / PRF * 1e6; % PRF in us
-
-timePerAcqLimits = [10, 4190000];
+timePerAcqLimits = [10, 4190000]; % The Vantage 256's limits in what the timeToNextAcq can be
 if timePerAcq < timePerAcqLimits(1)
     warning('Acquisition time too short, setting to minimum of 10 us')
     SeqControl(scInd).argument = timePerAcqLimits(1); 
@@ -495,20 +490,22 @@ else
     SeqControl(scInd).argument = timePerAcq;
 end
 
+% 2. Set up the return to Matlab command
 scInd = scInd + 1;
 SeqControl(scInd).command = 'returnToMatlab';
 
+% 3. Set up the jump command so we can repeat the sequence
 scInd = scInd + 1;
 SeqControl(scInd).command = 'jump'; % jump to
 SeqControl(scInd).argument = 1;     % first event
 
-% frame/volume rate
+% 4. Define the frame/volume rate
 timePerFrame = SeqControl(scInd - 2).argument * na * 2;     % Time to acquire all the acquisitions for one frame/volume based on PRF (us)
 frameTimeGap = 1 / frameRate * 1e6 - timePerFrame + SeqControl(scInd-2).argument;      % Add delays to account for the frame/volume rate set above. % Add delays to account for the frame/volume rate set above. Add the PRF time because this value replaces one of those delays too.
 
-timePerTransferSeconds = numGBPerBufferFrame / 6.6; % PCie speed is 6.6 GB/s
-frameTimeGapDMALimit = timePerTransferSeconds * 1e6; % [us]
-frameRateDMALimit = 1/(frameTimeGapDMALimit * 1e-6);
+timePerTransferSeconds = numGBPerBufferFrame / 6.6;  % Maximum PCIe speed for the Vantage 256 is 6.6 GB/s
+frameTimeGapDMALimit = timePerTransferSeconds * 1e6; % Minimum DMA time given the estimated frame size [us]
+frameRateDMALimit = 1/(frameTimeGapDMALimit * 1e-6); % Maximum frame rate allowed by the DMA rate [Hz]
 
 % Check if the inputted frame rate is faster than what the DMA time allows
 if frameRateDMALimit < frameRate
@@ -516,6 +513,7 @@ if frameRateDMALimit < frameRate
     return
 end
 
+% If the inputted frame rate is fine, then set up the timeToNextAcq delays
 scInd = scInd + 1;
 SeqControl(scInd).command = 'timeToNextAcq';
 
@@ -529,38 +527,45 @@ else
     SeqControl(scInd).argument = frameTimeGap;
 end
 
-% frame/volume rate noop
+% 5. Set up a frame/volume rate noop
 scInd = scInd + 1;
 SeqControl(scInd).command = 'noop';                     % no operation
 frame_noop_time_us = SeqControl(scInd - 1).argument;
 SeqControl(scInd).argument = frame_noop_time_us / 200 * 1e3;  % (value*200nsec; max. value is 2^25 - 1 for 6.7 sec)
 SeqControl(scInd).condition = 'Hw&Sw';                  % need to enable the noop in hardware
 
-% buffer rate
+% 6. buffer rate
 
 % need to change this to be consistent with the if blocks above
-timePerBuffer = 1 / frameRate * numFramesPerBuffer * 1e6;                 % Time to acquire all the frames within one buffer (us)
-bufferTimeGap = timePerBuffer / bufferDutyCycle - timePerBuffer;          % Add delay to account for the buffer rate duty cycle set above
+% timePerBuffer = 1 / frameRate * numFramesPerSF * 1e6;                 % Time to acquire all the frames within one buffer (us)
+% bufferTimeGap = timePerBuffer / bufferDutyCycle - timePerBuffer;          % Add delay to account for the buffer rate duty cycle set above
 
 scInd = scInd + 1;
 SeqControl(scInd).command = 'timeToNextAcq';
 
-if bufferTimeGap < timePerAcqLimits(1)
-    warning('Buffer delay time too short, setting to minimum of 10 us')
-    SeqControl(scInd).argument = timePerAcqLimits(1); 
-elseif bufferTimeGap > timePerAcqLimits(2)
-    warning('Buffer delay time too long, setting to maximum of 4190000 us')
-    SeqControl(scInd).argument = timePerAcqLimits(2);
-else
-    SeqControl(scInd).argument = bufferTimeGap;
-end
+% if bufferTimeGap < timePerAcqLimits(1)
+%     warning('Buffer delay time too short, setting to minimum of 10 us')
+%     SeqControl(scInd).argument = timePerAcqLimits(1); 
+% elseif bufferTimeGap > timePerAcqLimits(2)
+%     warning('Buffer delay time too long, setting to maximum of 4190000 us')
+%     SeqControl(scInd).argument = timePerAcqLimits(2);
+% else
+%     SeqControl(scInd).argument = bufferTimeGap;
+% end
 
-% buffer rate noop
+% 7. buffer rate noop
 scInd = scInd + 1;
 SeqControl(scInd).command = 'noop'; % jump to
 buffer_noop_time_us = SeqControl(scInd - 1).argument;
 SeqControl(scInd).argument = buffer_noop_time_us / 200 * 1e3; % (value*200nsec; max. value is 2^25 - 1 for 6.7 sec)
 SeqControl(scInd).condition = 'Hw&Sw'; % need to enable the noop in hardware
+
+% 8. Sync for aligning the hardware to when the data is done saving
+scInd = scInd + 1;
+SeqControl(scInd).command = 'sync';
+SeqControl(scInd).argument = 30000000; % 30 s
+% SeqControl(scInd).argument = 1000000 * vts.delay_s*5; % Timeout set to 5x the input delay just in case
+
 
 n = 0;
 for nbuf = 1:numBuffers
@@ -568,17 +573,17 @@ for nbuf = 1:numBuffers
     
         for a = 1:na % go through all the angles for each frame
             n = n + 1;
-            Event(n).info = 'Transmit all columns and receive all rows';
+            Event(n).info = 'Transmit on columns and receive on rows';
             Event(n).tx = a.*2 - 1; % Use ath TX structure
-            Event(n).rcv = (nbuf - 1) .* numFramesPerBuffer .* pair .* na + (nf - 1).*pair.*na + a.*2 - 1; % Use nth Receive structure % need to make this alternate between (1 and 2) * numframes or something
+            Event(n).rcv = (nbuf - 1) .* numFramesPerSF .* pair .* na + (nf - 1).*pair.*na + a.*2 - 1; % Use nth Receive structure % need to make this alternate between (1 and 2) * numframes or something
             Event(n).recon = 0; % 0 means no reconstruction
             Event(n).process = 0; % 0 means no processing
             Event(n).seqControl = 1;
             
             n = n + 1;
-            Event(n).info = 'Transmit all rows and receive all columns';
+            Event(n).info = 'Transmit on rows and receive on columns';
             Event(n).tx = a.*2; 
-            Event(n).rcv = (nbuf - 1) .* numFramesPerBuffer .* pair .* na + (nf - 1).*pair.*na + a.*2; 
+            Event(n).rcv = (nbuf - 1) .* numFramesPerSF .* pair .* na + (nf - 1).*pair.*na + a.*2; 
             Event(n).recon = 0; 
             Event(n).process = 0; 
             Event(n).seqControl = 1;  
@@ -589,12 +594,19 @@ for nbuf = 1:numBuffers
 %         Event(n).seqControl = [4, 5, scInd];
 %         Event(n).seqControl = [4, scInd];
             
-        scInd = scInd + 1;
-        SeqControl(scInd).command = 'waitForTransferComplete';
-        SeqControl(scInd).argument = scInd - 1;
-        Event(n).seqControl = [4, scInd - 1, scInd];
+%         % Original location
+%         scInd = scInd + 1;
+%         SeqControl(scInd).command = 'waitForTransferComplete'; % Pause the software sequencer (so we don't save the buffer at the end before it's done transferring)
+%         SeqControl(scInd).argument = scInd - 1;
+%         Event(n).seqControl = [4, scInd - 1, scInd];
 
     end
+
+    % New location
+    scInd = scInd + 1;
+    SeqControl(scInd).command = 'waitForTransferComplete'; % Pause the software sequencer (so we don't save the buffer at the end before it's done transferring)
+    SeqControl(scInd).argument = scInd - 1;
+%     Event(n).seqControl = [4, scInd - 1, scInd];
 
     % Don't worry about timeToNextAcq while saving the superframe
     Event(n).seqControl = [scInd - 1, scInd];
@@ -608,7 +620,8 @@ for nbuf = 1:numBuffers
         Event(n).rcv = 0; 
         Event(n).recon = 0;
         Event(n).process = nbuf + nprevproc; 
-        Event(n).seqControl = 7;
+%         Event(n).seqControl = 8;
+        Event(n).seqControl = 0; % We don't want to sync the HW + SW for continuous acq
     end
 
 end
@@ -644,9 +657,41 @@ Event(n).seqControl = 3;
 
 %% Save all the data/structures to a .mat file.
 currentDir = cd; currentDir = regexp(currentDir, filesep, 'split');
-filename = 'RC15gV_Allen_loop_ULM.mat';
+filename = 'RC15gV_Allen_loop_fixed.mat';
 
 save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+filename);
+
+%% Initialize time tagging if enabled
+import com.verasonics.hal.hardware.*
+switch TimeTagEna
+    case 0
+        % disable time tag
+        rc = Hardware.enableAcquisitionTimeTagging(false);
+        if ~rc
+            error('Error from enableAcqTimeTagging')
+        end
+        tagstr = 'off';
+    case 1
+        % enable time tag
+        rc = Hardware.enableAcquisitionTimeTagging(true);
+        if ~rc
+            error('Error from enableAcqTimeTagging')
+        end
+        tagstr = 'on';
+        disp('**** Time tagging enabled on mode 1 ****')
+    case 2
+        % enable time tag and reset counter
+        rc = Hardware.enableAcquisitionTimeTagging(true);
+        if ~rc
+            error('Error from enableAcqTimeTagging')
+        end
+        rc = Hardware.setTimeTaggingAttributes(false, true); % reset hardware counter to 0 (otherwise, it continuously counts up from system bootup until it gets to 107,000s - see p37 of User Manual
+        if ~rc
+            error('Error from setTimeTaggingAttributes')
+        end
+        tagstr = 'on, reset';
+        disp('**** Time tagging enabled on mode 2 ****')
+end
 
 %% Run VSX automatically and make parameter structure for RF file naming
 
@@ -663,7 +708,8 @@ end
 makeParameterStructure_ULM;
 savefast([savepath, 'params.mat'], 'P')
 % saveRcvData(RcvData{1})
-savefast([savepath, 'workspace.mat'])
+clearvars RcvData
+save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
 
 
 %% **** Callback routines used by UIControls (UI) ****

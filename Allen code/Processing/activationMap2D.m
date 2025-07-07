@@ -58,7 +58,8 @@ function [r, z, activationMap] = activationMap2D(planarData, stim, zt)
 
     activationMap_nonconv = r_mf .* z_mf_mask_thresholded;
 
-    % Convolve the activation map
+    % Convolve the activation map for smoothing.
+    % These parameters are what Bingxue and Jianbo previously used
     conv_kernel = ones(7, 7);
     conv_kernel(4, 4) = 49;
     conv_kernel = conv_kernel ./ 49;

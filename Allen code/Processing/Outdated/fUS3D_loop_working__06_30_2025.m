@@ -62,56 +62,6 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 % tau2_index_CBF = 6;
 % tau1_index_CBV = 2;
 
-%% Main loop with the Adaptive SVD Thresholding
-% for filenum = startFile:endFile
-for filenum = 2:endFile
-% for filenum = [285:-1:189]
-% for filenum = 1
-    tic
-    load([IQpath, IQfilenameStructure, num2str(filenum)])
-    IQ = single(squeeze(IData + 1i .* QData));
-    clearvars IData QData
-    
-    % Determine the optimal SV thresholds with the spatial similarity matrix
-    [xp, yp, zp, nf] = size(IQ);
-    PP = reshape(IQ, [xp*yp*zp, nf]);
-    tic
-%     [U, S, V] = svd(PP); % Already sorted in decreasing order
-    [U, S, V] = svd(PP, 'econ'); % Already sorted in decreasing order
-    disp('Full SVD done')
-    toc
-
-    %%
-    SSM = zeros(nf, nf); % Initialize the spatial similarity matrix
-
-    SSM_const = 1/(xp * yp * zp); % constant in front of the summation term
-%
-    tic
-    for n = 1:nf
-%     for n = 1:10
-        abs_u_n = abs(U(:, n)); % The nth column vector from U
-        mean_abs_u_n = sum(abs_u_n) / length(abs_u_n);
-        stddev_abs_u_n = std(abs_u_n);
-%         for m = 1:nf
-        for m = 1:n % leverage the symmetry of the SSM
-            abs_u_m = abs(U(:, m)); % The mth column vector from U
-            mean_abs_u_m = sum(abs_u_m) / length(abs_u_m);
-            SSM(n, m) = sum( ((abs_u_n - mean_abs_u_n) .* (abs_u_m - mean_abs_u_m)) ...
-                        ./ stddev_abs_u_n ...
-                        ./ std(abs_u_m) );
-        end
-    end
-    SSM = SSM .* SSM_const; % Normalize
-    SSM = SSM + SSM'; % Apply the symmetry to fill out the "missing" values
-    toc
-    figure; imagesc(SSM); axis square
-
-
-    % Test to look at the individual "weighted images"
-    k_test = 40; % Which column vector to use
-    test = reshape(U(:, k_test) * V(:, k_test)', [xp, yp, zp, nf]);
-%     figure; imagesc(abs(mean(test, 4)))
-end
 %% Main loop
 for filenum = startFile:endFile
 % for filenum = [3:endFile]

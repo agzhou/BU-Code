@@ -17,3 +17,7 @@ Psmall.frameRate = frameRate;
 if exist('bufferDutyCycle', 'var')
     Psmall.bufferDutyCycle = bufferDutyCycle;
 end
+
+if exist('numBuffers', 'var')
+    Psmall.numBuffers = numBuffers;
+end

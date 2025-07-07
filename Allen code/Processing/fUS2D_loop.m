@@ -38,7 +38,7 @@ load(timingFilePath)
 %% Define some parameters (add this to a prompt later)
 
 parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Tau 1 index for CBFspeed', 'Tau 2 index for CBFspeed', 'Tau 1 index for CBV'};
-parameterDefaults = {'1', '', '20', '1000', '2', '6', '2'};
+parameterDefaults = {'1', '', '20', '500', '2', '6', '2'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % define # of files manually for now
@@ -89,7 +89,7 @@ for filenum = startFile:endFile
     % Use the IQf with separated negative and positive frequency components
 %     [IQf_separated, IQf_FT_separated] = separatePosNegFreqs(IQf);
 %     
-%     numg1pts = 20; % Only calculate the first N points
+    numg1pts = 20; % Only calculate the first N points
 %     g1_n = g1T(IQf_separated{1}, numg1pts);
 % %     [CBFsi_n, CBVi_n] = g1_to_CBi(g1_n, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 %     g1_p = g1T(IQf_separated{2}, numg1pts);

@@ -3,19 +3,25 @@
 %   - Look at the stroke core quantitatively
 
 
-
+%% BDM test
+BDM = thresholdMaps(SMs_AZ02_day7.SM_SmoothedKF_counter, SMs_AZ02_day7.SM_SmoothedKF_counter, 1, 60);
+figure; imagesc(squeeze(max(BDM(300:500, :, :), [], 1))'); colormap hot
 %% Manually define the input data for now
 % function [] = inspectULM(ULMData)
 % ULMData = SMs_reg{4};
 % ULMData = SMs_AZ04_day3.SM_SmoothedKF_LI_Rfn;
+ULMData = SMs_AZ04_day3.SM_SmoothedKF_LI;
 % ULMData = SMs_AZ02_day7.SM_SmoothedKF_LI_Rfn;
-ULMData = SMs_AZ02_day7.SM_SmoothedKF_LI;
+% ULMData = SMs_AZ02_day7.SM_SmoothedKF_LI;
+% ULMData = thresholdMaps(SMs_AZ02_day7.SM_SmoothedKF_LI, SMs_AZ02_day7.SM_SmoothedKF_counter, 1, 300);
+%%
 lowspeed_lim = 5; % [mm/s]
+% lowspeed_lim = 10; % [mm/s]
 ULMData_lowspeed = ULMData;
 ULMData_lowspeed(ULMData_lowspeed > lowspeed_lim) = 0;
 
 vcmap = colormap_ULM;
-figure; imagesc(squeeze(max(ULMData(300:500, :, :), [], 1))'); colormap(vcmap); clim([0, 40])
+% figure; imagesc(squeeze(max(ULMData(300:500, :, :), [], 1))'); colormap(vcmap); clim([0, 40])
 % figure; imagesc(squeeze(max(ULMData(:, :, :), [], 3))'); colormap(vcmap); clim([0, 40])
 figure; imagesc(squeeze(max(ULMData_lowspeed(300:500, :, :), [], 1))'); colormap(vcmap); clim([0, lowspeed_lim])
 
@@ -26,46 +32,77 @@ yr = 430:520;
 xr = 500:700;
 % figure; imagesc(squeeze(max(ULMData(yr, xr, :), [], 1))'); colormap(vcmap); clim([0, 40])
 zr = 200:450;
-figure; imagesc(squeeze(max(ULMData(yr, xr, zr), [], 1))'); colormap(vcmap); clim([0, 40])
+% figure; imagesc(squeeze(max(ULMData(yr, xr, zr), [], 1))'); colormap(vcmap); clim([0, 40])
 
 % AZ02 day 7 non-registered
-yr = 330:380;
-xr = 720:800;  figure; imagesc(squeeze(max(ULMData(yr, xr, :), [], 1))'); colormap(vcmap); clim([0, 40])
-zr = 420:550;
-figure; imagesc(squeeze(max(ULMData(yr, xr, zr), [], 1))'); colormap(vcmap); clim([0, 40])
+% yr = 330:380;
+% xr = 720:800;  figure; imagesc(squeeze(max(ULMData(yr, xr, :), [], 1))'); colormap(vcmap); clim([0, 40])
+% zr = 420:550;
 
 ROI_stroke = ULMData(yr, xr, zr);
+figure; imagesc(squeeze(max(ROI_stroke, [], 1))'); colormap(vcmap); clim([0, 40])
 ROI_stroke_lowspeed = ULMData_lowspeed(yr, xr, zr);
-%%
+%% Stroke ROI histograms
 
 % ROI_stroke_lowflow_nz = ROI_stroke(:); % Get (vectorized) values with low nonzero flow 
 % ROI_stroke_lowflow_nz = ROI_stroke_lowflow_nz(ROI_stroke_lowflow_nz > 0 & ROI_stroke_lowflow_nz < lowspeed_lim);
 
-figure; histogram(ROI_stroke)
-figure; histogram(ROI_stroke_lowspeed)
+figure; histogram(ROI_stroke, 'Normalization', 'pdf'); title('Stroke ROI - all speeds'); xlabel('Flow speed [mm/s]'); ylabel('Probability density function')
+figure; histogram(ROI_stroke_lowspeed, 'Normalization', 'pdf'); title("Stroke ROI - speeds up to " + num2str(lowspeed_lim) + " mm/s"); xlabel('Flow speed [mm/s]'); ylabel('Probability density function')
 % figure; histogram(ROI_stroke_lowflow_nz)
 
+%% Stroke ROI histograms without 0 flow voxels
+figure; histogram(ROI_stroke(ROI_stroke > 0), 'Normalization', 'pdf'); title('Stroke ROI - all speeds'); xlabel('Flow speed [mm/s]'); ylabel('Probability density function')
+figure; histogram(ROI_stroke_lowspeed(ROI_stroke_lowspeed > 0), 'Normalization', 'pdf'); title("Stroke ROI - speeds up to " + num2str(lowspeed_lim) + " mm/s"); xlabel('Flow speed [mm/s]'); ylabel('Probability density function')
+
 %% Look at the region corresponding to the stroke core, but flipped across the midline
-% midline_x = 410; % AZ04 day 3
-midline_x = 490; % AZ02 day 7
+midline_x = 410; % AZ04 day 3
+% midline_x = 490; % AZ02 day 7
 ROI_flipped = ULMData(yr, xr - midline_x, zr);
 ROI_flipped_lowspeed = ULMData_lowspeed(yr, xr - midline_x, zr);
-% figure; imagesc(squeeze(max(ROI_flipped, [], 1))'); colormap(vcmap); clim([0, 40])
+figure; imagesc(squeeze(max(ROI_flipped, [], 1))'); colormap(vcmap); clim([0, 40])
 
-figure; histogram(ROI_flipped)
-figure; histogram(ROI_flipped_lowspeed)
-%%
+figure; histogram(ROI_flipped, 'Normalization', 'pdf'); title('Healthy ROI - all speeds'); xlabel('Flow speed [mm/s]'); ylabel('Probability density function')
+figure; histogram(ROI_flipped_lowspeed, 'Normalization', 'pdf'); title("Healthy ROI - speeds up to " + num2str(lowspeed_lim) + " mm/s"); xlabel('Flow speed [mm/s]'); ylabel('Probability density function')
+
+%% Healthy ROI histograms without 0 flow voxels
+figure; histogram(ROI_flipped(ROI_flipped > 0), 'Normalization', 'pdf'); title('Healthy ROI - all speeds'); xlabel('Flow speed [mm/s]'); ylabel('Probability density function')
+figure; histogram(ROI_flipped_lowspeed(ROI_flipped_lowspeed > 0), 'Normalization', 'pdf'); title("Healthy ROI - speeds up to " + num2str(lowspeed_lim) + " mm/s"); xlabel('Flow speed [mm/s]'); ylabel('Probability density function')
+
+%% Plot stroke vs. healthy ROI histograms on top of each other (0 flow excluded)
+% All speeds
+figure; histogram(ROI_stroke(ROI_stroke > 0), 'Normalization', 'pdf', 'FaceAlpha', 0.7); title('All speeds'); xlabel('Flow speed [mm/s]'); ylabel('Probability density function')
+hold on
+histogram(ROI_flipped(ROI_flipped > 0), 'Normalization', 'pdf', 'FaceAlpha', 0.7)
+legend('Stroke', 'Healthy')
+
+% Low speeds only
+figure; histogram(ROI_stroke_lowspeed(ROI_stroke_lowspeed > 0), 'Normalization', 'pdf', 'FaceAlpha', 0.7); title("Speeds up to " + num2str(lowspeed_lim) + " mm/s"); xlabel('Flow speed [mm/s]'); ylabel('Probability density function')
+hold on
+histogram(ROI_flipped_lowspeed(ROI_flipped_lowspeed > 0), 'Normalization', 'pdf', 'FaceAlpha', 0.7)
+legend('Stroke', 'Healthy')
 
 
+%% Compare persistence
+
+SM_pers_3 = SMs_AZ02_day7_pers_3.SM_SmoothedKF_LI_Rfn;
+SM_pers_5 = SMs_AZ02_day7_pers_5.SM_SmoothedKF_LI_Rfn;
+
+BDM_pers_3 = SMs_AZ02_day7_pers_3.SM_SmoothedKF_counter;
+BDM_pers_5 = SMs_AZ02_day7_pers_5.SM_SmoothedKF_counter;
+
+SM_test = SM_pers_3 - SM_pers_5;
 
 
+figure; imagesc(squeeze(max(SM_pers_3(300:500, :, :), [], 1))'); colormap(vcmap); clim([0, 40])
+figure; imagesc(squeeze(max(SM_test(300:500, :, :), [], 1))'); colormap(vcmap); clim([0, 40])
 
-
-
-
-
-
-
+%% Look at the bubble density map difference
+BDM_diff = BDM_pers_3 - BDM_pers_5;
+BDM_diff(BDM_diff < 0) = 0;
+BDM_diff_yr = 300:450; % y range for the MIP
+figure; imagesc(squeeze(max(BDM_pers_3(BDM_diff_yr, :, :), [], 1))' .^ 0.5); colormap hot; % clim([0, 40])
+figure; imagesc(squeeze(max(BDM_diff(BDM_diff_yr, :, :), [], 1))' .^ 0.5); colormap hot; % clim([0, 40])
 
 
 
@@ -249,3 +286,10 @@ filter_LP = fspecial3("laplacian", 0.0, 1);
 test_LP = imfilter(ULMData, filter_LP);
 
 figure; imagesc(squeeze(max(test_LP(300:500, :, :), [], 1))'); colormap(vcmap); clim([0, 40])
+
+%% Helper functions
+function [Tmap] = thresholdMaps(map, counter, lowerCutoff, upperCutoff) % threshold a bubble density map or speed map to remove low and high counts (noise and/or false positives)
+    Tmap = map;
+    Tmap(counter <= lowerCutoff) = 0;
+    Tmap(counter >= upperCutoff) = 0;
+end
