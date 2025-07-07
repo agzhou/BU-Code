@@ -5,12 +5,14 @@
 
 %% Load parameters
 
-FilePath = "G:\Allen\Data\04-01-2025 functional acq testing\";
+% FilePath = "G:\Allen\Data\04-01-2025 functional acq testing\";
+FilePath = "F:\Allen\Data\test\";
 % FilePath = "G:\Nikunj\test1\";
 
 RFPath = FilePath;
 % RFName = "RF-5-11-2000-500-1-1.mat";
-RFName = "RF-5-11-1000-180-1-1.mat";
+% RFName = "RF-5-11-1000-180-1-1.mat";
+RFName = "RF-5-11-100-100-1-1.mat";
 
 % RFName = "RF-5-11-500-500-1-1.mat";
 % RFName = "RF-5-11-100-100-1-1.mat";
@@ -50,7 +52,7 @@ title('TimeTags from zero')
 
 chk3 = diff(chk);
 figure; plot(chk3); title('difference')
-chk4 = find(chk3 > 0.1)
+% chk4 = find(chk3 > 0.1)
 
 %% Test
 getTimeStamp(double(RFData(1:2,1,12)))/4e4

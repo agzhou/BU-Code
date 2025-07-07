@@ -52,7 +52,8 @@ pair = 2; % The R-C and C-R pair of acquisitions per angle
 st_pa_200BW_est = 3e-4; % Estimated save time per angle, for 200% BW and 2-10 mm, from testing savefast on previous RF data [s]
 st_psf_200BW_est = st_pa_200BW_est * (na * pair) * numFramesPerSF; % Estimated save time per superframe
 
-if st_psf_200BW_est >= 0.8 * (numFramesPerSF/frameRate)
+safety_factor = 1.2;
+if st_psf_200BW_est * safety_factor >= (numFramesPerSF/frameRate)
     error('The estimated save time exceeds the acquisition time')
     return
 end
@@ -554,7 +555,7 @@ SeqControl(scInd).command = 'timeToNextAcq';
 
 % if bufferTimeGap < timePerAcqLimits(1)
 %     warning('Buffer delay time too short, setting to minimum of 10 us')
-%     SeqControl(scInd).argument = timePerAcqLimits(1); 
+    SeqControl(scInd).argument = timePerAcqLimits(1); % Dummy value for now
 % elseif bufferTimeGap > timePerAcqLimits(2)
 %     warning('Buffer delay time too long, setting to maximum of 4190000 us')
 %     SeqControl(scInd).argument = timePerAcqLimits(2);
@@ -601,7 +602,7 @@ for nbuf = 1:numBuffers
         scInd = scInd + 1; 
         SeqControl(scInd).command = 'transferToHost'; % Transfer every frame
 %         Event(n).seqControl = [4, 5, scInd];
-%         Event(n).seqControl = [4, scInd];
+        Event(n).seqControl = [4, scInd];
             
 %         % Original location
 %         scInd = scInd + 1;
@@ -666,7 +667,7 @@ Event(n).seqControl = 3;
 
 %% Save all the data/structures to a .mat file.
 currentDir = cd; currentDir = regexp(currentDir, filesep, 'split');
-filename = 'RC15gV_Allen_loop_fixed.mat';
+filename = 'RC15gV_Allen_loop_continuous.mat';
 
 save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+filename);
 
