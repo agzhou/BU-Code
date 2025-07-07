@@ -811,6 +811,9 @@ generateTiffStack_multi([{SM_SmoothedKF_LI_Rfn}], [8.8, 8.8, 8], cmap, 1, [0, 40
 % SMs_AZ02_day7.SM_SmoothedKFConstrained_LI = SM_SmoothedKFConstrained_LI;
 % SMs_AZ02_day7.SM_SmoothedKFConstrained_LI_Rfn = SM_SmoothedKFConstrained_LI_Rfn;
 % SMs_AZ02_day7.SM_SmoothedKFConstrained_counter = SM_SmoothedKFConstrained_LI_counter;
+SMs_AZ02_day7.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
+SMs_AZ02_day7.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
+SMs_AZ02_day7.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 
 % SMs_AZ03_baseline.SM_LI = SM_LI;
 % SMs_AZ03_baseline.SM_LI_counter = SM_LI_counter;
