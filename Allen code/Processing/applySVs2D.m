@@ -28,14 +28,15 @@ function [IQ_f] = applySVs2D(IQ_coherent_sum, PP, EVs, V_sort, sv_threshold_lowe
     
     P_f = PP * V_sort * I_f * V_sort'; % filtered beamformed/reconstructed data, x*y*z by # frames
     
-    IQ_f = zeros(xp, yp, zp, nf);
+    % IQ_f = zeros(xp, yp, zp, nf);
 
     % Unstack the spatial dimension for the final filtered beamformed/reconstructed volumetric data
-    for x = 1:xp
-        for y = 1:yp
-            IQ_f(x, y, :, :) = P_f( (x-1)*yp*zp + (y-1)*zp + 1 : (x-1)*yp*zp + y*zp, :);
-        end
-    end
+    % for x = 1:xp
+    %     for y = 1:yp
+    %         IQ_f(x, y, :, :) = P_f( (x-1)*yp*zp + (y-1)*zp + 1 : (x-1)*yp*zp + y*zp, :);
+    %     end
+    % end
     
+    IQ_f = reshape(P_f, [xp, yp, zp, nf]);
 end
 

@@ -9,7 +9,9 @@
 % 12/06/2024: uses an input of the coherent sum instead of IQ with the
 %             angle pages
 % 12/09/2024: removed abs from CM_V and added sqrt to D_V
-
+%
+% 07/08/2025: use the reshape function instead of a nested loop for the
+%             Casorati matrix
 %% Main function
 function [PP, EVs, V_sort] = getSVs2D(IQ_coherent_sum)
 
@@ -18,15 +20,16 @@ function [PP, EVs, V_sort] = getSVs2D(IQ_coherent_sum)
     [xp, yp, zp, nf] = size(IQ_coherent_sum);
 
     % Main data matrix PP to be manipulated
-    PP = zeros(xp*yp*zp, nf); % x*y*z pixels by na by nf matrix
+    % PP = zeros(xp*yp*zp, nf); % x*y*z pixels by na by nf matrix
 
     % Reshape into a space x time (frame) matrix
     % For each x value, stack all the (z) data for each y value
-    for x = 1:xp
-        for y = 1:yp
-            PP( (x-1)*yp*zp + (y-1)*zp + 1 : (x-1)*yp*zp + y*zp, :) = IQ_coherent_sum(x, y, :, :);
-        end
-    end
+    % for x = 1:xp
+    %     for y = 1:yp
+    %         PP( (x-1)*yp*zp + (y-1)*zp + 1 : (x-1)*yp*zp + y*zp, :) = IQ_coherent_sum(x, y, :, :);
+    %     end
+    % end
+    PP = reshape(IQ_coherent_sum, [xp*yp*zp, nf]);
 
     CM_V = PP'*PP; % covariance matrix for V
     

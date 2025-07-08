@@ -1,0 +1,188 @@
+%% Description
+% ULM data analysis:
+% Take reconstructed data from individual buffers/batches/superframes, each with
+% some number of frames/subframes, each containing N acquisitions/angles.
+
+% Re-sample with a rolling method to get more effective frames.
+
+% SVD to separate the bubble signals from the tissue signal and other
+% clutter
+
+% ...
+
+% **** Make sure that the current directory is set to the directory where this
+% script is located!!! ****
+
+%% Use parallel processing for speed
+% https://www.mathworks.com/matlabcentral/answers/91744-how-can-i-check-if-matlabpool-is-running-when-using-parallel-computing-toolbox
+
+pp = gcp('nocreate');
+if isempty(pp)
+    % There is no parallel pool
+    parpool LocalProfile1
+
+end
+
+%% Load parameters and make folder for saving the processed data
+
+% Get data path of the reconstructed IQ data
+datapath = uigetdir('G:\Allen\Data\', 'Select the IQ data path');
+datapath = [datapath, '\'];
+
+% Load acquisition parameters: params.mat
+if ~exist('P', 'var')
+    % Choose and load the params.mat file (from the acquisition)
+    [params_filename, params_pathname, ~] = uigetfile('*.mat', 'Select the params file', [datapath, '..\params.mat']);
+    load([params_pathname, params_filename])
+end
+
+% Load Verasonics reconstruction parameters: datapath\PData.mat
+if ~exist('PData', 'var')
+    load([datapath, 'PData.mat'])
+end
+
+% Prompt for parameter user input
+parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Image refinement factor - x', 'Image refinement factor - y', 'Image refinement factor - z', 'XC Threshold Factor', 'x pixel spacing [um]', 'y pixel spacing [um]', 'z pixel spacing [um]', 'Ensemble size'};
+parameterDefaults = {'1', '', '20', '150', '2', '2', '2', '0.2', num2str(PData.PDelta(1) * P.wl * 1e6), num2str(PData.PDelta(2) * P.wl * 1e6), num2str(PData.PDelta(3) * P.wl * 1e6), '5000'};
+parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
+
+% define # of files manually for now
+% str2double(parameterUserInput{});
+startFile = str2double(parameterUserInput{1});
+endFile = str2double(parameterUserInput{2});
+numFiles = endFile - startFile + 1;
+sv_threshold_lower = str2double(parameterUserInput{3});
+sv_threshold_upper = str2double(parameterUserInput{4});
+imgRefinementFactor = [str2double(parameterUserInput{5}), str2double(parameterUserInput{6}), str2double(parameterUserInput{7})];
+if any(floor(imgRefinementFactor) ~= imgRefinementFactor) || any(imgRefinementFactor < 1)
+    error('Image refinement factors must be whole numbers')
+end
+XCThreshold = str2double(parameterUserInput{8});
+xpix_spacing = str2double(parameterUserInput{9});
+ypix_spacing = str2double(parameterUserInput{10});
+zpix_spacing = str2double(parameterUserInput{11});
+es = str2double(parameterUserInput{12}); % Ensemble size (for SVD)
+
+% clearvars parameterPrompt parameterDefaults parameterUserInput
+
+savepath = uigetdir([datapath, '..\'], 'Select the save path');
+savepath = [savepath, '\'];
+
+filename_structure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
+
+addpath([cd, '\normxcorr3.m'])
+addpath([cd, '\Parthasarathy_Radial_Particle_Localization'])
+
+%% Other parameters for processing the data
+
+% Region of interest
+% xrange = int16(1:80);
+% yrange = int16(1:80);
+% zrange = int16(1:142);
+
+% framerange = 1:200;
+% framerange = 1:size(IQf, 3);
+% range = {xrange, yrange, zrange, framerange};
+% range = {xrange, yrange, zrange};
+
+% Load and refine simulated PSF
+if ~exist('PSF', 'var')
+%     load('G:\Allen\Data\RC15gV PSF sim\PSF.mat', 'PSF')
+    % figure; imagesc(squeeze(abs(PSF(40, :, :)))')
+    datapath_split = split(string(datapath), filesep);
+    PSF_path = fullfile(join(datapath_split(1:find(contains(datapath_split, 'Data'))), '\') + "\RC15gV PSF sim\PSF.mat");
+    load(PSF_path, 'PSF')
+end
+
+% PSFs = PSF(190:210, 118:138, :); % PSF section
+PSFs = PSF(30:50, 30:50, 92:110); % PSF section
+refPSF = imresize3(PSFs, [size(PSFs, 1) * imgRefinementFactor(1), size(PSFs, 2) * imgRefinementFactor(2), size(PSFs, 3) * imgRefinementFactor(3)]);
+% volumeViewer(abs(refPSF))
+
+%% Process the data
+
+% Calculate the total # of frames in the experiment
+totalNumFrames = numFiles * P.numFramesPerBuffer;
+
+% # of ensembles to process, if we don't overlap
+nes = floor(totalNumFrames / es);
+%%%%%%%%%%%% Add a check for the ensemble size being an integer multiple of the # of
+% frames per sf %%%%%%%%%%%%%%%%%%%%%%%%%%
+nsfpes = es/P.numFramesPerBuffer; % # of superframes per ensemble
+
+% Go through each ensemble and process the data
+% for en = 1:nes % en = ensemble number
+for en = 1
+    tic
+    
+    IQen = []; % IQ stacked over the ensemble
+    for sfi = 1:nsfpes % Go through all the superframes for one ensemble (sfi = superframe index)
+        load([datapath, filename_structure, num2str((en - 1) * nsfpes + sfi), '.mat'])  % load each reconstructed buffer/batch/superframe
+        
+        IQ = squeeze(IData + 1i .* QData);   % Combine I and Q, which are saved separately. It's easier to save the big reconstructed data with savefast, which doesn't support complex values. The data is already a coherent sum.
+        clear IData QData
+
+        IQen = cat(4, IQen, IQ); % Add the next superframe's IQ to the ensemble IQ
+
+    end
+
+%     if filenum == 1
+        [xp, yp, zp, nf] = size(IQen);
+        xrange = int16(1:xp);
+        yrange = int16(1:yp);
+        zrange = int16(1:zp);
+        range = {xrange, yrange, zrange};
+        range{4} = int16(1:nf); % set frame range after rolling on the first file
+%     end
+    zpixfactor = zpix_spacing ./ xpix_spacing; % relative z pixel spacing vs x or y, for the radial centers algorithm
+
+    % SVD proc part 1
+%     tic
+    [PP, EVs, V_sort] = getSVs2D(IQen);
+    disp('SVs decomposed')
+%     toc
+    % SVD proc part 2
+%     tic
+    [IQenf] = applySVs2D(IQen, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
+    disp('SVD filtered images put together')
+
+    clear PP EVs V_sort
+
+%     IQd = diff(IQ, 1, 4); % Frame subtraction
+
+    [centersRC, ~, ~] = localizeBubbles3D_globalXCThreshold_subpixel(IQf, refPSF, range, imgRefinementFactor, XCThreshold, zpixfactor);
+
+%     [coords, img_size, XCThresholdsAdaptive] = localizeBubbles3D_chunk(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
+
+    %     save([savepath, 'IQf-', num2str(filenum)], 'IQf', "-v6")
+
+%     save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'centroidCoordinates', "-v6")
+    savefast([savepath, 'centers-', num2str(filenum)], 'centersRC')
+%     savefast([savepath, 'coords-', num2str(filenum)], 'coords', 'img_size', 'XCThresholdsAdaptive')
+
+    disp(strcat("Center finding done: file ", num2str(filenum)))
+    toc
+end
+img_size = [xp, yp, zp] .* imgRefinementFactor;
+save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'XCThreshold', 'xpix_spacing', 'ypix_spacing', 'zpix_spacing', 'img_size')
+
+%% Helper functions
+
+function [fileCount] = countFiles(fileName,filePath)
+
+    fileInfo = strsplit(fileName, '-');
+
+    % This keeps everything except the last numeric component
+    prefix = strjoin(fileInfo(1:end-1), '-'); 
+    
+    % Construct the search pattern
+    searchPattern = fullfile(filePath, prefix + "-*.mat"); % Wildcard for different numbers
+    
+    % Get a list of matching files
+    fileList = dir(searchPattern);
+    
+    % Count the number of matching files
+    fileCount = numel(fileList);
+
+
+end
