@@ -114,17 +114,21 @@ nsfpes = es/P.numFramesPerBuffer; % # of superframes per ensemble
 % for en = 1:nes % en = ensemble number
 for en = 1
     tic
-    
+    % tic
     IQen = []; % IQ stacked over the ensemble
+    
     for sfi = 1:nsfpes % Go through all the superframes for one ensemble (sfi = superframe index)
         load([datapath, filename_structure, num2str((en - 1) * nsfpes + sfi), '.mat'])  % load each reconstructed buffer/batch/superframe
         
-        IQ = squeeze(IData + 1i .* QData);   % Combine I and Q, which are saved separately. It's easier to save the big reconstructed data with savefast, which doesn't support complex values. The data is already a coherent sum.
-        clear IData QData
+        % IQ = squeeze(IData + 1i .* QData);   % Combine I and Q, which are saved separately. It's easier to save the big reconstructed data with savefast, which doesn't support complex values. The data is already a coherent sum.
+        % clear IData QData
 
-        IQen = cat(4, IQen, IQ); % Add the next superframe's IQ to the ensemble IQ
-
+        IQen = cat(4, IQen, squeeze(IData + 1i .* QData)); % Add the next superframe's IQ to the ensemble IQ
+        disp("File " + num2str((en - 1) * nsfpes + sfi) + " loaded")
     end
+    clearvars IQ
+    
+    % toc
 
 %     if filenum == 1
         [xp, yp, zp, nf] = size(IQen);
@@ -137,30 +141,116 @@ for en = 1
     zpixfactor = zpix_spacing ./ xpix_spacing; % relative z pixel spacing vs x or y, for the radial centers algorithm
 
     % SVD proc part 1
-%     tic
+    tic
     [PP, EVs, V_sort] = getSVs2D(IQen);
     disp('SVs decomposed')
-%     toc
+    toc
+
+    plot_FFT_SVs_function(V_sort, P)
+
     % SVD proc part 2
 %     tic
     [IQenf] = applySVs2D(IQen, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
     disp('SVD filtered images put together')
 
-    clear PP EVs V_sort
+    % generateTiffStack_acrossframes(abs(IQenf) .^ 0.5, [8.8, 8.8, 8], 'gray', 1:80)
+    % figure; imagesc(squeeze(max(abs(IQenf(30:50, :, :, 10))))')
+    % generateIQVideo(IQenf, [8.8, 8.8, 8], 10)
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % LOOKING AT THE FULL SVD
+    IQen_single = single(IQen);
+    
+    % Determine the optimal SV thresholds with the spatial similarity matrix
+    [xp, yp, zp, nf] = size(IQen_single);
+    PP = reshape(IQen_single, [xp*yp*zp, nf]);
+    tic
+%     [U, S, V] = svd(PP); % Already sorted in decreasing order
+    [U, S, V] = svd(PP, 'econ'); % Already sorted in decreasing order
+    disp('Full SVD done')
+    toc
+
+    %
+    SSM = zeros(nf, nf); % Initialize the spatial similarity matrix
+
+    SSM_const = 1/(xp * yp * zp); % constant in front of the summation term
+%
+    tic
+    for n = 1:nf
+%     for n = 1:10
+        abs_u_n = abs(U(:, n)); % The nth column vector from U
+        mean_abs_u_n = sum(abs_u_n) / length(abs_u_n);
+        stddev_abs_u_n = std(abs_u_n);
+%         for m = 1:nf
+        for m = 1:n % leverage the symmetry of the SSM
+            abs_u_m = abs(U(:, m)); % The mth column vector from U
+            mean_abs_u_m = sum(abs_u_m) / length(abs_u_m);
+            SSM(n, m) = sum( ((abs_u_n - mean_abs_u_n) .* (abs_u_m - mean_abs_u_m)) ...
+                        ./ stddev_abs_u_n ...
+                        ./ std(abs_u_m) );
+        end
+    end
+    SSM = SSM .* SSM_const; % Normalize
+    SSM = SSM + SSM'; % Apply the symmetry to fill out the "missing" values. 
+    % NOTE: I think this adds an extra 1 to all diagonal values
+    toc
+    figure; imagesc(SSM); axis square % Show the SSM
+
+
+    % Test to look at the individual "weighted images"
+    k_test = 20; % Which column vector to use
+    test = reshape(U(:, k_test) * V(:, k_test)', [xp, yp, zp, nf]);
+    volumeViewer(abs(mean(test, 4)))
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    % %% XC test
+    % rfnX = imgRefinementFactor(1); % refinement pixel increase factor
+    % rfnY = imgRefinementFactor(2);
+    % rfnZ = imgRefinementFactor(3);
+    % 
+    % if ~all(imgRefinementFactor == 1)
+    %     % refIQs = zeros(size(IQs, 1) * rfnX, size(IQs, 2) * rfnY, size(IQs, 3) * rfnZ, size(IQs, 4)); % refined IQ section
+    % 
+    %     % go through all frames and refine
+    %     % parfor f = 1:size(IQs, 4)
+    %     for f = 1
+    %         I_temp = IQs(:, :, :, f);
+    %         refIQs(:, :, :, f) = imresize3(I_temp, [size(I_temp, 1) * rfnX, size(I_temp, 2) * rfnY, size(I_temp, 3) * rfnZ], 'cubic');
+    %     end
+    % else
+    %     refIQs = IQs;
+    % end
+    % disp('IQ upsampled')
+    % %% cross correlation
+    % 
+    % % normxcorr3 from file exchange
+    % % (https://www.mathworks.com/matlabcentral/fileexchange/73946-normxcorr3-fast-3d-ncc)
+    % XC = normxcorr3(abs(refPSF), abs(refIQs(:, :, :, 1)), 'same'); % Cross correlate the filtered/refined images and the simulated PSF
+    % for f = 2:size(refIQs, 4)
+    %     XC(:, :, :, f) = normxcorr3(abs(refPSF), abs(refIQs(:, :, :, f)), 'same');
+    % end
+    % disp('Upsampled IQ cross correlated with the PSF')
+
+    %%
+    clearvars PP EVs V_sort
 
 %     IQd = diff(IQ, 1, 4); % Frame subtraction
 
-    [centersRC, ~, ~] = localizeBubbles3D_globalXCThreshold_subpixel(IQf, refPSF, range, imgRefinementFactor, XCThreshold, zpixfactor);
-
-%     [coords, img_size, XCThresholdsAdaptive] = localizeBubbles3D_chunk(IQf, refPSF, range, imgRefinementFactor, XCThresholdFactor);
-
-    %     save([savepath, 'IQf-', num2str(filenum)], 'IQf', "-v6")
-
-%     save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'centroidCoordinates', "-v6")
-    savefast([savepath, 'centers-', num2str(filenum)], 'centersRC')
-%     savefast([savepath, 'coords-', num2str(filenum)], 'coords', 'img_size', 'XCThresholdsAdaptive')
-
-    disp(strcat("Center finding done: file ", num2str(filenum)))
+    % Could chunk it
+    chunk_size = P.numFramesPerBuffer;
+    range{4} = 1:chunk_size;
+    for ci = 1:es/chunk_size % chunk index
+        % [centersRC, refIQs, XC] = localizeBubbles3D_globalXCThreshold_subpixel_noparfor(IQenf(:, :, :, (ci - 1) * chunk_size + 1 : ci * chunk_size), refPSF, range, imgRefinementFactor, XCThreshold, zpixfactor);
+        [centersRC, refIQs, XC] = localizeBubbles3D_globalXCThreshold_subpixel(IQenf(:, :, :, (ci - 1) * chunk_size + 1 : ci * chunk_size), refPSF, range, imgRefinementFactor, XCThreshold, zpixfactor);
+    
+        %     save([savepath, 'IQf-', num2str(filenum)], 'IQf', "-v6")
+    
+    %     save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'centroidCoordinates', "-v6")
+        savefast([savepath, 'centers-', num2str(filenum)], 'centersRC')
+    %     savefast([savepath, 'coords-', num2str(filenum)], 'coords', 'img_size', 'XCThresholdsAdaptive')
+    
+        disp(strcat("Center finding done: file ", num2str(filenum)))
+    end
     toc
 end
 img_size = [xp, yp, zp] .* imgRefinementFactor;
@@ -184,5 +274,64 @@ function [fileCount] = countFiles(fileName,filePath)
     % Count the number of matching files
     fileCount = numel(fileList);
 
+
+end
+
+function [] = generateIQVideo(IQen, actualSize, frameRate)
+    IQen = abs(IQen);
+    % Set up the figure for the video
+    savepath = uigetdir('D:\Allen\Data\', 'Select the save path for the video');
+    savepath = [savepath, '\'];
+
+    vo = VideoWriter([savepath, 'volumeVideo']);
+
+    vo.Quality = 100;
+    vo.FrameRate = frameRate;
+    open(vo);
+
+%     V = volshow(IQen, 'RenderingStyle', 'MaximumIntensityProjection');
+%     viewer = V.Parent;
+%     % V_old = V;
+% %     V.Alphamap(1:100) = 0;          % Change transparency
+%     viewer.BackgroundColor = [1, 1, 1];  % Make background white
+%     viewer.BackgroundGradient = 'off'; % Turn off the background gradient
+%     % V.ScaleFactors(3) = size(IQen, 1) / size(IQen, 3) * actualSize(1) / actualSize(3); % scale with # pixels and region size
+% %     V.CameraPosition = V.CameraPosition ./ 2;
+% %     V.CameraPosition = [2.1161 -3.7332 -0.1764];
+%     viewer.CameraUpVector = [0 0 -1];
+% %     V.CameraViewAngle = 15;
+
+    plotPower = 1;
+    
+    tic
+    for fi = 1:size(IQen, 4) % Go through each frame
+
+        %%%%%%%%%%%%%%%%
+        if mod(fi - 1, 10) == 0 % only get a video frame every N frames
+            disp(fi)
+            if fi == 1
+                V = volshow(IQen(:, :, :, fi) .^ plotPower, 'RenderingStyle', 'MaximumIntensityProjection');
+                viewer = V.Parent;
+            else
+                volshow(IQen(:, :, :, fi) .^ plotPower, 'RenderingStyle', 'MaximumIntensityProjection', Parent=viewer);
+            end
+%             V.Alphamap(1:100) = 0;          % Change transparency
+            viewer.BackgroundColor = [1, 1, 1];  % Make background white
+            viewer.BackgroundGradient = 'off'; % Turn off the background gradient
+
+            viewer.CameraUpVector = [0, 0, -1]; % Flip the z axis
+            viewer.CameraZoom = 1.2; % Zoom
+            % V.CameraViewAngle = 15;
+            % V.ScaleFactors(3) = size(densityMapInterpolated, 1) / size(densityMapInterpolated, 3) * actualSize(1) / actualSize(3); % scale with # pixels and region size
+            % V.ScaleFactors = V.ScaleFactors .* 1.5; % zoom
+
+            cv = getframe(viewer.Parent);     % get the current volume
+            rgb = frame2im(cv);      % convert the frame to rgb data
+            writeVideo(vo, rgb);
+        end
+    end
+
+    close(vo)
+    toc
 
 end

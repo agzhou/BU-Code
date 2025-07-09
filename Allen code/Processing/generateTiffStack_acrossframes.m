@@ -57,7 +57,7 @@ function generateTiffStack_acrossframes(volumeData, varargin)
             if showColorbar
                 colorbar
             end
-            clim(cr)
+            % clim(cr)
             cv = getframe(tf);
             rgb = frame2im(cv);      % convert the frame to rgb data
             if f == 1

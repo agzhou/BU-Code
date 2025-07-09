@@ -93,10 +93,10 @@ for filenum = 2:endFile
 %     % Determine the optimal SV thresholds with the spatial similarity matrix
 %     [zp, xp, nf] = size(IQ);
 %     PP = reshape(IQ, [zp*xp, nf]);
-%     tic
-%     [U, S, V] = svd(PP); % Already sorted in decreasing order
-%     disp('Full SVD done')
-%     toc
+    % tic
+    % [U, S, V] = svd(PP); % Already sorted in decreasing order
+    % disp('Full SVD done')
+    % toc
 %     
 % %     %% Testing to do eigen decomposition instead of the full SVD
 % %     tic
