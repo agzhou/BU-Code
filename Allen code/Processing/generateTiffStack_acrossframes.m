@@ -37,6 +37,7 @@ function generateTiffStack_acrossframes(volumeData, varargin)
         xz_tagstruct.BitsPerSample = 8;
         xz_tagstruct.SamplesPerPixel = 3;
         xz_tagstruct.Software = 'MATLAB';
+        xz_tagstruct.Compression = Tiff.Compression.Deflate;
         setTag(xz_stack, xz_tagstruct) % set the tags
     
         tf = figure;
@@ -85,6 +86,7 @@ function generateTiffStack_acrossframes(volumeData, varargin)
     %     yz_tagstruct.BitsPerSample = 8;
     %     yz_tagstruct.SamplesPerPixel = 3;
     %     yz_tagstruct.Software = 'MATLAB';
+    %     yz_tagstruct.Compression = Tiff.Compression.Deflate;
     %     setTag(yz_stack, yz_tagstruct) % set the tags
     % 
     %     tf = figure;
@@ -132,6 +134,7 @@ function generateTiffStack_acrossframes(volumeData, varargin)
     %     xy_tagstruct.BitsPerSample = 8;
     %     xy_tagstruct.SamplesPerPixel = 3;
     %     xy_tagstruct.Software = 'MATLAB';
+    %     xy_tagstruct.Compression = Tiff.Compression.Deflate;
     %     setTag(xy_stack, xy_tagstruct) % set the tags
     % 
     %     tf = figure;
@@ -182,6 +185,7 @@ function generateTiffStack_acrossframes(volumeData, varargin)
         xz_tagstruct.BitsPerSample = 8;
         xz_tagstruct.SamplesPerPixel = 3;
         xz_tagstruct.Software = 'MATLAB';
+        xz_tagstruct.Compression = Tiff.Compression.Deflate;
         setTag(xz_stack, xz_tagstruct) % set the tags
     
         tf = figure;

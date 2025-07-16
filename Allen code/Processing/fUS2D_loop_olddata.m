@@ -77,8 +77,8 @@ if isempty(pp)
 end
 
 %% Main loop
-% for filenum = startFile:endFile
-for filenum = 2:endFile
+for filenum = startFile:endFile
+% for filenum = 2:endFile
 % for filenum = [285:-1:189]
 % for filenum = 1
     tic
@@ -90,6 +90,24 @@ for filenum = 2:endFile
     [IQf] = applySVs1D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
     disp('SVD filtered images put together')
 
+%     % Box filter over a small roi
+%     boxfilt_size = 5; % Square of N x N pixels
+%     IQf_box = imboxfilt(abs(IQf), boxfilt_size);
+%     figure; imagesc(abs(IQf(:, :, end))); title('Raw IQ')
+%     figure; imagesc(abs(IQf_box(:, :, end))); title("Box filtered IQ with a size " + num2str(boxfilt_size) + " box")
+%     PDI_box = sum(IQf_box .^ 2, 3);
+%     figure; imagesc(PDI_box);
+
+    % Look at the effects of removing the DC component of the IQ
+    IQf_noDC = IQf - mean(IQf, 3); % Remove the DC component
+    figure; imagesc(abs(IQf(:, :, end))); title('Raw IQ')
+    figure; imagesc(abs(IQf_noDC(:, :, end))); title('DC component removed')
+
+    % Band pass filter
+    BPF.lims = [0.009, 0.4]; % Cutoff frequencies [Hz] - see https://3.basecamp.com/3596813/buckets/4011169/todos/8841444802#__recording_8841445118
+%     BPF.order = 6;
+%     [b, a] = butter(BPF.order, BPF.lims, "bandpass");
+    testIQ_BPF = bandpass(IQf_noDC, BPF.lims, P.CCFR);
 %     % Determine the optimal SV thresholds with the spatial similarity matrix
 %     [zp, xp, nf] = size(IQ);
 %     PP = reshape(IQ, [zp*xp, nf]);

@@ -490,23 +490,33 @@ end
 % generateTiffStack_acrossframes(CBViallSF .^ 0.5, [8.8, 8.8, 8], 'hot')
 %% Store all the PDI across the experiment into one matrix
 % load([savepath, 'PDI_CDI-', num2str(1), '.mat'], 'PDI', 'CDI')
-load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI', 'CDI')
+% load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI', 'CDI')
+load([savepath, 'fUSdata-', num2str(2), '.mat'], 'PDI')
 % PDIallSF = cell([length(PDI), endFile - startFile + 1]); % Matrix with the CBVi for every superframe
-PDIallSF = cell([size(PDI)]); % Matrix with the CBVi for every superframe
+% PDIallSF = cell([size(PDI)]); 
+PDIallSF = zeros([size(PDI), endFile - startFile + 1]); % Matrix with the CBVi for every superframe
 % PDIallSF(:,  1) = PDI;
-CDIallSF = cell([size(CDI)]); % Matrix with the CBVi for every superframe
+% PDIallSF(:, :, 1) = PDI;
+% CDIallSF = cell([size(CDI)]); % Matrix with the CBVi for every superframe
 % CDIallSF(:,  1) = CDI;
 
 % for filenum = startFile + 1:endFile
 for filenum = startFile:endFile
 %     load([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI')
-    load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'CDI')
+%     load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'CDI')
+    load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI')
 %     PDI = load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI')
 %     CDI = load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'CDI')
 
-    for i = 1:3
-        PDIallSF{i} = cat(3, PDIallSF{i}, PDI{i});
-        CDIallSF{i} = cat(3, CDIallSF{i}, CDI{i});
+%     for i = 1:3
+%         PDIallSF{i} = cat(3, PDIallSF{i}, PDI{i});
+%         CDIallSF{i} = cat(3, CDIallSF{i}, CDI{i});
+%     end
+
+    if iscell(PDI)
+        PDIallSF(:, :, filenum) = PDI{3};
+    else
+        PDIallSF(:, :, filenum) = PDI;
     end
 end
 
@@ -571,7 +581,53 @@ for trial = 1:length(trial_windows)
 
     trial_sf{trial} = find(sfStarts >= trial_windows{trial}(1) & sfStarts <= trial_windows{trial}(end));
 end
+
+hold on
+plot(sfStarts, ones(length(sfStarts), 1), 'x') % Plot the start of each superframe
+hold off
+
 clearvars trial
+
+%% NEW TEST OF UPSAMPLING AND INTERPOLATING EACH TRIAL %% (07/15/2025)
+
+trial_CBVi_us = cell(size(trial_sf)); % Store each resampled trial individually
+% zeros([size(CBViallSF(:, :, 1)), P.daqrate * P.Mcr_fcp.apis.seq_length_s]);
+
+% Add the CBVi timepoints we do have to the corresponding time point in the
+% daqrate sampling space
+for trial = 1:length(trial_windows)
+% for trial = 1
+    disp("Resampling trial " + num2str(trial))
+    trial_CBVi_us{trial} = NaN([size(CBViallSF(:, :, 1)), P.daqrate * P.Mcr_fcp.apis.seq_length_s]);
+    temp_indices = sfStarts(trial_sf{trial});
+    temp_indices_shifted = temp_indices - trial_windows{trial}(1) + 1; % Shift the indices so they correspond to a trial start at 1
+    trial_CBVi_us{trial}(:, :, temp_indices_shifted) = CBViallSF(:, :, trial_sf{trial});
+end
+
+figure; plot(squeeze(trial_CBVi_us{1}(50, 50, :)), 'o-')
+
+%% Resample and interpolate
+trial_CBVi_usi = cell(size(trial_sf)); % Store each resampled trial individually
+testfactor = 100;
+
+interp_times = 1:testfactor:P.daqrate * P.Mcr_fcp.apis.seq_length_s; % Time points at which we calculate an interpolated value
+for trial = 1:length(trial_windows)
+% for trial = 1
+    disp("Resampling trial " + num2str(trial))
+%     trial_CBVi_usi{trial} = NaN([size(CBViallSF(:, :, 1)), P.daqrate * P.Mcr_fcp.apis.seq_length_s]);
+    temp_indices = sfStarts(trial_sf{trial});
+    temp_indices_shifted = temp_indices - trial_windows{trial}(1) + 1; % Shift the indices so they correspond to a trial start at 1
+    trial_CBVi_usi{trial} = spline(temp_indices_shifted, CBViallSF(:, :, trial_sf{trial}), interp_times);
+end
+
+% figure; plot(squeeze(trial_CBVi_usi{1}(50, 50, :)), 'o-')
+
+figure; plot(squeeze(trial_CBVi_us{1}(50, 50, :)), 'o-')
+hold on
+plot(interp_times, squeeze(trial_CBVi_usi{1}(50, 50, :)), '--')
+hold off
+%% Smooth/fit/interpolate???
+
 
 %% Assign the superframe trial binning to CBVi and PDI
 % CBViallSFadj = smoothdata(CBViallSF, 4, "sgolay", 9); % SMOOTH THE CBVi

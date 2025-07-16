@@ -14,6 +14,7 @@
 % script is located!!! ****
 
 %% Use parallel processing for speed
+
 % https://www.mathworks.com/matlabcentral/answers/91744-how-can-i-check-if-matlabpool-is-running-when-using-parallel-computing-toolbox
 
 pp = gcp('nocreate');
@@ -110,9 +111,9 @@ nes = floor(totalNumFrames / es);
 % frames per sf %%%%%%%%%%%%%%%%%%%%%%%%%%
 nsfpes = es/P.numFramesPerBuffer; % # of superframes per ensemble
 
-% Go through each ensemble and process the data
-% for en = 1:nes % en = ensemble number
-for en = 1
+%% Go through each ensemble and process the data
+for en = 1:nes % en = ensemble number
+% for en = 1
     tic
     % tic
     IQen = []; % IQ stacked over the ensemble
@@ -147,6 +148,7 @@ for en = 1
     toc
 
     plot_FFT_SVs_function(V_sort, P)
+    figure; plot(abs(log10(EVs))); title('Singular value magnitude'); xlabel('Singular value number'); ylabel('log10(Singular value magnitude)')
 
     % SVD proc part 2
 %     tic
@@ -155,52 +157,53 @@ for en = 1
 
     % generateTiffStack_acrossframes(abs(IQenf) .^ 0.5, [8.8, 8.8, 8], 'gray', 1:80)
     % figure; imagesc(squeeze(max(abs(IQenf(30:50, :, :, 10))))')
+    % volumeViewer(abs(IQenf(:, :, :, 10)))
     % generateIQVideo(IQenf, [8.8, 8.8, 8], 10)
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % LOOKING AT THE FULL SVD
-    IQen_single = single(IQen);
-    
-    % Determine the optimal SV thresholds with the spatial similarity matrix
-    [xp, yp, zp, nf] = size(IQen_single);
-    PP = reshape(IQen_single, [xp*yp*zp, nf]);
-    tic
-%     [U, S, V] = svd(PP); % Already sorted in decreasing order
-    [U, S, V] = svd(PP, 'econ'); % Already sorted in decreasing order
-    disp('Full SVD done')
-    toc
-
-    %
-    SSM = zeros(nf, nf); % Initialize the spatial similarity matrix
-
-    SSM_const = 1/(xp * yp * zp); % constant in front of the summation term
-%
-    tic
-    for n = 1:nf
-%     for n = 1:10
-        abs_u_n = abs(U(:, n)); % The nth column vector from U
-        mean_abs_u_n = sum(abs_u_n) / length(abs_u_n);
-        stddev_abs_u_n = std(abs_u_n);
-%         for m = 1:nf
-        for m = 1:n % leverage the symmetry of the SSM
-            abs_u_m = abs(U(:, m)); % The mth column vector from U
-            mean_abs_u_m = sum(abs_u_m) / length(abs_u_m);
-            SSM(n, m) = sum( ((abs_u_n - mean_abs_u_n) .* (abs_u_m - mean_abs_u_m)) ...
-                        ./ stddev_abs_u_n ...
-                        ./ std(abs_u_m) );
-        end
-    end
-    SSM = SSM .* SSM_const; % Normalize
-    SSM = SSM + SSM'; % Apply the symmetry to fill out the "missing" values. 
-    % NOTE: I think this adds an extra 1 to all diagonal values
-    toc
-    figure; imagesc(SSM); axis square % Show the SSM
-
-
-    % Test to look at the individual "weighted images"
-    k_test = 20; % Which column vector to use
-    test = reshape(U(:, k_test) * V(:, k_test)', [xp, yp, zp, nf]);
-    volumeViewer(abs(mean(test, 4)))
+%     % LOOKING AT THE FULL SVD
+%     IQen_single = single(IQen);
+% 
+%     % Determine the optimal SV thresholds with the spatial similarity matrix
+%     [xp, yp, zp, nf] = size(IQen_single);
+%     PP = reshape(IQen_single, [xp*yp*zp, nf]);
+%     tic
+% %     [U, S, V] = svd(PP); % Already sorted in decreasing order
+%     [U, S, V] = svd(PP, 'econ'); % Already sorted in decreasing order
+%     disp('Full SVD done')
+%     toc
+% 
+%     %
+%     SSM = zeros(nf, nf); % Initialize the spatial similarity matrix
+% 
+%     SSM_const = 1/(xp * yp * zp); % constant in front of the summation term
+% %
+%     tic
+%     for n = 1:nf
+% %     for n = 1:10
+%         abs_u_n = abs(U(:, n)); % The nth column vector from U
+%         mean_abs_u_n = sum(abs_u_n) / length(abs_u_n);
+%         stddev_abs_u_n = std(abs_u_n);
+% %         for m = 1:nf
+%         for m = 1:n % leverage the symmetry of the SSM
+%             abs_u_m = abs(U(:, m)); % The mth column vector from U
+%             mean_abs_u_m = sum(abs_u_m) / length(abs_u_m);
+%             SSM(n, m) = sum( ((abs_u_n - mean_abs_u_n) .* (abs_u_m - mean_abs_u_m)) ...
+%                         ./ stddev_abs_u_n ...
+%                         ./ std(abs_u_m) );
+%         end
+%     end
+%     SSM = SSM .* SSM_const; % Normalize
+%     SSM = SSM + SSM'; % Apply the symmetry to fill out the "missing" values. 
+%     % NOTE: I think this adds an extra 1 to all diagonal values
+%     toc
+%     figure; imagesc(SSM); axis square % Show the SSM
+% 
+% 
+%     % Test to look at the individual "weighted images"
+%     k_test = 20; % Which column vector to use
+%     test = reshape(U(:, k_test) * V(:, k_test)', [xp, yp, zp, nf]);
+%     volumeViewer(abs(mean(test, 4)))
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     % %% XC test
@@ -231,8 +234,7 @@ for en = 1
     % end
     % disp('Upsampled IQ cross correlated with the PSF')
 
-    %%
-    clearvars PP EVs V_sort
+    % clearvars PP EVs V_sort
 
 %     IQd = diff(IQ, 1, 4); % Frame subtraction
 
@@ -240,21 +242,18 @@ for en = 1
     chunk_size = P.numFramesPerBuffer;
     range{4} = 1:chunk_size;
     for ci = 1:es/chunk_size % chunk index
+    % for ci = 1
         % [centersRC, refIQs, XC] = localizeBubbles3D_globalXCThreshold_subpixel_noparfor(IQenf(:, :, :, (ci - 1) * chunk_size + 1 : ci * chunk_size), refPSF, range, imgRefinementFactor, XCThreshold, zpixfactor);
         [centersRC, refIQs, XC] = localizeBubbles3D_globalXCThreshold_subpixel(IQenf(:, :, :, (ci - 1) * chunk_size + 1 : ci * chunk_size), refPSF, range, imgRefinementFactor, XCThreshold, zpixfactor);
     
-        %     save([savepath, 'IQf-', num2str(filenum)], 'IQf', "-v6")
+        savefast([savepath, 'centers-', num2str((en - 1) * nsfpes + ci)], 'centersRC')
     
-    %     save([savepath, 'dataproc-', num2str(filenum)], 'IQf', 'centroidCoordinates', "-v6")
-        savefast([savepath, 'centers-', num2str(filenum)], 'centersRC')
-    %     savefast([savepath, 'coords-', num2str(filenum)], 'coords', 'img_size', 'XCThresholdsAdaptive')
-    
-        disp(strcat("Center finding done: file ", num2str(filenum)))
+        disp(strcat("Center finding done: chunk ", num2str((en - 1) * nsfpes + ci)))
     end
     toc
 end
 img_size = [xp, yp, zp] .* imgRefinementFactor;
-save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'XCThreshold', 'xpix_spacing', 'ypix_spacing', 'zpix_spacing', 'img_size')
+save([savepath, 'proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'PSF', 'range', 'imgRefinementFactor', 'XCThreshold', 'xpix_spacing', 'ypix_spacing', 'zpix_spacing', 'img_size', 'es', 'chunk_size', 'nsfpes')
 
 %% Helper functions
 

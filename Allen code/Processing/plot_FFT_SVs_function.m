@@ -14,9 +14,9 @@ function [] = plot_FFT_SVs_function(V_sort, P)
 %     subFrameRate = P.fps_target;
     frameRate = P.frameRate;
 %     tstep = 1/subFrameRate; 
-    faxis = linspace(-frameRate/2, frameRate/2, length(singVecFS_shifted));
+    faxis = linspace(-frameRate/2, frameRate/2, length(singVecFS_shifted))';
     
-    test = abs(singVecFS_shifted);
+    % test = abs(singVecFS_shifted);
     % 1D plot
 %     figure; plot(faxis, test(:, 1))
     % 2D
@@ -41,4 +41,15 @@ function [] = plot_FFT_SVs_function(V_sort, P)
 %     xline(fD_predicted)
 %     xline(-fD_predicted)
 
+    % Look at the "mean frequency" of each subspace of the temporal singular vectors
+    % Do a weighted sum..
+    
+    singVec_weighted_mean_freq = -sum(abs(singVecFS_shifted) .* repmat(abs(faxis), 1, size(singVecFS_shifted, 2))) ./ length(faxis);
+    % Negative so the curve decreases
+
+    figure; plot(singVec_weighted_mean_freq)
+    % figure; plot(movmean(singVec_weighted_mean_freq, 3))
+    title('Weighted mean frequency of the temporal singular vectors'' power spectrum')
+    xlabel('Singular vector number')
+    ylabel('Frequency [Hz]')
 end
