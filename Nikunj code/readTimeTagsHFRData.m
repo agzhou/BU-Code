@@ -6,7 +6,8 @@
 %% Load parameters
 
 % FilePath = "G:\Allen\Data\04-01-2025 functional acq testing\";
-FilePath = "F:\Allen\Data\test\";
+% FilePath = "F:\Allen\Data\test\";
+FilePath = "L:\Ultrasound data from 05-27-2025 to\07-07-2025 AZ01 ULM RC15gV continuous\";
 % FilePath = "G:\Nikunj\test1\";
 
 RFPath = FilePath;

@@ -746,8 +746,8 @@ cmap = colormap_ULM;
 % figure; imagesc(squeeze(max(SM_SmoothedKFConstrained_LI_Rfn(400:600, :, :), [], 1))'); colormap(cmap); clim([0, 40])
 % figure; imagesc(squeeze(max(SM_SmoothedKFConstrained_LI_Rfn(300:500, :, :), [], 1))'); colormap(cmap); clim([0, 40])
 % figure; imagesc(squeeze(max(SM_SmoothedKFConstrained_LI_Rfn(300:400, :, :), [], 1))'); colormap(cmap); clim([0, 40])
-figure; imagesc(squeeze(max(SM_SmoothedKF_LI_Rfn(300:500, :, :), [], 1))'); colormap(cmap); clim([0, 40])
-figure; imagesc(squeeze(max(SM_SmoothedKF_LI_Rfn(:, :, :), [], 3))'); colormap(cmap); clim([0, 40])
+figure; imagesc(squeeze(max(SM_SmoothedKF_LI_Rfn(300:500, :, :), [], 1))'); colormap(cmap); clim([0, maxSpeedExpectedMMPerS])
+figure; imagesc(squeeze(max(SM_SmoothedKF_LI_Rfn(:, :, :), [], 3))'); colormap(cmap); clim([0, maxSpeedExpectedMMPerS])
 % figure; imagesc(squeeze(max(SM_SmoothedKF_LI_counter(300:500, :, :), [], 1) .^ 0.7)'); colormap hot
 
 % figure; imagesc(squeeze(max(SM_LI_Rfn(300:500, :, :), [], 1))'); colormap(cmap);
