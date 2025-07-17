@@ -590,44 +590,114 @@ clearvars trial
 
 %% NEW TEST OF UPSAMPLING AND INTERPOLATING EACH TRIAL %% (07/15/2025)
 
-trial_CBVi_us = cell(size(trial_sf)); % Store each resampled trial individually
-% zeros([size(CBViallSF(:, :, 1)), P.daqrate * P.Mcr_fcp.apis.seq_length_s]);
+% trial_CBVi_us = cell(size(trial_sf)); % Store each resampled trial individually
+% % zeros([size(CBViallSF(:, :, 1)), P.daqrate * P.Mcr_fcp.apis.seq_length_s]);
+% 
+% % Add the CBVi timepoints we do have to the corresponding time point in the
+% % daqrate sampling space
+% for trial = 1:length(trial_windows)
+% % for trial = 1
+%     disp("Resampling trial " + num2str(trial))
+%     trial_CBVi_us{trial} = NaN([size(CBViallSF(:, :, 1)), P.daqrate * P.Mcr_fcp.apis.seq_length_s]);
+%     temp_indices = sfStarts(trial_sf{trial});
+%     temp_indices_shifted = temp_indices - trial_windows{trial}(1) + 1; % Shift the indices so they correspond to a trial start at 1
+%     trial_CBVi_us{trial}(:, :, temp_indices_shifted) = CBViallSF(:, :, trial_sf{trial});
+% end
+% 
+% figure; plot(squeeze(trial_CBVi_us{1}(50, 50, :)), 'o-')
+% 
+% %%%% Resample and interpolate %%%%
+% trial_CBVi_usi = cell(size(trial_sf)); % Store each resampled trial individually
+% testfactor = 100;
+% 
+% interp_times = 1:testfactor:P.daqrate * P.Mcr_fcp.apis.seq_length_s; % Time points at which we calculate an interpolated value
+% for trial = 1:length(trial_windows)
+% % for trial = 1
+%     disp("Resampling trial " + num2str(trial))
+% %     trial_CBVi_usi{trial} = NaN([size(CBViallSF(:, :, 1)), P.daqrate * P.Mcr_fcp.apis.seq_length_s]);
+%     temp_indices = sfStarts(trial_sf{trial});
+%     temp_indices_shifted = temp_indices - trial_windows{trial}(1) + 1; % Shift the indices so they correspond to a trial start at 1
+%     trial_CBVi_usi{trial} = spline(temp_indices_shifted, CBViallSF(:, :, trial_sf{trial}), interp_times);
+% end
+% 
+% % figure; plot(squeeze(trial_CBVi_usi{1}(50, 50, :)), 'o-')
+% 
+% % Inspect the interpolation
+% figure; plot(squeeze(trial_CBVi_us{1}(50, 50, :)), 'o-')
+% hold on
+% plot(interp_times, squeeze(trial_CBVi_usi{1}(50, 50, :)), '--')
+% hold off
 
-% Add the CBVi timepoints we do have to the corresponding time point in the
-% daqrate sampling space
-for trial = 1:length(trial_windows)
-% for trial = 1
-    disp("Resampling trial " + num2str(trial))
-    trial_CBVi_us{trial} = NaN([size(CBViallSF(:, :, 1)), P.daqrate * P.Mcr_fcp.apis.seq_length_s]);
-    temp_indices = sfStarts(trial_sf{trial});
-    temp_indices_shifted = temp_indices - trial_windows{trial}(1) + 1; % Shift the indices so they correspond to a trial start at 1
-    trial_CBVi_us{trial}(:, :, temp_indices_shifted) = CBViallSF(:, :, trial_sf{trial});
+%% Resample the trials for the hemodynamic parameters
+interp_factor = 100;
+[trial_CBVi_usi] = resampleTrials(CBViallSF, trial_sf, trial_windows, sfStarts, P, interp_factor);
+[trial_PDI_usi] = resampleTrials(PDIallSF, trial_sf, trial_windows, sfStarts, P, interp_factor);
+
+% Inspect the interpolation
+% figure; plot(interp_times, squeeze(trial_PDI_usi{1}(50, 50, :)), '--')
+
+%% Calculate the relative hemodynamic changes for each trial
+
+% trial_CBVi_usi_baseline = cell(size(trial_sf));
+% trial_rCBV_usi = cell(size(trial_sf));
+% 
+% for trial = 1:length(trial_windows)
+%     trial_CBVi_usi_baseline{trial} = mean(trial_CBVi_usi{trial}(:, :, 1 : P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor), 3);
+%     trial_rCBV_usi{trial} = (trial_CBVi_usi{trial} - trial_CBVi_usi_baseline{trial}) ./ trial_CBVi_usi_baseline{trial};
+% end
+
+[trial_CBVi_usi_baseline, trial_rCBV_usi] = calculateRelativeChange(trial_CBVi_usi, P, interp_factor);
+[trial_PDI_usi_baseline, trial_rPDI_usi] = calculateRelativeChange(trial_PDI_usi, P, interp_factor);
+
+%% Trial average the relative hemodynamic changes
+
+rCBV_TA = trialAverage(trial_rCBV_usi);
+rPDI_TA = trialAverage(trial_rPDI_usi);
+
+%% Correlation on the trial average
+
+% Resample the stim pattern/predicted HRF
+trial_stim_pattern = zeros(P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_factor, 1);
+trial_stim_pattern(P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor : ...
+    P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor + ...
+    P.Mcr_fcp.apis.stim_length_s * P.daqrate / interp_factor) = 1;
+figure; plot(trial_stim_pattern); title('Trial stim pattern')
+
+zt = 10;
+[r_rCBV, z_rCBV, am_rCBV] = activationMap2D(rCBV_TA, trial_stim_pattern, zt);
+
+figure; imagesc(r_rCBV); colormap jet; clim([-1, 1])
+figure; imagesc(z_rCBV)
+figure; imagesc(am_rCBV); colormap jet; title("Activation Map (rCBV) with z threshold = " + num2str(zt))
+
+%% Remove points outside of the brain region (manually selected)
+figure; imagesc(trial_CBVi_usi_baseline{1} .^ 0.5); % colormap hot % CBVi map
+brain_mask = roipoly; % manually define the ROI
+figure; imagesc(brain_mask)
+
+am_rCBV_inbrain = am_rCBV;
+am_rCBV_inbrain(~brain_mask) = 0;
+figure; imagesc(am_rCBV_inbrain); colormap jet; title("Activation Map (rCBV) masked to the brain with z threshold = " + num2str(zt))
+
+%% Look at the timecourse from a ROI
+figure; imagesc(am_rCBV_inbrain); colormap jet; title("Activation Map (rCBV) masked to the brain with z threshold = " + num2str(zt))
+roi_mask = roipoly; % manually define the ROI
+figure; imagesc(roi_mask)
+
+numPtsUSI = P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_factor; % # of time points per trial for the upsampling
+% Calculate the timecourse from the average within that ROI
+roi_rCBV_TA = zeros(size(rCBV_TA, 3), 1);
+% repmat(roi_mask, [1, 1, stim_pattern.trial_duration])
+for ti = 1:numPtsUSI
+% for ti = 1
+     temp_rCBV_TA = rCBV_TA(:, :, ti);
+     temp_roi_rCBV_avg = mean(temp_rCBV_TA(roi_mask));
+     roi_rCBV_TA(ti) = temp_roi_rCBV_avg;
 end
 
-figure; plot(squeeze(trial_CBVi_us{1}(50, 50, :)), 'o-')
-
-%% Resample and interpolate
-trial_CBVi_usi = cell(size(trial_sf)); % Store each resampled trial individually
-testfactor = 100;
-
-interp_times = 1:testfactor:P.daqrate * P.Mcr_fcp.apis.seq_length_s; % Time points at which we calculate an interpolated value
-for trial = 1:length(trial_windows)
-% for trial = 1
-    disp("Resampling trial " + num2str(trial))
-%     trial_CBVi_usi{trial} = NaN([size(CBViallSF(:, :, 1)), P.daqrate * P.Mcr_fcp.apis.seq_length_s]);
-    temp_indices = sfStarts(trial_sf{trial});
-    temp_indices_shifted = temp_indices - trial_windows{trial}(1) + 1; % Shift the indices so they correspond to a trial start at 1
-    trial_CBVi_usi{trial} = spline(temp_indices_shifted, CBViallSF(:, :, trial_sf{trial}), interp_times);
-end
-
-% figure; plot(squeeze(trial_CBVi_usi{1}(50, 50, :)), 'o-')
-
-figure; plot(squeeze(trial_CBVi_us{1}(50, 50, :)), 'o-')
-hold on
-plot(interp_times, squeeze(trial_CBVi_usi{1}(50, 50, :)), '--')
-hold off
-%% Smooth/fit/interpolate???
-
+% Plot the average timecourse in the ROI
+% figure; plot(roi_rCBV_TA)
+figure; plot(smoothdata(roi_rCBV_TA, 'movmean', 30))
 
 %% Assign the superframe trial binning to CBVi and PDI
 % CBViallSFadj = smoothdata(CBViallSF, 4, "sgolay", 9); % SMOOTH THE CBVi
@@ -955,4 +1025,44 @@ function [g1A_mask] = createg1mask(g1, g1_tau1_cutoff, tau1_index_CBF, tau2_inde
         g1A_mask = and(g1A_mask, g1A_T{i});
     end
 
+end
+
+% Resample trials and interpolate between the hemodynamic data
+function [data_resampled] = resampleTrials(data, trial_sf, trial_windows, sfStarts, P, interp_factor)
+
+    % Resample and interpolate
+    data_resampled = cell(size(trial_sf)); % Store each resampled trial individually
+%     interp_factor = 100; % Factor by which to "decimate" the daq rate 
+%     for interpolation timepoints
+    
+    interp_times = 1:interp_factor:P.daqrate * P.Mcr_fcp.apis.seq_length_s; % Time points at which we calculate an interpolated value
+    for trial = 1:length(trial_windows)
+        disp("Resampling trial " + num2str(trial))
+        temp_indices = sfStarts(trial_sf{trial});
+        temp_indices_shifted = temp_indices - trial_windows{trial}(1) + 1; % Shift the indices so they correspond to a trial start at 1
+        data_resampled{trial} = spline(temp_indices_shifted, data(:, :, trial_sf{trial}), interp_times);
+    end
+end
+
+% Calculate r(Hemodynamic parameter) -- relative change
+function [data_baseline, data_relative_change] = calculateRelativeChange(data, P, interp_factor)
+    data_baseline = cell(size(data));
+    data_relative_change = cell(size(data));
+    
+    for trial = 1:length(data)
+        data_baseline{trial} = mean(data{trial}(:, :, 1 : P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor), 3);
+        data_relative_change{trial} = (data{trial} - data_baseline{trial}) ./ data_baseline{trial};
+    end
+end
+
+% Trial average [the relative change in] a hemodynamic parameter (assumed
+% to be a cell array with each cell a separate trial with the same # of sample points)
+function [data_trial_average] = trialAverage(data)
+    data_trial_average = data{1};
+    if length(data) > 1
+        for trial = 2:length(data)
+            data_trial_average = data_trial_average + data{trial};
+        end
+    end
+    data_trial_average = data_trial_average ./ length(data);
 end
