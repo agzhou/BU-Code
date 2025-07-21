@@ -646,13 +646,13 @@ interp_factor = 100;
 %     trial_rCBV_usi{trial} = (trial_CBVi_usi{trial} - trial_CBVi_usi_baseline{trial}) ./ trial_CBVi_usi_baseline{trial};
 % end
 
-[trial_CBVi_usi_baseline, trial_rCBV_usi] = calculateRelativeChange(trial_CBVi_usi, P, interp_factor);
-[trial_PDI_usi_baseline, trial_rPDI_usi] = calculateRelativeChange(trial_PDI_usi, P, interp_factor);
+[trial_CBVi_usi_baseline, trial_rCBV_usi] = fUS_calc_rHP(trial_CBVi_usi, P, interp_factor);
+[trial_PDI_usi_baseline, trial_rPDI_usi] = fUS_calc_rHP(trial_PDI_usi, P, interp_factor);
 
 %% Trial average the relative hemodynamic changes
 
-rCBV_TA = trialAverage(trial_rCBV_usi);
-rPDI_TA = trialAverage(trial_rPDI_usi);
+rCBV_TA = fUS_trialAverage(trial_rCBV_usi);
+rPDI_TA = fUS_trialAverage(trial_rPDI_usi);
 
 %% Correlation on the trial average
 
@@ -738,41 +738,41 @@ function [g1A_mask] = createg1mask(g1, g1_tau1_cutoff, tau1_index_CBF, tau2_inde
 end
 
 % Resample trials and interpolate between the hemodynamic data
-function [data_resampled] = resampleTrials(data, trial_sf, trial_windows, sfStarts, P, interp_factor)
-
-    % Resample and interpolate
-    data_resampled = cell(size(trial_sf)); % Store each resampled trial individually
-%     interp_factor = 100; % Factor by which to "decimate" the daq rate 
-%     for interpolation timepoints
-    
-    interp_times = 1:interp_factor:P.daqrate * P.Mcr_fcp.apis.seq_length_s; % Time points at which we calculate an interpolated value
-    for trial = 1:length(trial_windows)
-        disp("Resampling trial " + num2str(trial))
-        temp_indices = sfStarts(trial_sf{trial});
-        temp_indices_shifted = temp_indices - trial_windows{trial}(1) + 1; % Shift the indices so they correspond to a trial start at 1
-        data_resampled{trial} = spline(temp_indices_shifted, data(:, :, trial_sf{trial}), interp_times);
-    end
-end
+% function [data_resampled] = resampleTrials(data, trial_sf, trial_windows, sfStarts, P, interp_factor)
+% 
+%     % Resample and interpolate
+%     data_resampled = cell(size(trial_sf)); % Store each resampled trial individually
+% %     interp_factor = 100; % Factor by which to "decimate" the daq rate 
+% %     for interpolation timepoints
+%     
+%     interp_times = 1:interp_factor:P.daqrate * P.Mcr_fcp.apis.seq_length_s; % Time points at which we calculate an interpolated value
+%     for trial = 1:length(trial_windows)
+%         disp("Resampling trial " + num2str(trial))
+%         temp_indices = sfStarts(trial_sf{trial});
+%         temp_indices_shifted = temp_indices - trial_windows{trial}(1) + 1; % Shift the indices so they correspond to a trial start at 1
+%         data_resampled{trial} = spline(temp_indices_shifted, data(:, :, trial_sf{trial}), interp_times);
+%     end
+% end
 
 % Calculate r(Hemodynamic parameter) -- relative change
-function [data_baseline, data_relative_change] = calculateRelativeChange(data, P, interp_factor)
-    data_baseline = cell(size(data));
-    data_relative_change = cell(size(data));
-    
-    for trial = 1:length(data)
-        data_baseline{trial} = mean(data{trial}(:, :, 1 : P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor), 3);
-        data_relative_change{trial} = (data{trial} - data_baseline{trial}) ./ data_baseline{trial};
-    end
-end
-
-% Trial average [the relative change in] a hemodynamic parameter (assumed
-% to be a cell array with each cell a separate trial with the same # of sample points)
-function [data_trial_average] = trialAverage(data)
-    data_trial_average = data{1};
-    if length(data) > 1
-        for trial = 2:length(data)
-            data_trial_average = data_trial_average + data{trial};
-        end
-    end
-    data_trial_average = data_trial_average ./ length(data);
-end
+% function [data_baseline, data_relative_change] = calculateRelativeChange(data, P, interp_factor)
+%     data_baseline = cell(size(data));
+%     data_relative_change = cell(size(data));
+%     
+%     for trial = 1:length(data)
+%         data_baseline{trial} = mean(data{trial}(:, :, 1 : P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor), 3);
+%         data_relative_change{trial} = (data{trial} - data_baseline{trial}) ./ data_baseline{trial};
+%     end
+% end
+% 
+% % Trial average [the relative change in] a hemodynamic parameter (assumed
+% % to be a cell array with each cell a separate trial with the same # of sample points)
+% function [data_trial_average] = trialAverage(data)
+%     data_trial_average = data{1};
+%     if length(data) > 1
+%         for trial = 2:length(data)
+%             data_trial_average = data_trial_average + data{trial};
+%         end
+%     end
+%     data_trial_average = data_trial_average ./ length(data);
+% end
