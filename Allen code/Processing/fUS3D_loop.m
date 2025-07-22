@@ -208,7 +208,7 @@ for filenum = startFile:endFile
     disp("tl-fUS result for file " + num2str(filenum) + " saved" )
 
 end
-save([savepath, 'tlfUS_proc_params.mat'], 'tau1_index_CBV', 'tau1_index_CBF', 'tau2_index_CBF', 'g1_tau1_cutoff');
+save([savepath, 'tlfUS_proc_params.mat'], 'tau1_index_CBV', 'tau1_index_CBF', 'tau2_index_CBF', 'g1_tau1_cutoff', 'g1A_mask');
 % save([savepath, 'tlfUStest_proc_params.mat'], 'tau1_index_CBV', 'tau1_index_CBF', 'tau2_index_CBF', 'g1_tau1_cutoff');
 figure; imagesc(squeeze(max(CBVi(30:50, :, :), [], 1) .^ 0.5)'); colormap hot
 figure; imagesc(squeeze(max(CBVi(:, :, :), [], 3) .^ 0.5)'); colormap hot
@@ -548,16 +548,6 @@ ylabel('z pixels')
 
 % volumeViewer(CBV .^ gamcp)
 
-
-%% Store all the CBVi across the experiment into one matrix
-% load([savepath, 'fUSdata-', num2str(1), '.mat'], 'CBVi')
-% CBViallSF = zeros([size(CBVi), endFile - startFile + 1]); % Matrix with the CBVi for every superframe
-% CBViallSF(:, :, :, 1) = CBVi;
-% for filenum = startFile + 1:endFile
-%     load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'CBVi')
-%     CBViallSF(:, :, :, filenum) = CBVi;
-% end
-
 %% Store all the updated CBVi and CBFsi across the experiment into one matrix
 load([savepath, 'tlfUSdata-', num2str(1), '.mat'], 'CBFsi', 'CBVi')
 CBViallSF = zeros([size(CBVi), endFile - startFile + 1]); % Matrix with the CBVi for every superframe
@@ -571,32 +561,48 @@ for filenum = startFile + 1:endFile
     CBViallSF(:, :, :, filenum) = CBVi;
     CBFsiallSF(:, :, :, filenum) = CBFsi;
 end
+
+%% Store all the PDI across the experiment into one matrix (with separated frequencies)
+% % load([savepath, 'PDI_CDI-', num2str(1), '.mat'], 'PDI', 'CDI')
+% load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI', 'CDI')
+% % PDIallSF = cell([length(PDI), endFile - startFile + 1]); % Matrix with the CBVi for every superframe
+% PDIallSF = cell([size(PDI)]); % Matrix with the CBVi for every superframe
+% % PDIallSF(:,  1) = PDI;
+% CDIallSF = cell([size(CDI)]); % Matrix with the CBVi for every superframe
+% % CDIallSF(:,  1) = CDI;
+% 
+% % for filenum = startFile + 1:endFile
+% for filenum = startFile:endFile
+% %     load([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI')
+%     load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'CDI')
+% %     PDI = load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI')
+% %     CDI = load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'CDI')
+% 
+%     for i = 1:3
+% %         PDIallSF1 = cat(4, PDIallSF1, PDI{1});
+% %         CDIallSF1 = cat(4, CDIallSF1, CDI{1});
+% %         PDIallSF2 = cat(4, PDIallSF2, PDI{2});
+% %         CDIallSF2 = cat(4, CDIallSF2, CDI{2});
+% %         PDIallSF3 = cat(4, PDIallSF3, PDI{3});
+% %         CDIallSF3 = cat(4, CDIallSF3, CDI{3});
+%         PDIallSF{i} = cat(4, PDIallSF{i}, PDI{i});
+%         CDIallSF{i} = cat(4, CDIallSF{i}, CDI{i});
+%     end
+% end
+
 %% Store all the PDI across the experiment into one matrix
 % load([savepath, 'PDI_CDI-', num2str(1), '.mat'], 'PDI', 'CDI')
-load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI', 'CDI')
-% PDIallSF = cell([length(PDI), endFile - startFile + 1]); % Matrix with the CBVi for every superframe
-PDIallSF = cell([size(PDI)]); % Matrix with the CBVi for every superframe
-% PDIallSF(:,  1) = PDI;
-CDIallSF = cell([size(CDI)]); % Matrix with the CBVi for every superframe
-% CDIallSF(:,  1) = CDI;
+% load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI', 'CDI')
+load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI')
+PDIallSF = zeros([size(PDI), endFile - startFile + 1]); % Matrix with the CBVi for every superframe
+PDIallSF(:, :, :, 1) = PDI;
 
 % for filenum = startFile + 1:endFile
 for filenum = startFile:endFile
 %     load([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI')
-    load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'CDI')
-%     PDI = load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI')
-%     CDI = load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'CDI')
+    load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI')
 
-    for i = 1:3
-%         PDIallSF1 = cat(4, PDIallSF1, PDI{1});
-%         CDIallSF1 = cat(4, CDIallSF1, CDI{1});
-%         PDIallSF2 = cat(4, PDIallSF2, PDI{2});
-%         CDIallSF2 = cat(4, CDIallSF2, CDI{2});
-%         PDIallSF3 = cat(4, PDIallSF3, PDI{3});
-%         CDIallSF3 = cat(4, CDIallSF3, CDI{3});
-        PDIallSF{i} = cat(4, PDIallSF{i}, PDI{i});
-        CDIallSF{i} = cat(4, CDIallSF{i}, CDI{i});
-    end
+    PDIallSF(:, :, :, filenum) = PDI;
 end
 
 %% Visualize the PDI and CDI across the experiment
@@ -668,7 +674,7 @@ interp_factor = 100;
 %% Calculate the relative hemodynamic changes for each trial
 
 [trial_CBVi_usi_baseline, trial_rCBV_usi] = fUS_calc_rHP(trial_CBVi_usi, P, interp_factor);
-[trial_PDI_usi_baseline, trial_rPDI_usi] = calculateRelativeChange(trial_PDI_usi, P, interp_factor);
+[trial_PDI_usi_baseline, trial_rPDI_usi] = fUS_calc_rHP(trial_PDI_usi, P, interp_factor);
 
 %% Trial average the relative hemodynamic changes
 
@@ -689,6 +695,7 @@ zt = 1;
 
 volumeViewer(r_rCBV)
 volumeViewer(z_rCBV)
+volumeViewer(am_rCBV)
 figure; imagesc(squeeze(max(r_rCBV(:, :, :), [], 1))'); colormap jet; clim([-1, 1])
 % figure; imagesc(z_rCBV)
 % figure; imagesc(am_rCBV); colormap jet; title("Activation Map (rCBV) with z threshold = " + num2str(zt))
