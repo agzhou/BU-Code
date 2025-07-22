@@ -187,6 +187,7 @@ figure; imagesc(squeeze(max(testPDI(:, :, :, 1), [], 3) .^ 0.5)'); colormap hot
 %% Convert g1 into CBV, CBFspeed, etc.
 
 g1_tau1_cutoff = 0.3;
+% g1_tau1_cutoff = 0.2;
 % tau_difference_cutoff = 0.2;
 
 for filenum = startFile:endFile
