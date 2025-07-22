@@ -108,7 +108,7 @@ for filenum = 2:endFile
 
 
     % Test to look at the individual "weighted images"
-    k_test = 20; % Which column vector to use
+    k_test = 62; % Which column vector to use
     test = reshape(U(:, k_test) * V(:, k_test)', [xp, yp, zp, nf]);
     volumeViewer(abs(test(:, :, :, 1)))
 %     figure; imagesc(abs(mean(test, 4)))
@@ -133,7 +133,7 @@ for filenum = startFile:endFile
     disp('SVD filtered images put together')
 
 %     volumeViewer(abs(IQf(:, :, :, 1)))
-    figure; imagesc(squeeze(abs(max(IQf(:, :, :, 1), [], 1)))')
+%     figure; imagesc(squeeze(abs(max(IQf(:, :, :, 1), [], 1)))')
     % clearvars IQ
 
     % Use the IQf with separated negative and positive frequency components
@@ -155,7 +155,7 @@ for filenum = startFile:endFile
     PDI = sum(abs(IQf) .^ 2, 4) ./ size(IQf, 4);
 %     [CDI] = calcColorDoppler(IQf_FT_separated, P);
 
-    volumeViewer(PDI)
+%     volumeViewer(PDI)
 
 %     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
 %     disp("PDI and CDI for file " + num2str(filenum) + " saved" )
