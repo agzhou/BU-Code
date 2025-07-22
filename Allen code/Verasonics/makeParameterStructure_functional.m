@@ -41,13 +41,13 @@ if exist('rcvChunkSize', 'var')
 end
 
 % Functional params
-if exist('useTriggers', 'var')
-    if useTriggers
+% if exist('useTriggers', 'var')
+%     if useTriggers
         P.apis = apis;
         P.vts = vts;
         P.numTrials = numTrials;
         P.daqrate = daqrate;
         % P.Mcr_d = Mcr_d;
         P.Mcr_fcp = Mcr_fcp;
-    end
-end
+%     end
+% end
