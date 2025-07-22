@@ -55,10 +55,28 @@ for fi = 1:size(IQphase, 3)/PMV_frame_interval % Go through frame gaps
 end
 
 PMV_diff = diff(IQphase, 1, 3);
-% lst = find(PMV_diff>3); PMV_diff(lst) = PMV_diff(lst) - 2*3.14159;
-% lst = find(PMV_diff<-3); PMV_diff(lst) = PMV_diff(lst) + 2*3.14159;
-% PMV_diff = convn( PMV_diff, ones(1,1,5), 'same');
+lst = find(PMV_diff>3); PMV_diff(lst) = PMV_diff(lst) - 2*3.14159;
+lst = find(PMV_diff<-3); PMV_diff(lst) = PMV_diff(lst) + 2*3.14159;
+PMV_diff = convn( PMV_diff, ones(1,1,5), 'same');
 
+%% ROI average of phase differences
+
+% phase_change = IQphase - IQphase(:, :, 1);
+% ROI = [{30:50}; {150:200}]; % z, x ranges
+% PC_ROI = phase_change(ROI{1}, ROI{2}, :);
+% PC_ROI_avg = squeeze(mean(mean(PC_ROI, 1), 2));
+% 
+% figure; plot(PC_ROI_avg)
+
+PMV_diff = diff(IQphase, 1, 3);
+ROI = [{30:50}; {150:200}]; % z, x ranges
+PMV_diff_ROI = PMV_diff(ROI{1}, ROI{2}, :);
+PMV_diff_ROI_avg = squeeze(mean(mean(PMV_diff_ROI, 1), 2));
+
+figure; plot(PMV_diff_ROI_avg)
+figure; plot(convn( PMV_diff_ROI_avg, ones(1,1,5), 'same'));
+
+figure; plot(convn( squeeze(mean(mean(PMV_diff(40:50, 40:50, :), 1), 2)), ones(1,1,5), 'same') )
 %% Phase contrast
 
 dIQ = IQ(:, :, 1:end-1) .* conj(IQ(:, :, 2:end));
