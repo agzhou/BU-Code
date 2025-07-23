@@ -7,8 +7,10 @@
 function generateTiffStack_acrossframes(volumeData, varargin)
 
     % volumeData = volumeData ./ max(volumeData, [], 'all'); % Normalize intensities to be between 0 - 1
-    cr = [0, max(volumeData, [], 'all')]; % color range
-    showColorbar = false;
+%     cr = [0, max(volumeData, [], 'all')]; % color range
+    cr = [min(volumeData, [], 'all'), max(volumeData, [], 'all')]; % change 07/21/25
+    showColorbar = true;
+%     showColorbar = false;
 
     if nargin > 1
         actualSize = varargin{1};

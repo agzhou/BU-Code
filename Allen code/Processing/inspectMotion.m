@@ -68,8 +68,37 @@ PMV_diff = convn( PMV_diff, ones(1,1,5), 'same');
 % 
 % figure; plot(PC_ROI_avg)
 
-PMV_diff = diff(IQphase, 1, 3);
+IQphase_diff = diff(IQphase, 1, 3);
+IQphase_diff_uw = PMV_diff; % Unwrapped IQ phase diff
+% Ac count for phase wrapping (thanks David)
+lst = find(IQphase_diff_uw > 3); IQphase_diff_uw(lst) = IQphase_diff_uw(lst) - 2*pi;
+lst = find(IQphase_diff_uw < -3); IQphase_diff_uw(lst) = IQphase_diff_uw(lst) + 2*pi;
+IQphase_diff_uw_smoothed = convn( IQphase_diff_uw, ones(1, 1, 5), 'same');
+
 ROI = [{30:50}; {150:200}]; % z, x ranges
+IQphase_diff_ROI = squeeze(mean(mean(IQphase_diff(ROI{1}, ROI{2}, :), 1), 2));
+IQphase_diff_uw_ROI = squeeze(mean(mean(IQphase_diff_uw(ROI{1}, ROI{2}, :), 1), 2));
+
+IQphase_diff_uw_smoothed_ROI = squeeze(mean(mean(IQphase_diff_uw_smoothed(ROI{1}, ROI{2}, :), 1), 2));
+figure; 
+frame_times = (1:size(IQphase_diff_uw_smoothed, 3)) ./ P.frameRate;
+plot( frame_times, IQphase_diff_uw_ROI ); xlabel('Time [s]'); ylabel('Framewise phase difference [radians]'); title('IQ Phase framewise difference (unwrapped): ROI from z = 30:50, x = 150:200')
+hold on
+plot( IQphase_diff_uw_smoothed_ROI )
+hold off
+
+% avg_IQphase_change = trapz( (1:size(IQphase_diff_uw_smoothed, 3)) ./ P.frameRate, IQphase_diff_uw_smoothed_ROI);
+% Since we didn't do a diff and account for the actual time between data
+% points, we don't need to do that in the integration
+avg_IQphase_change = trapz(IQphase_diff_uw_ROI);
+% avg_IQphase_change = trapz(IQphase_diff_uw_smoothed_ROI);
+
+avg_IQphase_cumsum = cumsum(IQphase_diff_uw_ROI); % Progressive integral
+figure; plot(frame_times, avg_IQphase_cumsum); xlabel('Time [s]'); ylabel('Cumulative phase change [radians]'); title('Cumulative IQ phase change (unwrapped): ROI from z = 30:50, x = 150:200')
+
+
+
+
 PMV_diff_ROI = PMV_diff(ROI{1}, ROI{2}, :);
 PMV_diff_ROI_avg = squeeze(mean(mean(PMV_diff_ROI, 1), 2));
 
