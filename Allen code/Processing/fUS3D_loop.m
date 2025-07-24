@@ -34,7 +34,7 @@ addpath([cd, '\Speckle tracking']) % add path for the g1 calculation functions
 timingFilePath = [timingFilePath, timingFilePathFN];
 load(timingFilePath)
 % load(timingFilePath, 'acqStart', 'airPuffOutput', 'daqStartTimetag', 'sfTimeTags', 'sfTimeTagsDAQStart', 'sfTimeTagsDAQStart_adj', 'sfWidth', 'sfWidth_adj', 'timeStamp')
-%% Define some parameters (add this to a prompt later)
+%% Define some parameters
 
 parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Tau 1 index for CBFspeed', 'Tau 2 index for CBFspeed', 'Tau 1 index for CBV'};
 parameterDefaults = {'1', '', '20', '180', '2', '10', '2'};
