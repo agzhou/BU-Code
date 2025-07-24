@@ -46,30 +46,7 @@ toc
 
 plot_FFT_SVs_function(V, P)
 %%
-SSM = zeros(nf, nf); % Initialize the spatial similarity matrix
-
-SSM_const = 1/(xp * yp * zp); % constant in front of the summation term
-%
-tic
-for n = 1:nf
-%     for n = 1:10
-    abs_u_n = abs(U(:, n)); % The nth column vector from U
-    mean_abs_u_n = sum(abs_u_n) / length(abs_u_n);
-    stddev_abs_u_n = std(abs_u_n);
-%         for m = 1:nf
-    for m = 1:n % leverage the symmetry of the SSM
-        abs_u_m = abs(U(:, m)); % The mth column vector from U
-        mean_abs_u_m = sum(abs_u_m) / length(abs_u_m);
-        SSM(n, m) = sum( ((abs_u_n - mean_abs_u_n) .* (abs_u_m - mean_abs_u_m)) ...
-                    ./ stddev_abs_u_n ...
-                    ./ std(abs_u_m) );
-    end
-end
-SSM = SSM .* SSM_const; % Normalize
-SSM = SSM + SSM'; % Apply the symmetry to fill out the "missing" values
-toc
-figure; imagesc(SSM); axis square
-
+SSM = plotSSM(U);
 
 % Test to look at the individual "weighted images"
 k_test = 1; % Which column vector to use
@@ -80,7 +57,7 @@ volumeViewer(abs(ss_wi(:, :, :, 1)))
 %%
 [PP, EVs, V_sort] = getSVs2D(IQm);
 disp('SVs decomposed')
-[IQfm] = applySVs2D(IQm, PP, EVs, V_sort, 15, 120);
+[IQfm] = applySVs2D(IQm, PP, EVs, V_sort, 18, 120);
 disp('SVD filtered images put together')
 
 %%
@@ -130,9 +107,9 @@ plot_FFT_SVs_function(V_um, P)
 % ss_wi = reshape(U_um(:, k_test) * V_um(:, k_test)', [xp, yp, zp, nf]); % Subspace weighted image
 % volumeViewer(abs(ss_wi(:, :, :, 1)))
 %%
-[PP, EVs, V_sort] = getSVs2D(IQ);
+[PP_um, EVs_um, V_sort_um] = getSVs2D(IQ);
 disp('SVs decomposed')
-[IQf] = applySVs2D(IQ, PP, EVs, V_sort, 25, 120);
+[IQf] = applySVs2D(IQ, PP_um, EVs_um, V_sort_um, 5, 120);
 disp('SVD filtered images put together')
 
 %%
