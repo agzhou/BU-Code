@@ -10,13 +10,17 @@
 
 % Inputs:
 %       SSM (symmetric matrix, can use plotSSM.m to get it)
+%       (optional) showSSM: true or false, to plot the SSM or not
 % Outputs:
 %       XN: normalized correlation map
 %       a_opt: optimal a parameter
 %       b_opt: optimal b parameter
 
 
-function [XN, a_opt, b_opt] = fitSSM(SSM)
+function [XN, a_opt, b_opt] = fitSSM(SSM, varargin)
+    if nargin > 1
+        showSSM = varargin{1};
+    end
     np = size(SSM, 1); % get the size/"# points" of the SSM, which is expected to be square
     
 %     % Define starting points for the parameters a and b
@@ -47,7 +51,10 @@ function [XN, a_opt, b_opt] = fitSSM(SSM)
     % Turn the indices into the optimal a and b parameters
     [a_opt, b_opt] = ind2sub(size(XN), XN_max_index);
 
-    plotSSMDivisions(SSM, a_opt, b_opt)
+    % Plot the SSM with the squares
+    if showSSM
+        plotSSMDivisions(SSM, a_opt, b_opt)
+    end
 end
 
 

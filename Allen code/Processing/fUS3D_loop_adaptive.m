@@ -87,7 +87,7 @@ for filenum = startFile:endFile
     toc
 
     SSM = plotSSM(U, false);
-    [~, a_opt, b_opt] = fitSSM(SSM); % Get the optimal singular value thresholds
+    [~, a_opt, b_opt] = fitSSM(SSM, false); % Get the optimal singular value thresholds
     SVs = diag(S);
 
 %     [PP, EVs, V_sort] = getSVs2D(IQ);

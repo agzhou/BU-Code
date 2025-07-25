@@ -2,7 +2,7 @@
 %       Calculate and plot the spatial similarity matrix as defined in
 %       Baranger et al., 2018 (https://doi.org/10.1109/tmi.2018.2789499)
 
-% Input:
+% Inputs:
 %       U: spatial singular vectors in a matrix
 %       (optional) showSSM: true or false, to plot the SSM or not
 
