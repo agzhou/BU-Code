@@ -45,11 +45,13 @@ function [data_resampled] = resampleTrials(data, trial_sf, trial_windows, sfStar
                 data_resampled{trial} = spline(temp_indices_shifted, data(:, :, trial_sf{trial}), interp_times);
             end
         case 4                  % 4D: 3D space + time
-            for trial = 1:length(trial_windows)
+            for trial = 2:length(trial_windows)
                 disp("Resampling trial " + num2str(trial))
                 temp_indices = sfStarts(trial_sf{trial});
                 temp_indices_shifted = temp_indices - trial_windows{trial}(1) + 1; % Shift the indices so they correspond to a trial start at 1
                 data_resampled{trial} = spline(temp_indices_shifted, data(:, :, :, trial_sf{trial}), interp_times);
+%                 data_resampled{trial} = makima(temp_indices_shifted, data(:, :, :, trial_sf{trial}), interp_times);
+%                 data_resampled{trial} = pchip(temp_indices_shifted, data(:, :, :, trial_sf{trial}), interp_times);
             end
     end
 end
