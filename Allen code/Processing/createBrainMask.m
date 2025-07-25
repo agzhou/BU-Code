@@ -34,6 +34,10 @@ figure; imagesc(abs(squeeze(max(IQm(:, :, :, 1), [], 1))'))
 
 volumeViewer(abs(IQm(:, :, :, 1)))
 
+%% Test for surface segmentation
+temp_initial_mask = ~coronal_mask_rep(:, :, :, 1);
+
+BW = activecontour(abs(IQfs), temp_initial_mask, 300, 'Chan-Vese', SmoothFactor = 0.2, ContractionBias = -0.0);
 %% SVD on the IQ
 
 [xp, yp, zp, nf] = size(IQm);

@@ -32,7 +32,8 @@ function [XN, a_opt, b_opt] = fitSSM(SSM)
     % Iteratively calculate the unnormalized and normalized correlation
     % maps between the SSM and the families of squares
     for a = 1:np
-        for b = 1:np
+%         for b = 1:np
+        for b = a:np % by definition, b > a
             alpha = createAlpha(np, a, b);
             X(a, b) = X_factor .* sum(SSM_term .* (alpha - mean(alpha, 'all')), 'all');
             XN(a, b) = X(a, b) ./ sqrt( X_factor .* sum(SSM_term .* SSM_term, 'all') ) ...
