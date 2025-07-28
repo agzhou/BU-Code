@@ -45,13 +45,20 @@ function [data_resampled] = resampleTrials(data, trial_sf, trial_windows, sfStar
                 data_resampled{trial} = spline(temp_indices_shifted, data(:, :, trial_sf{trial}), interp_times);
             end
         case 4                  % 4D: 3D space + time
-            for trial = 2:length(trial_windows)
+            for trial = 1:length(trial_windows)
                 disp("Resampling trial " + num2str(trial))
                 temp_indices = sfStarts(trial_sf{trial});
                 temp_indices_shifted = temp_indices - trial_windows{trial}(1) + 1; % Shift the indices so they correspond to a trial start at 1
-                data_resampled{trial} = spline(temp_indices_shifted, data(:, :, :, trial_sf{trial}), interp_times);
+                try
+                    data_resampled{trial} = spline(temp_indices_shifted, data(:, :, :, trial_sf{trial}), interp_times);
 %                 data_resampled{trial} = makima(temp_indices_shifted, data(:, :, :, trial_sf{trial}), interp_times);
 %                 data_resampled{trial} = pchip(temp_indices_shifted, data(:, :, :, trial_sf{trial}), interp_times);
+                catch % Case where the masked points being all NaN causes an error with the chckxy internal helper function
+                    temp_data = data(:, :, :, trial_sf{trial});
+                    temp_data(isnan(temp_data)) = 0;
+                    data_resampled{trial} = spline(temp_indices_shifted, temp_data, interp_times);
+                    warning('Make sure the [masked] voxels are set to a value compatible with chckxy, e.g., not NaN')
+                end
             end
     end
 end

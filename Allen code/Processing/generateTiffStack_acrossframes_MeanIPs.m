@@ -1,10 +1,10 @@
-%% Make a tiff stack
+%% Make a tiff stack (Mean intensity projection)
 % Input data is assumed to be (y, x, z, frames)
 % Optional inputs: 1. actual image/physical size [y, x, z] in the same physical units
 %                  2. colormap (string)
 %                  3. MIP window range
 
-function generateTiffStack_acrossframes(volumeData, varargin)
+function generateTiffStack_acrossframes_MeanIPs(volumeData, varargin)
 
     % volumeData = volumeData ./ max(volumeData, [], 'all'); % Normalize intensities to be between 0 - 1
 %     cr = [0, max(volumeData, [], 'all')]; % color range
@@ -53,7 +53,7 @@ function generateTiffStack_acrossframes(volumeData, varargin)
     %     end
     
         for f = 1:size(volumeData, 4)
-            planeTemp = squeeze(max(volumeData(mwr, :, :, f), [], 1));
+            planeTemp = squeeze(mean(volumeData(mwr, :, :, f), 1, 'omitnan'));
     
             imagesc(squeeze(planeTemp)')
             title("Frame " + num2str(f))

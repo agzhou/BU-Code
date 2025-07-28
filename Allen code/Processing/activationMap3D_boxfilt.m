@@ -4,7 +4,7 @@
 %       stim pattern. Then, process it to get the activation maps
 
 % Processing steps:
-%   1. Median filter
+%   1. Mean (box) filter
 %   2. 
 
 % Inputs:
@@ -17,7 +17,7 @@
 %       z: z-score with Fisher's transform
 
 %%
-function [r, z, activationMap] = activationMap3D(volumeData, stim, zt)
+function [r, z, activationMap] = activationMap3D_boxfilt(volumeData, stim, zt)
     
     % Set any NaN values to zero
     volumeData(isnan(volumeData)) = 0;
@@ -41,8 +41,8 @@ function [r, z, activationMap] = activationMap3D(volumeData, stim, zt)
     z = fisherTransform3D(r, ntp);
 
     % Median filter
-    mf_kernel_size = [3, 3, 3];
-    r_mf = medfilt3(r, mf_kernel_size);
+%     mf_kernel_size = [3, 3, 3];
+    r_mf = imboxfilt3(r);
     % generateTiffStack_multi({testr}, [8.8, 8.8, 8], 'hot', 5) % test
     
     % z scores for the median-filtered correlation coefficient map
