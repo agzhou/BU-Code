@@ -9,6 +9,8 @@
 function [SSM] = plotSSM(U, varargin)
     if nargin > 1
         showSSM = varargin{1};
+    else
+        showSSM = true;
     end
     SSM = corrcoef(abs(U));
     if showSSM
