@@ -62,8 +62,8 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 
 %% Define the mask manually for now
 
-load('E:\Allen BME-BOAS-27 Data Backup\AZ01 fUS\07-21-2025 awake RC15gV manual right whisker stim\coronal_mask_rep_07_24_2025.mat')
-
+% load('E:\Allen BME-BOAS-27 Data Backup\AZ01 fUS\07-21-2025 awake RC15gV manual right whisker stim\coronal_mask_rep_07_24_2025.mat')
+load('I:\Ultrasound Data from 04-11-2025 to 05-08-2025\05-06-2025 AZ03 fUS pre-stroke\run 1 all frames stacked\coronal_mask_rep_07_31_2025.mat')
 %% Main loop with the Adaptive SVD Thresholding
 for filenum = startFile:endFile
 % for filenum = 2:endFile
@@ -83,17 +83,19 @@ for filenum = startFile:endFile
     tic
 %     [U, S, V] = svd(PP); % Already sorted in decreasing order
     [U, S, V] = svd(PP, 'econ'); % Already sorted in decreasing order
-    disp('Full SVD done')
+%     disp('Full SVD done')
     toc
 
-    SSM = plotSSM(U, false);
-    [~, a_opt, b_opt] = fitSSM(SSM, false); % Get the optimal singular value thresholds
+%     SSM = plotSSM(U, false);
+    SSM = plotSSM(U, true);
+%     [~, a_opt, b_opt] = fitSSM(SSM, false); % Get the optimal singular value thresholds
+    [~, a_opt, b_opt] = fitSSM(SSM, true); % Get the optimal singular value thresholds
     SVs = diag(S);
 
 %     [PP, EVs, V_sort] = getSVs2D(IQ);
 %     disp('SVs decomposed')
     [IQf] = applySVs2D(IQm, PP, SVs, V, a_opt, b_opt);
-    disp('SVD filtered images put together')
+%     disp('SVD filtered images put together')
 
 %     volumeViewer(abs(IQf(:, :, :, 1)))
 %     figure; imagesc(squeeze(abs(max(IQf(:, :, :, 1), [], 1)))')

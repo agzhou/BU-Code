@@ -40,6 +40,7 @@ function [XN, a_opt, b_opt] = fitSSM(SSM, varargin)
     % Iteratively calculate the unnormalized and normalized correlation
     % maps between the SSM and the families of squares
     for a = globalBounds(1):globalBounds(2)
+%         disp(a)
 %         for b = 1:np
         for b = a:globalBounds(3) % by definition, b > a
             alpha = createAlpha(np, a, b);
