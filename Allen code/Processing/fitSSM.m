@@ -11,6 +11,7 @@
 % Inputs:
 %       SSM (symmetric matrix, can use plotSSM.m to get it)
 %       (optional) showSSM: true or false, to plot the SSM or not
+%       (optional) globalBounds: [smallest a, largest a, largest b] to use for the parameter search
 % Outputs:
 %       XN: normalized correlation map
 %       a_opt: optimal a parameter
@@ -18,14 +19,8 @@
 
 
 function [XN, a_opt, b_opt] = fitSSM(SSM, varargin)
-    if nargin > 1
-        showSSM = varargin{1};
-    end
+
     np = size(SSM, 1); % get the size/"# points" of the SSM, which is expected to be square
-    
-%     % Define starting points for the parameters a and b
-%     a = 1;
-%     b = 1;
 
     % Initialize the correlation map between the SSM and the family of juxtaposed squares
     X = zeros(np);  % Unnormalized correlation map
@@ -33,11 +28,20 @@ function [XN, a_opt, b_opt] = fitSSM(SSM, varargin)
     SSM_term = SSM - mean(SSM, 'all'); % Pre-calculate the term for speed
     X_factor = 1/np^2; % Normalization factor for X
 
+    globalBounds = [1, np, np]; % Default global bounds
+
+    if nargin > 1
+        showSSM = varargin{1};
+        if nargin > 2
+            globalBounds = varargin{2};
+        end
+    end
+
     % Iteratively calculate the unnormalized and normalized correlation
     % maps between the SSM and the families of squares
-    for a = 1:np
+    for a = globalBounds(1):globalBounds(2)
 %         for b = 1:np
-        for b = a:np % by definition, b > a
+        for b = a:globalBounds(3) % by definition, b > a
             alpha = createAlpha(np, a, b);
             X(a, b) = X_factor .* sum(SSM_term .* (alpha - mean(alpha, 'all')), 'all');
             XN(a, b) = X(a, b) ./ sqrt( X_factor .* sum(SSM_term .* SSM_term, 'all') ) ...
