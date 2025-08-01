@@ -1,3 +1,4 @@
+%% THIS DOES NOT WORK CURRENTLY. THERE IS NO WAY TO TRANSFER ALL BUFFER FRAMES AT ONCE.
 
 %% 0. Description
 % Continuous acquisition and saving of RF data with the L22-14v probe
@@ -21,7 +22,7 @@ cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 % cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
 activate
 
-savepath = uigetdir('G:\', 'Select the save path');
+savepath = uigetdir('F:\', 'Select the save path');
 savepath = [savepath, '\'];
 
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use air puff (0-no, 1-yes)'}; % 'Save RF data (0-no, 1-yes)', 
@@ -43,6 +44,17 @@ simMode = str2double(parameterUserInput{10});
 saveRcvDataFlag = str2double(parameterUserInput{11});
 numFramesPerSF = str2double(parameterUserInput{12});
 useTriggers = str2double(parameterUserInput{13});
+
+%%%%%%%%%%%%% Temporary way to divide the frames per superframe into
+%%%%%%%%%%%%% different buffer frames %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+numFramesPerBufferFrameLimit = 1000; % Max # of stacked frames per buffer frame (I should find a better way to calculate this based on the # angles, region size, sampling rate, etc.)
+if (mod(numFramesPerSF, numFramesPerBufferFrameLimit) ~= 0)
+    error('Please make the # of frames per superframe a natural number multiple of 1000 for now, my code is not robust enough')
+end
+
+numBufferFrames = numFramesPerSF / numFramesPerBufferFrameLimit; % # of stacked frames in the buffer
+numFramesPerBufferFrame = numFramesPerSF / numBufferFrames;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % tagtest = Hardware.enableAcquisitionTimeTagging(1);
 bufferIndex = 0;
@@ -287,22 +299,23 @@ j = 1;
 for nbuf = 1:numBuffers
     an = 0; % acquisition number
 
-    for nf = 1:numFramesPerSF
-%         an = 0; % acquisition number
+    for nbufframe = 1:numBufferFrames
+        an = 0; % acquisition number
+        for nf = 1:numFramesPerBufferFrame
+
+            
+            % Move points after all the acquisitions for one frame
+            Receive(j).callMediaFunc = movePointsOrNot;
+        %     Receive(j).mode = 0; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            for n = 1:na
+                an = an + 1;
+                Receive(j).bufnum = nbuf;
+                Receive(j).framenum = nbufframe; % 1 stacked frame per buffer
+                Receive(j).acqNum = an;
+                j = j + 1;
+            end
         
-        % Move points after all the acquisitions for one frame
-        Receive(j).callMediaFunc = movePointsOrNot;
-    %     Receive(j).mode = 0; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        for n = 1:na
-            an = an + 1;
-            Receive(j).bufnum = nbuf;
-%             Receive(j).framenum = nf;
-%             Receive(j).framenum = nbuf;
-            Receive(j).framenum = 1; % 1 stacked frame per buffer
-            Receive(j).acqNum = an;
-            j = j + 1;
         end
-    
     end
 end
 
@@ -349,11 +362,11 @@ end
 maxAcqLength_adjusted = numRcvSamples / samplesPerWave / 2;
 
 for nbuf = 1:numBuffers
-    Resource.RcvBuffer(nbuf).rowsPerFrame = numRcvSamples * na * numFramesPerSF;
+    Resource.RcvBuffer(nbuf).rowsPerFrame = numRcvSamples * na * numFramesPerBufferFrame;
     Resource.RcvBuffer(nbuf).colsPerFrame = Resource.Parameters.numRcvChannels; % Usually 1:1 to # of receive channels available in the system. Can change to 256 with the 2D probe and new connector plate.
 %     Resource.RcvBuffer(nbuf).colsPerFrame = 160; % Usually 1:1 to # of receive channels available in the system. Can change to 256 with the 2D probe and new connector plate.
-%     Resource.RcvBuffer(nbuf).numFrames = numFramesPerSF; % minimum # frames of RF data to acquire; RcvBuffer contains all the data needed for a whole frame, including multiple acquisition passes needed for reconstruction. Software can re-process RcvBuffer frames
-    Resource.RcvBuffer(nbuf).numFrames = 1; % minimum # frames of RF data to acquire; RcvBuffer contains all the data needed for a whole frame, including multiple acquisition passes needed for reconstruction. Software can re-process RcvBuffer frames
+    Resource.RcvBuffer(nbuf).numFrames = numBufferFrames; % minimum # frames of RF data to acquire; RcvBuffer contains all the data needed for a whole frame, including multiple acquisition passes needed for reconstruction. Software can re-process RcvBuffer frames
+%     Resource.RcvBuffer(nbuf).numFrames = 1; % minimum # frames of RF data to acquire; RcvBuffer contains all the data needed for a whole frame, including multiple acquisition passes needed for reconstruction. Software can re-process RcvBuffer frames
     Resource.RcvBuffer(nbuf).datatype = 'int16'; % 16 bit signed integers are the only supported datatype
 end
 % Commenting below section because it doesn't work for the second set of
@@ -386,6 +399,9 @@ if ((maxAcqLength_adjusted + (endDepth))*wl / speedOfSound) > 1/PRF
 
 end
 
+%% Modify the DMA timeout
+Resource.VDAS.dmaTimeout = 10000000000000; % [ms]
+
 %% Process structures
 Process(1).classname = 'External';
 Process(1).method = 'saveTimetag';
@@ -417,7 +433,7 @@ makeParameterStructureSmall_functional;
 
 %% Event structure
 
-Resource.VDAS.dmaTimeout = 100000; % [ms]
+% Resource.VDAS.dmaTimeout = 1000;
 
 % Set the shot-to-shot (each angle) timing according to the PRF
 scInd = 1; % sequence control index
@@ -652,7 +668,7 @@ Event(n).seqControl = 3;
 
 %% Save all the data/structures to a .mat file.
 currentDir = cd; currentDir = regexp(currentDir, filesep, 'split');
-filename = 'L22_14v_Allen_loop_functional.mat';
+filename = 'L22_14v_Allen_loop_functional_largebuffers.mat';
 
 save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+filename);
 

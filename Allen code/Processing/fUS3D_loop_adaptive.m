@@ -64,6 +64,8 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 
 % load('E:\Allen BME-BOAS-27 Data Backup\AZ01 fUS\07-21-2025 awake RC15gV manual right whisker stim\coronal_mask_rep_07_24_2025.mat')
 load('I:\Ultrasound Data from 04-11-2025 to 05-08-2025\05-06-2025 AZ03 fUS pre-stroke\run 1 all frames stacked\coronal_mask_rep_07_31_2025.mat')
+
+
 %% Main loop with the Adaptive SVD Thresholding
 for filenum = startFile:endFile
 % for filenum = 2:endFile
@@ -75,7 +77,9 @@ for filenum = startFile:endFile
     clearvars IData QData
 
     IQm = IQ;
-    IQm(coronal_mask_rep) = 0; % Apply the brain mask to the IQ: set the non-brain voxels equal to 0
+
+    %%%%%%%%%%%%%% IF USING THE MASK %%%%%%%%%%%%
+%     IQm(coronal_mask_rep) = 0; % Apply the brain mask to the IQ: set the non-brain voxels equal to 0
     
     % Determine the optimal SV thresholds with the spatial similarity matrix
     [xp, yp, zp, nf] = size(IQm);
@@ -86,10 +90,10 @@ for filenum = startFile:endFile
 %     disp('Full SVD done')
     toc
 
-%     SSM = plotSSM(U, false);
-    SSM = plotSSM(U, true);
-%     [~, a_opt, b_opt] = fitSSM(SSM, false); % Get the optimal singular value thresholds
-    [~, a_opt, b_opt] = fitSSM(SSM, true); % Get the optimal singular value thresholds
+    SSM = plotSSM(U, false);
+%     SSM = plotSSM(U, true);
+    [~, a_opt, b_opt] = fitSSM(SSM, false); % Get the optimal singular value thresholds
+%     [~, a_opt, b_opt] = fitSSM(SSM, true); % Get the optimal singular value thresholds
     SVs = diag(S);
 
 %     [PP, EVs, V_sort] = getSVs2D(IQ);
@@ -139,7 +143,7 @@ savefast([savepath, 'fUS_proc_params.mat'], 'coronal_mask_rep', 'tau', 'tau_ms',
 
 %% Convert g1 into CBV, CBFspeed, etc.
 
-g1_tau1_cutoff = 0.3;
+g1_tau1_cutoff = 0.0;
 % g1_tau1_cutoff = 0.2;
 % tau_difference_cutoff = 0.2;
 
@@ -276,7 +280,7 @@ figure; scatter(a_allSF, avg_CBVi_involume_allSF); xlabel('Lower SV threshold');
 % newsize = size(CBViallSF);
 % newsize(mdim) = 1; % Set the size of the new variable to 1
 % CBViMIPStack = zeros(newsize);
-CBViMIPStack = squeeze(max(CBViallSF(30:50, :, :, :), [], 1));
+% CBViMIPStack = squeeze(max(CBViallSF(30:50, :, :, :), [], 1));
 
 generateTiffStack_acrossframes(CBViallSF .^ 0.7, [8.8, 8.8, 8], 'hot', 1:80)
 
@@ -328,22 +332,20 @@ clearvars trial
 %% Resample the trials for the hemodynamic parameters
 interp_factor = 100;
 [trial_CBVi_usi] = resampleTrials(CBViallSF, trial_sf, trial_windows, sfStarts, P, interp_factor);
+[trial_CBFsi_usi] = resampleTrials(CBFsiallSF, trial_sf, trial_windows, sfStarts, P, interp_factor);
 [trial_PDI_usi] = resampleTrials(PDIallSF, trial_sf, trial_windows, sfStarts, P, interp_factor);
 
-[trial_CBFsi_usi] = resampleTrials(CBFsiallSF, trial_sf, trial_windows, sfStarts, P, interp_factor);
 %% Calculate the relative hemodynamic changes for each trial
 
 [trial_CBVi_usi_baseline, trial_rCBV_usi] = fUS_calc_rHP(trial_CBVi_usi, P, interp_factor);
-[trial_PDI_usi_baseline, trial_rPDI_usi] = fUS_calc_rHP(trial_PDI_usi, P, interp_factor);
-
 [trial_CBFsi_usi_baseline, trial_rCBFspeed_usi] = fUS_calc_rHP(trial_CBFsi_usi, P, interp_factor);
+[trial_PDI_usi_baseline, trial_rPDI_usi] = fUS_calc_rHP(trial_PDI_usi, P, interp_factor);
 
 %% Trial average the relative hemodynamic changes
 
 rCBV_TA = fUS_trialAverage(trial_rCBV_usi);
-rPDI_TA = fUS_trialAverage(trial_rPDI_usi);
-
 rCBFspeed_TA = fUS_trialAverage(trial_rCBFspeed_usi);
+rPDI_TA = fUS_trialAverage(trial_rPDI_usi);
 
 %% Correlation on the trial averaged rCBV
 
@@ -354,21 +356,21 @@ trial_stim_pattern(P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor
     P.Mcr_fcp.apis.stim_length_s * P.daqrate / interp_factor) = 1;
 figure; plot(trial_stim_pattern); title('Trial stim pattern')
 
-zt = 5;
+zt = 2;
 [r_rCBV, z_rCBV, am_rCBV] = activationMap3D(rCBV_TA, trial_stim_pattern, zt);
 
-volumeViewer(r_rCBV)
-volumeViewer(z_rCBV)
-volumeViewer(am_rCBV)
+% volumeViewer(r_rCBV)
+% volumeViewer(z_rCBV)
+% volumeViewer(am_rCBV)
 figure; imagesc(squeeze(max(r_rCBV(:, :, :), [], 1))'); colorbar; colormap jet; title('Correlation map coronal MIP'); clim([0, 1]) %clim([-1, 1])]
 figure; imagesc(squeeze(max(z_rCBV(:, :, :), [], 1))'); colorbar; colormap jet; title('z-score map coronal MIP');
 % figure; imagesc(squeeze(mean(z_rCBV(:, :, :), 1))'); colormap jet; clim([0, 1]) % clim([-1, 1])
 % figure; imagesc(am_rCBV); colormap jet; title("Activation Map (rCBV) with z threshold = " + num2str(zt))
 figure; imagesc(squeeze(max(am_rCBV(:, :, :), [], 1))'); colorbar; colormap jet; title("Activation Map (rCBV) coronal MIP with z threshold = " + num2str(zt))
 
-generateTiffStack_multi({r_rCBV}, [8.8, 8.8, 8], 'jet', 5)
-generateTiffStack_multi({z_rCBV}, [8.8, 8.8, 8], 'jet', 5)
-generateTiffStack_multi({am_rCBV}, [8.8, 8.8, 8], 'jet', 5)
+% generateTiffStack_multi({r_rCBV}, [8.8, 8.8, 8], 'jet', 5)
+% generateTiffStack_multi({z_rCBV}, [8.8, 8.8, 8], 'jet', 5)
+% generateTiffStack_multi({am_rCBV}, [8.8, 8.8, 8], 'jet', 5)
 
 %% Correlation on the trial averaged rCBFspeed
 
@@ -382,18 +384,44 @@ figure; plot(trial_stim_pattern); title('Trial stim pattern')
 zt = 2;
 [r_rCBFspeed, z_rCBFspeed, am_rCBFspeed] = activationMap3D_boxfilt(rCBFspeed_TA, trial_stim_pattern, zt);
 
-volumeViewer(r_rCBFspeed)
-volumeViewer(z_rCBFspeed)
-volumeViewer(am_rCBFspeed)
+% volumeViewer(r_rCBFspeed)
+% volumeViewer(z_rCBFspeed)
+% volumeViewer(am_rCBFspeed)
 figure; imagesc(squeeze(max(r_rCBFspeed(:, :, :), [], 1))'); colorbar; colormap jet; title('Correlation map coronal MIP'); clim([0, 1]) %clim([-1, 1])]
 figure; imagesc(squeeze(max(z_rCBFspeed(:, :, :), [], 1))'); colorbar; colormap jet; title('z-score map coronal MIP');
 % figure; imagesc(squeeze(mean(z_rCBFspeed(:, :, :), 1))'); colormap jet; clim([0, 1]) % clim([-1, 1])
 % figure; imagesc(am_rCBFspeed); colormap jet; title("Activation Map (rCBV) with z threshold = " + num2str(zt))
-figure; imagesc(squeeze(max(am_rCBFspeed(:, :, :), [], 1))'); colorbar; colormap jet; title("Activation Map (rCBV) coronal MIP with z threshold = " + num2str(zt))
+figure; imagesc(squeeze(max(am_rCBFspeed(:, :, :), [], 1))'); colorbar; colormap jet; title("Activation Map (rCBFspeed) coronal MIP with z threshold = " + num2str(zt))
 
-generateTiffStack_multi({r_rCBFspeed}, [8.8, 8.8, 8], 'jet', 5)
-generateTiffStack_multi({z_rCBFspeed}, [8.8, 8.8, 8], 'jet', 5)
-generateTiffStack_multi({am_rCBFspeed}, [8.8, 8.8, 8], 'jet', 5)
+% generateTiffStack_multi({r_rCBFspeed}, [8.8, 8.8, 8], 'jet', 5)
+% generateTiffStack_multi({z_rCBFspeed}, [8.8, 8.8, 8], 'jet', 5)
+% generateTiffStack_multi({am_rCBFspeed}, [8.8, 8.8, 8], 'jet', 5)
+
+%% Correlation on the trial averaged rPDI
+
+% Resample the stim pattern/predicted HRF
+trial_stim_pattern = zeros(P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_factor, 1);
+trial_stim_pattern(P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor : ...
+    P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor + ...
+    P.Mcr_fcp.apis.stim_length_s * P.daqrate / interp_factor) = 1;
+figure; plot(trial_stim_pattern); title('Trial stim pattern')
+
+zt = 2;
+[r_rPDI, z_rPDI, am_rPDI] = activationMap3D(rPDI_TA, trial_stim_pattern, zt);
+
+% volumeViewer(r_rPDI)
+% volumeViewer(z_rPDI)
+% volumeViewer(am_rPDI)
+figure; imagesc(squeeze(max(r_rPDI(:, :, :), [], 1))'); colorbar; colormap jet; title('Correlation map coronal MIP'); clim([0, 1]) %clim([-1, 1])]
+figure; imagesc(squeeze(max(z_rPDI(:, :, :), [], 1))'); colorbar; colormap jet; title('z-score map coronal MIP');
+% figure; imagesc(squeeze(mean(z_rPDI(:, :, :), 1))'); colormap jet; clim([0, 1]) % clim([-1, 1])
+% figure; imagesc(am_rPDI); colormap jet; title("Activation Map (rCBV) with z threshold = " + num2str(zt))
+figure; imagesc(squeeze(max(am_rPDI(:, :, :), [], 1))'); colorbar; colormap jet; title("Activation Map (rPDI) coronal MIP with z threshold = " + num2str(zt))
+
+% generateTiffStack_multi({r_rPDI}, [8.8, 8.8, 8], 'jet', 5)
+% generateTiffStack_multi({z_rPDI}, [8.8, 8.8, 8], 'jet', 5)
+% generateTiffStack_multi({am_rPDI}, [8.8, 8.8, 8], 'jet', 5)
+generateTiffStack_multi({squeeze(mean(PDIallSF, 4)) .^ 0.5, am_rPDI}, [8.8, 8.8, 8], 'jet', 5)
 %% Plot activation at each slice
 for slice = 1:10
     my_inds = (slice-1)*5:slice*5;
