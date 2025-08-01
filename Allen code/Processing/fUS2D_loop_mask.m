@@ -63,24 +63,63 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 % tau2_index_CBF = 6;
 % tau1_index_CBV = 2;
 
-%% Main loop
+%% Create a brain mask
+load([IQpath, IQfilenameStructure, num2str(5)])
+IQ = squeeze( IData + 1i .* QData );
+IQfs = squeeze(mean(IQ, 3));
+figure; imagesc(abs(squeeze(IQfs)))
+% figure; imagesc(abs(squeeze(max(IQfs, [], 2))'))
+
+% Draw a ROI on the coronal MIP
+coronal_roi = images.roi.Freehand;
+coronal_roi.draw;
+coronal_mask = createMask(coronal_roi);
+% coronal_mask = drawfreehand;
+%% Mask the IQ
+IQm = IQ; % IQ masked
+coronal_mask_rep = repmat(~coronal_mask, 1, 1, size(IQ, 3));
+IQm(coronal_mask_rep) = 0;
+figure; imagesc(abs(squeeze(IQm(:, :, 1))))
+
+%% Main loop with the masking
 for filenum = startFile:endFile
 % for filenum = 2:endFile
-% for filenum = [285:-1:189]
-% for filenum = 2
+% for filenum = [2]
+% for filenum = 1
     tic
     load([IQpath, IQfilenameStructure, num2str(filenum)])
     
     IQ = squeeze(IData + 1i .* QData);
     clearvars IData QData
+
+    % Apply the mask
+    IQm = IQ; % IQ masked
+    IQm(coronal_mask_rep) = 0;
     
     % SVD decluttering
-%     [xp, yp, zp, nf] = size(IQ);
     
-    [PP, EVs, V_sort] = getSVs1D(IQ);
-    disp('SVs decomposed')
-    [IQf] = applySVs1D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
-    disp('SVD filtered images put together')
+    % Determine the optimal SV thresholds with the spatial similarity matrix
+    [zp, xp, nf] = size(IQm);
+    % PP = reshape(IQm, [zp*xp, nf]);
+    % tic
+%     [U, S, V] = svd(PP); % Already sorted in decreasing order
+    % [U, S, V] = svd(PP, 'econ'); % Already sorted in decreasing order
+    % disp('Full SVD done')
+    % toc
+    % 
+    % SSM = plotSSM(U, false);
+    % [~, a_opt, b_opt] = fitSSM(SSM, false); % Get the optimal singular value thresholds
+    % SVs = diag(S);
+
+    % Get the filtered IQ
+    % [IQf] = applySVs1D(IQm, PP, SVs, V, sv_threshold_lower, sv_threshold_upper); % with fixed SV thresholds
+    % [IQf_opt] = applySVs1D(IQ, PP, SVs, V, a_opt, b_opt); % with optimal SV thresholds
+    % disp('SVD filtered images put together')
+
+    [PP, EVs, V_sort] = getSVs1D(IQm);
+    % disp('SVs decomposed')
+    [IQf] = applySVs1D(IQm, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
+    % disp('SVD filtered images put together')
 
 %     figure; imagesc(squeeze(abs(IQf(:, :, 1))) .^ 0.5)
 
@@ -104,7 +143,7 @@ for filenum = startFile:endFile
 %     [PDI] = calcPowerDoppler(IQf_separated);
 %     [CDI] = calcColorDoppler(IQf_FT_separated, P);
 
-    PDI = sum(abs(IQf) .^ 2, 3);
+    PDI = sum(abs(IQf) .^ 2, 3) ./ size(IQf, 3);
 %     figure; imagesc(squeeze(PDI_test .^ 0.5)); colormap hot
 
 %     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
@@ -126,77 +165,15 @@ end
 savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'numg1pts');
 % savefast([savepath, 'PDI_CDI_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
 
-%% Main loop but with the multiple g1 thing
-numg1curves = 100; % # of g1 curves to average
-for filenum = startFile:endFile
-% for filenum = [285:-1:189]
-% for filenum = 1
-    tic
-    load([IQpath, IQfilenameStructure, num2str(filenum)])
-    
-    IQ = squeeze(IData + 1i .* QData);
-    clearvars IData QData
-    
-    % SVD decluttering
-    [xp, yp, zp, nf] = size(IQ);
-    
-    [PP, EVs, V_sort] = getSVs2D(IQ);
-    disp('SVs decomposed')
-    [IQf] = applySVs2D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
-    disp('SVD filtered images put together')
 
-    clearvars IQ
-
-    g1s = cell(numg1curves, 1);
-
-    % Use the IQf with separated negative and positive frequency components
-%     [IQf_separated, IQf_FT_separated] = separatePosNegFreqs(IQf);
-    
-    numg1pts = 20; % Only calculate the first N points
-%     g1_n = g1T(IQf_separated{1}, numg1pts);
-%     [CBFsi_n, CBVi_n] = g1_to_CBi(g1_n, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
-%     g1_p = g1T(IQf_separated{2}, numg1pts);
-%     [CBFsi_p, CBVi_p] = g1_to_CBi(g1_p, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
-% 
-    parfor g1cn = 1:numg1curves % g1 curve number
-        g1s{g1cn} = g1T(IQf(:, :, :, g1cn:end), numg1pts);
-    end
-
-    g1Avg = zeros(size(g1s{1})); % g1 average
-    for g1cn = 1:numg1curves % g1 curve number
-        g1Avg = g1Avg + g1s{g1cn};
-    end
-    g1Avg = g1Avg ./ numg1curves;
-%     g1 = g1T(IQf);
-%     [CBFsi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
-% 
-% %     savefast([savepath, 'fUSdata-', num2str(filenum), '.mat'], g1, CBFi, CBVi);
-
-%     [PDI] = calcPowerDoppler(IQf_separated);
-%     [CDI] = calcColorDoppler(IQf_FT_separated, P);
-
-%     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
-%     disp("PDI and CDI for file " + num2str(filenum) + " saved" )
-%     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFsi', 'CBVi', 'PDI', 'CDI', '-v7.3', '-nocompression');
-%     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFsi', 'CBVi', 'PDI', 'CDI', 'g1_n', 'g1_p', 'CBFsi_n', 'CBVi_n', 'CBFsi_p', 'CBVi_p',  '-v7.3', '-nocompression');
-%     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'g1_n', 'g1_p', 'PDI', 'CDI', '-v7.3', '-nocompression');
-%     save([savepath, 'g1-', num2str(filenum), '.mat'], 'g1', 'g1_n', 'g1_p', '-v7.3', '-nocompression');
-    save([savepath, 'g1Avg-', num2str(filenum), '.mat'], 'g1Avg', '-v7.3', '-nocompression');
-
-%     disp("fUS result for file " + num2str(filenum) + " saved" )
-    disp("g1 result for file " + num2str(filenum) + " saved" )
-
-    toc
-    
-end
 
 %% Convert g1 into CBV, CBFspeed, etc.
 
-g1_tau1_cutoff = 0.1;
+g1_tau1_cutoff = 0.0;
 % tau_difference_cutoff = 0.2;
 
 for filenum = startFile:endFile
-% for filenum = [5]
+% for filenum = [288]
 %     load([savepath, 'g1-', num2str(filenum)], 'g1') % Load the saved g1 mat files
     load([savepath, 'fUSdata-', num2str(filenum)], 'g1') % Load the saved g1 mat files
 
@@ -221,257 +198,6 @@ vcmap = colormap_ULM;
 figure; imagesc(squeeze(CBFsi)); colormap(vcmap)
 
 % generateTiffStack_multi({CBVi .^ 0.7}, [8.8, 8.8, 8], 'hot', 5)
-%% Get and save PDI, CDI only
-for filenum = startFile:endFile
-% for filenum = 1
-% for filenum = [285:-1:189]
-    tic
-    load([IQpath, IQfilenameStructure, num2str(filenum)])
-%     load(['E:\Allen BME-BOAS-27 Data Backup\AZ03 Stroke RC15gV\fUS\05-06-2025 pre-stroke\IQ Data - Verasonics recon\', IQfilenameStructure, num2str(filenum)])
-    
-    IQ = squeeze(IData + 1i .* QData);
-    clearvars IData QData
-    
-    % SVD decluttering
-    [xp, yp, zp, nf] = size(IQ);
-    
-    [PP, EVs, V_sort] = getSVs2D(IQ);
-    disp('SVs decomposed')
-    [IQf] = applySVs2D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
-    disp('SVD filtered images put together')
-
-    clearvars IQ
-
-    % Use the IQf with separated negative and positive frequency components
-%     [IQf_separated, IQf_FT_separated] = separatePosNegFreqs(IQf);
-    
-    [PDI] = calcPowerDoppler(IQf);
-%     [CDI] = calcColorDoppler(IQf_FT_separated, P);
-
-%     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
-    save([savepath, 'PDI-', num2str(filenum), '.mat'], 'PDI', '-v7.3', '-nocompression');
-    disp("PDI and CDI for file " + num2str(filenum) + " saved" )
-
-    toc
-    
-end
-savefast([savepath, 'PDI_CDI_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
-
-
-%% CBFspeed index with the Derivative Method
-% vtest = sqrt( (abs(g1(:, :, :, tau1_index_CBF)) - abs(g1(:, :, :, tau2_index_CBF))) ./ (abs(g1(:, :, :, tau1_index_CBF)) .* ( tau(tau2_index_CBF)^2 - tau(tau1_index_CBF)^2 )) );
-CBFspeed_DM = (abs(g1(:, :, :, tau1_index_CBF)) - abs(g1(:, :, :, tau2_index_CBF))) ./ (abs(g1(:, :, :, tau1_index_CBF)) .* ( tau(tau2_index_CBF)^2 - tau(tau1_index_CBF)^2 ));
-CBFspeed_DM(CBFspeed_DM < 0) = 0;
-CBFspeed_DM = sqrt(CBFspeed_DM);
-
-CBFspeed_DM_masked = CBFspeed_DM;
-CBFspeed_DM_masked(~g1A_mask) = 0;
-
-% vtest_NLMF = NLMF(vtest ./ max(vtest, [], 'all')); % Try using nonlinear means filtering to get rid of those high-noise points
-% vtest_gaussLPF = imgaussfilt3(vtest);
-
-%% Random phase test
-phasetest = atan2(imag(IQf), real(IQf));
-
-figure; imagesc(squeeze(phasetest(40, :, :, 1))'); % colormap(vcmap)
-figure; imagesc(squeeze(abs(IQf(40, :, :, 1)))'); % colormap(vcmap)
-
-% figure; imagesc(squeeze(mean(phasetest(30:50, :, :), 1))'); % colormap(vcmap)
-
-%%
-figure; imagesc(squeeze(max(CBFspeed_DM_masked(30:50, :, :), [], 1))'); colormap(vcmap)
-figure; imagesc(squeeze(mean(CBFspeed_DM_masked(30:50, :, :), 1))'); colormap(vcmap)
-% figure; imagesc(squeeze(median(CBFspeed_DM_masked(30:50, :, :), 1))'); colormap(vcmap)
-% volumeViewer(vtest_masked)
-
-% generateTiffStack_MeanIPs_multi({CBFspeed_DM_masked .^ 1}, [8.8, 8.8, 8], vcmap, 10)
-% generateTiffStack_multi({vtest_masked .^ 1}, [8.8, 8.8, 8], vcmap, 10)
-% figure; imagesc(squeeze(max(vtest_NLMF(30:50, :, :), [], 1))'); colormap(vcmap)
-% figure; imagesc(squeeze(mean(vtest_NLMF(30:50, :, :), 1))'); colormap(vcmap)
-% volumeViewer(vtest_NLMF)
-
-% figure; imagesc(squeeze(max(vtest_gaussLPF(30:50, :, :), [], 1))'); colormap(vcmap)
-% figure; imagesc(squeeze(mean(vtest_gaussLPF(30:50, :, :), 1))'); colormap(vcmap)
-% figure; imagesc(squeeze(median(vtest_gaussLPF(30:50, :, :), 1))'); colormap(vcmap)
-
-% volumeViewer(vtest_gaussLPF)
-
-%% Compare the derivative CBFspeed index method to the old log one
-CBFsi_all_masked = CBFsi_all;
-CBFsi_all_masked(~g1A_mask) = 0;
-
-figure; imagesc(squeeze(max(CBFsi_all_masked(30:50, :, :), [], 1))'); colormap(vcmap)
-figure; imagesc(squeeze(mean(CBFsi_all_masked(30:50, :, :), 1))'); colormap(vcmap)
-
-% generateTiffStack_MeanIPs_multi({CBFsi_all_masked .^ 1}, [8.8, 8.8, 8], vcmap, 10)
-% generateTiffStack_multi({CBFsi_all_masked .^ 1}, [8.8, 8.8, 8], vcmap, 10)
-
-generateTiffStack_MeanIPs_multi({CBFsi_all_masked .^ 1, CBFspeed_DM_masked}, [8.8, 8.8, 8], vcmap, 20)
-
-%% plot the base g1 at some point
-% pt = [40, 58, 14];
-% pt = [32, 34, 17];
-pt = [32, 31, 35];
-% pt = [40, 36, 128];
-% figure; plot(tau_ms(1:size(g1, 4)), squeeze(abs(g1(pt(1), pt(2), pt(3), :))), '-o');
-figure; plot(tau_ms(1:size(g1s{1}, 4)), squeeze(abs(g1s{1}(pt(1), pt(2), pt(3), :))), '-o');
-hold on
-plot(tau_ms(1:size(g1Avg, 4)), squeeze(abs(g1Avg(pt(1), pt(2), pt(3), :))), '-o');
-% plot(tau_ms(1:size(g1s{2}, 4)), squeeze(abs(g1s{2}(pt(1), pt(2), pt(3), :))), '-o');
-hold off
-xlabel('tau [ms]')
-ylabel('|g1|')
-
-%% Use smoothdata
-g1_smoothdata = smoothdata(g1, 4, 'sgolay'); % Smooth along the time dimension
-%
-figure; plot(tau_ms(1:size(g1, 4)), squeeze(abs(g1_smoothdata(pt(1), pt(2), pt(3), :))), '-o');
-xlabel('tau [ms]')
-ylabel('|g1| with smoothdata')
-
-%% Trying some alternate CBFspeed index calculations
-% CBFsi_all = squeeze(abs(g1(:, :, :, tau1_index_CBF)) - abs(g1(:, :, :, tau2_index_CBF)));
-% CBFsi_p = squeeze(abs(g1_p(:, :, :, tau1_index_CBF)) - abs(g1_p(:, :, :, tau2_index_CBF)));
-% CBFsi_n = squeeze(abs(g1_n(:, :, :, tau1_index_CBF)) - abs(g1_n(:, :, :, tau2_index_CBF)));
-% volumeViewer(CBFsi_all)
-% figure; imagesc(squeeze(max(CBFsi_all(30:50, :, :), [], 1))')
-
-vcmap = colormap_ULM; % velocity colormap
-% generateTiffStack_multi({CBFsi_all}, [8.8, 8.8, 8], vcmap, 5)
-% generateTiffStack_multi({CBFsi_p}, [8.8, 8.8, 8], vcmap, 5)
-% generateTiffStack_multi({CBFsi_n}, [8.8, 8.8, 8], vcmap, 5)
-
-% CBFsi_all_test = squeeze(abs(g1(:, :, :, tau1_index_CBF)) ./ abs(g1(:, :, :, tau2_index_CBF))); %./ (tau2_index_CBF - tau1_index_CBF);
-% CBFsi_all_test = squeeze(log(abs(g1(:, :, :, tau1_index_CBF)) ./ abs(g1(:, :, :, tau2_index_CBF)))); %./ (tau2_index_CBF - tau1_index_CBF);
-% CBFsi_all_test = squeeze(abs(g1(:, :, :, tau1_index_CBF)) ./ abs(g1(:, :, :, tau2_index_CBF))); %./ (tau2_index_CBF - tau1_index_CBF);
-CBFsi_all_test = squeeze(log(abs(g1(:, :, :, tau1_index_CBF))) - log(abs(g1(:, :, :, tau2_index_CBF)))); %./ (tau2_index_CBF - tau1_index_CBF);
-figure; imagesc(squeeze(max(CBFsi_all_test(30:50, :, :), [], 1))'); colormap(vcmap)
-
-figure; imagesc(squeeze(mean(CBFsi_all_test(30:50, :, :), 1))'); colormap(vcmap)
-
-volumeViewer(CBFsi_all_test)
-%% g1 adjustment test (see MAIN_g1fUS_invivo_annotated.m)
-g1_shift = g1(:, :, :, 2:end);
-g1Temp = reshape(g1_shift, [size(g1_shift, 1) * size(g1_shift, 2) * size(g1_shift, 3), size(g1_shift, 4)]); % ** stack the spatial dimensions of the g1 **
-                
-% ** This seems like noise removal (CR = Clutter Removal? CRiteria?) **
-
-% ** The difference between the first 2 g1 values is greater than 2x the
-%    difference between the 2nd and 3rd g1 values **
-% ggCR1=(abs( g1Temp(:,1) - g1Temp(:,2) ) > 2*abs(( g1Temp(:,2) - g1Temp(:,3) )));
-
-% ** This is a series of masks that only keep the g1 at voxels where the
-%    1st, 2nd, and 3rd g1 values meet some threshold criteria:
-%    - |g1| at tau1 > 0.55 (I assume this means just if there is any blood
-%                           signal at this voxel)
-%    - |g1| at tau2 < 0.25 (If the g1 decays quickly enough)
-%    - |g1| at tau2 < g1 at tau3 **
-% ggCR2=( abs(g1Temp(:,1)) > 0.55) .* ( abs(g1Temp(:,2)) < 0.25 ) .* ( abs(g1Temp(:,2)) < abs(g1Temp(:,3)) );
-
-% ********* trying my own thresholds *********
-ggCR2 = ( abs(g1Temp(:,1)) > 0.5) .* ( abs(g1Temp(:,2)) < abs(g1Temp(:,1)) );
-ggCR1 = (abs( abs(g1Temp(:,1)) - abs(g1Temp(:,2)) ) > 2 * abs(( abs(g1Temp(:,2)) - abs(g1Temp(:,3)) )));
-
-ggCR0 = ggCR2;
-% ggCR0=((ggCR1+ggCR2)>0); % modified by Bingxue Liu; ** logical 'OR' operation between the two conditions **
-%GG2(:,1)=(1-ggCR0).*GG2(:,1)+ggCR0.*(GG2(:,2)+(abs(real(GG2(:,2)-GG2(:,3)))+1i*abs(imag(GG2(:,2)-GG2(:,3))))*1.5);
-GG2temp(:,1)=(1-ggCR0).*g1Temp(:,1)+ggCR0.*(g1Temp(:,2)+(abs(real(g1Temp(:,1)-g1Temp(:,2)))+1i*(imag(g1Temp(:,2)-g1Temp(:,3))))*1);% abs; real GG1-GG2
-GG2temp(find(abs(GG2temp)>1)) = g1Temp(find(abs(GG2temp)>1),1); %
-g1Temp(:,1) = GG2temp; % modified by Bingxue Liu
-g1Adj = reshape(g1Temp, [size(g1_shift, 1), size(g1_shift, 2), size(g1_shift, 3), size(g1_shift, 4)]); % ** unstack the spatial dimensions **
-      
-%%
-figure; plot(tau_ms(1:size(g1Adj, 4)), squeeze(abs(g1Adj(pt(1), pt(2), pt(3), :))), '-o');
-xlabel('tau [ms]')
-ylabel('|g1|')
-%% Plot CBVi and CBFspeedi from the smoothed g1
-tau1_index_CBF = 2;
-tau2_index_CBF = 10;
-tau1_index_CBV = 2;
-
-[CBFi_adj, CBVi_adj] = g1_to_CBi(g1Adj, tau_ms(2:end) ./ 1000, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
-%
-figure; imagesc(squeeze(mean(CBFi_adj(30:50, :, :), 1))')
-% plotMIPs(CBFi_adj, 1)
-% plotMIPs(CBVi_adj, 1)
-% plotMIPs(CBVi, 1)
-
-%% Look at the g1 adjustment criteria
-ggCR1_rs = reshape(ggCR1, [size(g1_shift, 1), size(g1_shift, 2), size(g1_shift, 3)]); % ** unstack the spatial dimensions **
-figure; imagesc(squeeze(max(ggCR1_rs, [], 1))')
-
-ggCR2_rs = reshape(ggCR2, [size(g1_shift, 1), size(g1_shift, 2), size(g1_shift, 3)]); % ** unstack the spatial dimensions **
-figure; imagesc(squeeze(max(ggCR2_rs, [], 1))') %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% More smoothing from the previous code
-covB=ones(3,3); covB(3,3)=9; covB=covB/sum(covB(:));
-
-g1Smoothed = g1;
-for itau=1:size(g1, 4)
-    g1Smoothed(:, :, :, itau) = convn(g1(:, :, :, itau), covB, 'same');
-end
-g1Smoothed = smoothdata(g1Smoothed, 4, 'sgolay', 9);
-
-%% Plot CBVi and CBFspeedi from the smoothed g1
-tau1_index_CBF = 2;
-tau2_index_CBF = 6;
-tau1_index_CBV = 2;
-
-[CBFi_smoothed, CBVi_smoothed] = g1_to_CBi(g1Smoothed, tau_ms ./ 1000, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
-%
-% plotMIPs(CBFi_smoothed, 1)
-plotMIPs(CBVi_smoothed, 1)
-plotMIPs(CBVi, 1)
-
-%% trying to denoise the Power Doppler
-% PDInt = PDIn; % normalized, thresholded
-% PDInt(PDInt < 0.07) = 0;
-% plotMIPs(PDInt, 1)
-% %%
-% test = NLMF(PDIn);
-% %%
-% plotMIPs(test, 1)
-
-%% CBVi and CBFi MIP over the whole dimension with negative and positive components
-% plotMIPs(CBVi_n, 1)
-% plotMIPs(CBFi_n, 1)
-
-% plotMIPs(CBVi_p, 1)
-% plotMIPs(CBFi_p, 1)
-
-plotMIPs(CBVi, 1)
-plotMIPs(CBFsi, 1)
-
-%% Plot the magnitude of g1 at some point, of the adjusted g1
-figure; plot(tau_ms(2:size(g1, 4)), abs(squeeze(g1_shift(40, 45, 61, :))), '-o')
-title('|g1| at 40, 45, 61')
-xlabel('Tau [ms]')
-ylabel('|g1|')
-
-% hold on
-figure
-plot(tau_ms(2:size(g1, 4)), abs(squeeze(g1Adj(40, 45, 61, :))), '-o')
-% hold off
-% legend('Original g1', 'Adjusted g1')
-%% Plot the base vs. smoothed g1
-figure; plot(tau_ms(1:size(g1, 4)), abs(squeeze(g1(40, 45, 61, :))), '-o')
-title('|g1| at 40, 45, 61')
-xlabel('Tau [ms]')
-ylabel('|g1|')
-
-figure
-plot(tau_ms(1:size(g1Smoothed, 4)), abs(squeeze(g1Smoothed(40, 45, 61, :))), '-o')
-
-%%
-figure; plot(tau_ms(2:size(g1, 4)), abs(squeeze(g1_shift(30, 60, 71, :))), '-o')
-title('|g1| at 30, 60, 71')
-xlabel('Tau [ms]')
-ylabel('|g1|')
-
-% hold on
-figure
-plot(tau_ms(2:size(g1, 4)), abs(squeeze(g1Adj(30, 60, 71, :))), '-o')
-% hold off
-% legend('Original g1', 'Adjusted g1')
 
 %% Store all the updated CBVi and CBFsi across the experiment into one matrix
 load([savepath, 'tlfUSdata-', num2str(1), '.mat'], 'CBFsi', 'CBVi')
@@ -519,33 +245,6 @@ for filenum = startFile:endFile
         PDIallSF(:, :, filenum) = PDI;
     end
 end
-
-%% Testing some filtering on the tl-fUS indices
-CBViallSF_mf = CBViallSF;
-CBFsiallSF_mf = CBFsiallSF;
-mf_kernel = [3, 3];
-
-for i = 1:size(CBViallSF, 3)
-    CBViallSF_mf(:, :, i) = medfilt2(CBViallSF(:, :, i), mf_kernel);
-end
-for i = 1:size(CBFsiallSF, 3)
-    CBFsiallSF_mf(:, :, i) = medfilt2(CBFsiallSF(:, :, i), mf_kernel);
-end
-
-
-%% Plot the rCBV at some point
-% Increasing y is going towards the back of the brain
-% Increasing x is going from the right to the left of the brain if we align
-% with -y (look towards the front)
-
-pt = [10, 81];
-high_values_risingedges = squeeze(rCBV(pt(1), pt(2), :));
-test_ma = movmean(high_values_risingedges, 1);
-% figure; plot(test, '-o')
-figure; plot(test_ma, '-o')
-title("rCBV at " + num2str(pt(1)) + ", " +  num2str(pt(2)))
-xlabel('')
-ylabel('rCBV')
 
 %% Separate each trial
 ah = 3; % Approximate a cutoff value for analog high
