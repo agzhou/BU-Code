@@ -26,13 +26,13 @@ clearvars
 %% Load parameters, create save path, choose some options for recon
 
 % Mcr_datapath = 'G:\Allen\Data\03-17-2025 AZ02 ULM\RC15gV\run 2 right eye\';
-Mcr_datapath = uigetdir('F:\Allen\Data\', 'Select the raw data path');
+Mcr_datapath = uigetdir('G:\Allen\Data\', 'Select the raw data path');
 Mcr_datapath = [Mcr_datapath, '\'];
 if ~exist('P', 'var')
     load([Mcr_datapath, 'params.mat']) % load acquisition parameters
 end
 
-Mcr_savepath = uigetdir('F:\Allen\Data\', 'Select the folder to save reconstructed data to');
+Mcr_savepath = uigetdir(Mcr_datapath, 'Select the folder to save reconstructed data to');
 Mcr_savepath = [Mcr_savepath, '\'];
 
 % Prompt for parameter user input
@@ -283,7 +283,7 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
     
     toc
 
-    clear IData QData RcvData
+    clearvars IData QData RcvData
 end
 
 %% saving speed test

@@ -192,7 +192,7 @@ end
 
 %% Convert g1 into CBV, CBFspeed, etc.
 
-g1_tau1_cutoff = 0.1;
+g1_tau1_cutoff = 0.0;
 % tau_difference_cutoff = 0.2;
 
 for filenum = startFile:endFile
@@ -698,7 +698,7 @@ trial_stim_pattern(P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor
     P.Mcr_fcp.apis.stim_length_s * P.daqrate / interp_factor) = 1;
 % figure; plot(trial_stim_pattern); title('Trial stim pattern')
 
-zt = 12;
+zt = 2;
 [r_rPDI, z_rPDI, am_rPDI] = activationMap2D(rPDI_TA, trial_stim_pattern, zt);
 
 figure; imagesc(r_rPDI); colormap jet; clim([0, 1]); colorbar
@@ -715,7 +715,8 @@ am_rCBV_inbrain(~brain_mask) = 0;
 figure; imagesc(am_rCBV_inbrain); colormap jet; title("Activation Map (rCBV) masked to the brain with z threshold = " + num2str(zt))
 
 %% Look at the timecourse from a ROI
-figure; imagesc(am_rCBV_inbrain); colormap jet; title("Activation Map (rCBV) masked to the brain with z threshold = " + num2str(zt))
+% figure; imagesc(am_rCBV_inbrain); colormap jet; title("Activation Map (rCBV) masked to the brain with z threshold = " + num2str(zt))
+figure; imagesc(am_rPDI); colormap jet; title("Activation Map (rPDI) masked to the brain with z threshold = " + num2str(zt))
 roi_mask = roipoly; % manually define the ROI
 figure; imagesc(roi_mask)
 

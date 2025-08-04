@@ -24,7 +24,7 @@ end
 
 IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 
-savepath = uigetdir('D:\Allen\Data\', 'Select the save path');
+savepath = uigetdir(['..\', IQpath], 'Select the save path');
 savepath = [savepath, '\'];
 
 addpath([cd, '\Speckle tracking']) % add path for the g1 calculation functions
@@ -85,9 +85,11 @@ for filenum = 1
     disp('Full SVD done')
     toc
 
-    SSM = plotSSM(U, false);
-    globalBounds = [3, 40, 1000];
-    [XN, a_opt, b_opt] = fitSSM(SSM, false, globalBounds); % Get the optimal singular value thresholds
+%     SSM = plotSSM(U, false);
+    SSM = plotSSM(U, true);
+    globalBounds = [10, 40, 120];
+%     [XN, a_opt, b_opt] = fitSSM(SSM, true); % Get the optimal singular value thresholds
+    [XN, a_opt, b_opt] = fitSSM(SSM, true, globalBounds); % Get the optimal singular value thresholds
     SVs = diag(S);
 
     % Get the filtered IQ
