@@ -99,10 +99,10 @@ for filenum = startFile:endFile
     % SVD decluttering
     
     % Determine the optimal SV thresholds with the spatial similarity matrix
-    [zp, xp, nf] = size(IQm);
+    % [zp, xp, nf] = size(IQm);
     % PP = reshape(IQm, [zp*xp, nf]);
     % tic
-%     [U, S, V] = svd(PP); % Already sorted in decreasing order
+    % % [U, S, V] = svd(PP); % Already sorted in decreasing order
     % [U, S, V] = svd(PP, 'econ'); % Already sorted in decreasing order
     % disp('Full SVD done')
     % toc
@@ -113,7 +113,7 @@ for filenum = startFile:endFile
 
     % Get the filtered IQ
     % [IQf] = applySVs1D(IQm, PP, SVs, V, sv_threshold_lower, sv_threshold_upper); % with fixed SV thresholds
-    % [IQf_opt] = applySVs1D(IQ, PP, SVs, V, a_opt, b_opt); % with optimal SV thresholds
+    % [IQf_opt] = applySVs1D(IQm, PP, SVs, V, a_opt, b_opt); % with optimal SV thresholds
     % disp('SVD filtered images put together')
 
     [PP, EVs, V_sort] = getSVs1D(IQm);
@@ -173,7 +173,7 @@ g1_tau1_cutoff = 0.0;
 % tau_difference_cutoff = 0.2;
 
 for filenum = startFile:endFile
-% for filenum = [288]
+% for filenum = [1]
 %     load([savepath, 'g1-', num2str(filenum)], 'g1') % Load the saved g1 mat files
     load([savepath, 'fUSdata-', num2str(filenum)], 'g1') % Load the saved g1 mat files
 
@@ -337,14 +337,6 @@ interp_factor = 100;
 % figure; plot(interp_times, squeeze(trial_PDI_usi{1}(50, 50, :)), '--')
 
 %% Calculate the relative hemodynamic changes for each trial
-
-% trial_CBVi_usi_baseline = cell(size(trial_sf));
-% trial_rCBV_usi = cell(size(trial_sf));
-% 
-% for trial = 1:length(trial_windows)
-%     trial_CBVi_usi_baseline{trial} = mean(trial_CBVi_usi{trial}(:, :, 1 : P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor), 3);
-%     trial_rCBV_usi{trial} = (trial_CBVi_usi{trial} - trial_CBVi_usi_baseline{trial}) ./ trial_CBVi_usi_baseline{trial};
-% end
 
 [trial_CBVi_usi_baseline, trial_rCBV_usi] = fUS_calc_rHP(trial_CBVi_usi, P, interp_factor);
 [trial_CBFsi_usi_baseline, trial_rCBFs_usi] = fUS_calc_rHP(trial_CBFsi_usi, P, interp_factor);
