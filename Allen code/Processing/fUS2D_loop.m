@@ -669,8 +669,8 @@ figure; plot(trial_stim_pattern); title('Trial stim pattern')
 zt = 12;
 [r_rCBV, z_rCBV, am_rCBV] = activationMap2D(rCBV_TA, trial_stim_pattern, zt);
 
-figure; imagesc(r_rCBV); colormap jet; colorbar; clim([0, 1])
-figure; imagesc(z_rCBV); colormap jet; colorbar
+figure; imagesc(r_rCBV); colormap jet; colorbar; clim([0, 1]); title('Correlation map')
+figure; imagesc(z_rCBV); colormap jet; colorbar; title('z-score map')
 figure; imagesc(am_rCBV); colormap jet; title("Activation Map (rCBV) with z threshold = " + num2str(zt)); colorbar
 
 %% Correlation on the trial averaged rCBFspeed
@@ -685,8 +685,8 @@ trial_stim_pattern(P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor
 zt = 12;
 [r_rCBFs, z_rCBFs, am_rCBFs] = activationMap2D(rCBFs_TA, trial_stim_pattern, zt);
 
-figure; imagesc(r_rCBFs); colormap jet; clim([0, 1]); colorbar
-figure; imagesc(z_rCBFs); colormap jet; colorbar
+figure; imagesc(r_rCBFs); colormap jet; clim([0, 1]); colorbar; title('Correlation map')
+figure; imagesc(z_rCBFs); colormap jet; colorbar; title('z-score map')
 figure; imagesc(am_rCBFs); colormap jet; title("Activation Map (rCBFs) with z threshold = " + num2str(zt)); colorbar
 
 %% Correlation on the trial averaged rPDI
@@ -701,8 +701,8 @@ trial_stim_pattern(P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor
 zt = 2;
 [r_rPDI, z_rPDI, am_rPDI] = activationMap2D(rPDI_TA, trial_stim_pattern, zt);
 
-figure; imagesc(r_rPDI); colormap jet; clim([0, 1]); colorbar
-figure; imagesc(z_rPDI); colormap jet; colorbar
+figure; imagesc(r_rPDI); colormap jet; clim([0, 1]); colorbar; title('Correlation map')
+figure; imagesc(z_rPDI); colormap jet; colorbar; title('z-score map')
 figure; imagesc(am_rPDI); colormap jet; title("Activation Map (rPDI) with z threshold = " + num2str(zt)); colorbar
 
 %% Remove points outside of the brain region (manually selected)

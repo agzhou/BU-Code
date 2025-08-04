@@ -74,27 +74,31 @@ for filenum = 1
     IQ = squeeze(IData + 1i .* QData);
     clearvars IData QData
     
+    ztop = 30;
+    zbottom = 135; %%%%%%%%%%%%%%%
+    IQm = IQ(ztop:zbottom, :, :);
+    
     % SVD decluttering
     
     % Determine the optimal SV thresholds with the spatial similarity matrix
-    [zp, xp, nf] = size(IQ);
-    PP = reshape(IQ, [zp*xp, nf]);
+    [zp, xp, nf] = size(IQm);
+    PP = reshape(IQm, [zp*xp, nf]);
     tic
 %     [U, S, V] = svd(PP); % Already sorted in decreasing order
     [U, S, V] = svd(PP, 'econ'); % Already sorted in decreasing order
+    SVs = diag(S);
     disp('Full SVD done')
     toc
 
 %     SSM = plotSSM(U, false);
     SSM = plotSSM(U, true);
-    globalBounds = [10, 40, 120];
-%     [XN, a_opt, b_opt] = fitSSM(SSM, true); % Get the optimal singular value thresholds
+    globalBounds = [3, 30, 300];
     [XN, a_opt, b_opt] = fitSSM(SSM, true, globalBounds); % Get the optimal singular value thresholds
-    SVs = diag(S);
+    
 
     % Get the filtered IQ
-    [IQf] = applySVs1D(IQ, PP, SVs, V, sv_threshold_lower, sv_threshold_upper); % with fixed SV thresholds
-    [IQf_opt] = applySVs1D(IQ, PP, SVs, V, a_opt, b_opt); % with optimal SV thresholds
+    [IQf] = applySVs1D(IQm, PP, SVs, V, sv_threshold_lower, sv_threshold_upper); % with fixed SV thresholds
+    [IQf_opt] = applySVs1D(IQm, PP, SVs, V, a_opt, b_opt); % with optimal SV thresholds
     disp('SVD filtered images put together')
 
 %     figure; imagesc(squeeze(abs(IQf(:, :, 1))) .^ 0.5)
