@@ -94,7 +94,8 @@ for filenum = startFile:endFile
 
     % Apply the mask
     IQm = IQ; % IQ masked
-    IQm(coronal_mask_rep) = 0;
+    IQm = IQm(25:135, :, :);
+    % IQm(coronal_mask_rep) = 0;
     
     % SVD decluttering
     
@@ -107,7 +108,8 @@ for filenum = startFile:endFile
     % disp('Full SVD done')
     % toc
     % 
-    % SSM = plotSSM(U, false);
+    % % SSM = plotSSM(U, false);
+    % SSM = plotSSM(U, true);
     % [~, a_opt, b_opt] = fitSSM(SSM, false); % Get the optimal singular value thresholds
     % SVs = diag(S);
 
@@ -121,7 +123,7 @@ for filenum = startFile:endFile
     [IQf] = applySVs1D(IQm, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
     % disp('SVD filtered images put together')
 
-%     figure; imagesc(squeeze(abs(IQf(:, :, 1))) .^ 0.5)
+%     figure; imagesc(squeeze(abs(IQf(:, :, 1))) .^ 1)
 
     % clearvars IQ
 
@@ -357,7 +359,7 @@ trial_stim_pattern(P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor
     P.Mcr_fcp.apis.stim_length_s * P.daqrate / interp_factor) = 1;
 figure; plot(trial_stim_pattern); title('Trial stim pattern')
 
-zt = 12;
+zt = 2;
 [r_rCBV, z_rCBV, am_rCBV] = activationMap2D(rCBV_TA, trial_stim_pattern, zt);
 
 figure; imagesc(r_rCBV); colormap jet; colorbar; clim([0, 1])
@@ -373,7 +375,7 @@ trial_stim_pattern(P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor
     P.Mcr_fcp.apis.stim_length_s * P.daqrate / interp_factor) = 1;
 % figure; plot(trial_stim_pattern); title('Trial stim pattern')
 
-zt = 12;
+zt = 2;
 [r_rCBFs, z_rCBFs, am_rCBFs] = activationMap2D(rCBFs_TA, trial_stim_pattern, zt);
 
 figure; imagesc(r_rCBFs); colormap jet; clim([0, 1]); colorbar
@@ -389,7 +391,7 @@ trial_stim_pattern(P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor
     P.Mcr_fcp.apis.stim_length_s * P.daqrate / interp_factor) = 1;
 % figure; plot(trial_stim_pattern); title('Trial stim pattern')
 
-zt = 12;
+zt = 2;
 [r_rPDI, z_rPDI, am_rPDI] = activationMap2D(rPDI_TA, trial_stim_pattern, zt);
 
 figure; imagesc(r_rPDI); colormap jet; clim([0, 1]); colorbar
