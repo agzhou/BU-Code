@@ -73,8 +73,10 @@ for filenum = 1
     
     IQ = squeeze(IData + 1i .* QData);
     clearvars IData QData
+
+    %     figure; imagesc(squeeze(abs(IQ(:, :, 1))) .^ 1)
     
-    ztop = 30;
+    ztop = 25;
     zbottom = 135; %%%%%%%%%%%%%%%
     IQm = IQ(ztop:zbottom, :, :);
     
@@ -92,7 +94,7 @@ for filenum = 1
 
 %     SSM = plotSSM(U, false);
     SSM = plotSSM(U, true);
-    globalBounds = [3, 30, 300];
+    globalBounds = [3, 30, 200];
     [XN, a_opt, b_opt] = fitSSM(SSM, true, globalBounds); % Get the optimal singular value thresholds
     
 
@@ -101,7 +103,7 @@ for filenum = 1
     [IQf_opt] = applySVs1D(IQm, PP, SVs, V, a_opt, b_opt); % with optimal SV thresholds
     disp('SVD filtered images put together')
 
-%     figure; imagesc(squeeze(abs(IQf(:, :, 1))) .^ 0.5)
+%     figure; imagesc(squeeze(abs(IQf(:, :, 1))) .^ 1)
 
     % clearvars IQ
 
@@ -125,7 +127,8 @@ for filenum = 1
 
     PDI = sum(abs(IQf) .^ 2, 3) ./ size(IQf, 3);
     PDI_opt = sum(abs(IQf_opt) .^ 2, 3) ./ size(IQf_opt, 3);
-%     figure; imagesc(squeeze(PDI_test .^ 0.5)); colormap hot
+%     figure; imagesc(squeeze(PDI .^ 0.5)); colormap hot
+%     figure; imagesc(squeeze(PDI_opt .^ 0.5)); colormap hot
 
 %     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
 %     disp("PDI and CDI for file " + num2str(filenum) + " saved" )

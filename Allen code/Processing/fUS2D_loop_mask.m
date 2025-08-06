@@ -38,7 +38,7 @@ load(timingFilePath)
 %% Define some parameters (add this to a prompt later)
 
 parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Tau 1 index for CBFspeed', 'Tau 2 index for CBFspeed', 'Tau 1 index for CBV'};
-parameterDefaults = {'1', '', '20', '500', '2', '10', '2'};
+parameterDefaults = {'1', '', '20', '500', '2', '3', '2'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % define # of files manually for now
@@ -194,7 +194,7 @@ for filenum = startFile:endFile
 end
 save([savepath, 'tlfUS_proc_params.mat'], 'tau1_index_CBV', 'tau1_index_CBF', 'tau2_index_CBF', 'g1_tau1_cutoff');
 % save([savepath, 'tlfUStest_proc_params.mat'], 'tau1_index_CBV', 'tau1_index_CBF', 'tau2_index_CBF', 'g1_tau1_cutoff');
-figure; imagesc(squeeze(CBVi .^ 0.5)); colormap hot
+figure; imagesc(squeeze(CBVi .^ 1)); colormap hot
 % figure; imagesc(squeeze(max(CBVi(:, :), [], 2) .^ 0.5)'); colormap hot
 vcmap = colormap_ULM;
 figure; imagesc(squeeze(CBFsi)); colormap(vcmap)

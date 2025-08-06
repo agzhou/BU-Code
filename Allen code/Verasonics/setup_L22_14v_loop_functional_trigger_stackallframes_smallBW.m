@@ -25,8 +25,8 @@ savepath = uigetdir('G:\', 'Select the save path');
 savepath = [savepath, '\'];
 
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use air puff (0-no, 1-yes)'}; % 'Save RF data (0-no, 1-yes)', 
-parameterDefaults = {'20', '0', '10', '50000', '5000', '5', '5', '15.625', '1540', '0', '1', '1000', '0'};
-% parameterDefaults = {'20', '2', '10', '50000', '2000', '17', '16', '15.625', '1540', '0', '1', '200', '0'};
+% parameterDefaults = {'20', '0', '10', '50000', '5000', '5', '5', '15.625', '1540', '0', '1', '1000', '0'};
+parameterDefaults = {'20', '0', '10', '50000', '5000', '31', '16', '15.625', '1540', '0', '1', '500', '0'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % Store the user inputs for parameters into the corresponding variables
@@ -94,8 +94,8 @@ startDepth = startDepthMM/1e3/wl; % start depth in wavelengths
 endDepth = endDepthMM/1e3/wl; % end depth in wavelengths
 
 %% angles
-% angpitch = wl / (Trans.spacingMm*Trans.numelements / 2 / 1e3);
-% angles = -(na - 1) / 2 * angpitch : angpitch : (na - 1) / 2 * angpitch
+% angpitch = wl / (Trans.spacingMm*Trans.numelements / 1e3)
+% angles = -(na - 1) / 2 * angpitch : angpitch : (na - 1) / 2 * angpitch;
 %% enable time tag
 TimeTagEna = 0;
 % 0: disable
