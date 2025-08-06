@@ -25,10 +25,10 @@ activate
 savepath = uigetdir('G:\', 'Select the save path');
 savepath = [savepath, '\'];
 
-parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe'}; % 'Save RF data (0-no, 1-yes)', 
+parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use air puff (0-no, 1-yes)'}; % 'Save RF data (0-no, 1-yes)', 
 % parameterDefaults = {'5', '0', '10', '40000', '2000', '11', '5', '13.6', '1540', '0', '0', '1000'};
 % parameterDefaults = {'5', '0', '10', '50000', '2000', '11', '5', '13.6', '1540', '0', '1', '500'};
-parameterDefaults = {'20', '2', '10', '60000', '2500', '11', '5', '13.6', '1540', '0', '1', '180'};
+parameterDefaults = {'20', '2', '10', '60000', '2500', '11', '5', '13.6', '1540', '0', '1', '180', '0'};
 % parameterDefaults = {'20', '0', '20', '30000', '1000', '11', '5', '13.6', '1540', '0', '1', '80'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
@@ -45,6 +45,7 @@ speedOfSound = str2double(parameterUserInput{9});
 simMode = str2double(parameterUserInput{10});
 saveRcvDataFlag = str2double(parameterUserInput{11});
 numFramesPerSF = str2double(parameterUserInput{12});
+useTriggers = str2double(parameterUserInput{13});
 
 % tagtest = Hardware.enableAcquisitionTimeTagging(1);
 bufferIndex = 0;
@@ -79,8 +80,10 @@ Resource.Parameters.numRcvChannels = numChannels; % number of receive channels
 Resource.Parameters.speedOfSound = speedOfSound; % speed of sound in m/s, the 1540 is for average human tissue
 
 %% 1.5. Specify the functional stimulus parameters
+if useTriggers
+    [apis, vts, daqrate, numTrials] = functionalParameterInputPrompt;
+end
 
-[apis, vts, daqrate, numTrials] = functionalParameterInputPrompt;
 %% 2. Define Transducer structure
 
 Trans.name = 'RC15gV'; 
@@ -472,8 +475,11 @@ SeqControl(scInd).command = 'returnToMatlab';
 % Jump to some event to keep the acquisition looping
 scInd = scInd + 1;
 SeqControl(scInd).command = 'jump'; % jump to
-% SeqControl(scInd).argument = 1;     % first event
-SeqControl(scInd).argument = 2;     % second event
+if useTriggers
+    SeqControl(scInd).argument = 2;     % second event
+else
+    SeqControl(scInd).argument = 1;     % first event
+end
 SeqControl(scInd).condition = 'exitAfterJump'; % Normally, jumping auto returns to Matlab if it returns to the first event, but not for other events
 
 % Set the frame/volume rate
@@ -552,16 +558,23 @@ SeqControl(scInd).argument = 10000000; % 10 s
 % Sync for aligning the hardware to when the data is done saving
 scInd = scInd + 1;
 SeqControl(scInd).command = 'sync';
-% SeqControl(scInd).argument = 10000000; % 10 s
-SeqControl(scInd).argument = 1000000 * vts.delay_s*5; % Timeout set to 5x the input delay just in case
+if useTriggers
+    SeqControl(scInd).argument = 1000000 * vts.delay_s*5; % Timeout set to 5x the input delay just in case
+else
+    SeqControl(scInd).argument = 10000000; % 10 s
+end
 
-n = 1;
-Event(n).info = 'Wait for external trigger to start the acquisition sequence';
-Event(n).tx = 1; % It seems to not work properly if there isn't some acquisition event combined here
-Event(n).rcv = 0; 
-Event(n).recon = 0;
-Event(n).process = 1; % save the initial timetag
-Event(n).seqControl = [8, 10];
+if useTriggers
+    n = 1;
+    Event(n).info = 'Wait for external trigger to start the acquisition sequence';
+    Event(n).tx = 1; % It seems to not work properly if there isn't some acquisition event combined here
+    Event(n).rcv = 0; 
+    Event(n).recon = 0;
+    Event(n).process = 1; % save the initial timetag
+    Event(n).seqControl = [8, 10];
+else
+    n = 0;
+end
 
 for nbuf = 1
 % for nbuf = 1:numBuffers
@@ -688,9 +701,11 @@ filename = 'RC15gV_Allen_loop_functional.mat';
 save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+filename);
 
 %% Run the air puff script before running VSX
-[Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts, daqrate, numTrials); % Need to use Mcr_ because VSX will autoclear most variables
-daqStartTimetag = datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss.SSS');
-savefast([savepath, 'daqStartTimetag'], 'daqStartTimetag')
+if useTriggers
+    [Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts, daqrate, numTrials); % Need to use Mcr_ because VSX will autoclear most variables
+    daqStartTimetag = datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss.SSS');
+    savefast([savepath, 'daqStartTimetag'], 'daqStartTimetag')
+end
 
 %% Initialize time tagging if enabled
 import com.verasonics.hal.hardware.*
@@ -732,13 +747,17 @@ if runVSX
 end
 
 %% Read the air puff data - may need to put this in the saveRcvData Processing...
-[inScanData, timeStamp, triggerTime] = read(Mcr_d, seconds(Mcr_d.NumScansAvailable / Mcr_d.Rate), "OutputFormat", "Matrix");
+if useTriggers
+    [inScanData, timeStamp, triggerTime] = read(Mcr_d, seconds(Mcr_d.NumScansAvailable / Mcr_d.Rate), "OutputFormat", "Matrix");
+end
 
 %% Save post-acquisition parameters in a structure P
 
 makeParameterStructure_functional;
 savefast([savepath, 'params.mat'], 'P')
-savefast([savepath, 'triggerData.mat'], 'inScanData', 'timeStamp', 'triggerTime')
+if useTriggers
+    savefast([savepath, 'triggerData.mat'], 'inScanData', 'timeStamp', 'triggerTime')
+end
 % saveRcvData(RcvData{1})
 clear RcvData
 save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
