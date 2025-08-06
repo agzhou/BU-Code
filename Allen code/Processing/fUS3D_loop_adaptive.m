@@ -76,7 +76,8 @@ for filenum = startFile:endFile
     IQ = single(squeeze(IData + 1i .* QData));
     clearvars IData QData
 
-    IQm = IQ;
+    IQm = IQ(:, :, 40:end, :);
+%     figure; imagesc(squeeze(max(abs(IQm(:, :, :, 2)), [], 1))')
 
     %%%%%%%%%%%%%% IF USING THE MASK %%%%%%%%%%%%
 %     IQm(coronal_mask_rep) = 0; % Apply the brain mask to the IQ: set the non-brain voxels equal to 0
@@ -87,6 +88,7 @@ for filenum = startFile:endFile
     tic
 %     [U, S, V] = svd(PP); % Already sorted in decreasing order
     [U, S, V] = svd(PP, 'econ'); % Already sorted in decreasing order
+    SVs = diag(S);
 %     disp('Full SVD done')
     toc
 
@@ -94,7 +96,7 @@ for filenum = startFile:endFile
 %     SSM = plotSSM(U, true);
     [~, a_opt, b_opt] = fitSSM(SSM, false); % Get the optimal singular value thresholds
 %     [~, a_opt, b_opt] = fitSSM(SSM, true); % Get the optimal singular value thresholds
-    SVs = diag(S);
+    
 
 %     [PP, EVs, V_sort] = getSVs2D(IQ);
 %     disp('SVs decomposed')
@@ -120,6 +122,7 @@ for filenum = startFile:endFile
     PDI = sum(abs(IQf) .^ 2, 4) ./ size(IQf, 4);
 %     [CDI] = calcColorDoppler(IQf_FT_separated, P);
 
+%     figure; imagesc(squeeze(max(PDI, [], 1))' .^ 0.5); colormap hot
 %     volumeViewer(PDI)
 
 %     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
@@ -143,8 +146,8 @@ savefast([savepath, 'fUS_proc_params.mat'], 'coronal_mask_rep', 'tau', 'tau_ms',
 
 %% Convert g1 into CBV, CBFspeed, etc.
 
-g1_tau1_cutoff = 0.0;
-% g1_tau1_cutoff = 0.2;
+% g1_tau1_cutoff = 0.0;
+g1_tau1_cutoff = 0.2;
 % tau_difference_cutoff = 0.2;
 
 for filenum = startFile:endFile

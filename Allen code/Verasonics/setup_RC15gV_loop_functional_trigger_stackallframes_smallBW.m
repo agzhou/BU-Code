@@ -28,7 +28,7 @@ savepath = [savepath, '\'];
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use air puff (0-no, 1-yes)'}; % 'Save RF data (0-no, 1-yes)', 
 % parameterDefaults = {'5', '0', '10', '40000', '2000', '11', '5', '13.6', '1540', '0', '0', '1000'};
 % parameterDefaults = {'5', '0', '10', '50000', '2000', '11', '5', '13.6', '1540', '0', '1', '500'};
-parameterDefaults = {'20', '2', '10', '60000', '2500', '11', '5', '13.6', '1540', '0', '1', '180', '0'};
+parameterDefaults = {'20', '0', '8', '60000', '2500', '11', '5', '13.6', '1540', '0', '1', '496', '0'};
 % parameterDefaults = {'20', '0', '20', '30000', '1000', '11', '5', '13.6', '1540', '0', '1', '80'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
@@ -99,9 +99,11 @@ wl = Resource.Parameters.speedOfSound / Trans.frequency / 1e6; % Wavelength, in 
 startDepth = startDepthMM/1e3/wl; % start depth in wavelengths
 endDepth = endDepthMM/1e3/wl; % end depth in wavelengths
 
-%% angles
+%% Modify the angles to reduce grating lobes (see Sauvage et al., 2020)
 % angpitch = wl / (Trans.spacingMm*Trans.numelements / 2 / 1e3);
 % angles = -(na - 1) / 2 * angpitch : angpitch : (na - 1) / 2 * angpitch
+% warning('**** MODIFYING THE ANGULAR PITCH AND RANGE TO MINIMIZE GRATING LOBES ****')
+
 %% enable time tag
 TimeTagEna = 1;
 % 0: disable

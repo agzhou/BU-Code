@@ -33,7 +33,7 @@ if ~exist('P', 'var')
     load([Mcr_datapath, 'params.mat']) % load acquisition parameters
 end
 
-Mcr_savepath = uigetdir('F:\Allen\Data\', 'Select the folder to save reconstructed data to');
+Mcr_savepath = uigetdir(Mcr_datapath, 'Select the folder to save reconstructed data to');
 Mcr_savepath = [Mcr_savepath, '\'];
 
 % Prompt for parameter user input
