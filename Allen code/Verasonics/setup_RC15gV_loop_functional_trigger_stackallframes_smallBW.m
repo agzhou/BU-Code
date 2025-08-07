@@ -28,9 +28,16 @@ savepath = [savepath, '\'];
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use air puff (0-no, 1-yes)'}; % 'Save RF data (0-no, 1-yes)', 
 % parameterDefaults = {'5', '0', '10', '40000', '2000', '11', '5', '13.6', '1540', '0', '0', '1000'};
 % parameterDefaults = {'5', '0', '10', '50000', '2000', '11', '5', '13.6', '1540', '0', '1', '500'};
-parameterDefaults = {'20', '0', '8', '60000', '2500', '11', '5', '13.6', '1540', '0', '1', '496', '0'};
+% parameterDefaults = {'20', '0', '8', '60000', '2500', '11', '5', '13.6', '1540', '0', '1', '496', '0'};
+parameterDefaults = {'20', '0', '8', '60000', '2500', '11', '5', '13.6', '1540', '0', '1', '400', '0'};
 % parameterDefaults = {'20', '0', '20', '30000', '1000', '11', '5', '13.6', '1540', '0', '1', '80'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
+
+% ADC_sampleMode = 'BS67BW';
+% spw_guess = 1.3333;
+
+ADC_sampleMode = 'BS100BW';
+spw_guess = 2;
 
 % Store the user inputs for parameters into the corresponding variables
 initialVoltage = str2double(parameterUserInput{1});
@@ -226,8 +233,8 @@ xd = 70;
 tw.A = Trans.frequency; % frequency of transmission pulse, sets half cycle period of the waveform...
 tw.B = 0.67; % amount of time (0.1 - 1.0) that the transmission drivers are active in the half cycle period. Controsl how much power is delivered.
              % Apparently using B = 0.67 approximates a sine wave.
-% tw.C = 2; % number of half cycles in the transmission waveform. 2 half cycles = 1 full cycle burst
-tw.C = 3; % number of half cycles in the transmission waveform. 2 half cycles = 1 full cycle burst
+tw.C = 2; % number of half cycles in the transmission waveform. 2 half cycles = 1 full cycle burst
+% tw.C = 3; % number of half cycles in the transmission waveform. 2 half cycles = 1 full cycle burst
 tw.D = 1; % initial polarity of the first half cycle (1 = +, 0 = -)
 TW(1).type = 'parametric';
 TW(1).Parameters = [tw.A, tw.B, tw.C, tw.D];
@@ -286,6 +293,10 @@ TGC.CntrlPts = [1023 1023 1023 1023 1023 1023 1023 1023];
 TGC(1).rangeMax = endDepth;
 TGC(1).Waveform = computeTGCWaveform(TGC); % Parameters can be adjusted later with GUI sliders
 
+%% RcvProfile adjustment (8/7/25 change)
+RcvProfile.antiAliasCutoff = 20; % Low pass filter at 20 MHz (RC15gV bandwidth goes to 19 MHz)
+% RcvProfile.LnaZinSel = 25;
+
 %% Receiver array object
 
 maxAcqLength = ceil(sqrt(endDepth^2 + 2*(numElements*Trans.spacing)^2)); % account for the longest distance an echo could travel
@@ -296,7 +307,7 @@ Receive = repmat(struct('Apod', zeros(1, Trans.numelements), ...
                         'bufnum', 1, ...
                         'framenum', 1, ...
                         'acqNum', 1, ...
-                        'sampleMode', 'BS67BW', ...
+                        'sampleMode', ADC_sampleMode, ...
                         'mode', 0, ...
                         'callMediaFunc', 0, ...
                         'LowPassCoef', [], ...
@@ -354,7 +365,7 @@ if strcmp(Receive(1).sampleMode,'custom')
     error('No handling of condition for custom Receive sampling. Refer to VsUpdate line 712 to implement');
 else
     fs = 4*Trans.frequency;
-    samplesPerWave = 1.3333;
+    samplesPerWave = spw_guess;
 end
 
 % if statement included to match verasonics automatic extension to

@@ -327,6 +327,9 @@ TGC.CntrlPts = [1023 1023 1023 1023 1023 1023 1023 1023];
 TGC(1).rangeMax = endDepth;
 TGC(1).Waveform = computeTGCWaveform(TGC); % Parameters can be adjusted later with GUI sliders
 
+%% RcvProfile adjustment (8/7/25 change)
+RcvProfile.antiAliasCutoff = 20; % Low pass filter at 20 MHz (RC15gV bandwidth goes to 19 MHz)
+
 %% Receiver array object
 maxAcqLength = ceil(sqrt(endDepth^2 + 2*(numElements*Trans.spacing)^2)); % account for the longest distance an echo could travel
 Receive = repmat(struct('Apod', zeros(1, Trans.numelements), ... 
