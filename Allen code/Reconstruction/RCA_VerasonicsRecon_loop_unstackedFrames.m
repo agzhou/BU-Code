@@ -19,8 +19,11 @@
 clearvars
 
 cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
-% cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
 addpath 'C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Reconstruction'
+
+% cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
+% cd 'C:\Users\agzhou\Vantage-4.9.7-2505271400'
+% addpath '\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Reconstruction';
 
 activate
 clearvars
@@ -254,6 +257,7 @@ end
 savefast([Mcr_savepath, 'PData'], 'PData') % Save the PData structure
 
 for Mcr_filenum = Mcr_startFile:Mcr_endFile
+% for Mcr_filenum = Mcr_endFile:-1:Mcr_startFile
 % for Mcr_filenum = 142:Mcr_endFile
 % for Mcr_filenum = [37, 110, 111]
     tic
