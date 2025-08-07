@@ -37,7 +37,7 @@ load(timingFilePath)
 %% Define some parameters
 
 parameterPrompt = {'Start file number', 'End file number', 'Tau 1 index for CBFspeed', 'Tau 2 index for CBFspeed', 'Tau 1 index for CBV'};
-parameterDefaults = {'1', '', '2', '10', '2'};
+parameterDefaults = {'1', '', '2', '5', '2'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % define # of files manually for now
@@ -67,10 +67,10 @@ load('I:\Ultrasound Data from 04-11-2025 to 05-08-2025\05-06-2025 AZ03 fUS pre-s
 
 
 %% Main loop with the Adaptive SVD Thresholding
-for filenum = startFile:endFile
+% for filenum = startFile:endFile
 % for filenum = 2:endFile
 % for filenum = [285:-1:189]
-% for filenum = 1
+for filenum = 1
     tic
     load([IQpath, IQfilenameStructure, num2str(filenum)])
     IQ = single(squeeze(IData + 1i .* QData));
@@ -100,7 +100,7 @@ for filenum = startFile:endFile
 
 %     [PP, EVs, V_sort] = getSVs2D(IQ);
 %     disp('SVs decomposed')
-    [IQf] = applySVs2D(IQm, PP, SVs, V, a_opt, b_opt);
+    [IQf, noise] = applySVs2D(IQm, PP, SVs, V, a_opt, b_opt);
 %     disp('SVD filtered images put together')
 
 %     volumeViewer(abs(IQf(:, :, :, 1)))

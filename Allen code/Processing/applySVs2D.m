@@ -1,7 +1,7 @@
 % Take the SVD processed parameters and apply the thresholding on some
 % lower and upper SV limit
 
-function [IQ_f] = applySVs2D(IQ_coherent_sum, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper)
+function [IQ_f, varargout] = applySVs2D(IQ_coherent_sum, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper)
 
     %% SVD processing test with the covariance method
     
@@ -38,5 +38,20 @@ function [IQ_f] = applySVs2D(IQ_coherent_sum, PP, EVs, V_sort, sv_threshold_lowe
     % end
     
     IQ_f = reshape(P_f, [xp, yp, zp, nf]);
+
+
+    %% Jianbo's Noise thing, adapted (added 8/7/25)
+    % I believe this is looking at the last 50 singular subspaces and
+    % turning them into an image, then using a smoothing filter and taking
+    % the average across frames
+    
+    UDelta = PP*V_sort;
+    Vnoise = zeros(size(V_sort));
+    Vnoise(:, end-50:end) = V_sort(:, end - 50:end);
+    Noise = reshape(UDelta*Vnoise', [xp, yp, zp, nf]);
+    % sNoiseMed=medfilt2(abs(squeeze(mean(Noise,3))),[50 50],'symmetric');
+    sNoiseMed = imgaussfilt3(abs(squeeze(mean(Noise, 4))), 25);
+    Noise = sNoiseMed/min(sNoiseMed(:));
+    varargout{1} = Noise; % Assign the noise term to the optional output
 end
 
