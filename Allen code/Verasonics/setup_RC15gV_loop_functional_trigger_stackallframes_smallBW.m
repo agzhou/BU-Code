@@ -29,7 +29,7 @@ parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'P
 % parameterDefaults = {'5', '0', '10', '40000', '2000', '11', '5', '13.6', '1540', '0', '0', '1000'};
 % parameterDefaults = {'5', '0', '10', '50000', '2000', '11', '5', '13.6', '1540', '0', '1', '500'};
 % parameterDefaults = {'20', '0', '8', '60000', '2500', '11', '5', '13.6', '1540', '0', '1', '496', '0'};
-parameterDefaults = {'20', '0', '8', '60000', '2500', '11', '5', '13.6', '1540', '0', '1', '400', '0'};
+parameterDefaults = {'20', '0', '8', '56000', '2500', '11', '5', '13.6', '1540', '0', '1', '296', '0'};
 % parameterDefaults = {'20', '0', '20', '30000', '1000', '11', '5', '13.6', '1540', '0', '1', '80'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
@@ -52,6 +52,9 @@ speedOfSound = str2double(parameterUserInput{9});
 simMode = str2double(parameterUserInput{10});
 saveRcvDataFlag = str2double(parameterUserInput{11});
 numFramesPerSF = str2double(parameterUserInput{12});
+if mod(numFramesPerSF, 2) ~= 0
+    error('# of frames per SF must be even')
+end
 useTriggers = str2double(parameterUserInput{13});
 
 % tagtest = Hardware.enableAcquisitionTimeTagging(1);

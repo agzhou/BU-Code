@@ -11,6 +11,12 @@ function [P_unstacked] = updateParams_unstackedFrames(P)
         nsf = P.numFramesPerBuffer;
     end
 
+    % Change 8/7/25
+    if mod(nsf, 2) ~= 0
+        warning('# of frames is odd, cutting the last frame so VSX can handle it')
+        nsf = nsf - 1;
+    end
+
     nspa = P.Receive(1).endSample; % # samples per acquisition
 
     % Set up flags according to which type of probe is used

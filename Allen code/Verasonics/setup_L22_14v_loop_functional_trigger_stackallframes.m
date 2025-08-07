@@ -42,6 +42,9 @@ speedOfSound = str2double(parameterUserInput{9});
 simMode = str2double(parameterUserInput{10});
 saveRcvDataFlag = str2double(parameterUserInput{11});
 numFramesPerSF = str2double(parameterUserInput{12});
+if mod(numFramesPerSF, 2) ~= 0
+    error('# of frames per SF must be even')
+end
 useTriggers = str2double(parameterUserInput{13});
 
 % tagtest = Hardware.enableAcquisitionTimeTagging(1);

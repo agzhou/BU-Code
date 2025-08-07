@@ -267,6 +267,9 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
     
     % Put RcvData into a cell array for VSX
     r = unstackFrames(RcvData, Mcr_P);
+    if mod(size(r, 3), 2) ~= 0 % If there are an odd # of frames, cut off the last one (change 8/7/25)
+        r = r(:, :, 1:end-1);
+    end
     clear RcvData;
     
     RcvData{1} = r;
