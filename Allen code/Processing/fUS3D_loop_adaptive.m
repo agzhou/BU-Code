@@ -77,6 +77,7 @@ for filenum = 1
     clearvars IData QData
 
     IQm = IQ(:, :, 40:end, :);
+    % IQm = IQ(:, :, 1:100, :);
 %     figure; imagesc(squeeze(max(abs(IQm(:, :, :, 2)), [], 1))')
 
     %%%%%%%%%%%%%% IF USING THE MASK %%%%%%%%%%%%
@@ -101,6 +102,7 @@ for filenum = 1
 %     [PP, EVs, V_sort] = getSVs2D(IQ);
 %     disp('SVs decomposed')
     [IQf, noise] = applySVs2D(IQm, PP, SVs, V, a_opt, b_opt);
+%     [IQf, noise] = applySVs2D(IQm, PP, SVs, V, sv_threshold_lower, sv_threshold_upper);
 %     disp('SVD filtered images put together')
 
 %     volumeViewer(abs(IQf(:, :, :, 1)))
@@ -123,6 +125,7 @@ for filenum = 1
 %     [CDI] = calcColorDoppler(IQf_FT_separated, P);
 
 %     figure; imagesc(squeeze(max(PDI, [], 1))' .^ 0.5); colormap hot
+%     figure; imagesc(squeeze(max(PDI ./ noise, [], 1))' .^ 0.5); colormap hot
 %     volumeViewer(PDI)
 
 %     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
@@ -130,7 +133,7 @@ for filenum = 1
 %     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFsi', 'CBVi', 'PDI', 'CDI', '-v7.3', '-nocompression');
 %     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFsi', 'CBVi', 'PDI', 'CDI', 'g1_n', 'g1_p', 'CBFsi_n', 'CBVi_n', 'CBFsi_p', 'CBVi_p',  '-v7.3', '-nocompression');
 %     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'g1_n', 'g1_p', 'PDI', 'CDI', '-v7.3', '-nocompression');
-    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'PDI', 'SVs', 'SSM', 'a_opt', 'b_opt', '-v7.3', '-nocompression');
+    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'PDI', 'noise', 'SVs', 'SSM', 'a_opt', 'b_opt', '-v7.3', '-nocompression');
 %     save([savepath, 'g1-', num2str(filenum), '.mat'], 'g1', 'g1_n', 'g1_p', '-v7.3', '-nocompression');
 %     save([savepath, 'g1-', num2str(filenum), '.mat'], 'g1', '-v7.3', '-nocompression');
 

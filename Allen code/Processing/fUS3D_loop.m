@@ -37,7 +37,7 @@ load(timingFilePath)
 %% Define some parameters
 
 parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Tau 1 index for CBFspeed', 'Tau 2 index for CBFspeed', 'Tau 1 index for CBV'};
-parameterDefaults = {'1', '', '20', '180', '2', '10', '2'};
+parameterDefaults = {'1', '', '20', '', '2', '5', '2'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % define # of files manually for now
@@ -62,74 +62,36 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 % tau2_index_CBF = 6;
 % tau1_index_CBV = 2;
 
-%% Main loop with the Adaptive SVD Thresholding
+%% Main loop
 % for filenum = startFile:endFile
-for filenum = 2:endFile
+% for filenum = [2:endFile]
 % for filenum = [285:-1:189]
+for filenum = 100:223
 % for filenum = 1
+
+    % Load the IQ data
     tic
     load([IQpath, IQfilenameStructure, num2str(filenum)])
+    
     IQ = single(squeeze(IData + 1i .* QData));
     clearvars IData QData
+
+    % figure; imagesc(squeeze(max(abs(IQ(:, :, :, 2)), [], 1))')
     
-    % Determine the optimal SV thresholds with the spatial similarity matrix
-    [xp, yp, zp, nf] = size(IQ);
-    PP = reshape(IQ, [xp*yp*zp, nf]);
-    tic
-%     [U, S, V] = svd(PP); % Already sorted in decreasing order
-    [U, S, V] = svd(PP, 'econ'); % Already sorted in decreasing order
-    disp('Full SVD done')
-    toc
+    % Crop the IQ first 
+    zstart = 40;
+    zend = size(IQ, 3);
+    IQm = IQ(:, :, zstart:zend, :);
+%     figure; imagesc(squeeze(max(abs(IQm(:, :, :, 2)), [], 1))')
 
-    %%
-    SSM = zeros(nf, nf); % Initialize the spatial similarity matrix
-
-    SSM_const = 1/(xp * yp * zp); % constant in front of the summation term
-%
-    tic
-    for n = 1:nf
-%     for n = 1:10
-        abs_u_n = abs(U(:, n)); % The nth column vector from U
-        mean_abs_u_n = sum(abs_u_n) / length(abs_u_n);
-        stddev_abs_u_n = std(abs_u_n);
-%         for m = 1:nf
-        for m = 1:n % leverage the symmetry of the SSM
-            abs_u_m = abs(U(:, m)); % The mth column vector from U
-            mean_abs_u_m = sum(abs_u_m) / length(abs_u_m);
-            SSM(n, m) = sum( ((abs_u_n - mean_abs_u_n) .* (abs_u_m - mean_abs_u_m)) ...
-                        ./ stddev_abs_u_n ...
-                        ./ std(abs_u_m) );
-        end
-    end
-    SSM = SSM .* SSM_const; % Normalize
-    SSM = SSM + SSM'; % Apply the symmetry to fill out the "missing" values
-    toc
-    figure; imagesc(SSM); axis square
-
-
-    % Test to look at the individual "weighted images"
-    k_test = 62; % Which column vector to use
-    test = reshape(U(:, k_test) * V(:, k_test)', [xp, yp, zp, nf]);
-    volumeViewer(abs(test(:, :, :, 1)))
-%     figure; imagesc(abs(mean(test, 4)))
-end
-%% Main loop
-for filenum = startFile:endFile
-% for filenum = [3:endFile]
-% for filenum = [285:-1:189]
-% for filenum = 2
-    tic
-    load([IQpath, IQfilenameStructure, num2str(filenum)])
-    
-    IQ = squeeze(IData + 1i .* QData);
-    clearvars IData QData
+    %%%%%%%%%%%%%% IF USING THE PREDEFINED MASK %%%%%%%%%%%%
+%     IQm(coronal_mask_rep) = 0; % Apply the brain mask to the IQ: set the non-brain voxels equal to 0
+    %     [xp, yp, zp, nf] = size(IQm);
     
     % SVD decluttering
-    [xp, yp, zp, nf] = size(IQ);
-    
-    [PP, EVs, V_sort] = getSVs2D(IQ);
+    [PP, EVs, V_sort] = getSVs2D(IQm);
     disp('SVs decomposed')
-    [IQf] = applySVs2D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
+    [IQf, noise] = applySVs2D(IQm, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
     disp('SVD filtered images put together')
 
 %     volumeViewer(abs(IQf(:, :, :, 1)))
@@ -155,6 +117,8 @@ for filenum = startFile:endFile
     PDI = sum(abs(IQf) .^ 2, 4) ./ size(IQf, 4);
 %     [CDI] = calcColorDoppler(IQf_FT_separated, P);
 
+%     figure; imagesc(squeeze(max(PDI, [], 1))' .^ 0.5); colormap hot
+%     figure; imagesc(squeeze(max(PDI ./ noise, [], 1))' .^ 0.5); colormap hot
 %     volumeViewer(PDI)
 
 %     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
@@ -162,7 +126,7 @@ for filenum = startFile:endFile
 %     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFsi', 'CBVi', 'PDI', 'CDI', '-v7.3', '-nocompression');
 %     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFsi', 'CBVi', 'PDI', 'CDI', 'g1_n', 'g1_p', 'CBFsi_n', 'CBVi_n', 'CBFsi_p', 'CBVi_p',  '-v7.3', '-nocompression');
 %     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'g1_n', 'g1_p', 'PDI', 'CDI', '-v7.3', '-nocompression');
-    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'PDI', '-v7.3', '-nocompression');
+    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'PDI', 'noise', '-v7.3', '-nocompression');
 %     save([savepath, 'g1-', num2str(filenum), '.mat'], 'g1', 'g1_n', 'g1_p', '-v7.3', '-nocompression');
 %     save([savepath, 'g1-', num2str(filenum), '.mat'], 'g1', '-v7.3', '-nocompression');
 
@@ -187,7 +151,7 @@ figure; imagesc(squeeze(max(testPDI(:, :, :, 1), [], 3) .^ 0.5)'); colormap hot
 %% Convert g1 into CBV, CBFspeed, etc.
 
 g1_tau1_cutoff = 0.3;
-% g1_tau1_cutoff = 0.2;
+% g1_tau1_cutoff = 0.0;
 % tau_difference_cutoff = 0.2;
 
 for filenum = startFile:endFile
@@ -210,7 +174,7 @@ for filenum = startFile:endFile
 end
 save([savepath, 'tlfUS_proc_params.mat'], 'tau1_index_CBV', 'tau1_index_CBF', 'tau2_index_CBF', 'g1_tau1_cutoff', 'g1A_mask');
 % save([savepath, 'tlfUStest_proc_params.mat'], 'tau1_index_CBV', 'tau1_index_CBF', 'tau2_index_CBF', 'g1_tau1_cutoff');
-figure; imagesc(squeeze(max(CBVi(30:50, :, :), [], 1) .^ 0.5)'); colormap hot
+figure; imagesc(squeeze(max(CBVi(30:50, :, :), [], 1) .^ 0.3)'); colormap hot
 figure; imagesc(squeeze(max(CBVi(:, :, :), [], 3) .^ 0.5)'); colormap hot
 vcmap = colormap_ULM;
 figure; imagesc(squeeze(mean(CBFsi(30:50, :, :), 1))'); colormap(vcmap)
