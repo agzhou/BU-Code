@@ -38,7 +38,7 @@ load(timingFilePath)
 %% Define some parameters (add this to a prompt later)
 
 parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Tau 1 index for CBFspeed', 'Tau 2 index for CBFspeed', 'Tau 1 index for CBV'};
-parameterDefaults = {'1', '', '20', '500', '2', '3', '2'};
+parameterDefaults = {'1', '', '20', '1000', '2', '11', '2'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % define # of files manually for now
@@ -83,7 +83,7 @@ figure; imagesc(abs(squeeze(IQm(:, :, 1))))
 
 %% Main loop with the masking
 for filenum = startFile:endFile
-% for filenum = 2:endFile
+% for filenum = 61:endFile
 % for filenum = [2]
 % for filenum = 1
     tic
@@ -92,10 +92,14 @@ for filenum = startFile:endFile
     IQ = squeeze(IData + 1i .* QData);
     clearvars IData QData
 
+%     figure; imagesc(abs(IQ(:, :, 2)))
+
     % Apply the mask
     IQm = IQ; % IQ masked
     IQm = IQm(25:135, :, :);
     % IQm(coronal_mask_rep) = 0;
+
+%     figure; imagesc(abs(IQm(:, :, 2)))
     
     % SVD decluttering
     
@@ -146,7 +150,7 @@ for filenum = startFile:endFile
 %     [CDI] = calcColorDoppler(IQf_FT_separated, P);
 
     PDI = sum(abs(IQf) .^ 2, 3) ./ size(IQf, 3);
-%     figure; imagesc(squeeze(PDI_test .^ 0.5)); colormap hot
+%     figure; imagesc(squeeze(PDI .^ 0.5)); colormap hot
 
 %     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
 %     disp("PDI and CDI for file " + num2str(filenum) + " saved" )
@@ -194,7 +198,7 @@ for filenum = startFile:endFile
 end
 save([savepath, 'tlfUS_proc_params.mat'], 'tau1_index_CBV', 'tau1_index_CBF', 'tau2_index_CBF', 'g1_tau1_cutoff');
 % save([savepath, 'tlfUStest_proc_params.mat'], 'tau1_index_CBV', 'tau1_index_CBF', 'tau2_index_CBF', 'g1_tau1_cutoff');
-figure; imagesc(squeeze(CBVi .^ 1)); colormap hot
+figure; imagesc(squeeze(CBVi .^ 0.5)); colormap hot
 % figure; imagesc(squeeze(max(CBVi(:, :), [], 2) .^ 0.5)'); colormap hot
 vcmap = colormap_ULM;
 figure; imagesc(squeeze(CBFsi)); colormap(vcmap)
