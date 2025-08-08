@@ -83,7 +83,7 @@ figure; imagesc(abs(squeeze(IQm(:, :, 1))))
 
 %% Main loop with the masking
 for filenum = startFile:endFile
-% for filenum = 2:endFile
+% for filenum = 61:endFile
 % for filenum = [2]
 % for filenum = 1
     tic
