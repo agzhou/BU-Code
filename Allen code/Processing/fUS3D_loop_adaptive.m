@@ -76,7 +76,8 @@ for filenum = 1
     IQ = single(squeeze(IData + 1i .* QData));
     clearvars IData QData
 
-    IQm = IQ(:, :, 40:end, :);
+%     IQm = IQ(:, :, 40:end, :);
+    IQm = IQ(:, :, 50:end, :);
     % IQm = IQ(:, :, 1:100, :);
 %     figure; imagesc(squeeze(max(abs(IQm(:, :, :, 2)), [], 1))')
 

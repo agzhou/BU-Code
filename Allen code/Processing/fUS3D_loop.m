@@ -37,7 +37,7 @@ load(timingFilePath)
 %% Define some parameters
 
 parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Tau 1 index for CBFspeed', 'Tau 2 index for CBFspeed', 'Tau 1 index for CBV'};
-parameterDefaults = {'1', '', '20', '', '2', '5', '2'};
+parameterDefaults = {'1', '', '20', '', '2', '11', '2'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % define # of files manually for now
@@ -63,10 +63,10 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 % tau1_index_CBV = 2;
 
 %% Main loop
-% for filenum = startFile:endFile
+for filenum = startFile:endFile
 % for filenum = [2:endFile]
 % for filenum = [285:-1:189]
-for filenum = 100:223
+% for filenum = 100:223
 % for filenum = 1
 
     % Load the IQ data
@@ -79,7 +79,8 @@ for filenum = 100:223
     % figure; imagesc(squeeze(max(abs(IQ(:, :, :, 2)), [], 1))')
     
     % Crop the IQ first 
-    zstart = 40;
+%     zstart = 40;
+    zstart = 50;
     zend = size(IQ, 3);
     IQm = IQ(:, :, zstart:zend, :);
 %     figure; imagesc(squeeze(max(abs(IQm(:, :, :, 2)), [], 1))')
@@ -89,9 +90,19 @@ for filenum = 100:223
     %     [xp, yp, zp, nf] = size(IQm);
     
     % SVD decluttering
-    [PP, EVs, V_sort] = getSVs2D(IQm);
+%     [PP, EVs, V_sort] = getSVs2D(IQm);
+    [xp, yp, zp, nf] = size(IQm);
+    PP = reshape(IQm, [xp*yp*zp, nf]);
+    tic
+%     [U, S, V] = svd(PP); % Already sorted in decreasing order
+    [U, S, V] = svd(PP, 'econ'); % Already sorted in decreasing order
+    SVs = diag(S);
+%     disp('Full SVD done')
+    toc
     disp('SVs decomposed')
-    [IQf, noise] = applySVs2D(IQm, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
+
+    [IQf, noise] = applySVs2D(IQm, PP, SVs, V, sv_threshold_lower, sv_threshold_upper);
+%     [IQf, noise] = applySVs2D(IQm, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
     disp('SVD filtered images put together')
 
 %     volumeViewer(abs(IQf(:, :, :, 1)))
