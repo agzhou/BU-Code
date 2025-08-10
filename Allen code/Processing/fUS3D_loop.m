@@ -591,6 +591,7 @@ CDIMIPStack = squeeze(max(CDIallSF{1}(30:50, :, :, :), [], 1));
 
 %
 generateTiffStack_acrossframes(PDIallSF{3} .^ 0.7, [8.8, 8.8, 8], 'hot', 1:80)
+generateTiffStack_acrossframes(PDIallSF .^ 0.5, [8.8, 8.8, 8], 'hot', 1:80)
 
 %% Visualize the CBVi across the experiment
 % mwr = 30:50; % MIP window range
