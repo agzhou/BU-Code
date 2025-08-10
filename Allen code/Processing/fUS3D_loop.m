@@ -79,8 +79,8 @@ for filenum = startFile:endFile
     % figure; imagesc(squeeze(max(abs(IQ(:, :, :, 2)), [], 1))')
     
     % Crop the IQ first 
-%     zstart = 40;
-    zstart = 50;
+    zstart = 40;
+%     zstart = 50;
     zend = size(IQ, 3);
     IQm = IQ(:, :, zstart:zend, :);
 %     figure; imagesc(squeeze(max(abs(IQm(:, :, :, 2)), [], 1))')
@@ -161,12 +161,12 @@ figure; imagesc(squeeze(max(testPDI(:, :, :, 1), [], 3) .^ 0.5)'); colormap hot
 
 %% Convert g1 into CBV, CBFspeed, etc.
 
-g1_tau1_cutoff = 0.3;
+g1_tau1_cutoff = 0.2;
 % g1_tau1_cutoff = 0.0;
 % tau_difference_cutoff = 0.2;
 
 for filenum = startFile:endFile
-% for filenum = [1]
+% for filenum = [19]
 %     load([savepath, 'g1-', num2str(filenum)], 'g1') % Load the saved g1 mat files
     load([savepath, 'fUSdata-', num2str(filenum)], 'g1') % Load the saved g1 mat files
 
