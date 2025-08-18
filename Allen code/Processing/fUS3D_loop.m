@@ -63,10 +63,10 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 % tau1_index_CBV = 2;
 
 %% Main loop
-for filenum = startFile:endFile
+% for filenum = startFile:endFile
 % for filenum = [2:endFile]
 % for filenum = [285:-1:189]
-% for filenum = 100:223
+for filenum = [2:40, 42:endFile]
 % for filenum = 1
 
     % Load the IQ data
@@ -148,7 +148,8 @@ for filenum = startFile:endFile
     
 end
 % savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'tau1_index_CBF', 'tau2_index_CBF', 'tau1_index_CBV');
-savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'numg1pts');
+% savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'numg1pts');
+save([savepath, 'fUS_proc_params.mat'], 'tau', 'tau_ms', 'numg1pts', 'zstart', 'zend');
 % savefast([savepath, 'PDI_CDI_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
 
 %% Testing
@@ -645,19 +646,22 @@ clearvars trial
 %% Resample the trials for the hemodynamic parameters
 interp_factor = 100;
 [trial_CBVi_usi] = resampleTrials(CBViallSF, trial_sf, trial_windows, sfStarts, P, interp_factor);
+[trial_CBFsi_usi] = resampleTrials(CBFsiallSF, trial_sf, trial_windows, sfStarts, P, interp_factor);
 [trial_PDI_usi] = resampleTrials(PDIallSF, trial_sf, trial_windows, sfStarts, P, interp_factor);
 
 %% Calculate the relative hemodynamic changes for each trial
 
 [trial_CBVi_usi_baseline, trial_rCBV_usi] = fUS_calc_rHP(trial_CBVi_usi, P, interp_factor);
+[trial_CBFsi_usi_baseline, trial_rCBFspeed_usi] = fUS_calc_rHP(trial_CBFsi_usi, P, interp_factor);
 [trial_PDI_usi_baseline, trial_rPDI_usi] = fUS_calc_rHP(trial_PDI_usi, P, interp_factor);
 
 %% Trial average the relative hemodynamic changes
 
 rCBV_TA = fUS_trialAverage(trial_rCBV_usi);
+rCBFspeed_TA = fUS_trialAverage(trial_rCBFspeed_usi);
 rPDI_TA = fUS_trialAverage(trial_rPDI_usi);
 
-%% Correlation on the trial average
+%% Correlation on the trial averaged rCBV
 
 % Resample the stim pattern/predicted HRF
 trial_stim_pattern = zeros(P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_factor, 1);
@@ -666,17 +670,82 @@ trial_stim_pattern(P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor
     P.Mcr_fcp.apis.stim_length_s * P.daqrate / interp_factor) = 1;
 figure; plot(trial_stim_pattern); title('Trial stim pattern')
 
-zt = 1;
+zt = 2;
 [r_rCBV, z_rCBV, am_rCBV] = activationMap3D(rCBV_TA, trial_stim_pattern, zt);
 
-volumeViewer(r_rCBV)
-volumeViewer(z_rCBV)
-volumeViewer(am_rCBV)
-figure; imagesc(squeeze(max(r_rCBV(:, :, :), [], 1))'); colormap jet; clim([-1, 1])
-% figure; imagesc(z_rCBV)
+% volumeViewer(r_rCBV)
+% volumeViewer(z_rCBV)
+% volumeViewer(am_rCBV)
+figure; imagesc(squeeze(max(r_rCBV(:, :, :), [], 1))'); colorbar; colormap jet; title('Correlation map coronal MIP'); clim([0, 1]) %clim([-1, 1])]
+figure; imagesc(squeeze(max(z_rCBV(:, :, :), [], 1))'); colorbar; colormap jet; title('z-score map coronal MIP');
+% figure; imagesc(squeeze(mean(z_rCBV(:, :, :), 1))'); colormap jet; clim([0, 1]) % clim([-1, 1])
 % figure; imagesc(am_rCBV); colormap jet; title("Activation Map (rCBV) with z threshold = " + num2str(zt))
-figure; imagesc(squeeze(max(am_rCBV(:, :, :), [], 1))'); colormap jet; title("Activation Map (rCBV) with z threshold = " + num2str(zt))
+figure; imagesc(squeeze(max(am_rCBV(:, :, :), [], 1))'); colorbar; colormap jet; title("Activation Map (rCBV) coronal MIP with z threshold = " + num2str(zt))
 
+% generateTiffStack_multi({r_rCBV}, [8.8, 8.8, 8], 'jet', 5)
+% generateTiffStack_multi({z_rCBV}, [8.8, 8.8, 8], 'jet', 5)
+% generateTiffStack_multi({am_rCBV}, [8.8, 8.8, 8], 'jet', 5)
+
+%% Correlation on the trial averaged rCBFspeed
+
+% Resample the stim pattern/predicted HRF
+trial_stim_pattern = zeros(P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_factor, 1);
+trial_stim_pattern(P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor : ...
+    P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor + ...
+    P.Mcr_fcp.apis.stim_length_s * P.daqrate / interp_factor) = 1;
+figure; plot(trial_stim_pattern); title('Trial stim pattern')
+
+zt = 2;
+[r_rCBFspeed, z_rCBFspeed, am_rCBFspeed] = activationMap3D_boxfilt(rCBFspeed_TA, trial_stim_pattern, zt);
+
+% volumeViewer(r_rCBFspeed)
+% volumeViewer(z_rCBFspeed)
+% volumeViewer(am_rCBFspeed)
+figure; imagesc(squeeze(max(r_rCBFspeed(:, :, :), [], 1))'); colorbar; colormap jet; title('Correlation map coronal MIP'); clim([0, 1]) %clim([-1, 1])]
+figure; imagesc(squeeze(max(z_rCBFspeed(:, :, :), [], 1))'); colorbar; colormap jet; title('z-score map coronal MIP');
+% figure; imagesc(squeeze(mean(z_rCBFspeed(:, :, :), 1))'); colormap jet; clim([0, 1]) % clim([-1, 1])
+% figure; imagesc(am_rCBFspeed); colormap jet; title("Activation Map (rCBV) with z threshold = " + num2str(zt))
+figure; imagesc(squeeze(max(am_rCBFspeed(:, :, :), [], 1))'); colorbar; colormap jet; title("Activation Map (rCBFspeed) coronal MIP with z threshold = " + num2str(zt))
+
+% generateTiffStack_multi({r_rCBFspeed}, [8.8, 8.8, 8], 'jet', 5)
+% generateTiffStack_multi({z_rCBFspeed}, [8.8, 8.8, 8], 'jet', 5)
+% generateTiffStack_multi({am_rCBFspeed}, [8.8, 8.8, 8], 'jet', 5)
+
+%% Correlation on the trial averaged rPDI
+
+% Resample the stim pattern/predicted HRF
+trial_stim_pattern = zeros(P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_factor, 1);
+trial_stim_pattern(P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor : ...
+    P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor + ...
+    P.Mcr_fcp.apis.stim_length_s * P.daqrate / interp_factor) = 1;
+figure; plot(trial_stim_pattern); title('Trial stim pattern')
+
+zt = 2;
+[r_rPDI, z_rPDI, am_rPDI] = activationMap3D(rPDI_TA, trial_stim_pattern, zt);
+
+% volumeViewer(r_rPDI)
+% volumeViewer(z_rPDI)
+% volumeViewer(am_rPDI)
+figure; imagesc(squeeze(max(r_rPDI(:, :, :), [], 1))'); colorbar; colormap jet; title('Correlation map coronal MIP'); clim([0, 1]) %clim([-1, 1])]
+figure; imagesc(squeeze(max(z_rPDI(:, :, :), [], 1))'); colorbar; colormap jet; title('z-score map coronal MIP');
+% figure; imagesc(squeeze(mean(z_rPDI(:, :, :), 1))'); colormap jet; clim([0, 1]) % clim([-1, 1])
+% figure; imagesc(am_rPDI); colormap jet; title("Activation Map (rCBV) with z threshold = " + num2str(zt))
+figure; imagesc(squeeze(max(am_rPDI(:, :, :), [], 1))'); colorbar; colormap jet; title("Activation Map (rPDI) coronal MIP with z threshold = " + num2str(zt))
+figure; imagesc(squeeze(max(am_rPDI(:, :, :), [], 3) .^ 1)'); colorbar; colormap jet; title("Activation Map (rPDI) axial MIP with z threshold = " + num2str(zt))
+
+% generateTiffStack_multi({r_rPDI}, [8.8, 8.8, 8], 'jet', 5)
+% generateTiffStack_multi({z_rPDI}, [8.8, 8.8, 8], 'jet', 5)
+% generateTiffStack_multi({am_rPDI}, [8.8, 8.8, 8], 'jet', 5)
+% generateTiffStack_multi({squeeze(mean(PDIallSF, 4)) .^ 0.5, am_rPDI}, [8.8, 8.8, 8], 'jet', 5)
+
+% Look at the max point
+[m, ind] = max(am_rPDI, [], 'all')
+[i, j, k] = ind2sub(size(am_rPDI), ind)
+figure; plot(squeeze(rPDI_TA(i, j, k, :)))
+
+[m, ind] = max(r_rPDI, [], 'all')
+[i, j, k] = ind2sub(size(am_rPDI), ind)
+figure; plot(squeeze(rPDI_TA(i, j, k, :)))
 %% Plot activation at each slice
 for slice = 1:10
     my_inds = (slice-1)*5:slice*5;

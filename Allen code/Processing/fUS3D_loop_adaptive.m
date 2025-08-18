@@ -67,10 +67,10 @@ load('I:\Ultrasound Data from 04-11-2025 to 05-08-2025\05-06-2025 AZ03 fUS pre-s
 
 
 %% Main loop with the Adaptive SVD Thresholding
-% for filenum = startFile:endFile
+for filenum = startFile:endFile
 % for filenum = 2:endFile
 % for filenum = [285:-1:189]
-for filenum = 1
+% for filenum = 1
     tic
     load([IQpath, IQfilenameStructure, num2str(filenum)])
     IQ = single(squeeze(IData + 1i .* QData));
@@ -145,7 +145,8 @@ for filenum = 1
     
 end
 % savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'tau1_index_CBF', 'tau2_index_CBF', 'tau1_index_CBV');
-savefast([savepath, 'fUS_proc_params.mat'], 'coronal_mask_rep', 'tau', 'tau_ms', 'numg1pts');
+% savefast([savepath, 'fUS_proc_params.mat'], 'coronal_mask_rep', 'tau', 'tau_ms', 'numg1pts');
+savefast([savepath, 'fUS_proc_params.mat'], 'tau', 'tau_ms', 'numg1pts', 'zstart', 'zend');
 % savefast([savepath, 'PDI_CDI_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
 
 %% Convert g1 into CBV, CBFspeed, etc.
