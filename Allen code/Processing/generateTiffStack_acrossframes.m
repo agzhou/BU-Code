@@ -8,7 +8,8 @@ function generateTiffStack_acrossframes(volumeData, varargin)
 
     % volumeData = volumeData ./ max(volumeData, [], 'all'); % Normalize intensities to be between 0 - 1
 %     cr = [0, max(volumeData, [], 'all')]; % color range
-    cr = [min(volumeData, [], 'all'), max(volumeData, [], 'all')]; % change 07/21/25
+%     cr = [min(volumeData, [], 'all'), max(volumeData, [], 'all')]; % change 07/21/25
+    cr = [min(volumeData, [], 'all'), prctile(volumeData, 99.99, 'all')]; % change 08/18/25 to account for massive flashes
     showColorbar = true;
 %     showColorbar = false;
 
