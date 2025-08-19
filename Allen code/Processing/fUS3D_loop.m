@@ -66,7 +66,7 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 % for filenum = startFile:endFile
 % for filenum = [2:endFile]
 % for filenum = [285:-1:189]
-for filenum = [2:40, 42:endFile]
+for filenum = [116:endFile]
 % for filenum = 1
 
     % Load the IQ data
@@ -166,8 +166,8 @@ g1_tau1_cutoff = 0.2;
 % g1_tau1_cutoff = 0.0;
 % tau_difference_cutoff = 0.2;
 
-for filenum = startFile:endFile
-% for filenum = [19]
+% for filenum = startFile:endFile
+for filenum = [1]
 %     load([savepath, 'g1-', num2str(filenum)], 'g1') % Load the saved g1 mat files
     load([savepath, 'fUSdata-', num2str(filenum)], 'g1') % Load the saved g1 mat files
 
