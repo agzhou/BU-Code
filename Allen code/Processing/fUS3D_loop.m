@@ -62,11 +62,18 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 % tau2_index_CBF = 6;
 % tau1_index_CBV = 2;
 
+%% Set up the High Pass Filter
+fc = 50; % Cutoff frequency [Hz]
+fs = P.frameRate; % Sampling frequency [Hz]
+HPF_order = 3; % Butterworth filter order
+
+[HPF_b, HPF_a] = butter(HPF_order, fc/(fs/2), 'high');
+
 %% Main loop
 % for filenum = startFile:endFile
-% for filenum = [2:endFile]
-% for filenum = [285:-1:189]
-for filenum = [116:endFile]
+for filenum = [2:endFile]
+% for filenum = [endFile - 1:-1:startFile]
+% for filenum = [116:endFile]
 % for filenum = 1
 
     % Load the IQ data
@@ -88,11 +95,15 @@ for filenum = [116:endFile]
     %%%%%%%%%%%%%% IF USING THE PREDEFINED MASK %%%%%%%%%%%%
 %     IQm(coronal_mask_rep) = 0; % Apply the brain mask to the IQ: set the non-brain voxels equal to 0
     %     [xp, yp, zp, nf] = size(IQm);
+
+    % Apply the HPF
+    dim = length(size(IQm)); % Operate on the time dimension
+    IQm_HPF = filter(HPF_b, HPF_a, IQm, [], dim);
     
     % SVD decluttering
 %     [PP, EVs, V_sort] = getSVs2D(IQm);
-    [xp, yp, zp, nf] = size(IQm);
-    PP = reshape(IQm, [xp*yp*zp, nf]);
+    [xp, yp, zp, nf] = size(IQm_HPF);
+    PP = reshape(IQm_HPF, [xp*yp*zp, nf]);
     tic
 %     [U, S, V] = svd(PP); % Already sorted in decreasing order
     [U, S, V] = svd(PP, 'econ'); % Already sorted in decreasing order
@@ -101,7 +112,7 @@ for filenum = [116:endFile]
     toc
     disp('SVs decomposed')
 
-    [IQf, noise] = applySVs2D(IQm, PP, SVs, V, sv_threshold_lower, sv_threshold_upper);
+    [IQf, noise] = applySVs2D(IQm_HPF, PP, SVs, V, sv_threshold_lower, sv_threshold_upper);
 %     [IQf, noise] = applySVs2D(IQm, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
     disp('SVD filtered images put together')
 
@@ -118,14 +129,14 @@ for filenum = [116:endFile]
 %     g1_p = g1T(IQf_separated{2}, numg1pts);
 %     [CBFsi_p, CBVi_p] = g1_to_CBi(g1_p, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 % 
-    g1 = g1T(IQf, numg1pts);
+    g1 = g1T(IQf_HPF, numg1pts);
 %     g1 = g1T(IQf);
 %     [CBFsi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 % 
 % %     savefast([savepath, 'fUSdata-', num2str(filenum), '.mat'], g1, CBFi, CBVi);
 
 %     [PDI] = calcPowerDoppler(IQf_separated);
-    PDI = sum(abs(IQf) .^ 2, 4) ./ size(IQf, 4);
+    PDI = sum(abs(IQf_HPF) .^ 2, 4) ./ size(IQf_HPF, 4);
 %     [CDI] = calcColorDoppler(IQf_FT_separated, P);
 
 %     figure; imagesc(squeeze(max(PDI, [], 1))' .^ 0.5); colormap hot
@@ -149,7 +160,7 @@ for filenum = [116:endFile]
 end
 % savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'tau1_index_CBF', 'tau2_index_CBF', 'tau1_index_CBV');
 % savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'numg1pts');
-save([savepath, 'fUS_proc_params.mat'], 'tau', 'tau_ms', 'numg1pts', 'zstart', 'zend');
+save([savepath, 'fUS_proc_params.mat'], 'HPF_a', 'HPF_b', 'tau', 'tau_ms', 'numg1pts', 'zstart', 'zend');
 % savefast([savepath, 'PDI_CDI_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
 
 %% Testing
@@ -166,8 +177,8 @@ g1_tau1_cutoff = 0.2;
 % g1_tau1_cutoff = 0.0;
 % tau_difference_cutoff = 0.2;
 
-% for filenum = startFile:endFile
-for filenum = [1]
+for filenum = startFile:endFile
+% for filenum = [endFile]
 %     load([savepath, 'g1-', num2str(filenum)], 'g1') % Load the saved g1 mat files
     load([savepath, 'fUSdata-', num2str(filenum)], 'g1') % Load the saved g1 mat files
 
@@ -186,10 +197,10 @@ for filenum = [1]
 end
 save([savepath, 'tlfUS_proc_params.mat'], 'tau1_index_CBV', 'tau1_index_CBF', 'tau2_index_CBF', 'g1_tau1_cutoff', 'g1A_mask');
 % save([savepath, 'tlfUStest_proc_params.mat'], 'tau1_index_CBV', 'tau1_index_CBF', 'tau2_index_CBF', 'g1_tau1_cutoff');
-figure; imagesc(squeeze(max(CBVi(30:50, :, :), [], 1) .^ 0.3)'); colormap hot
+figure; imagesc(squeeze(max(CBVi(:, :, :), [], 1) .^ 0.3)'); colormap hot
 figure; imagesc(squeeze(max(CBVi(:, :, :), [], 3) .^ 0.5)'); colormap hot
 vcmap = colormap_ULM;
-figure; imagesc(squeeze(mean(CBFsi(30:50, :, :), 1))'); colormap(vcmap)
+figure; imagesc(squeeze(mean(CBFsi(:, :, :), 1))'); colormap(vcmap)
 
 % generateTiffStack_multi({CBVi .^ 0.7}, [8.8, 8.8, 8], 'hot', 5)
 %% Get and save PDI, CDI only
@@ -668,7 +679,7 @@ trial_stim_pattern = zeros(P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_fact
 trial_stim_pattern(P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor : ...
     P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor + ...
     P.Mcr_fcp.apis.stim_length_s * P.daqrate / interp_factor) = 1;
-figure; plot(trial_stim_pattern); title('Trial stim pattern')
+figure; plot((1:length(trial_stim_pattern)) .* interp_factor ./ P.daqrate, trial_stim_pattern); title('Trial stim pattern'); xlabel('Time [s]')
 
 zt = 2;
 [r_rCBV, z_rCBV, am_rCBV] = activationMap3D(rCBV_TA, trial_stim_pattern, zt);
@@ -693,7 +704,7 @@ trial_stim_pattern = zeros(P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_fact
 trial_stim_pattern(P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor : ...
     P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor + ...
     P.Mcr_fcp.apis.stim_length_s * P.daqrate / interp_factor) = 1;
-figure; plot(trial_stim_pattern); title('Trial stim pattern')
+figure; plot((1:length(trial_stim_pattern)) .* interp_factor ./ P.daqrate, trial_stim_pattern); title('Trial stim pattern'); xlabel('Time [s]')
 
 zt = 2;
 [r_rCBFspeed, z_rCBFspeed, am_rCBFspeed] = activationMap3D_boxfilt(rCBFspeed_TA, trial_stim_pattern, zt);
@@ -718,7 +729,7 @@ trial_stim_pattern = zeros(P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_fact
 trial_stim_pattern(P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor : ...
     P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor + ...
     P.Mcr_fcp.apis.stim_length_s * P.daqrate / interp_factor) = 1;
-figure; plot(trial_stim_pattern); title('Trial stim pattern')
+figure; plot((1:length(trial_stim_pattern)) .* interp_factor ./ P.daqrate, trial_stim_pattern); title('Trial stim pattern'); xlabel('Time [s]')
 
 zt = 2;
 [r_rPDI, z_rPDI, am_rPDI] = activationMap3D(rPDI_TA, trial_stim_pattern, zt);
@@ -726,6 +737,8 @@ zt = 2;
 % volumeViewer(r_rPDI)
 % volumeViewer(z_rPDI)
 % volumeViewer(am_rPDI)
+% figure; imagesc(squeeze(mean(r_rPDI(:, :, :), 1))'); colorbar; colormap jet; title('Correlation map coronal Mean IP'); clim([0, 1]) %clim([-1, 1])]
+
 figure; imagesc(squeeze(max(r_rPDI(:, :, :), [], 1))'); colorbar; colormap jet; title('Correlation map coronal MIP'); clim([0, 1]) %clim([-1, 1])]
 figure; imagesc(squeeze(max(z_rPDI(:, :, :), [], 1))'); colorbar; colormap jet; title('z-score map coronal MIP');
 % figure; imagesc(squeeze(mean(z_rPDI(:, :, :), 1))'); colormap jet; clim([0, 1]) % clim([-1, 1])
@@ -741,11 +754,38 @@ figure; imagesc(squeeze(max(am_rPDI(:, :, :), [], 3) .^ 1)'); colorbar; colormap
 % Look at the max point
 [m, ind] = max(am_rPDI, [], 'all')
 [i, j, k] = ind2sub(size(am_rPDI), ind)
-figure; plot(squeeze(rPDI_TA(i, j, k, :)))
+
+ts = 2; % test size
+testsection = rPDI_TA(i - ts : i + ts, j - ts : j + ts, k - ts : k + ts, :);
+% figure; plot(squeeze(rPDI_TA(i, j, k, :)))
+figure; plot(squeeze(mean(mean(mean(testsection, 1), 2), 3)))
 
 [m, ind] = max(r_rPDI, [], 'all')
 [i, j, k] = ind2sub(size(am_rPDI), ind)
 figure; plot(squeeze(rPDI_TA(i, j, k, :)))
+
+am_rPDI_t = am_rPDI; % thresholded
+am_rPDI_t(am_rPDI_t < 1.3) = 0;
+am_rPDI_t_roi_mask = am_rPDI_t > 1.3;
+
+%% Look at a ROI (rPDI thresholded)
+numPtsUSI = P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_factor; % # of time points per trial for the upsampling
+% Calculate the timecourse from the average within that ROI
+roi_rPDI_TA = zeros(size(rPDI_TA, 3), 1);
+% repmat(roi_mask, [1, 1, stim_pattern.trial_duration])
+for ti = 1:numPtsUSI
+% for ti = 1
+     temp_rPDI_TA = rPDI_TA(:, :, :, ti);
+%      temp_roi_rPDI_avg = mean(temp_rPDI_TA(roi_mask));
+     temp_roi_rPDI_avg = mean(temp_rPDI_TA(am_rPDI_t_roi_mask));
+     roi_rPDI_TA(ti) = temp_roi_rPDI_avg;
+end
+
+% Plot the average timecourse in the ROI
+figure; plot((1:length(roi_rPDI_TA)) .* interp_factor ./ P.daqrate, roi_rPDI_TA); xlabel('Time [s]'); ylabel('rPDI'); title("rPDI ROI timecourse")
+mmws = 30; % Movmean window size (in units of the trial interpolation rate)
+figure; plot((1:length(roi_rPDI_TA)) .* interp_factor ./ P.daqrate, smoothdata(roi_rPDI_TA, 'movmean', mmws)); xlabel('Time [s]'); ylabel('rPDI'); title("rPDI ROI timecourse, moving mean over " + num2str(mmws/length(roi_rPDI_TA) * P.Mcr_fcp.apis.seq_length_s) + "s")
+
 %% Plot activation at each slice
 for slice = 1:10
     my_inds = (slice-1)*5:slice*5;
