@@ -70,8 +70,8 @@ HPF_order = 3; % Butterworth filter order
 [HPF_b, HPF_a] = butter(HPF_order, fc/(fs/2), 'high');
 
 %% Main loop
-% for filenum = startFile:endFile
-for filenum = [2:endFile]
+for filenum = startFile:endFile
+% for filenum = [2:endFile]
 % for filenum = [endFile - 1:-1:startFile]
 % for filenum = [116:endFile]
 % for filenum = 1
@@ -252,32 +252,6 @@ CBFspeed_DM_masked(~g1A_mask) = 0;
 % vtest_NLMF = NLMF(vtest ./ max(vtest, [], 'all')); % Try using nonlinear means filtering to get rid of those high-noise points
 % vtest_gaussLPF = imgaussfilt3(vtest);
 
-%% Random phase test
-phasetest = atan2(imag(IQf), real(IQf));
-
-figure; imagesc(squeeze(phasetest(40, :, :, 1))'); % colormap(vcmap)
-figure; imagesc(squeeze(abs(IQf(40, :, :, 1)))'); % colormap(vcmap)
-
-% figure; imagesc(squeeze(mean(phasetest(30:50, :, :), 1))'); % colormap(vcmap)
-
-%%
-figure; imagesc(squeeze(max(CBFspeed_DM_masked(30:50, :, :), [], 1))'); colormap(vcmap)
-figure; imagesc(squeeze(mean(CBFspeed_DM_masked(30:50, :, :), 1))'); colormap(vcmap)
-% figure; imagesc(squeeze(median(CBFspeed_DM_masked(30:50, :, :), 1))'); colormap(vcmap)
-% volumeViewer(vtest_masked)
-
-% generateTiffStack_MeanIPs_multi({CBFspeed_DM_masked .^ 1}, [8.8, 8.8, 8], vcmap, 10)
-% generateTiffStack_multi({vtest_masked .^ 1}, [8.8, 8.8, 8], vcmap, 10)
-% figure; imagesc(squeeze(max(vtest_NLMF(30:50, :, :), [], 1))'); colormap(vcmap)
-% figure; imagesc(squeeze(mean(vtest_NLMF(30:50, :, :), 1))'); colormap(vcmap)
-% volumeViewer(vtest_NLMF)
-
-% figure; imagesc(squeeze(max(vtest_gaussLPF(30:50, :, :), [], 1))'); colormap(vcmap)
-% figure; imagesc(squeeze(mean(vtest_gaussLPF(30:50, :, :), 1))'); colormap(vcmap)
-% figure; imagesc(squeeze(median(vtest_gaussLPF(30:50, :, :), 1))'); colormap(vcmap)
-
-% volumeViewer(vtest_gaussLPF)
-
 %% Compare the derivative CBFspeed index method to the old log one
 CBFsi_all_masked = CBFsi_all;
 CBFsi_all_masked(~g1A_mask) = 0;
@@ -290,26 +264,6 @@ figure; imagesc(squeeze(mean(CBFsi_all_masked(30:50, :, :), 1))'); colormap(vcma
 
 generateTiffStack_MeanIPs_multi({CBFsi_all_masked .^ 1, CBFspeed_DM_masked}, [8.8, 8.8, 8], vcmap, 20)
 
-%% plot the base g1 at some point
-% pt = [40, 58, 14];
-% pt = [32, 34, 17];
-pt = [32, 31, 35];
-% pt = [40, 36, 128];
-% figure; plot(tau_ms(1:size(g1, 4)), squeeze(abs(g1(pt(1), pt(2), pt(3), :))), '-o');
-figure; plot(tau_ms(1:size(g1s{1}, 4)), squeeze(abs(g1s{1}(pt(1), pt(2), pt(3), :))), '-o');
-hold on
-plot(tau_ms(1:size(g1Avg, 4)), squeeze(abs(g1Avg(pt(1), pt(2), pt(3), :))), '-o');
-% plot(tau_ms(1:size(g1s{2}, 4)), squeeze(abs(g1s{2}(pt(1), pt(2), pt(3), :))), '-o');
-hold off
-xlabel('tau [ms]')
-ylabel('|g1|')
-
-%% Use smoothdata
-g1_smoothdata = smoothdata(g1, 4, 'sgolay'); % Smooth along the time dimension
-%
-figure; plot(tau_ms(1:size(g1, 4)), squeeze(abs(g1_smoothdata(pt(1), pt(2), pt(3), :))), '-o');
-xlabel('tau [ms]')
-ylabel('|g1| with smoothdata')
 
 %% Trying some alternate CBFspeed index calculations
 % CBFsi_all = squeeze(abs(g1(:, :, :, tau1_index_CBF)) - abs(g1(:, :, :, tau2_index_CBF)));
@@ -332,208 +286,6 @@ figure; imagesc(squeeze(max(CBFsi_all_test(30:50, :, :), [], 1))'); colormap(vcm
 figure; imagesc(squeeze(mean(CBFsi_all_test(30:50, :, :), 1))'); colormap(vcmap)
 
 volumeViewer(CBFsi_all_test)
-%% g1 adjustment test (see MAIN_g1fUS_invivo_annotated.m)
-g1_shift = g1(:, :, :, 2:end);
-g1Temp = reshape(g1_shift, [size(g1_shift, 1) * size(g1_shift, 2) * size(g1_shift, 3), size(g1_shift, 4)]); % ** stack the spatial dimensions of the g1 **
-                
-% ** This seems like noise removal (CR = Clutter Removal? CRiteria?) **
-
-% ** The difference between the first 2 g1 values is greater than 2x the
-%    difference between the 2nd and 3rd g1 values **
-% ggCR1=(abs( g1Temp(:,1) - g1Temp(:,2) ) > 2*abs(( g1Temp(:,2) - g1Temp(:,3) )));
-
-% ** This is a series of masks that only keep the g1 at voxels where the
-%    1st, 2nd, and 3rd g1 values meet some threshold criteria:
-%    - |g1| at tau1 > 0.55 (I assume this means just if there is any blood
-%                           signal at this voxel)
-%    - |g1| at tau2 < 0.25 (If the g1 decays quickly enough)
-%    - |g1| at tau2 < g1 at tau3 **
-% ggCR2=( abs(g1Temp(:,1)) > 0.55) .* ( abs(g1Temp(:,2)) < 0.25 ) .* ( abs(g1Temp(:,2)) < abs(g1Temp(:,3)) );
-
-% ********* trying my own thresholds *********
-ggCR2 = ( abs(g1Temp(:,1)) > 0.5) .* ( abs(g1Temp(:,2)) < abs(g1Temp(:,1)) );
-ggCR1 = (abs( abs(g1Temp(:,1)) - abs(g1Temp(:,2)) ) > 2 * abs(( abs(g1Temp(:,2)) - abs(g1Temp(:,3)) )));
-
-ggCR0 = ggCR2;
-% ggCR0=((ggCR1+ggCR2)>0); % modified by Bingxue Liu; ** logical 'OR' operation between the two conditions **
-%GG2(:,1)=(1-ggCR0).*GG2(:,1)+ggCR0.*(GG2(:,2)+(abs(real(GG2(:,2)-GG2(:,3)))+1i*abs(imag(GG2(:,2)-GG2(:,3))))*1.5);
-GG2temp(:,1)=(1-ggCR0).*g1Temp(:,1)+ggCR0.*(g1Temp(:,2)+(abs(real(g1Temp(:,1)-g1Temp(:,2)))+1i*(imag(g1Temp(:,2)-g1Temp(:,3))))*1);% abs; real GG1-GG2
-GG2temp(find(abs(GG2temp)>1)) = g1Temp(find(abs(GG2temp)>1),1); %
-g1Temp(:,1) = GG2temp; % modified by Bingxue Liu
-g1Adj = reshape(g1Temp, [size(g1_shift, 1), size(g1_shift, 2), size(g1_shift, 3), size(g1_shift, 4)]); % ** unstack the spatial dimensions **
-      
-%%
-figure; plot(tau_ms(1:size(g1Adj, 4)), squeeze(abs(g1Adj(pt(1), pt(2), pt(3), :))), '-o');
-xlabel('tau [ms]')
-ylabel('|g1|')
-%% Plot CBVi and CBFspeedi from the smoothed g1
-tau1_index_CBF = 2;
-tau2_index_CBF = 10;
-tau1_index_CBV = 2;
-
-[CBFi_adj, CBVi_adj] = g1_to_CBi(g1Adj, tau_ms(2:end) ./ 1000, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
-%
-figure; imagesc(squeeze(mean(CBFi_adj(30:50, :, :), 1))')
-% plotMIPs(CBFi_adj, 1)
-% plotMIPs(CBVi_adj, 1)
-% plotMIPs(CBVi, 1)
-
-%% Look at the g1 adjustment criteria
-ggCR1_rs = reshape(ggCR1, [size(g1_shift, 1), size(g1_shift, 2), size(g1_shift, 3)]); % ** unstack the spatial dimensions **
-figure; imagesc(squeeze(max(ggCR1_rs, [], 1))')
-
-ggCR2_rs = reshape(ggCR2, [size(g1_shift, 1), size(g1_shift, 2), size(g1_shift, 3)]); % ** unstack the spatial dimensions **
-figure; imagesc(squeeze(max(ggCR2_rs, [], 1))') %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% More smoothing from the previous code
-covB=ones(3,3); covB(3,3)=9; covB=covB/sum(covB(:));
-
-g1Smoothed = g1;
-for itau=1:size(g1, 4)
-    g1Smoothed(:, :, :, itau) = convn(g1(:, :, :, itau), covB, 'same');
-end
-g1Smoothed = smoothdata(g1Smoothed, 4, 'sgolay', 9);
-
-%% Plot CBVi and CBFspeedi from the smoothed g1
-tau1_index_CBF = 2;
-tau2_index_CBF = 6;
-tau1_index_CBV = 2;
-
-[CBFi_smoothed, CBVi_smoothed] = g1_to_CBi(g1Smoothed, tau_ms ./ 1000, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
-%
-% plotMIPs(CBFi_smoothed, 1)
-plotMIPs(CBVi_smoothed, 1)
-plotMIPs(CBVi, 1)
-
-%% Phase testing
-% plotMIPs(squeeze(IData(:, :, :, 1, 1)), 1)
-% plotMIPs(squeeze(QData(:, :, :, 1, 1)), 1)
-phasetest = squeeze(QData(:, :, :, 1, 1) ./ IData(:, :, :, 1, 1));
-phasetest = phasetest(abs(phasetest) < 10);
-plotMIPs(phasetest(:, :, :, 1), 1)
-findfigs
-%% Power Doppler
-[PDI] = calcPowerDoppler(IQf_separated);
-% plotMIPs(PDI{1}, 0.8)
-% plotMIPs(PDI{2}, 0.8)
-plotMIPs(PDI{3}, 0.8)
-
-% volumeViewer(PDI{3})
-% volumeSegmenter(PDI{3})
-figure; imagesc(squeeze(max(PDI{3}(30:50, :, :), [], 1) .^ 0.7)'); colormap hot
-% generateTiffStack_multi({PDI{3} .^ 0.9}, [8.8, 8.8, 8], 'hot', 5)
-%% Plot Power Doppler results
-PDIn = PDI{3}; % normalized PDI of all frequencies
-PDIn = PDIn ./ max(PDIn, [], 'all');
-plotMIPs(PDIn, 1)
-
-%% trying to denoise the Power Doppler
-% PDInt = PDIn; % normalized, thresholded
-% PDInt(PDInt < 0.07) = 0;
-% plotMIPs(PDInt, 1)
-% %%
-% test = NLMF(PDIn);
-% %%
-% plotMIPs(test, 1)
-%% Color Doppler
-[CDI] = calcColorDoppler(IQf_FT_separated, P);
-%% Plot Color Doppler
-plotMIPs(CDI{1}, 1)
-plotMIPs(CDI{2}, 1)
-plotMIPs(CDI{3}, 1)
-
-% volumeViewer(CDI{})
-% volumeSegmenter(CDI{1})
-
-%% CBVi and CBFi MIP over the whole dimension with negative and positive components
-% plotMIPs(CBVi_n, 1)
-% plotMIPs(CBFi_n, 1)
-
-% plotMIPs(CBVi_p, 1)
-% plotMIPs(CBFi_p, 1)
-
-plotMIPs(CBVi, 1)
-plotMIPs(CBFsi, 1)
-
-%% Plot the magnitude of g1 at some point, of the adjusted g1
-figure; plot(tau_ms(2:size(g1, 4)), abs(squeeze(g1_shift(40, 45, 61, :))), '-o')
-title('|g1| at 40, 45, 61')
-xlabel('Tau [ms]')
-ylabel('|g1|')
-
-% hold on
-figure
-plot(tau_ms(2:size(g1, 4)), abs(squeeze(g1Adj(40, 45, 61, :))), '-o')
-% hold off
-% legend('Original g1', 'Adjusted g1')
-%% Plot the base vs. smoothed g1
-figure; plot(tau_ms(1:size(g1, 4)), abs(squeeze(g1(40, 45, 61, :))), '-o')
-title('|g1| at 40, 45, 61')
-xlabel('Tau [ms]')
-ylabel('|g1|')
-
-figure
-plot(tau_ms(1:size(g1Smoothed, 4)), abs(squeeze(g1Smoothed(40, 45, 61, :))), '-o')
-
-%%
-figure; plot(tau_ms(2:size(g1, 4)), abs(squeeze(g1_shift(30, 60, 71, :))), '-o')
-title('|g1| at 30, 60, 71')
-xlabel('Tau [ms]')
-ylabel('|g1|')
-
-% hold on
-figure
-plot(tau_ms(2:size(g1, 4)), abs(squeeze(g1Adj(30, 60, 71, :))), '-o')
-% hold off
-% legend('Original g1', 'Adjusted g1')
-%%
-% [CBFi, CBVi] = g1_to_CBi(g1, tau_ms, 2, 3, 2); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
-%%
-figure; imagesc(squeeze(CBF(40, :, :))')
-title('CBFi - xz plane')
-xlabel('x pixels')
-ylabel('z pixels')
-figure; imagesc(squeeze(CBF(:, 40, :))')
-title('CBFi - yz plane')
-xlabel('x pixels')
-ylabel('z pixels')
-
-%% CBF MIP over the whole dimension
-figure; imagesc(squeeze(max(CBFi_smoothed, [], 1))' .^ 1); colormap hot
-title('CBFi - xz MIP')
-xlabel('x pixels')
-ylabel('z pixels')
-figure; imagesc(squeeze(max(CBFsi, [], 2))' .^ 1); colormap hot
-title('CBFi - yz MIP')
-xlabel('x pixels')
-ylabel('z pixels')
-
-% figure; imagesc(squeeze(sum(CBF, 1))' .^ 1); colormap hot
-% title('CBFi - sum over y')
-% xlabel('x pixels')
-% ylabel('z pixels')
-%%
-figure; imagesc(squeeze(CBV(40, :, :))'); colormap hot
-title('CBVi - xz plane')
-xlabel('x pixels')
-ylabel('z pixels')
-figure; imagesc(squeeze(CBV(:, 40, :))'); colormap hot
-title('CBVi - yz plane')
-xlabel('x pixels')
-ylabel('z pixels')
-%% CBV MIP over the whole dimension
-gamcp = 1; % gamma compression power
-figure; imagesc(squeeze(max(CBVi, [], 1))' .^ gamcp); colormap hot; colorbar
-title('CBVi - xz MIP')
-xlabel('y pixels')
-ylabel('z pixels')
-figure; imagesc(squeeze(max(CBVi, [], 2))' .^ gamcp); colormap hot; colorbar
-title('CBVi - yz MIP')
-xlabel('x pixels')
-ylabel('z pixels')
-
-%% 
-
-% volumeViewer(CBV .^ gamcp)
 
 %% Store all the updated CBVi and CBFsi across the experiment into one matrix
 load([savepath, 'tlfUSdata-', num2str(1), '.mat'], 'CBFsi', 'CBVi')
