@@ -71,10 +71,10 @@ HPF_order = 3; % Butterworth filter order
 
 %% Main loop
 for filenum = startFile:endFile
-% for filenum = [2:endFile]
+% for filenum = [3:endFile]
 % for filenum = [endFile - 1:-1:startFile]
 % for filenum = [116:endFile]
-% for filenum = 1
+% for filenum = 2
 
     % Load the IQ data
     tic
@@ -112,7 +112,7 @@ for filenum = startFile:endFile
     toc
     disp('SVs decomposed')
 
-    [IQf, noise] = applySVs2D(IQm_HPF, PP, SVs, V, sv_threshold_lower, sv_threshold_upper);
+    [IQf_HPF, noise] = applySVs2D(IQm_HPF, PP, SVs, V, sv_threshold_lower, sv_threshold_upper);
 %     [IQf, noise] = applySVs2D(IQm, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
     disp('SVD filtered images put together')
 
