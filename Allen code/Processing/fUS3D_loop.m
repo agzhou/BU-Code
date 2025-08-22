@@ -70,11 +70,11 @@ HPF_order = 3; % Butterworth filter order
 [HPF_b, HPF_a] = butter(HPF_order, fc/(fs/2), 'high');
 
 %% Main loop
-% for filenum = startFile:endFile
-% for filenum = [2:endFile]
+for filenum = startFile:endFile
+% for filenum = [3:endFile]
 % for filenum = [endFile - 1:-1:startFile]
 % for filenum = [116:endFile]
-for filenum = 2
+% for filenum = 2
 
     % Load the IQ data
     tic
