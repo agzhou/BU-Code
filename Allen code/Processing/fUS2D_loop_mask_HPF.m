@@ -376,13 +376,13 @@ trial_stim_pattern = zeros(P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_fact
 trial_stim_pattern(P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor : ...
     P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor + ...
     P.Mcr_fcp.apis.stim_length_s * P.daqrate / interp_factor) = 1;
-figure; plot(trial_stim_pattern); title('Trial stim pattern')
+figure; plot((1:length(trial_stim_pattern)) .* interp_factor ./ P.daqrate, trial_stim_pattern); title('Trial stim pattern'); xlabel('Time [s]')
 
 zt = 2;
 [r_rCBV, z_rCBV, am_rCBV] = activationMap2D(rCBV_TA, trial_stim_pattern, zt);
 
-figure; imagesc(r_rCBV); colormap jet; colorbar; clim([0, 1])
-figure; imagesc(z_rCBV); colormap jet; colorbar
+figure; imagesc(r_rCBV); colormap jet; colorbar; clim([0, 1]); title("Correlation coefficient map (rCBV)")
+figure; imagesc(z_rCBV); colormap jet; colorbar; title("z-score map (rCBV)")
 figure; imagesc(am_rCBV); colormap jet; title("Activation Map (rCBV) with z threshold = " + num2str(zt)); colorbar
 
 %% Correlation on the trial averaged rCBFspeed
@@ -392,14 +392,14 @@ trial_stim_pattern = zeros(P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_fact
 trial_stim_pattern(P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor : ...
     P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor + ...
     P.Mcr_fcp.apis.stim_length_s * P.daqrate / interp_factor) = 1;
-% figure; plot(trial_stim_pattern); title('Trial stim pattern')
+% figure; plot((1:length(trial_stim_pattern)) .* interp_factor ./ P.daqrate, trial_stim_pattern); title('Trial stim pattern'); xlabel('Time [s]')
 
 zt = 2;
 [r_rCBFs, z_rCBFs, am_rCBFs] = activationMap2D(rCBFs_TA, trial_stim_pattern, zt);
 
-figure; imagesc(r_rCBFs); colormap jet; clim([0, 1]); colorbar
-figure; imagesc(z_rCBFs); colormap jet; colorbar
-figure; imagesc(am_rCBFs); colormap jet; title("Activation Map (rCBFs) with z threshold = " + num2str(zt)); colorbar
+figure; imagesc(r_rCBFs); colormap jet; clim([0, 1]); colorbar; title("Correlation coefficient map (rCBFspeed)")
+figure; imagesc(z_rCBFs); colormap jet; colorbar; title("z-score map (rCBFspeed)")
+figure; imagesc(am_rCBFs); colormap jet; title("Activation Map (rCBFspeed) with z threshold = " + num2str(zt)); colorbar
 
 %% Correlation on the trial averaged rPDI
 
@@ -408,13 +408,13 @@ trial_stim_pattern = zeros(P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_fact
 trial_stim_pattern(P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor : ...
     P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor + ...
     P.Mcr_fcp.apis.stim_length_s * P.daqrate / interp_factor) = 1;
-% figure; plot(trial_stim_pattern); title('Trial stim pattern')
+% figure; plot((1:length(trial_stim_pattern)) .* interp_factor ./ P.daqrate, trial_stim_pattern); title('Trial stim pattern'); xlabel('Time [s]')
 
 zt = 2;
 [r_rPDI, z_rPDI, am_rPDI] = activationMap2D(rPDI_TA, trial_stim_pattern, zt);
 
-figure; imagesc(r_rPDI); colormap jet; clim([0, 1]); colorbar
-figure; imagesc(z_rPDI); colormap jet; colorbar
+figure; imagesc(r_rPDI); colormap jet; clim([0, 1]); colorbar; title("Correlation coefficient map (rPDI)")
+figure; imagesc(z_rPDI); colormap jet; colorbar; title("z-score map (rPDI)")
 figure; imagesc(am_rPDI); colormap jet; title("Activation Map (rPDI) with z threshold = " + num2str(zt)); colorbar
 
 %% Remove points outside of the brain region (manually selected)
@@ -427,25 +427,9 @@ am_rCBV_inbrain(~brain_mask) = 0;
 figure; imagesc(am_rCBV_inbrain); colormap jet; title("Activation Map (rCBV) masked to the brain with z threshold = " + num2str(zt))
 
 %% Look at the timecourse from a ROI
-figure; imagesc(am_rCBV_inbrain); colormap jet; title("Activation Map (rCBV) masked to the brain with z threshold = " + num2str(zt))
-roi_mask = roipoly; % manually define the ROI
-figure; imagesc(roi_mask)
-
-numPtsUSI = P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_factor; % # of time points per trial for the upsampling
-% Calculate the timecourse from the average within that ROI
-roi_rCBV_TA = zeros(size(rCBV_TA, 3), 1);
-% repmat(roi_mask, [1, 1, stim_pattern.trial_duration])
-for ti = 1:numPtsUSI
-% for ti = 1
-     temp_rCBV_TA = rCBV_TA(:, :, ti);
-     temp_roi_rCBV_avg = mean(temp_rCBV_TA(roi_mask));
-     roi_rCBV_TA(ti) = temp_roi_rCBV_avg;
-end
-
-% Plot the average timecourse in the ROI
-% figure; plot(roi_rCBV_TA)
-figure; plot(smoothdata(roi_rCBV_TA, 'movmean', 30))
-
+[rCBV_roi_mask, roi_rCBV_TA] = plotROITimecourse(rCBV_TA, am_rCBV, P, interp_factor, trial_stim_pattern);
+%%
+[rPDI_roi_mask, roi_rPDI_TA] = plotROITimecourse(rPDI_TA, am_rPDI, P, interp_factor, trial_stim_pattern);
 %% Look at the timecourse from a random ROI
 figure; imagesc(am_rCBV_inbrain); colormap jet; title("Activation Map (rCBV) masked to the brain with z threshold = " + num2str(zt))
 random_roi_mask = roipoly; % manually define the ROI
@@ -523,3 +507,25 @@ end
 %     end
 %     data_trial_average = data_trial_average ./ length(data);
 % end
+
+% Look at the rData_TA timecourse from a ROI
+% Input the trial averaged data and the activation map
+function [roi_mask, roi_rData_TA] = plotROITimecourse(rData_TA, am_Data, P, interp_factor, trial_stim_pattern)
+    % figure; imagesc(am_rCBV_inbrain); colormap jet; title("Activation Map (rCBV) masked to the brain with z threshold = " + num2str(zt))
+    figure; imagesc(am_Data); colormap jet; title("Activation Map")
+    roi_mask = roipoly; % manually define the ROI
+    figure; imagesc(roi_mask)
+    
+    numPtsUSI = P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_factor; % # of time points per trial for the upsampling
+    % Calculate the timecourse from the average within that ROI
+    roi_rData_TA = zeros(size(rData_TA, 3), 1);
+    for ti = 1:numPtsUSI
+         temp_rData_TA = rData_TA(:, :, ti);
+         temp_roi_rData_TA_avg = mean(temp_rData_TA(roi_mask));
+         roi_rData_TA(ti) = temp_roi_rData_TA_avg;
+    end
+    
+    % Plot the average timecourse in the ROI
+    figure; plot((1:length(trial_stim_pattern)) .* interp_factor ./ P.daqrate, roi_rData_TA); xlabel('Time [s]')
+    figure; plot((1:length(trial_stim_pattern)) .* interp_factor ./ P.daqrate, smoothdata(roi_rData_TA, 'movmean', 30)); xlabel('Time [s]')
+end
