@@ -17,7 +17,14 @@
 %       data_resampled: data that is aligned for each trial and
 %                       resampled + interpolated
 
-function [data_resampled] = resampleTrials(data, trial_sf, trial_windows, sfStarts, P, interp_factor)
+function [data_resampled] = resampleTrials(data, trial_sf, trial_windows, sfStarts, P, interp_factor, varargin)
+
+    % Add an optional input to choose the interpolation method (update
+    % 8/25/25)
+    interp_type = 'makima'; % Default interpolation method
+    if nargin > 6
+        interp_type = varargin{1};
+    end
 
     if interp_factor < 1
         error('Interpolation factor needs to be at least 1')
@@ -44,13 +51,27 @@ function [data_resampled] = resampleTrials(data, trial_sf, trial_windows, sfStar
                 temp_indices_shifted = temp_indices - trial_windows{trial}(1) + 1; % Shift the indices so they correspond to a trial start at 1
                 % data_resampled{trial} = spline(temp_indices_shifted, data(:, :, trial_sf{trial}), interp_times);
                 try
-                    data_resampled{trial} = spline(temp_indices_shifted, data(:, :, trial_sf{trial}), interp_times);
+                    switch interp_type
+                        case 'spline'
+                            data_resampled{trial} = spline(temp_indices_shifted, data(:, :, trial_sf{trial}), interp_times);
+                        case 'makima'
+                            data_resampled{trial} = makima(temp_indices_shifted, data(:, :, trial_sf{trial}), interp_times);
+                        case 'pchip'
+                            data_resampled{trial} = pchip(temp_indices_shifted, data(:, :, trial_sf{trial}), interp_times);
+                    end
 %                 data_resampled{trial} = makima(temp_indices_shifted, data(:, :, trial_sf{trial}), interp_times);
 %                 data_resampled{trial} = pchip(temp_indices_shifted, data(:, :, trial_sf{trial}), interp_times);
                 catch % Case where the masked points being all NaN causes an error with the chckxy internal helper function
                     temp_data = data(:, :, trial_sf{trial});
                     temp_data(isnan(temp_data)) = 0;
-                    data_resampled{trial} = spline(temp_indices_shifted, temp_data, interp_times);
+                    switch interp_type
+                        case 'spline'
+                            data_resampled{trial} = spline(temp_indices_shifted, temp_data, interp_times);
+                        case 'makima'
+                            data_resampled{trial} = makima(temp_indices_shifted, temp_data, interp_times);
+                        case 'pchip'
+                            data_resampled{trial} = pchip(temp_indices_shifted, temp_data, interp_times);
+                    end
                     warning('Make sure the [masked] voxels are set to a value compatible with chckxy, e.g., not NaN')
                 end
             end
