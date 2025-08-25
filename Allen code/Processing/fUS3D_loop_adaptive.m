@@ -37,7 +37,7 @@ load(timingFilePath)
 %% Define some parameters
 
 parameterPrompt = {'Start file number', 'End file number', 'Tau 1 index for CBFspeed', 'Tau 2 index for CBFspeed', 'Tau 1 index for CBV'};
-parameterDefaults = {'1', '', '2', '5', '2'};
+parameterDefaults = {'1', '', '2', '11', '2'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % define # of files manually for now
@@ -63,8 +63,14 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 %% Define the mask manually for now
 
 % load('E:\Allen BME-BOAS-27 Data Backup\AZ01 fUS\07-21-2025 awake RC15gV manual right whisker stim\coronal_mask_rep_07_24_2025.mat')
-load('I:\Ultrasound Data from 04-11-2025 to 05-08-2025\05-06-2025 AZ03 fUS pre-stroke\run 1 all frames stacked\coronal_mask_rep_07_31_2025.mat')
+% load('I:\Ultrasound Data from 04-11-2025 to 05-08-2025\05-06-2025 AZ03 fUS pre-stroke\run 1 all frames stacked\coronal_mask_rep_07_31_2025.mat')
+load('J:\Ultrasound data from 7-21-2025\08-06-2025 AZ01 RCA fUS\coronal_mask_rep.mat')
+%% Set up the High Pass Filter
+fc = 50; % Cutoff frequency [Hz]
+fs = P.frameRate; % Sampling frequency [Hz]
+HPF_order = 3; % Butterworth filter order
 
+[HPF_b, HPF_a] = butter(HPF_order, fc/(fs/2), 'high');
 
 %% Main loop with the Adaptive SVD Thresholding
 for filenum = startFile:endFile
@@ -77,16 +83,21 @@ for filenum = startFile:endFile
     clearvars IData QData
 
 %     IQm = IQ(:, :, 40:end, :);
-    IQm = IQ(:, :, 50:end, :);
+%     IQm = IQ(:, :, 50:end, :);
     % IQm = IQ(:, :, 1:100, :);
 %     figure; imagesc(squeeze(max(abs(IQm(:, :, :, 2)), [], 1))')
 
     %%%%%%%%%%%%%% IF USING THE MASK %%%%%%%%%%%%
-%     IQm(coronal_mask_rep) = 0; % Apply the brain mask to the IQ: set the non-brain voxels equal to 0
+    IQm = IQ;
+    IQm(coronal_mask_rep) = 0; % Apply the brain mask to the IQ: set the non-brain voxels equal to 0
     
+    % Apply the HPF
+    dim = length(size(IQm)); % Operate on the time dimension
+    IQm_HPF = filter(HPF_b, HPF_a, IQm, [], dim);
+
     % Determine the optimal SV thresholds with the spatial similarity matrix
-    [xp, yp, zp, nf] = size(IQm);
-    PP = reshape(IQm, [xp*yp*zp, nf]);
+    [xp, yp, zp, nf] = size(IQm_HPF);
+    PP = reshape(IQm_HPF, [xp*yp*zp, nf]);
     tic
 %     [U, S, V] = svd(PP); % Already sorted in decreasing order
     [U, S, V] = svd(PP, 'econ'); % Already sorted in decreasing order
@@ -102,12 +113,12 @@ for filenum = startFile:endFile
 
 %     [PP, EVs, V_sort] = getSVs2D(IQ);
 %     disp('SVs decomposed')
-    [IQf, noise] = applySVs2D(IQm, PP, SVs, V, a_opt, b_opt);
-%     [IQf, noise] = applySVs2D(IQm, PP, SVs, V, sv_threshold_lower, sv_threshold_upper);
+    [IQf_HPF, noise] = applySVs2D(IQm_HPF, PP, SVs, V, a_opt, b_opt);
+    [IQf_HPF, noise] = applySVs2D(IQm_HPF, PP, SVs, V, sv_threshold_lower, sv_threshold_upper);
 %     disp('SVD filtered images put together')
 
-%     volumeViewer(abs(IQf(:, :, :, 1)))
-%     figure; imagesc(squeeze(abs(max(IQf(:, :, :, 1), [], 1)))')
+%     volumeViewer(abs(IQf_HPF(:, :, :, 1)))
+%     figure; imagesc(squeeze(abs(max(IQf_HPF(:, :, :, 1), [], 1)))')
     % clearvars IQ
 
     % Use the IQf with separated negative and positive frequency components
@@ -119,10 +130,10 @@ for filenum = startFile:endFile
 %     g1_p = g1T(IQf_separated{2}, numg1pts);
 %     [CBFsi_p, CBVi_p] = g1_to_CBi(g1_p, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 % 
-    g1 = g1T(IQf, numg1pts);
+    g1 = g1T(IQf_HPF, numg1pts);
 
 %     [PDI] = calcPowerDoppler(IQf_separated);
-    PDI = sum(abs(IQf) .^ 2, 4) ./ size(IQf, 4);
+    PDI = sum(abs(IQf_HPF) .^ 2, 4) ./ size(IQf_HPF, 4);
 %     [CDI] = calcColorDoppler(IQf_FT_separated, P);
 
 %     figure; imagesc(squeeze(max(PDI, [], 1))' .^ 0.5); colormap hot
