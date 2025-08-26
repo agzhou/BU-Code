@@ -105,6 +105,12 @@ for filenum = startFile:endFile
 %     disp('Full SVD done')
     toc
 
+    % Plot one SVD subspace as an image
+    subspace = 180;
+    subspace_img = reshape(U(:, subspace) * SVs(subspace) * V(:, subspace)', [xp, yp, zp, nf]);
+    figure; imagesc(squeeze(max(abs(subspace_img(:, :, :, 2)), [], 1))')
+    volumeViewer(abs(subspace_img(:, :, :, 2)))
+
     SSM = plotSSM(U, false);
 %     SSM = plotSSM(U, true);
     [~, a_opt, b_opt] = fitSSM(SSM, false); % Get the optimal singular value thresholds

@@ -69,12 +69,18 @@ HPF_order = 3; % Butterworth filter order
 
 [HPF_b, HPF_a] = butter(HPF_order, fc/(fs/2), 'high');
 
+%% Define the mask manually for now
+
+% load('E:\Allen BME-BOAS-27 Data Backup\AZ01 fUS\07-21-2025 awake RC15gV manual right whisker stim\coronal_mask_rep_07_24_2025.mat')
+% load('I:\Ultrasound Data from 04-11-2025 to 05-08-2025\05-06-2025 AZ03 fUS pre-stroke\run 1 all frames stacked\coronal_mask_rep_07_31_2025.mat')
+load('J:\Ultrasound data from 7-21-2025\08-06-2025 AZ01 RCA fUS\coronal_mask_rep.mat')
+
 %% Main loop
-for filenum = startFile:endFile
-% for filenum = [3:endFile]
+% for filenum = startFile:endFile
+for filenum = [2:endFile]
 % for filenum = [endFile - 1:-1:startFile]
 % for filenum = [116:endFile]
-% for filenum = 2
+% for filenum = 1
 
     % Load the IQ data
     tic
@@ -86,15 +92,15 @@ for filenum = startFile:endFile
     % figure; imagesc(squeeze(max(abs(IQ(:, :, :, 2)), [], 1))')
     
     % Crop the IQ first 
-    zstart = 40;
-%     zstart = 50;
-    zend = size(IQ, 3);
-    IQm = IQ(:, :, zstart:zend, :);
+%     zstart = 40;
+% %     zstart = 50;
+%     zend = size(IQ, 3);
+%     IQm = IQ(:, :, zstart:zend, :);
 %     figure; imagesc(squeeze(max(abs(IQm(:, :, :, 2)), [], 1))')
 
     %%%%%%%%%%%%%% IF USING THE PREDEFINED MASK %%%%%%%%%%%%
-%     IQm(coronal_mask_rep) = 0; % Apply the brain mask to the IQ: set the non-brain voxels equal to 0
-    %     [xp, yp, zp, nf] = size(IQm);
+    IQm = IQ;
+    IQm(coronal_mask_rep) = 0; % Apply the brain mask to the IQ: set the non-brain voxels equal to 0
 
     % Apply the HPF
     dim = length(size(IQm)); % Operate on the time dimension
@@ -160,8 +166,9 @@ for filenum = startFile:endFile
 end
 % savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'tau1_index_CBF', 'tau2_index_CBF', 'tau1_index_CBV');
 % savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'numg1pts');
-save([savepath, 'fUS_proc_params.mat'], 'HPF_a', 'HPF_b', 'tau', 'tau_ms', 'numg1pts', 'zstart', 'zend');
-% savefast([savepath, 'PDI_CDI_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
+% save([savepath, 'fUS_proc_params.mat'], 'HPF_a', 'HPF_b', 'tau', 'tau_ms', 'numg1pts', 'zstart', 'zend');
+save([savepath, 'fUS_proc_params.mat'], 'HPF_a', 'HPF_b', 'tau', 'tau_ms', 'numg1pts', 'coronal_mask_rep');
+savefast([savepath, 'PDI_CDI_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
 
 %% Testing
 testIQf = applySVs2D(IQ, PP, EVs, V_sort, 35, sv_threshold_upper);
