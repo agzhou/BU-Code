@@ -771,9 +771,9 @@ end
 %% Save post-acquisition parameters in a structure P
 
 makeParameterStructure_functional;
-savefast([savepath, 'params.mat'], 'P')
+save([savepath, 'params.mat'], 'P')
 if useTriggers
-    savefast([savepath, 'triggerData.mat'], 'inScanData', 'timeStamp', 'triggerTime')
+    save([savepath, 'triggerData.mat'], 'inScanData', 'timeStamp', 'triggerTime')
 end
 % saveRcvData(RcvData{1})
 clear RcvData
