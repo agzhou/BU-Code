@@ -28,16 +28,16 @@ savepath = [savepath, '\'];
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use air puff (0-no, 1-yes)'}; % 'Save RF data (0-no, 1-yes)', 
 % parameterDefaults = {'5', '0', '10', '40000', '2000', '11', '5', '13.6', '1540', '0', '0', '1000'};
 % parameterDefaults = {'5', '0', '10', '50000', '2000', '11', '5', '13.6', '1540', '0', '1', '500'};
-% parameterDefaults = {'20', '0', '8', '60000', '2500', '11', '5', '13.6', '1540', '0', '1', '496', '0'};
-parameterDefaults = {'20', '0', '8', '56000', '2500', '11', '5', '13.6', '1540', '0', '1', '296', '0'};
+parameterDefaults = {'20', '0', '8', '60000', '2500', '11', '5', '13.6', '1540', '0', '1', '496', '0'};
+% parameterDefaults = {'20', '0', '8', '56000', '2500', '11', '5', '13.6', '1540', '0', '1', '296', '0'};
 % parameterDefaults = {'20', '0', '20', '30000', '1000', '11', '5', '13.6', '1540', '0', '1', '80'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
-% ADC_sampleMode = 'BS67BW';
-% spw_guess = 1.3333;
+ADC_sampleMode = 'BS67BW';
+spw_guess = 1.3333;
 
-ADC_sampleMode = 'BS100BW';
-spw_guess = 2;
+% ADC_sampleMode = 'BS100BW';
+% spw_guess = 2;
 
 % Store the user inputs for parameters into the corresponding variables
 initialVoltage = str2double(parameterUserInput{1});
