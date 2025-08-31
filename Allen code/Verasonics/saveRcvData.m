@@ -9,7 +9,7 @@ function saveRcvData(RcvData)
     Psmall = evalin('base', 'Psmall');
     Psmall.supFrameIndex = Psmall.supFrameIndex + 1;
     assignin('base', 'Psmall', Psmall);
-    paramNames = [num2str(Psmall.maxAngle), '-', num2str(Psmall.na), '-', num2str(Psmall.fps_target), '-', num2str(Psmall.numSubFrames), '-', num2str(Psmall.numSupFrames), '-', num2str(Psmall.supFrameIndex)];
+    paramNames = [num2str(round(Psmall.maxAngle)), '-', num2str(Psmall.na), '-', num2str(round(Psmall.fps_target)), '-', num2str(Psmall.numSubFrames), '-', num2str(Psmall.numSupFrames), '-', num2str(Psmall.supFrameIndex)];
 
     filename = strcat(Trans.name, '-RcvData-', paramNames, '.mat');
 %     disp(strcat('Saving ', filename))

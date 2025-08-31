@@ -110,8 +110,8 @@ startDepth = startDepthMM/1e3/wl; % start depth in wavelengths
 endDepth = endDepthMM/1e3/wl; % end depth in wavelengths
 
 %% Modify the angles to reduce grating lobes (see Sauvage et al., 2020)
-% angpitch = wl / (Trans.spacingMm*Trans.numelements / 2 / 1e3);
-% angles = -(na - 1) / 2 * angpitch : angpitch : (na - 1) / 2 * angpitch
+angpitch = wl / (Trans.spacingMm*Trans.numelements / 2 / 1e3);
+angles = -(na - 1) / 2 * angpitch : angpitch : (na - 1) / 2 * angpitch
 % warning('**** MODIFYING THE ANGULAR PITCH AND RANGE TO MINIMIZE GRATING LOBES ****')
 
 %% enable time tag

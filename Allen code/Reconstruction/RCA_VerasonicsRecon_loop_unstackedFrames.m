@@ -18,13 +18,13 @@
 %% Activate the Verasonics folder
 clearvars
 
-% cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
-% addpath 'C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Reconstruction'
+cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
+addpath 'C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Reconstruction'
 
 % cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
 % cd 'C:\Users\agzhou\Vantage-4.9.7-2505271400'
-cd 'C:\Users\agzhou\Vantage-4.9.5-2409181500'
-addpath '\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Reconstruction';
+% cd 'C:\Users\agzhou\Vantage-4.9.5-2409181500'
+% addpath '\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Reconstruction';
 
 activate
 clearvars
@@ -48,8 +48,8 @@ parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterD
 Mcr_startFile = str2double(parameterUserInput{1}); % File to start reconstructing from
 Mcr_endFile = str2double(parameterUserInput{2});   % File to stop reconstructing on
 
-Mcr_filenameStructure = ['RF-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
-Mcr_IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
+Mcr_filenameStructure = ['RF-', num2str(round(P.maxAngle)), '-', num2str(P.na), '-', num2str(round(P.frameRate)), '-', num2str(P.numFramesPerBuffer), '-1-'];
+Mcr_IQfilenameStructure = ['IQ-', num2str(round(P.maxAngle)), '-', num2str(P.na), '-', num2str(round(P.frameRate)), '-', num2str(P.numFramesPerBuffer), '-1-'];
 
 %%%%%%%%%%
 saveAllAngles = false; % choose if you want to save the matrix with pages for each angle or not
