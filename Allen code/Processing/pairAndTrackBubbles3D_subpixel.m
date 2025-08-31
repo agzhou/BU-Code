@@ -855,10 +855,13 @@ SMs_AZ03_baseline.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 % SMs_AZ04_baseline.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
 % SMs_AZ04_baseline.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
 % SMs_AZ04_baseline.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
+SMs_AZ04_hour1.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
+SMs_AZ04_hour1.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
+SMs_AZ04_hour1.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 
-SMs_AZ04_day1.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
-SMs_AZ04_day1.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
-SMs_AZ04_day1.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
+% SMs_AZ04_day1.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
+% SMs_AZ04_day1.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
+% SMs_AZ04_day1.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 
 % SMs_AZ04_day3.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
 % SMs_AZ04_day3.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;

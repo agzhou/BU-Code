@@ -84,17 +84,18 @@ for filenum = startFile:endFile
 
 %     IQm = IQ(:, :, 40:end, :);
 %     IQm = IQ(:, :, 50:end, :);
-    % IQm = IQ(:, :, 1:100, :);
+    IQm = IQ(:, :, 15:105, :);
 %     figure; imagesc(squeeze(max(abs(IQm(:, :, :, 2)), [], 1))')
 
     %%%%%%%%%%%%%% IF USING THE MASK %%%%%%%%%%%%
-    IQm = IQ;
-    IQm(coronal_mask_rep) = 0; % Apply the brain mask to the IQ: set the non-brain voxels equal to 0
+%     IQm = IQ;
+%     IQm(coronal_mask_rep) = 0; % Apply the brain mask to the IQ: set the non-brain voxels equal to 0
     
     % Apply the HPF
-    dim = length(size(IQm)); % Operate on the time dimension
-    IQm_HPF = filter(HPF_b, HPF_a, IQm, [], dim);
+%     dim = length(size(IQm)); % Operate on the time dimension
+%     IQm_HPF = filter(HPF_b, HPF_a, IQm, [], dim);
 
+    IQm_HPF = IQm;
     % Determine the optimal SV thresholds with the spatial similarity matrix
     [xp, yp, zp, nf] = size(IQm_HPF);
     PP = reshape(IQm_HPF, [xp*yp*zp, nf]);
@@ -106,7 +107,7 @@ for filenum = startFile:endFile
     toc
 
     % Plot one SVD subspace as an image
-    subspace = 180;
+    subspace = 10;
     subspace_img = reshape(U(:, subspace) * SVs(subspace) * V(:, subspace)', [xp, yp, zp, nf]);
     figure; imagesc(squeeze(max(abs(subspace_img(:, :, :, 2)), [], 1))')
     volumeViewer(abs(subspace_img(:, :, :, 2)))
