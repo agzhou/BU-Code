@@ -82,9 +82,12 @@ for filenum = startFile:endFile
     IQ = single(squeeze(IData + 1i .* QData));
     clearvars IData QData
 
+    figure; imagesc(squeeze(max(abs(IQ(:, :, :, 2)), [], 1))')
+
 %     IQm = IQ(:, :, 40:end, :);
+    IQm = IQ(:, :, 45:105, :);
 %     IQm = IQ(:, :, 50:end, :);
-    IQm = IQ(:, :, 15:105, :);
+%     IQm = IQ(:, :, 15:105, :);
 %     figure; imagesc(squeeze(max(abs(IQm(:, :, :, 2)), [], 1))')
 
     %%%%%%%%%%%%%% IF USING THE MASK %%%%%%%%%%%%
