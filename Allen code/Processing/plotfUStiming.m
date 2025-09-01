@@ -3,7 +3,7 @@
 % - Plot the various triggers with each superframe's duration overlaid
 
 %% Choose data path and load the parameters and timing data
-datapath = uigetdir('F:\Allen\Data\', 'Select the raw data path');
+datapath = uigetdir('J:\Allen\Data\', 'Select the raw data path');
 datapath = [datapath, '\'];
 
 % load([datapath, ''])
