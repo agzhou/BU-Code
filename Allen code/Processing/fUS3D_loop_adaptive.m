@@ -110,7 +110,7 @@ for filenum = startFile:endFile
     toc
 
     % Plot one SVD subspace as an image
-    subspace = 10;
+    subspace = 50;
     subspace_img = reshape(U(:, subspace) * SVs(subspace) * V(:, subspace)', [xp, yp, zp, nf]);
     figure; imagesc(squeeze(max(abs(subspace_img(:, :, :, 2)), [], 1))')
     volumeViewer(abs(subspace_img(:, :, :, 2)))

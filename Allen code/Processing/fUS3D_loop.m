@@ -80,7 +80,7 @@ for filenum = startFile:endFile
 % for filenum = [3:endFile]
 % for filenum = [endFile - 1:-1:startFile]
 % for filenum = [116:endFile]
-% for filenum = 1
+% for filenum = 2
 
     % Load the IQ data
     tic
@@ -95,7 +95,8 @@ for filenum = startFile:endFile
 %     zstart = 40;
 % %     zstart = 50;
 %     zend = size(IQ, 3);
-    zstart = 15;
+%     zstart = 15;
+    zstart = 45;
     zend = 105;
     IQm = IQ(:, :, zstart:zend, :);
 
@@ -192,6 +193,7 @@ g1_tau1_cutoff = 0.2;
 
 for filenum = startFile:endFile
 % for filenum = [endFile]
+% for filenum = 1
 %     load([savepath, 'g1-', num2str(filenum)], 'g1') % Load the saved g1 mat files
     load([savepath, 'fUSdata-', num2str(filenum)], 'g1') % Load the saved g1 mat files
 
@@ -425,6 +427,14 @@ interp_factor = 100;
 [trial_CBFsi_usi] = resampleTrials(CBFsiallSF, trial_sf, trial_windows, sfStarts, P, interp_factor);
 [trial_PDI_usi] = resampleTrials(PDIallSF, trial_sf, trial_windows, sfStarts, P, interp_factor);
 
+%% Select usable trials
+trials_to_remove_dlg = inputdlg('Enter space-separated trial numbers to remove:',...
+             'Sample', [1 50]);
+trials_to_remove = str2num(trials_to_remove_dlg{1});
+
+trial_CBVi_usi(trials_to_remove) = [];
+trial_CBFsi_usi(trials_to_remove) = [];
+trial_PDI_usi(trials_to_remove) = [];
 %% Calculate the relative hemodynamic changes for each trial
 
 [trial_CBVi_usi_baseline, trial_rCBV_usi] = fUS_calc_rHP(trial_CBVi_usi, P, interp_factor);
@@ -457,6 +467,7 @@ figure; imagesc(squeeze(max(z_rCBV(:, :, :), [], 1))'); colorbar; colormap jet; 
 % figure; imagesc(squeeze(mean(z_rCBV(:, :, :), 1))'); colormap jet; clim([0, 1]) % clim([-1, 1])
 % figure; imagesc(am_rCBV); colormap jet; title("Activation Map (rCBV) with z threshold = " + num2str(zt))
 figure; imagesc(squeeze(max(am_rCBV(:, :, :), [], 1))'); colorbar; colormap jet; title("Activation Map (rCBV) coronal MIP with z threshold = " + num2str(zt))
+figure; imagesc(squeeze(max(am_rCBV(:, :, :), [], 3))'); colorbar; colormap jet; title("Activation Map (rCBV) axial MIP with z threshold = " + num2str(zt))
 
 % generateTiffStack_multi({r_rCBV}, [8.8, 8.8, 8], 'jet', 5)
 % generateTiffStack_multi({z_rCBV}, [8.8, 8.8, 8], 'jet', 5)
