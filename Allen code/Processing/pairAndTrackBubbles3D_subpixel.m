@@ -746,8 +746,10 @@ cmap = colormap_ULM;
 % figure; imagesc(squeeze(max(SM_SmoothedKFConstrained_LI_Rfn(400:600, :, :), [], 1))'); colormap(cmap); clim([0, 40])
 % figure; imagesc(squeeze(max(SM_SmoothedKFConstrained_LI_Rfn(300:500, :, :), [], 1))'); colormap(cmap); clim([0, 40])
 % figure; imagesc(squeeze(max(SM_SmoothedKFConstrained_LI_Rfn(300:400, :, :), [], 1))'); colormap(cmap); clim([0, 40])
-figure; imagesc(squeeze(max(SM_SmoothedKF_LI_Rfn(300:500, :, :), [], 1))'); colormap(cmap); clim([0, maxSpeedExpectedMMPerS])
-figure; imagesc(squeeze(max(SM_SmoothedKF_LI_Rfn(:, :, :), [], 3))'); colormap(cmap); clim([0, maxSpeedExpectedMMPerS])
+% figure; imagesc(squeeze(max(SM_SmoothedKF_LI_Rfn(300:500, :, :), [], 1))'); colormap(cmap); clim([0, maxSpeedExpectedMMPerS])
+% figure; imagesc(squeeze(max(SM_SmoothedKF_LI_Rfn(300:500, :, :), [], 1))'); colormap(cmap); clim([0, maxSpeedExpectedMMPerS])
+figure; imagesc(squeeze(max(SM_SmoothedKF_LI_Rfn(:, :, :), [], 1))'); colormap(cmap); clim([0, maxSpeedExpectedMMPerS])
+figure; imagesc(squeeze(max(SM_SmoothedKF_LI_Rfn(:, :, :), [], 3))'); colormap(cmap); clim([0, maxSpeedExpectedMMPerS]); axis square
 % figure; imagesc(squeeze(max(SM_SmoothedKF_LI_counter(300:500, :, :), [], 1) .^ 0.7)'); colormap hot
 
 % figure; imagesc(squeeze(max(SM_LI_Rfn(300:500, :, :), [], 1))'); colormap(cmap);
@@ -875,9 +877,13 @@ SMs_AZ04_hour1.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 % SMs_AZ04_day14.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
 % SMs_AZ04_day14.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 
-SMs_AZ06_day4.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
-SMs_AZ06_day4.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
-SMs_AZ06_day4.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
+SMs_AZ06_day1.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
+SMs_AZ06_day1.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
+SMs_AZ06_day1.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
+
+% SMs_AZ06_day4.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
+% SMs_AZ06_day4.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
+% SMs_AZ06_day4.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 %% Helper functions
 
 % function MIPvideo(bSum, xws, yws, zws, framerate, power) % Define x, y, z window sizes for a MIP flythrough video of the bubble density map
