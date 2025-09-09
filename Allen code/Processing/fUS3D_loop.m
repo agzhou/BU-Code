@@ -63,11 +63,11 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 % tau1_index_CBV = 2;
 
 %% Set up the High Pass Filter
-fc = 50; % Cutoff frequency [Hz]
-fs = P.frameRate; % Sampling frequency [Hz]
-HPF_order = 3; % Butterworth filter order
-
-[HPF_b, HPF_a] = butter(HPF_order, fc/(fs/2), 'high');
+% fc = 50; % Cutoff frequency [Hz]
+% fs = P.frameRate; % Sampling frequency [Hz]
+% HPF_order = 3; % Butterworth filter order
+% 
+% [HPF_b, HPF_a] = butter(HPF_order, fc/(fs/2), 'high');
 
 %% Define the mask manually for now
 
@@ -187,8 +187,10 @@ figure; imagesc(squeeze(max(testPDI(:, :, :, 1), [], 3) .^ 0.5)'); colormap hot
 
 %% Convert g1 into CBV, CBFspeed, etc.
 
-g1_tau1_cutoff = 0.2;
-% g1_tau1_cutoff = 0.0;
+% g1_tau1_cutoff = 0.2;
+% g1_tau1_cutoff = 0.1;
+
+g1_tau1_cutoff = 0.0;
 % tau_difference_cutoff = 0.2;
 
 for filenum = startFile:endFile

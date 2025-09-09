@@ -871,9 +871,13 @@ SMs_AZ04_hour1.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 % SMs_AZ04_day7.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
 % SMs_AZ04_day7.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 
-SMs_AZ04_day14.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
-SMs_AZ04_day14.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
-SMs_AZ04_day14.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
+% SMs_AZ04_day14.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
+% SMs_AZ04_day14.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
+% SMs_AZ04_day14.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
+
+SMs_AZ06_day4.SM_SmoothedKF_LI = SM_SmoothedKF_LI;
+SMs_AZ06_day4.SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI_Rfn;
+SMs_AZ06_day4.SM_SmoothedKF_counter = SM_SmoothedKF_LI_counter;
 %% Helper functions
 
 % function MIPvideo(bSum, xws, yws, zws, framerate, power) % Define x, y, z window sizes for a MIP flythrough video of the bubble density map
