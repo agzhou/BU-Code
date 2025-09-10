@@ -75,12 +75,26 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 % load('I:\Ultrasound Data from 04-11-2025 to 05-08-2025\05-06-2025 AZ03 fUS pre-stroke\run 1 all frames stacked\coronal_mask_rep_07_31_2025.mat')
 % load('J:\Ultrasound data from 7-21-2025\08-06-2025 AZ01 RCA fUS\coronal_mask_rep.mat')
 
+%% Define other cropping
+%     zstart = 40;
+% %     zstart = 50;
+%     zend = size(IQ, 3);
+%     zstart = 15;
+%     zstart = 45;
+    zstart = 52;
+%     zend = 105;
+    zend = 127;
+
+%% Save proc params
+numg1pts = 20; % Only calculate the first N points
+save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'numg1pts', 'zstart', 'zend');
+
 %% Main loop
 for filenum = startFile:endFile
-% for filenum = [3:endFile]
+% for filenum = [2:endFile]
 % for filenum = [endFile - 1:-1:startFile]
 % for filenum = [116:endFile]
-% for filenum = 2
+% for filenum = 1
 
     % Load the IQ data
     tic
@@ -92,12 +106,7 @@ for filenum = startFile:endFile
     % figure; imagesc(squeeze(max(abs(IQ(:, :, :, 2)), [], 1))')
     
     % Crop the IQ first 
-%     zstart = 40;
-% %     zstart = 50;
-%     zend = size(IQ, 3);
-%     zstart = 15;
-    zstart = 45;
-    zend = 105;
+
     IQm = IQ(:, :, zstart:zend, :);
 
 %     figure; imagesc(squeeze(max(abs(IQm(:, :, :, 2)), [], 1))')
@@ -134,7 +143,6 @@ for filenum = startFile:endFile
     % Use the IQf with separated negative and positive frequency components
 %     [IQf_separated, IQf_FT_separated] = separatePosNegFreqs(IQf);
     
-    numg1pts = 20; % Only calculate the first N points
 %     g1_n = g1T(IQf_separated{1}, numg1pts);
 % %     [CBFsi_n, CBVi_n] = g1_to_CBi(g1_n, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 %     g1_p = g1T(IQf_separated{2}, numg1pts);
@@ -172,7 +180,7 @@ end
 % savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'tau1_index_CBF', 'tau2_index_CBF', 'tau1_index_CBV');
 % savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'numg1pts');
 % save([savepath, 'fUS_proc_params.mat'], 'HPF_a', 'HPF_b', 'tau', 'tau_ms', 'numg1pts', 'zstart', 'zend');
-save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'numg1pts', 'zstart', 'zend');
+% save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'numg1pts', 'zstart', 'zend');
 % save([savepath, 'fUS_proc_params.mat'], 'HPF_a', 'HPF_b', 'tau', 'tau_ms', 'numg1pts', 'coronal_mask_rep');
 % save([savepath, 'fUS_proc_params.mat'], 'tau', 'tau_ms', 'numg1pts', 'coronal_mask_rep');
 % savefast([savepath, 'PDI_CDI_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');

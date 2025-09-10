@@ -85,8 +85,8 @@ for filenum = startFile:endFile
     figure; imagesc(squeeze(max(abs(IQ(:, :, :, 2)), [], 1))')
 
 %     IQm = IQ(:, :, 40:end, :);
-    IQm = IQ(:, :, 45:105, :);
-%     IQm = IQ(:, :, 50:end, :);
+%     IQm = IQ(:, :, 45:105, :);
+    IQm = IQ(:, :, 50:end - 15, :);
 %     IQm = IQ(:, :, 15:105, :);
 %     figure; imagesc(squeeze(max(abs(IQm(:, :, :, 2)), [], 1))')
 
@@ -110,10 +110,10 @@ for filenum = startFile:endFile
     toc
 
     % Plot one SVD subspace as an image
-    subspace = 50;
+    subspace = 40;
     subspace_img = reshape(U(:, subspace) * SVs(subspace) * V(:, subspace)', [xp, yp, zp, nf]);
     figure; imagesc(squeeze(max(abs(subspace_img(:, :, :, 2)), [], 1))')
-    volumeViewer(abs(subspace_img(:, :, :, 2)))
+%     volumeViewer(abs(subspace_img(:, :, :, 2)))
 
     SSM = plotSSM(U, false);
 %     SSM = plotSSM(U, true);
