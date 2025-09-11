@@ -195,14 +195,14 @@ figure; imagesc(squeeze(max(testPDI(:, :, :, 1), [], 3) .^ 0.5)'); colormap hot
 
 %% Convert g1 into CBV, CBFspeed, etc.
 
-% g1_tau1_cutoff = 0.2;
-g1_tau1_cutoff = 0.1;
+g1_tau1_cutoff = 0.2;
+% g1_tau1_cutoff = 0.1;
 
 % g1_tau1_cutoff = 0.0;
 % tau_difference_cutoff = 0.2;
 
-% for filenum = startFile:endFile
-for filenum = [endFile]
+for filenum = startFile:endFile
+% for filenum = [endFile]
 % for filenum = 1
 %     load([savepath, 'g1-', num2str(filenum)], 'g1') % Load the saved g1 mat files
     load([savepath, 'fUSdata-', num2str(filenum)], 'g1') % Load the saved g1 mat files
@@ -503,6 +503,7 @@ figure; imagesc(squeeze(max(z_rCBFspeed(:, :, :), [], 1))'); colorbar; colormap 
 % figure; imagesc(squeeze(mean(z_rCBFspeed(:, :, :), 1))'); colormap jet; clim([0, 1]) % clim([-1, 1])
 % figure; imagesc(am_rCBFspeed); colormap jet; title("Activation Map (rCBV) with z threshold = " + num2str(zt))
 figure; imagesc(squeeze(max(am_rCBFspeed(:, :, :), [], 1))'); colorbar; colormap jet; title("Activation Map (rCBFspeed) coronal MIP with z threshold = " + num2str(zt))
+figure; imagesc(squeeze(max(am_rCBFspeed(:, :, :), [], 3))'); colorbar; colormap jet; title("Activation Map (rCBFspeed) axial MIP with z threshold = " + num2str(zt))
 
 % generateTiffStack_multi({r_rCBFspeed}, [8.8, 8.8, 8], 'jet', 5)
 % generateTiffStack_multi({z_rCBFspeed}, [8.8, 8.8, 8], 'jet', 5)
