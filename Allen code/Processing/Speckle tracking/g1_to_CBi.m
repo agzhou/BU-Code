@@ -17,6 +17,7 @@ function [CBFi, CBVi] = g1_to_CBi(g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_
         % CBV calculation relies on noise...
         CBVi = CBV(tau(tau1_index_CBV), g1(:, :, tau1_index_CBV));
     else                        % 3D data
+%         CBFi = sqrt(abs(log(abs(g1(:, :, :, tau1_index_CBF)) ./ abs(g1(:, :, :, tau2_index_CBF))))) ./ sqrt(tau(tau2_index_CBF)^2 - tau(tau1_index_CBF)^2);
         CBFi = CBF(tau(tau2_index_CBF), tau(tau1_index_CBF), g1(:, :, :, tau2_index_CBF), g1(:, :, :, tau1_index_CBF)); % row column array
         % CBV calculation relies on noise...
         CBVi = CBV(tau(tau1_index_CBV), g1(:, :, :, tau1_index_CBV));
