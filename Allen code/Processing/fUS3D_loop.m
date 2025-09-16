@@ -445,6 +445,7 @@ trials_to_remove = str2num(trials_to_remove_dlg{1});
 trial_CBVi_usi(trials_to_remove) = [];
 trial_CBFsi_usi(trials_to_remove) = [];
 trial_PDI_usi(trials_to_remove) = [];
+
 %% Calculate the relative hemodynamic changes for each trial
 
 [trial_CBVi_usi_baseline, trial_rCBV_usi] = fUS_calc_rHP(trial_CBVi_usi, P, interp_factor);
@@ -538,22 +539,37 @@ figure; imagesc(squeeze(max(am_rPDI(:, :, :), [], 3) .^ 1)'); colorbar; colormap
 % generateTiffStack_multi({am_rPDI}, [8.8, 8.8, 8], 'jet', 5)
 % generateTiffStack_multi({squeeze(mean(PDIallSF, 4)) .^ 0.5, am_rPDI}, [8.8, 8.8, 8], 'jet', 5)
 
-% Look at the max point
-[m, ind] = max(am_rPDI, [], 'all')
-[i, j, k] = ind2sub(size(am_rPDI), ind)
+%% Plot ROIs defined by the half-max of the activation maps
+numPtsUSI = P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_factor; % # of time points per trial for the upsampling
 
-ts = 2; % test size
-testsection = rPDI_TA(i - ts : i + ts, j - ts : j + ts, k - ts : k + ts, :);
+fraction = 0.75;
+roi_indices_rPDI = roi_prop_max(am_rPDI, fraction);
+roi_rPDI_TA = calc_ROI_avg(rPDI_TA, roi_indices_rPDI);
+roi_indices_rCBV = roi_prop_max(am_rCBV, fraction);
+roi_rCBV_TA = calc_ROI_avg(rCBV_TA, roi_indices_rCBV);
+roi_indices_rCBFspeed = roi_prop_max(am_rCBFspeed, fraction);
+roi_rCBFspeed_TA = calc_ROI_avg(rCBFspeed_TA, roi_indices_rCBFspeed);
+
+figure; plot((1:length(roi_rPDI_TA)) .* interp_factor ./ P.daqrate, roi_rPDI_TA); xlabel('Time [s]'); ylabel('rPDI'); title("rPDI ROI timecourse")
+figure; plot((1:length(roi_rCBV_TA)) .* interp_factor ./ P.daqrate, roi_rCBV_TA); xlabel('Time [s]'); ylabel('rCBV'); title("rCBV ROI timecourse")
+figure; plot((1:length(roi_rCBFspeed_TA)) .* interp_factor ./ P.daqrate, roi_rCBFspeed_TA); xlabel('Time [s]'); ylabel('rCBFspeed'); title("rCBFspeed ROI timecourse")
+
+% % Look at the max point
+% [m, ind] = max(am_rPDI, [], 'all')
+% [i, j, k] = ind2sub(size(am_rPDI), ind)
+% 
+% ts = 2; % test size
+% testsection = rPDI_TA(i - ts : i + ts, j - ts : j + ts, k - ts : k + ts, :);
+% % figure; plot(squeeze(rPDI_TA(i, j, k, :)))
+% figure; plot(squeeze(mean(mean(mean(testsection, 1), 2), 3)))
+% 
+% [m, ind] = max(r_rPDI, [], 'all')
+% [i, j, k] = ind2sub(size(am_rPDI), ind)
 % figure; plot(squeeze(rPDI_TA(i, j, k, :)))
-figure; plot(squeeze(mean(mean(mean(testsection, 1), 2), 3)))
-
-[m, ind] = max(r_rPDI, [], 'all')
-[i, j, k] = ind2sub(size(am_rPDI), ind)
-figure; plot(squeeze(rPDI_TA(i, j, k, :)))
-
-am_rPDI_t = am_rPDI; % thresholded
-am_rPDI_t(am_rPDI_t < 1.3) = 0;
-am_rPDI_t_roi_mask = am_rPDI_t > 1.3;
+% 
+% am_rPDI_t = am_rPDI; % thresholded
+% am_rPDI_t(am_rPDI_t < 1.3) = 0;
+% am_rPDI_t_roi_mask = am_rPDI_t > 1.3;
 
 %% Look at a ROI (rPDI thresholded)
 numPtsUSI = P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_factor; % # of time points per trial for the upsampling
