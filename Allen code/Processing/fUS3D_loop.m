@@ -475,9 +475,9 @@ trials_to_keep = setdiff(1:P.numTrials, trials_to_remove);
 % [trial_PDI_usi_baseline_alltrials, trial_rPDI_usi_alltrials] = fUS_calc_rHP(trial_PDI_usi, P, interp_factor);
 
 %% Inspect the trials
-fUS_plotTrials(trial_rPDI_usi, [48, 68, 12])
-fUS_plotTrials(trial_rCBV_usi, [48, 68, 12])
-fUS_plotTrials(trial_rCBFspeed_usi, [48, 68, 12])
+% fUS_plotTrials(trial_rPDI_usi, [48, 68, 12])
+% fUS_plotTrials(trial_rCBV_usi, [48, 68, 12])
+% fUS_plotTrials(trial_rCBFspeed_usi, [48, 68, 12])
 
 %% Trial average the relative hemodynamic changes
 
