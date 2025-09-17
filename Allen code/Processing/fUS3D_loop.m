@@ -431,26 +431,49 @@ for trial = 1:length(trial_windows)
 end
 clearvars trial
 
+%% Remove outliers
+% Use the "median" method of the filloutliers function
+ro_fillmethod = "linear"; %
+ro_findmethod = "percentiles";
+quartile_threshold = [0, 99];
+ro_dim = 4;
+
+PDIallSF_ro = filloutliers(PDIallSF, ro_fillmethod, ro_findmethod, quartile_threshold, ro_dim);
+CBViallSF_ro = filloutliers(CBViallSF, ro_fillmethod, ro_findmethod, quartile_threshold, ro_dim);
+CBFsiallSF_ro = filloutliers(CBFsiallSF, ro_fillmethod, ro_findmethod, quartile_threshold, ro_dim);
+
 %% Resample the trials for the hemodynamic parameters
 interp_factor = 100;
+% interp_factor = 1000;
 [trial_CBVi_usi] = resampleTrials(CBViallSF, trial_sf, trial_windows, sfStarts, P, interp_factor);
 [trial_CBFsi_usi] = resampleTrials(CBFsiallSF, trial_sf, trial_windows, sfStarts, P, interp_factor);
 [trial_PDI_usi] = resampleTrials(PDIallSF, trial_sf, trial_windows, sfStarts, P, interp_factor);
+
+% [trial_CBVi_usi] = resampleTrials(CBViallSF_ro, trial_sf, trial_windows, sfStarts, P, interp_factor);
+% [trial_CBFsi_usi] = resampleTrials(CBFsiallSF_ro, trial_sf, trial_windows, sfStarts, P, interp_factor);
+% [trial_PDI_usi] = resampleTrials(PDIallSF_ro, trial_sf, trial_windows, sfStarts, P, interp_factor);
+
 
 %% Select usable trials
 trials_to_remove_dlg = inputdlg('Enter space-separated trial numbers to remove:',...
              'Sample', [1 50]);
 trials_to_remove = str2num(trials_to_remove_dlg{1});
 
-trial_CBVi_usi(trials_to_remove) = [];
-trial_CBFsi_usi(trials_to_remove) = [];
-trial_PDI_usi(trials_to_remove) = [];
+% trial_CBVi_usi(trials_to_remove) = [];
+% trial_CBFsi_usi(trials_to_remove) = [];
+% trial_PDI_usi(trials_to_remove) = [];
 
+trials_to_keep = setdiff(1:P.numTrials, trials_to_remove);
 %% Calculate the relative hemodynamic changes for each trial
 
-[trial_CBVi_usi_baseline, trial_rCBV_usi] = fUS_calc_rHP(trial_CBVi_usi, P, interp_factor);
-[trial_CBFsi_usi_baseline, trial_rCBFspeed_usi] = fUS_calc_rHP(trial_CBFsi_usi, P, interp_factor);
-[trial_PDI_usi_baseline, trial_rPDI_usi] = fUS_calc_rHP(trial_PDI_usi, P, interp_factor);
+[trial_CBVi_usi_baseline, trial_rCBV_usi] = fUS_calc_rHP(trial_CBVi_usi(trials_to_keep), P, interp_factor);
+[trial_CBFsi_usi_baseline, trial_rCBFspeed_usi] = fUS_calc_rHP(trial_CBFsi_usi(trials_to_keep), P, interp_factor);
+[trial_PDI_usi_baseline, trial_rPDI_usi] = fUS_calc_rHP(trial_PDI_usi(trials_to_keep), P, interp_factor);
+
+%% Inspect the trials
+fUS_plotTrials(trial_rPDI_usi, [48, 68, 12])
+fUS_plotTrials(trial_rCBV_usi, [48, 68, 12])
+fUS_plotTrials(trial_rCBFspeed_usi, [48, 68, 12])
 
 %% Trial average the relative hemodynamic changes
 

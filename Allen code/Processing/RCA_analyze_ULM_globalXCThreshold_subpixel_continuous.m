@@ -44,7 +44,7 @@ end
 
 % Prompt for parameter user input
 parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Image refinement factor - x', 'Image refinement factor - y', 'Image refinement factor - z', 'XC Threshold Factor', 'x pixel spacing [um]', 'y pixel spacing [um]', 'z pixel spacing [um]', 'Ensemble size'};
-parameterDefaults = {'1', '', '20', '150', '2', '2', '2', '0.2', num2str(PData.PDelta(1) * P.wl * 1e6), num2str(PData.PDelta(2) * P.wl * 1e6), num2str(PData.PDelta(3) * P.wl * 1e6), '5000'};
+parameterDefaults = {'1', '', '20', '1000', '2', '2', '2', '0.2', num2str(PData.PDelta(1) * P.wl * 1e6), num2str(PData.PDelta(2) * P.wl * 1e6), num2str(PData.PDelta(3) * P.wl * 1e6), '5000'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % define # of files manually for now
@@ -142,21 +142,45 @@ for en = 1:nes % en = ensemble number
     zpixfactor = zpix_spacing ./ xpix_spacing; % relative z pixel spacing vs x or y, for the radial centers algorithm
 
     % SVD proc part 1
+    % tic
+    % [PP, EVs, V_sort] = getSVs2D(IQen);
+    % disp('SVs decomposed')
+    % toc
+
+    [xp, yp, zp, nf] = size(IQen);
+    PP = reshape(IQen, [xp*yp*zp, nf]);
     tic
-    [PP, EVs, V_sort] = getSVs2D(IQen);
-    disp('SVs decomposed')
+%     [U, S, V] = svd(PP); % Already sorted in decreasing order
+    [U, S, V] = svd(PP, 'econ'); % Already sorted in decreasing order
+    SVs = diag(S);
+    clearvars S
+%     disp('Full SVD done')
     toc
 
-    plot_FFT_SVs_function(V_sort, P)
-    figure; plot(abs(log10(EVs))); title('Singular value magnitude'); xlabel('Singular value number'); ylabel('log10(Singular value magnitude)')
+    % Plot one SVD subspace as an image
+    % subspace = 20;
+    % subspace_img = reshape(U(:, subspace) * SVs(subspace) * V(:, subspace)', [xp, yp, zp, nf]);
+    % figure; imagesc(squeeze(max(abs(subspace_img(:, :, :, 2)), [], 1))')
+%     volumeViewer(abs(subspace_img(:, :, :, 2)))
+
+%     SSM = plotSSM(U, false);
+% %     SSM = plotSSM(U, true);
+%     [~, a_opt, b_opt] = fitSSM(SSM, false); % Get the optimal singular value thresholds
+% %     [~, a_opt, b_opt] = fitSSM(SSM, true); % Get the optimal singular value thresholds
+
+    % % plot_FFT_SVs_function(V_sort, P)
+    % % figure; plot(abs(log10(EVs))); title('Singular value magnitude'); xlabel('Singular value number'); ylabel('log10(Singular value magnitude)')
+    % plot_FFT_SVs_function(V, P)
+    % figure; plot(log10(SVs)); title('Singular value magnitude'); xlabel('Singular value number'); ylabel('log10(Singular value magnitude)')
 
     % SVD proc part 2
 %     tic
-    [IQenf] = applySVs2D(IQen, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
+    % [IQenf] = applySVs2D(IQen, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
+    [IQenf] = applySVs2D(IQen, PP, SVs, V, sv_threshold_lower, sv_threshold_upper);
     disp('SVD filtered images put together')
 
     % generateTiffStack_acrossframes(abs(IQenf) .^ 0.5, [8.8, 8.8, 8], 'gray', 1:80)
-    % figure; imagesc(squeeze(max(abs(IQenf(30:50, :, :, 10))))')
+    % figure; imagesc(squeeze(max(abs(IQenf(:, :, :, 10))))')
     % volumeViewer(abs(IQenf(:, :, :, 10)))
     % generateIQVideo(IQenf, [8.8, 8.8, 8], 10)
 
