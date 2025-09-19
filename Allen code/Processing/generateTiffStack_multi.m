@@ -20,6 +20,7 @@ function generateTiffStack_multi(volumeData, varargin)
     useAxes = true;
 %     useAxes = false;
 %     scale = 5;
+%     scale = 20;
     scale = 1;
     
     mws = 1; % default MIP window size is 1 (no MIP)
