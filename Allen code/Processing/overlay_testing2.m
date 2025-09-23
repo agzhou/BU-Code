@@ -17,12 +17,16 @@ cmap = colormap_ULM;
 
 % compareVolumes(CBVi_allSF_avg, am_rPDI, 'gray', cmap)
 compareVolumes(CBVi_allSF_avg .^ 0.5, am_rPDI)
+% compareVolumes(CBVi_allSF_avg .^ 1, am_rPDI)
 % compareVolumes(test, am_rPDI)
 
 % compareVolumes(CBVi_allSF_avg, am_rCBV)
 % compareVolumes(CBVi_allSF_avg, am_rCBFspeed)
 
-
+% grid_alphamap = linspace(0, 1, 256)';
+% % ramp_alphamap = grid_alphamap - round(length(grid_alphamap) ./ 4);
+% ramp_alphamap = grid_alphamap - max(grid_alphamap) ./ 4;
+% ramp_alphamap(ramp_alphamap < 0) = 0;
 %%
 function compareVolumes(vol1, vol2, varargin) % Can change this so it has a cell array input and goes through more than 2 volumes
 
@@ -47,11 +51,17 @@ function compareVolumes(vol1, vol2, varargin) % Can change this so it has a cell
     %         RenderingStyle = "MaximumIntensityProjection", ...
     %         Alphamap = "linear");   
 
+    grid_alphamap = linspace(0, 1, 256)';
+    % ramp_alphamap = grid_alphamap - round(length(grid_alphamap) ./ 4);
+    ramp_alphamap = grid_alphamap - max(grid_alphamap) .* 0.1;
+    ramp_alphamap(ramp_alphamap < 0) = 0;
+
     volshow(vol1 .^ 1, 'Colormap', cmap1, ...
             Parent = viewerThresholded, ...
             RenderingStyle = "VolumeRendering", ...
             SpecularReflectance = 0.8, ...
-            Alphamap = "linear");   
+            Alphamap = ramp_alphamap);
+            % Alphamap = "linear");   
 
     % volshow(vol1 .^ 1, 'Colormap', cmap1, ...
     %         Parent = viewerThresholded, ...
