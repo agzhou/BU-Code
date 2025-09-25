@@ -23,7 +23,8 @@ function [r, z, activationMap] = activationMap3D(volumeData, stim, zt)
     volumeData(isnan(volumeData)) = 0;
 
     % Connected region size
-    crs = 9;
+%     crs = 9;
+    crs = 27;
 
     vs = size(volumeData); % volume data's size
     ntp = vs(4); % # of time points

@@ -13,8 +13,16 @@ compareVolumes(CBViallSFAvg, am_rPDI)
 
 
 
+%%
+generateTiffStack_multi({CBVi_allSF_avg .^ 0.7}, [8.8, 8.8, 8], 'gray', 1)
 
 
+vcmap = colormap_ULM;
+
+generateTiffStack_multi({am_rPDI}, [8.8, 8.8, 8], 'jet', 1)
+% generateTiffStack_multi({am_rCBV}, [8.8, 8.8, 8], 'jet', 1)
+generateTiffStack_multi({am_rCBV}, [8.8, 8.8, 8], vcmap, 1)
+generateTiffStack_multi({am_rCBFspeed}, [8.8, 8.8, 8], 'jet', 1)
 %%
 function compareVolumes(vol1, vol2) % Can change this so it has a cell array input and goes through more than 2 volumes
 

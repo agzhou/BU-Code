@@ -494,7 +494,8 @@ trial_stim_pattern(P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor
     P.Mcr_fcp.apis.stim_length_s * P.daqrate / interp_factor) = 1;
 figure; plot((1:length(trial_stim_pattern)) .* interp_factor ./ P.daqrate, trial_stim_pattern); title('Trial stim pattern'); xlabel('Time [s]')
 
-zt = 2;
+% zt = 2;
+zt = 2.58;
 [r_rCBV, z_rCBV, am_rCBV] = activationMap3D(rCBV_TA, trial_stim_pattern, zt);
 
 % volumeViewer(r_rCBV)
@@ -520,7 +521,9 @@ trial_stim_pattern(P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor
     P.Mcr_fcp.apis.stim_length_s * P.daqrate / interp_factor) = 1;
 figure; plot((1:length(trial_stim_pattern)) .* interp_factor ./ P.daqrate, trial_stim_pattern); title('Trial stim pattern'); xlabel('Time [s]')
 
-zt = 2;
+% zt = 2;
+zt = 2.58;
+
 [r_rCBFspeed, z_rCBFspeed, am_rCBFspeed] = activationMap3D_boxfilt(rCBFspeed_TA, trial_stim_pattern, zt);
 
 % volumeViewer(r_rCBFspeed)
@@ -546,7 +549,9 @@ trial_stim_pattern(P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor
     P.Mcr_fcp.apis.stim_length_s * P.daqrate / interp_factor) = 1;
 figure; plot((1:length(trial_stim_pattern)) .* interp_factor ./ P.daqrate, trial_stim_pattern); title('Trial stim pattern'); xlabel('Time [s]')
 
-zt = 2;
+% zt = 2;
+zt = 2.58;
+
 [r_rPDI, z_rPDI, am_rPDI] = activationMap3D(rPDI_TA, trial_stim_pattern, zt);
 
 % volumeViewer(r_rPDI)
