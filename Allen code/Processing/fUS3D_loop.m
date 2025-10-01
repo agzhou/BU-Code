@@ -604,6 +604,24 @@ figure; plot((1:length(roi_rCBFspeed_TA)) .* interp_factor ./ P.daqrate, roi_rCB
 % am_rPDI_t(am_rPDI_t < 1.3) = 0;
 % am_rPDI_t_roi_mask = am_rPDI_t > 1.3;
 
+%% Plot median-averaged ROIs defined by the half-max of the activation maps
+numPtsUSI = P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_factor; % # of time points per trial for the upsampling
+
+fraction = 0.75;
+median_filter_windowsize = 51;
+
+roi_indices_rPDI = roi_prop_max(am_rPDI, fraction);
+roi_rPDI_TA = calc_ROI_avg(movmedian(rPDI_TA, median_filter_windowsize, 4), roi_indices_rPDI);
+roi_indices_rCBV = roi_prop_max(am_rCBV, fraction);
+roi_rCBV_TA = calc_ROI_avg(movmedian(rCBV_TA, median_filter_windowsize, 4), roi_indices_rCBV);
+roi_indices_rCBFspeed = roi_prop_max(am_rCBFspeed, fraction);
+roi_rCBFspeed_TA = calc_ROI_avg(movmedian(rCBFspeed_TA, median_filter_windowsize, 4), roi_indices_rCBFspeed);
+
+figure; plot((1:length(roi_rPDI_TA)) .* interp_factor ./ P.daqrate, roi_rPDI_TA); xlabel('Time [s]'); ylabel('rPDI'); title("rPDI ROI timecourse with median filter; window size = " + num2str(median_filter_windowsize))
+figure; plot((1:length(roi_rCBV_TA)) .* interp_factor ./ P.daqrate, roi_rCBV_TA); xlabel('Time [s]'); ylabel('rCBV'); title("rCBV ROI timecourse with median filter; window size = " + num2str(median_filter_windowsize))
+figure; plot((1:length(roi_rCBFspeed_TA)) .* interp_factor ./ P.daqrate, roi_rCBFspeed_TA); xlabel('Time [s]'); ylabel('rCBFspeed'); title("rCBFspeed ROI timecourse with median filter; window size = " + num2str(median_filter_windowsize))
+
+
 %% Look at a ROI (rPDI thresholded)
 numPtsUSI = P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_factor; % # of time points per trial for the upsampling
 % Calculate the timecourse from the average within that ROI
