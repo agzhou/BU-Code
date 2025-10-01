@@ -524,7 +524,8 @@ figure; plot((1:length(trial_stim_pattern)) .* interp_factor ./ P.daqrate, trial
 % zt = 2;
 zt = 2.58;
 
-[r_rCBFspeed, z_rCBFspeed, am_rCBFspeed] = activationMap3D_boxfilt(rCBFspeed_TA, trial_stim_pattern, zt);
+% [r_rCBFspeed, z_rCBFspeed, am_rCBFspeed] = activationMap3D_boxfilt(rCBFspeed_TA, trial_stim_pattern, zt);
+[r_rCBFspeed, z_rCBFspeed, am_rCBFspeed] = activationMap3D(rCBFspeed_TA, trial_stim_pattern, zt);
 
 % volumeViewer(r_rCBFspeed)
 % volumeViewer(z_rCBFspeed)
