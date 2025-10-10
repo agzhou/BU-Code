@@ -22,7 +22,7 @@ if ~exist('PData', 'var')
     load([IQpath, 'PData.mat'])
 end
 
-IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
+IQfilenameStructure = ['IQ-', num2str(round(P.maxAngle)), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 
 savepath = uigetdir('D:\Allen\Data\', 'Select the save path');
 savepath = [savepath, '\'];
@@ -172,22 +172,26 @@ savefast([savepath, 'fUS_proc_params.mat'], 'tau', 'tau_ms', 'numg1pts', 'zstart
 
 %% Convert g1 into CBV, CBFspeed, etc.
 
-% g1_tau1_cutoff = 0.0;
+% g1_tau1_cutoff = 0.3;
 g1_tau1_cutoff = 0.2;
+g1_tau1_cutoff_CBV = 0.4;
 % tau_difference_cutoff = 0.2;
 
-for filenum = startFile:endFile
-% for filenum = [1]
+% for filenum = startFile:endFile
+for filenum = [1]
 %     load([savepath, 'g1-', num2str(filenum)], 'g1') % Load the saved g1 mat files
     load([savepath, 'fUSdata-', num2str(filenum)], 'g1') % Load the saved g1 mat files
 
     [g1A_mask] = createg1mask(g1, g1_tau1_cutoff, tau1_index_CBF, tau2_index_CBF);
+    [g1A_CBV_mask] = createg1mask(g1, g1_tau1_cutoff_CBV, tau1_index_CBF, tau2_index_CBF);
 %     [g1A_mask] = createg1mask(g1Avg, g1_tau1_cutoff, tau1_index_CBF, tau2_index_CBF);
 
-    [CBFsi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+%     [CBFsi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+    [CBFsi, CBVi] = g1_to_CBi_NEW(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV, 2); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 
 %     CBFsi(~g1A_mask) = -Inf; % Remove noisy points from the CBFspeed index (in theory)
     CBFsi(~g1A_mask) = 0; % Remove noisy points from the CBFspeed index (in theory)
+    CBVi(~g1A_CBV_mask) = 0;
 
     save([savepath, 'tlfUSdata-', num2str(filenum), '.mat'], 'CBFsi', 'CBVi', '-v7.3', '-nocompression');
 %     save([savepath, 'tlfUSdatatest-', num2str(filenum), '.mat'], 'CBFsi', 'CBVi', '-v7.3', '-nocompression');
