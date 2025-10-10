@@ -195,6 +195,8 @@ figure; imagesc(squeeze(max(testPDI(:, :, :, 1), [], 3) .^ 0.5)'); colormap hot
 
 %% Convert g1 into CBV, CBFspeed, etc.
 
+n_CBV = 2; % n for the new CBV index derivation
+
 g1_tau1_cutoff = 0.2;
 % g1_tau1_cutoff = 0.1;
 
@@ -202,6 +204,7 @@ g1_tau1_cutoff = 0.2;
 % tau_difference_cutoff = 0.2;
 
 for filenum = startFile:endFile
+% for filenum = 21:endFile
 % for filenum = [endFile]
 % for filenum = 1
 %     load([savepath, 'g1-', num2str(filenum)], 'g1') % Load the saved g1 mat files
@@ -210,7 +213,8 @@ for filenum = startFile:endFile
     [g1A_mask] = createg1mask(g1, g1_tau1_cutoff, tau1_index_CBF, tau2_index_CBF);
 %     [g1A_mask] = createg1mask(g1Avg, g1_tau1_cutoff, tau1_index_CBF, tau2_index_CBF);
 
-    [CBFsi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+%     [CBFsi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+    [CBFsi, CBVi] = g1_to_CBi_NEW(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV, n_CBV);
 
 %     CBFsi(~g1A_mask) = -Inf; % Remove noisy points from the CBFspeed index (in theory)
     CBFsi(~g1A_mask) = 0; % Remove noisy points from the CBFspeed index (in theory)
@@ -220,10 +224,11 @@ for filenum = startFile:endFile
     disp("tl-fUS result for file " + num2str(filenum) + " saved" )
 
 end
-save([savepath, 'tlfUS_proc_params.mat'], 'tau1_index_CBV', 'tau1_index_CBF', 'tau2_index_CBF', 'g1_tau1_cutoff', 'g1A_mask');
+% save([savepath, 'tlfUS_proc_params.mat'], 'tau1_index_CBV', 'tau1_index_CBF', 'tau2_index_CBF', 'g1_tau1_cutoff', 'g1A_mask');
+save([savepath, 'tlfUS_proc_params.mat'], 'tau1_index_CBV', 'n_CBV', 'tau1_index_CBF', 'tau2_index_CBF', 'g1_tau1_cutoff', 'g1A_mask');
 % save([savepath, 'tlfUStest_proc_params.mat'], 'tau1_index_CBV', 'tau1_index_CBF', 'tau2_index_CBF', 'g1_tau1_cutoff');
 figure; imagesc(squeeze(max(CBVi(:, :, :), [], 1) .^ 0.3)'); colormap hot
-figure; imagesc(squeeze(max(CBVi(:, :, :), [], 3) .^ 0.5)'); colormap hot
+figure; imagesc(squeeze(max(CBVi(:, :, :), [], 3) .^ 0.3)'); colormap hot
 vcmap = colormap_ULM;
 figure; imagesc(squeeze(mean(CBFsi(:, :, :), 1))'); colormap(vcmap)
 
@@ -464,6 +469,7 @@ trials_to_remove = str2num(trials_to_remove_dlg{1});
 % trial_PDI_usi(trials_to_remove) = [];
 
 trials_to_keep = setdiff(1:P.numTrials, trials_to_remove);
+
 %% Calculate the relative hemodynamic changes for each trial
 
 [trial_CBVi_usi_baseline, trial_rCBV_usi] = fUS_calc_rHP(trial_CBVi_usi(trials_to_keep), P, interp_factor);
