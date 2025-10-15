@@ -23,6 +23,7 @@ function [CBFi, CBVi] = g1_to_CBi_NEW(g1, tau, tau1_index_CBF, tau2_index_CBF, t
 %         CBVi = CBV(tau(tau1_index_CBV), g1(:, :, :, tau1_index_CBV));
         CBFi = 1./(sqrt(tau(tau2_index_CBF) ^2 - tau(tau1_index_CBF) ^2) * 1) .* sqrt( abs( log( abs(g1(:, :, :, tau1_index_CBF)) ./ abs(g1(:, :, :, tau2_index_CBF)) ) ) );
         A = abs(g1(:, :, :, tau1_index_CBV)) ./ ( abs(g1(:, :, :, tau1_index_CBV .* n_CBV)) ./ abs(g1(:, :, :, tau1_index_CBV))) .^ ( 1/(n_CBV^2 - 1) );
+%         A = abs(g1(:, :, :, tau1_index_CBV)) ./ ( abs(g1(:, :, :, tau1_index_CBV .* n_CBV)) ./ abs(g1(:, :, :, tau1_index_CBV))) .^ ( 1/(n_CBV - 1) ); % not squaring tau1 model
         CBVi = A ./ (1 - A);
     end
 
