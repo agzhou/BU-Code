@@ -421,9 +421,10 @@ tracksCleanDynamic = tracksClean; % Make a copy of the tracksClean that we can d
 tracksIndividualCombined = {}; % Matrix storage of the bubble data. Each element in the cell is a [# bubbles per frame in the track, 9, # persistence frames] matrix. Each row corresponds to [bubble f x coord, bubble f y coord, bubble f z coord, bubble f+1 x coord, bubble f+1 y coord, bubble f+1 z coord, x velocity, y velocity, z velocity]
 nbitAllDynamic = nbitAll;
 tic
-% for tci = startFrame:length(tracksClean)     % track index - go through
-                                              % each collection of tracks
-for tci = 1:12000
+for tci = startFrame:length(tracksClean)     % track index - go through each collection of tracks
+% for tci = 1:10000
+% for tci = 22006
+    disp("tci = " + num2str(tci))
     tracksTemp = tracksCleanDynamic{tci};           % Get track collection at tci
     nbitci = nbitAllDynamic(tci);                    % # of bubbles in the track collection starting in index tci
 
@@ -433,14 +434,15 @@ for tci = 1:12000
 %         for bi = 2
             nbitci = nbitAllDynamic(tci); 
             track_bi_indices = (0:pers) .* nbitci + bi; % Get the indices within tracksTemp for every frame within the p+1-frame track for a single tracked bubble
-            track_bi = tracksTemp(track_bi_indices, :);
+%             track_bi = tracksTemp(track_bi_indices, :);
+            track_bi_updated = tracksTemp(track_bi_indices, :);
         
 %             % Start storing each individual track_bi, and we can add to it
 %             % if it keeps going in subsequent frame collections
 %             tracksIndividualCombined{end + 1} = track_bi;
 
             % Attempt to find overlapping tracks with track_bi in the next "frame"s of tracksClean 
-            track_bi_updated = track_bi;
+%             track_bi_updated = track_bi;
             ind = 0;
             flag = true;
             while flag
@@ -463,29 +465,29 @@ for tci = 1:12000
                     % Delete tracks from the subsequent collection of
                     % frames so we don't get repeated individual combined
                     % tracks
-                    tempRemoveIndices = (0:pers) .* nbitcipi + ie;
+                    tempRemoveIndices = (0:pers) .* nbitcipi + ie; % Remove all the pers # of bubbles within that next collection
                     tracksCleanDynamic{tci + ind}(tempRemoveIndices, :) = [];
 %                     nbitAllDynamic(tci + ind) = size(tracksCleanDynamic{tci + ind}, 1);
-                    nbitAllDynamic(tci + ind) = nbitAllDynamic(tci + ind) - 1;
+                    nbitAllDynamic(tci + ind) = nbitAllDynamic(tci + ind) - 1; % Adjust the # of bubbles array so the indexing stays correct
+
                 else
                     flag = false; % No intersection --> stop trying to find further overlaps
                     % ---- Could add a gap filling parameter here ---- %
-                end
 
-                % ==== KEEP TRACK OF WHICH TRACKS TO LATER DELETE.... ==== %
+%                     % ==== CAN ALSO DELETE THE REST OF A TRACK IN THE
+%                     % SUBSEQUENT "FRAME COLLECTIONS" IF THERE IS NO INITIAL
+%                     % INTERSECTION (FOR SPEED) ==== %
+%                     if ind == 1
+%                         
+%                     end
+                end
                 
             end
-            %
-            % -- For testing: Plot an extended track -- %
-%             figure; plot3(track_bi_updated(:, 2), track_bi_updated(:, 3), track_bi_updated(:, 4), '-o')
 
-        
             % Store the updated track_bi as its own individual track
             tracksIndividualCombined{end + 1} = track_bi_updated;
 
         end
-        
-        
 
 %         for fn = 1:pers                     % Go through all the frames in the tracks with origin frame ti
 %             startPoints = tracksTemp((fn - 1) * nbiti + 1 : fn * nbiti, 2:4);
@@ -498,14 +500,14 @@ for tci = 1:12000
 end
 toc
 
-% -- For testing: Plot an extended track -- %
-% test_ind = 8;
-% figure; plot3(tracksIndividualCombined{ test_ind }(:, 2), tracksIndividualCombined{ test_ind }(:, 3), tracksIndividualCombined{ test_ind }(:, 4), '-o')
-
 %% 7.5.5. Test: plot all of the individual combined tracks
-for test_ind = 1:size(tracksIndividualCombined);
-% figure; plot3(tracksIndividualCombined{ test_ind }(:, 2), tracksIndividualCombined{ test_ind }(:, 3), tracksIndividualCombined{ test_ind }(:, 4), '-o')
-
+figure; hold on
+for test_ind = 1:length(tracksIndividualCombined)
+% for test_ind = 1:1000
+%     plot3(tracksIndividualCombined{ test_ind }(:, 2), tracksIndividualCombined{ test_ind }(:, 3), tracksIndividualCombined{ test_ind }(:, 4), '-o')
+    plot3(tracksIndividualCombined{ test_ind }(:, 2), tracksIndividualCombined{ test_ind }(:, 3), tracksIndividualCombined{ test_ind }(:, 4), '.')
+end
+hold off
 %% 8. Create the velocity map
 
 % bVelocityC = cell(size(tracksClean, 1), pers); % Optional cell array storage of the bubble data
