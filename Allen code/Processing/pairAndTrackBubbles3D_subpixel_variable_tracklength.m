@@ -422,8 +422,7 @@ tracksIndividualCombined = {}; % Matrix storage of the bubble data. Each element
 nbitAllDynamic = nbitAll;
 tic
 for tci = startFrame:length(tracksClean)     % track index - go through each collection of tracks
-% for tci = 1:10000
-% for tci = 22006
+% for tci = 43232:length(tracksClean)
     disp("tci = " + num2str(tci))
     tracksTemp = tracksCleanDynamic{tci};           % Get track collection at tci
     nbitci = nbitAllDynamic(tci);                    % # of bubbles in the track collection starting in index tci
@@ -445,7 +444,7 @@ for tci = startFrame:length(tracksClean)     % track index - go through each col
 %             track_bi_updated = track_bi;
             ind = 0;
             flag = true;
-            while flag
+            while flag & ((tci + ind + 1) <= length(tracksClean))
                 ind = ind + 1;
                 tracksNextTemp = tracksCleanDynamic{tci + ind}; % Get each subsequent collection of frames, ind away from tci
                 nbitcipi = nbitAllDynamic(tci + ind);                    % # of bubbles in the track collection starting in index tci + ind
@@ -508,6 +507,9 @@ for test_ind = 1:length(tracksIndividualCombined)
     plot3(tracksIndividualCombined{ test_ind }(:, 2), tracksIndividualCombined{ test_ind }(:, 3), tracksIndividualCombined{ test_ind }(:, 4), '.')
 end
 hold off
+
+%% _. Remove combined tracks that violate a distance criterion
+
 %% 8. Create the velocity map
 
 % bVelocityC = cell(size(tracksClean, 1), pers); % Optional cell array storage of the bubble data
