@@ -416,7 +416,7 @@ end
 disp('Tracks cleaned')
 clear n tracksTemp nbif stt
 
-%% 7.5: combining tracks...
+%% 8: Combining tracks
 tracksCleanDynamic = tracksClean; % Make a copy of the tracksClean that we can delete from as we combine tracks
 tracksIndividualCombined = {}; % Matrix storage of the bubble data. Each element in the cell is a [# bubbles per frame in the track, 9, # persistence frames] matrix. Each row corresponds to [bubble f x coord, bubble f y coord, bubble f z coord, bubble f+1 x coord, bubble f+1 y coord, bubble f+1 z coord, x velocity, y velocity, z velocity]
 nbitAllDynamic = nbitAll;
@@ -498,39 +498,69 @@ for tci = startFrame:length(tracksClean)     % track index - go through each col
     end
 end
 toc
+tracksIndividualCombined = tracksIndividualCombined'; % make it a vertical cell array
 
-%% 7.5.5. Test: plot all of the individual combined tracks
+%% 8.5. Test: plot all of the individual combined tracks
 figure; hold on
-for test_ind = 1:length(tracksIndividualCombined)
-% for test_ind = 1:1000
+% for test_ind = 1:length(tracksIndividualCombined)
+for test_ind = 35000:36000
 %     plot3(tracksIndividualCombined{ test_ind }(:, 2), tracksIndividualCombined{ test_ind }(:, 3), tracksIndividualCombined{ test_ind }(:, 4), '-o')
     plot3(tracksIndividualCombined{ test_ind }(:, 2), tracksIndividualCombined{ test_ind }(:, 3), tracksIndividualCombined{ test_ind }(:, 4), '.')
 end
 hold off
+clearvars test_ind
+%% 9. Create the velocity map
 
-%% _. Remove combined tracks that violate a distance criterion
-
-%% 8. Create the velocity map
-
-% bVelocityC = cell(size(tracksClean, 1), pers); % Optional cell array storage of the bubble data
-bVelocityM = cell(size(tracksClean, 1), 1); % Matrix storage of the bubble data. Each element in the cell is a [# bubbles per frame in the track, 9, # persistence frames] matrix. Each row corresponds to [bubble f x coord, bubble f y coord, bubble f z coord, bubble f+1 x coord, bubble f+1 y coord, bubble f+1 z coord, x velocity, y velocity, z velocity]
+bVelocityM = cell(size(tracksIndividualCombined)); % Matrix storage of the bubble data. Each element in the cell is a [# bubbles per frame in the track, 9, # persistence frames] matrix. Each row corresponds to [bubble f x coord, bubble f y coord, bubble f z coord, bubble f+1 x coord, bubble f+1 y coord, bubble f+1 z coord, x velocity, y velocity, z velocity]
 tic
-for ti = startFrame:length(tracksClean)     % track index - go through each track
-    tracksTemp = tracksClean{ti};           % Get track ti
-    nbiti = nbitAll(ti);                    % # of bubbles in the tracks starting in index ti
-    if nbiti > 0
-        for fn = 1:pers                     % Go through all the frames in the tracks with origin frame ti
-            startPoints = tracksTemp((fn - 1) * nbiti + 1 : fn * nbiti, 2:4);
-            endPoints = tracksTemp((fn) * nbiti + 1 : (fn + 1) * nbiti, 2:4);
-            vfn = (endPoints - startPoints) ./ timePerFrame; % velocity = displacement/time
-%             bVelocityC{ti, fn} = [startPoints, endPoints, vfn];  % each row is [x start coord, y start coord, z start coord, x end coord, y end coord, z end coord, x velocity, y velocity, z velocity]
-            bVelocityM{ti}(:, :, fn) = [startPoints, endPoints, vfn];
-        end
-    end
+
+% Note: could use cellfun to make this more efficient
+for ti = 1:length(bVelocityM)     % track index - go through each track
+% for ti = 1:10000
+    trackTemp = tracksIndividualCombined{ti};           % Get track ti
+    nfit = length(trackTemp);                    % # of frames in trackTemp
+
+    % Reorganize the data matrix for each track. 
+    % The columns are: [frame #, paired bubble index in that frame (end side), x, y, z]
+    trackReorganized = [trackTemp(:, 5), trackTemp(:, 1:4)]; % Move the frame column to the left
+
+    trackReorganized = [trackReorganized(1:end-1, :), trackReorganized(2:nfit, 3:5)]; % Add "end points" next to the "start points" for each velocity calculation.
+    % Note: have to remove the last indices for the last point since the end point is included in the row above
+
+    trackReorganized(:, 9:11) = ( trackReorganized(:, 6:8) - trackReorganized(:, 3:5) ) ./ timePerFrame; % velocity = displacement/time
+
+    bVelocityM{ti} = trackReorganized; % Store the reorganized track info
 end
 toc
 disp('Velocity map created')
-clear ti fn tracksTemp startPoints endPoints vfn nbiti
+clear ti fn trackTemp startPoints endPoints vfn nbif
+
+%% 9.5. Spaghetti plot of speed along each track
+figure; title('Speed along some tracks')
+hold on
+for test_ind = 35000:35005
+    temp_v = bVelocityM{test_ind}(:, 9:11);
+    plot(sqrt(sum(temp_v .^ 2, 2)), '.-')
+end
+hold off
+clearvars temp_v test_ind
+
+%% 10. Remove combined tracks that violate a distance criterion
+
+bVelocityM_DC = cell(size(tracksIndividualCombined)); % Distance criterion applied
+tic
+
+% Note: could use cellfun to make this more efficient
+for ti = 1:length(bVelocityM_DC)     % track index - go through each track
+% for ti = 1:10000
+    trackTemp = bVelocityM_DC{ti};           % Get track ti
+
+    
+%     bVelocityM_DC{ti} = trackReorganized; % Store the reorganized track info
+end
+toc
+disp('Distance (velocity) criteria applied to velocity map')
+clear ti fn trackTemp startPoints endPoints vfn nbif
 
 %% 9. Refine the velocity map
 bVelocityMSmoothed = bVelocityM;          % Initialize the velocity data, which will be smoothed across frames with a moving mean
