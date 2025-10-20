@@ -17,7 +17,10 @@ savepath = [savepath, '\'];
 % mkdir(savepath)
 
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save IQ data (0-no, 1-yes)'}; % 'Save RF data (0-no, 1-yes)', 
-parameterDefaults = {'5', '0', '10', '500', '21', '5', '15.625', '0', '0'};
+%Mouse brain default (BOAS)
+%parameterDefaults = {'5', '0', '10', '500', '21', '5', '15.625', '0','0'};
+%Mouse bladder default (OSHEA)
+parameterDefaults = {'15', '0', '10', '10', '63', '15', '15.625', '0', '1'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % Store the user inputs for parameters into the corresponding variables
@@ -158,7 +161,8 @@ end
 % Accounts for decrease in amplitude of echoes for longer distance traveled
 
 % TGC curve definition
-TGC(1).CntrlPts = [500,590,650,710,770,830,890,950]; % 0 to 1023, minimum to maximum gain
+%TGC(1).CntrlPts = [500,590,650,710,770,830,890,950]; % 0 to 1023, minimum to maximum gain
+TGC(1).CntrlPts = [590,650,710,770,830,890,950,1010]; % 0 to 1023, minimum to maximum gain
                                                      % Values represent the
                                                      % gain at increasing
                                                      % depth in the
@@ -413,7 +417,8 @@ pgainValue = 1.0; % Image processing gain
 persValue = 0;
 rejectLevel = 2;
 % rejectLevel = 300;
-compFac = 40;
+% compFac = 40;
+compFac = 60;
 
 % First image (xz)
 Process(3).classname = 'Image';
