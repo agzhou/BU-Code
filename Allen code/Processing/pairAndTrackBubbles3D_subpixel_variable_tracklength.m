@@ -554,7 +554,8 @@ tracksVS_KF_MMS = applyKF(tracksVS_MMS, vMMStoPixelDispPerFrame, img_size, pers)
 % applyKFwrapper = @(tracksVS_MMS) applyKF_cf(tracksVS_MMS, vMMStoPixelDispPerFrame, img_size, pers);
 % tracksVS_KF_MMS = cellfun(applyKFwrapper, tracksVS_MMS(1:80), 'UniformOutput', false);
 % toc
-%% 11a. Kalman filter with velocity in the state (-- make this into a function --)
+%% 11a. Kalman filter with velocity in the state
+% (==== NEED TO FIX THIS, PLUS VELOCITY UNITS ====)
 
 % tracksVS_KF_MMS = cell(size(tracksVS_MMS));
 tracksVS_KF_MMS = tracksVS_MMS;
