@@ -531,7 +531,9 @@ end
 
 disp('Velocity map converted to mm/s')
 %% 10.5.1. 3D plots of the tracks after distance criterion applied
-track3DPlot(tracksVS, 1:length(tracksVS))
+% track3DPlot(tracksVS, 1:length(tracksVS))
+
+track3DPlot(tracksVS, 42000:42100)
 
 % My finding on 10/20/25 of using the distance threshold on the raw
 % smoothed velocities: removes way too many (probably too noisy)
@@ -648,7 +650,7 @@ clear n tn tln k xk Pk yk Kku Iku xku Pku track
 %% 11.5. Plot some stuff post-KF
 track3DPlot(tracksVS_KF_MMS, 42000:42100)
 
-trackSpeedSpaghettiPlot(tracksVS_KF_MMS, 40000:40010)
+trackSpeedSpaghettiPlot(tracksVS_KF_MMS, 30000:40010)
 
 %% 12. Acceleration and direction constraints
 
@@ -671,6 +673,12 @@ clear n tln tn trackAlreadyDeleted track vTrack vTrackTrimmedMean aThresholdMag 
 actualSize = [lateral_width, lateral_width, axial_depth];
 BDM_video = interpolatedDensityMapWithVideo(bVelocityMSmoothedMMSConstrained, img_size, startFrame, maxPixelDistPerFrame, actualSize); % test density map interpolated
 % BDM_video = interpolatedDensityMapWithVideo(bVelocityM, img_size, startFrame, maxPixelDistPerFrame, actualSize); % test density map interpolated
+
+%% No KF test
+[SM_Smoothed_LI, SM_Smoothed_LI_counter] = interpolatedSpeedMap(tracksVS_MMS, img_size, maxPixelDistPerFrame); % flow speed map, linearly interpolated
+SM_Smoothed_LI_Rfn = SM_Smoothed_LI;
+SM_Smoothed_LI_Rfn = thresholdMaps(SM_Smoothed_LI_Rfn, SM_Smoothed_LI_counter, 2, 300);
+
 
 %% Get the speed maps
 % [SM_LI, SM_LI_counter] = interpolatedSpeedMap(bVelocityM, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
