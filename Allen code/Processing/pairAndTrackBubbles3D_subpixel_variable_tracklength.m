@@ -646,7 +646,7 @@ disp('Kalman filter applied')
 clear n tn tln k xk Pk yk Kku Iku xku Pku track
 
 %% 11.5. Plot some stuff post-KF
-track3DPlot(tracksVS_KF_MMS, 40000:40100)
+track3DPlot(tracksVS_KF_MMS, 42000:42100)
 
 trackSpeedSpaghettiPlot(tracksVS_KF_MMS, 40000:40010)
 
@@ -679,7 +679,7 @@ BDM_video = interpolatedDensityMapWithVideo(bVelocityMSmoothedMMSConstrained, im
 % SM_LI_Rfn = thresholdMaps(SM_LI_Rfn, SM_LI_counter, 2, 300);
 
 % Non-constrained KF
-[SM_SmoothedKF_LI, SM_SmoothedKF_LI_counter] = interpolatedSpeedMap(bVelocityMSmoothedKFMMS, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
+[SM_SmoothedKF_LI, SM_SmoothedKF_LI_counter] = interpolatedSpeedMap(tracksVS_KF_MMS, img_size, maxPixelDistPerFrame); % flow speed map, linearly interpolated
 SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI;
 SM_SmoothedKF_LI_Rfn = thresholdMaps(SM_SmoothedKF_LI_Rfn, SM_SmoothedKF_LI_counter, 2, 300);
 
@@ -998,7 +998,7 @@ function [densityMapInterpolated] = interpolatedDensityMap(bVelocityM, img_size,
 %     speedMap(speedMask) = speedMap(speedMask) ./ densityMapInterpolatedCounter(speedMask);
 end
 
-function [speedMapInterpolated, speedMapInterpolatedCounter] = interpolatedSpeedMap(bVelocityM, img_size, startFrame, maxPixelDistPerFrame)
+function [speedMapInterpolated, speedMapInterpolatedCounter] = interpolatedSpeedMap(tracksVS_KF_MMS, img_size, maxPixelDistPerFrame)
     speedMapInterpolated = zeros(img_size(1), img_size(2), img_size(3));
 
     % Counters for proper averaging if there are overlapped pixels from
@@ -1006,75 +1006,57 @@ function [speedMapInterpolated, speedMapInterpolatedCounter] = interpolatedSpeed
     speedMapInterpolatedCounter = zeros(size(speedMapInterpolated));
     
     tic
-    for ti = startFrame:size(bVelocityM, 1)
+    for ti = 1:size(tracksVS_KF_MMS, 1)
 %     for ti = startFrame:startFrame+100
 %     for ti = 15000:15100
 %     for ti = 12000:size(bVelocityM, 1)
-        bvTemp = bVelocityM{ti}; % get the ti-th entry
-        pers = size(bvTemp, 3);
-        if ~isempty(bvTemp) % only do stuff if the bubble velocity cell array entry is not empty
-            for bpi = 1:size(bvTemp, 1) % bubble pair index
-    
-                % Initialize temporary start and end coordinate matrices.
-                % Each have dimensions [# persistence frames, 3] where each row is [x coord, y coord, z coord].
-                coordsStart = NaN(pers, 3);
-                coordsEnd = NaN(pers, 3);
-    
-                % Go through the # of persistence frames and get the
-                % coordinates at each frame pfi for the bubble track bpi.
-                %   Each row corresponds to a persistence frame, and contains
-                %   [x, y, z] velocity.
-                for pfi = 1:pers % persistence frame index
-                    coordsStart(pfi, :) = bvTemp(bpi, 1:3, pfi);
-                    coordsEnd(pfi, :) = bvTemp(bpi, 4:6, pfi);
-                end
+        trackTemp = tracksVS_KF_MMS{ti}; % get the ti-th entry
+        nfit = size(trackTemp, 1); % # frames in track
 
-                vecDist = coordsEnd - coordsStart;
+        for fi = 1:nfit % frame index (within the track)
+
+            % Initialize temporary start and end coordinate matrices.
+            % Each have dimensions [# frames in the track, 3] where each row is [x coord, y coord, z coord].
+%             coordsStart = NaN(nfit, 3);
+%             coordsEnd = NaN(nfit, 3);
+
+            % Go through the # of persistence frames and get the
+            % coordinates at each frame pfi for the bubble track bpi.
+            %   Each row corresponds to a persistence frame, and contains
+            %   [x, y, z] velocity.
+%             for pfi = 1:nfit % persistence frame index
+%                 coordsStart(pfi, :) = trackTemp(fi, 1:3, pfi);
+%                 coordsEnd(pfi, :) = trackTemp(fi, 4:6, pfi);
+%             end
+            coordsStart = trackTemp(fi, 3:5);
+            coordsEnd = trackTemp(fi, 6:8);
+
+            vecDist = coordsEnd - coordsStart;
 %                 totalDist = sqrt(sum(vecDist .^ 2, 2));
 
-                % Only interpolate if the distance between points in a
-                % track is less than the max pixel dist per frame as
-                % calculated before
-                if all(abs(vecDist) - maxPixelDistPerFrame <= 0, 'all')
-                    vTemp = squeeze(bvTemp(bpi, 7:9, :)); % Velocity components for the track # bpi
+            % Only interpolate if the distance between points in a
+            % track is less than the max pixel dist per frame as
+            % calculated before
+            if all(abs(vecDist) - maxPixelDistPerFrame <= 0, 'all')
+                vTemp = squeeze(trackTemp(fi, 9:11)); % Velocity components for the track # bpi
 %                 speedTemp = sqrt(vTemp(:, 1).^2 + vTemp(:, 2).^2 + vTemp(:, 3).^2); % Speed vector: one value per persistence frame index
-                    speedTemp = sqrt(sum(vTemp.^2, 1))';
-                    roundOrNot = true;
-                    interpPts = ULM_interp3D_linear(coordsStart, coordsEnd, speedTemp, roundOrNot); % Get interpolated points with the corresponding z velocity value. each row is [z coord, x coord, z velocity]
-    
-    %                 figure; scatter3(interpPts(:, 1), interpPts(:, 2), interpPts(:, 3))
-                    for ipi = 1:size(interpPts, 1) % interpolated point index
-                        interpPtsTemp = interpPts(ipi, 1:3);
-                        speedValTemp = interpPts(ipi, 4);
-                        
-    %                     speedMap(smoothedPtsTemp(1), smoothedPtsTemp(2), smoothedPtsTemp(3)) = speedMap(smoothedPtsTemp(1), smoothedPtsTemp(2), smoothedPtsTemp(3)) + speedValTemp;
-                        speedMapInterpolated(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) = speedMapInterpolated(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) + speedValTemp; % Accumulate the speed so we can take the average for overlapping tracks at a voxel
-                        speedMapInterpolatedCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) = speedMapInterpolatedCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) + 1; % Increment the counter for taking the average
-                    end
+                speedTemp = sqrt(sum(vTemp.^2, 2))';
+                roundOrNot = true;
+                interpPts = ULM_interp3D_linear(coordsStart, coordsEnd, speedTemp, roundOrNot); % Get interpolated points with the corresponding z velocity value. each row is [z coord, x coord, z velocity]
+
+%                 figure; scatter3(interpPts(:, 1), interpPts(:, 2), interpPts(:, 3))
+                for ipi = 1:size(interpPts, 1) % interpolated point index
+                    interpPtsTemp = interpPts(ipi, 1:3);
+                    speedValTemp = interpPts(ipi, 4);
+                    
+%                     speedMap(smoothedPtsTemp(1), smoothedPtsTemp(2), smoothedPtsTemp(3)) = speedMap(smoothedPtsTemp(1), smoothedPtsTemp(2), smoothedPtsTemp(3)) + speedValTemp;
+                    speedMapInterpolated(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) = speedMapInterpolated(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) + speedValTemp; % Accumulate the speed so we can take the average for overlapping tracks at a voxel
+                    speedMapInterpolatedCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) = speedMapInterpolatedCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) + 1; % Increment the counter for taking the average
                 end
-                
-%                 if any(totalDist > pixel)
-    
-                
-    
-    %             for ipi = 1:size(interpPts, 1) % interpolated point index
-    %                 interpPtsTemp = interpPts(ipi, :);
-    %                 speedValTemp = interpPtsTemp(4);
-    %                 
-    %                 speedMap(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) = speedMap(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) + speedValTemp;
-    %                 speedMapCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) = speedMapCounter(interpPtsTemp(1), interpPtsTemp(2), interpPtsTemp(3)) + 1;
-    %             end
             end
-    %     else
-    %         interpPts = [];
-    %         coordsStart = [];
-    %         coordsEnd = [];
-    %         zvTemp = [];
-    %         bvTemp = [];
-    %         zVelTemp = [];
-    %         interpPtsTemp = [];
+            
         end
-    %     clear bvTemp
+
     end
     disp('Speed map interpolated')
     toc
