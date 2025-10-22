@@ -113,7 +113,7 @@ endDepth = endDepthMM/1e3/wl; % end depth in wavelengths
 %% Modify the angles to reduce grating lobes (see Sauvage et al., 2020)
 angpitch = wl / (Trans.spacingMm*Trans.numelements / 2 / 1e3);
 angles = -(na - 1) / 2 * angpitch : angpitch : (na - 1) / 2 * angpitch;
-maxAngle = max(angles);
+maxAngle = max(angles) * 180/pi;
 
 warning('**** MODIFYING THE ANGULAR PITCH AND RANGE TO MINIMIZE GRATING LOBES ****')
 disp('Actual maxAngle [deg]: ')
