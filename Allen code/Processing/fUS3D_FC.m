@@ -177,21 +177,6 @@ for filenum = 100:502
     toc
     
 end
-% savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'tau1_index_CBF', 'tau2_index_CBF', 'tau1_index_CBV');
-% savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'numg1pts');
-% save([savepath, 'fUS_proc_params.mat'], 'HPF_a', 'HPF_b', 'tau', 'tau_ms', 'numg1pts', 'zstart', 'zend');
-% save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'numg1pts', 'zstart', 'zend');
-% save([savepath, 'fUS_proc_params.mat'], 'HPF_a', 'HPF_b', 'tau', 'tau_ms', 'numg1pts', 'coronal_mask_rep');
-% save([savepath, 'fUS_proc_params.mat'], 'tau', 'tau_ms', 'numg1pts', 'coronal_mask_rep');
-% savefast([savepath, 'PDI_CDI_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
-
-%% Testing
-testIQf = applySVs2D(IQ, PP, EVs, V_sort, 35, sv_threshold_upper);
-figure; imagesc(squeeze(max(abs(testIQf(30:50, :, :, 1)), [], 1) .^ 0.5)'); colormap hot
-% volumeViewer(abs(testIQf(:, :, :, 1)))
-testPDI = mean(abs(IQf) .^ 2, 4);
-figure; imagesc(squeeze(max(testPDI(30:50, :, :, 1), [], 1) .^ 0.5)'); colormap hot
-figure; imagesc(squeeze(max(testPDI(:, :, :, 1), [], 3) .^ 0.5)'); colormap hot
 
 %% Convert g1 into CBV, CBFspeed, etc.
 
@@ -233,89 +218,9 @@ vcmap = colormap_ULM;
 figure; imagesc(squeeze(mean(CBFsi(:, :, :), 1))'); colormap(vcmap)
 
 % generateTiffStack_multi({CBVi .^ 0.7}, [8.8, 8.8, 8], 'hot', 5)
-%% Get and save PDI, CDI only
-for filenum = startFile:endFile
-% for filenum = 1
-% for filenum = [285:-1:189]
-    tic
-    load([IQpath, IQfilenameStructure, num2str(filenum)])
-%     load(['E:\Allen BME-BOAS-27 Data Backup\AZ03 Stroke RC15gV\fUS\05-06-2025 pre-stroke\IQ Data - Verasonics recon\', IQfilenameStructure, num2str(filenum)])
-    
-    IQ = squeeze(IData + 1i .* QData);
-    clearvars IData QData
-    
-    % SVD decluttering
-    [xp, yp, zp, nf] = size(IQ);
-    
-    [PP, EVs, V_sort] = getSVs2D(IQ);
-    disp('SVs decomposed')
-    [IQf] = applySVs2D(IQ, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
-    disp('SVD filtered images put together')
-
-    clearvars IQ
-
-    % Use the IQf with separated negative and positive frequency components
-%     [IQf_separated, IQf_FT_separated] = separatePosNegFreqs(IQf);
-    
-    [PDI] = calcPowerDoppler(IQf);
-%     [CDI] = calcColorDoppler(IQf_FT_separated, P);
-
-%     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
-    save([savepath, 'PDI-', num2str(filenum), '.mat'], 'PDI', '-v7.3', '-nocompression');
-    disp("PDI and CDI for file " + num2str(filenum) + " saved" )
-
-    toc
-    
-end
-savefast([savepath, 'PDI_CDI_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
 
 
-%% CBFspeed index with the Derivative Method
-% vtest = sqrt( (abs(g1(:, :, :, tau1_index_CBF)) - abs(g1(:, :, :, tau2_index_CBF))) ./ (abs(g1(:, :, :, tau1_index_CBF)) .* ( tau(tau2_index_CBF)^2 - tau(tau1_index_CBF)^2 )) );
-CBFspeed_DM = (abs(g1(:, :, :, tau1_index_CBF)) - abs(g1(:, :, :, tau2_index_CBF))) ./ (abs(g1(:, :, :, tau1_index_CBF)) .* ( tau(tau2_index_CBF)^2 - tau(tau1_index_CBF)^2 ));
-CBFspeed_DM(CBFspeed_DM < 0) = 0;
-CBFspeed_DM = sqrt(CBFspeed_DM);
 
-CBFspeed_DM_masked = CBFspeed_DM;
-CBFspeed_DM_masked(~g1A_mask) = 0;
-
-% vtest_NLMF = NLMF(vtest ./ max(vtest, [], 'all')); % Try using nonlinear means filtering to get rid of those high-noise points
-% vtest_gaussLPF = imgaussfilt3(vtest);
-
-%% Compare the derivative CBFspeed index method to the old log one
-CBFsi_all_masked = CBFsi_all;
-CBFsi_all_masked(~g1A_mask) = 0;
-
-figure; imagesc(squeeze(max(CBFsi_all_masked(30:50, :, :), [], 1))'); colormap(vcmap)
-figure; imagesc(squeeze(mean(CBFsi_all_masked(30:50, :, :), 1))'); colormap(vcmap)
-
-% generateTiffStack_MeanIPs_multi({CBFsi_all_masked .^ 1}, [8.8, 8.8, 8], vcmap, 10)
-% generateTiffStack_multi({CBFsi_all_masked .^ 1}, [8.8, 8.8, 8], vcmap, 10)
-
-generateTiffStack_MeanIPs_multi({CBFsi_all_masked .^ 1, CBFspeed_DM_masked}, [8.8, 8.8, 8], vcmap, 20)
-
-
-%% Trying some alternate CBFspeed index calculations
-% CBFsi_all = squeeze(abs(g1(:, :, :, tau1_index_CBF)) - abs(g1(:, :, :, tau2_index_CBF)));
-% CBFsi_p = squeeze(abs(g1_p(:, :, :, tau1_index_CBF)) - abs(g1_p(:, :, :, tau2_index_CBF)));
-% CBFsi_n = squeeze(abs(g1_n(:, :, :, tau1_index_CBF)) - abs(g1_n(:, :, :, tau2_index_CBF)));
-% volumeViewer(CBFsi_all)
-% figure; imagesc(squeeze(max(CBFsi_all(30:50, :, :), [], 1))')
-
-vcmap = colormap_ULM; % velocity colormap
-% generateTiffStack_multi({CBFsi_all}, [8.8, 8.8, 8], vcmap, 5)
-% generateTiffStack_multi({CBFsi_p}, [8.8, 8.8, 8], vcmap, 5)
-% generateTiffStack_multi({CBFsi_n}, [8.8, 8.8, 8], vcmap, 5)
-
-% CBFsi_all_test = squeeze(abs(g1(:, :, :, tau1_index_CBF)) ./ abs(g1(:, :, :, tau2_index_CBF))); %./ (tau2_index_CBF - tau1_index_CBF);
-% CBFsi_all_test = squeeze(log(abs(g1(:, :, :, tau1_index_CBF)) ./ abs(g1(:, :, :, tau2_index_CBF)))); %./ (tau2_index_CBF - tau1_index_CBF);
-% CBFsi_all_test = squeeze(abs(g1(:, :, :, tau1_index_CBF)) ./ abs(g1(:, :, :, tau2_index_CBF))); %./ (tau2_index_CBF - tau1_index_CBF);
-CBFsi_all_test = squeeze(log(abs(g1(:, :, :, tau1_index_CBF))) - log(abs(g1(:, :, :, tau2_index_CBF)))); %./ (tau2_index_CBF - tau1_index_CBF);
-figure; imagesc(squeeze(max(CBFsi_all_test(30:50, :, :), [], 1))'); colormap(vcmap)
-
-figure; imagesc(squeeze(mean(CBFsi_all_test(30:50, :, :), 1))'); colormap(vcmap)
-
-volumeViewer(CBFsi_all_test)
 
 %% Store all the updated CBVi and CBFsi across the experiment into one matrix
 load([savepath, 'tlfUSdata-', num2str(1), '.mat'], 'CBFsi', 'CBVi')
@@ -331,72 +236,27 @@ for filenum = startFile + 1:endFile
     CBFsiallSF(:, :, :, filenum) = CBFsi;
 end
 
-%% Store all the PDI across the experiment into one matrix (with separated frequencies)
-% % load([savepath, 'PDI_CDI-', num2str(1), '.mat'], 'PDI', 'CDI')
-% load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI', 'CDI')
-% % PDIallSF = cell([length(PDI), endFile - startFile + 1]); % Matrix with the CBVi for every superframe
-% PDIallSF = cell([size(PDI)]); % Matrix with the CBVi for every superframe
-% % PDIallSF(:,  1) = PDI;
-% CDIallSF = cell([size(CDI)]); % Matrix with the CBVi for every superframe
-% % CDIallSF(:,  1) = CDI;
-% 
-% % for filenum = startFile + 1:endFile
-% for filenum = startFile:endFile
-% %     load([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI')
-%     load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'CDI')
-% %     PDI = load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI')
-% %     CDI = load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'CDI')
-% 
-%     for i = 1:3
-% %         PDIallSF1 = cat(4, PDIallSF1, PDI{1});
-% %         CDIallSF1 = cat(4, CDIallSF1, CDI{1});
-% %         PDIallSF2 = cat(4, PDIallSF2, PDI{2});
-% %         CDIallSF2 = cat(4, CDIallSF2, CDI{2});
-% %         PDIallSF3 = cat(4, PDIallSF3, PDI{3});
-% %         CDIallSF3 = cat(4, CDIallSF3, CDI{3});
-%         PDIallSF{i} = cat(4, PDIallSF{i}, PDI{i});
-%         CDIallSF{i} = cat(4, CDIallSF{i}, CDI{i});
-%     end
-% end
-
 %% Store all the PDI across the experiment into one matrix
-% load([savepath, 'PDI_CDI-', num2str(1), '.mat'], 'PDI', 'CDI')
-% load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI', 'CDI')
-load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI')
+load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI', 'noise')
 PDIallSF = zeros([size(PDI), endFile - startFile + 1]); % Matrix with the CBVi for every superframe
-PDIallSF(:, :, :, 1) = PDI;
+PDIallSF(:, :, :, 1) = PDI ./ noise;
 
-% for filenum = startFile + 1:endFile
 for filenum = startFile:endFile
+% for filenum = 100:500
 %     load([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI')
     load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI')
 
-    PDIallSF(:, :, :, filenum) = PDI;
+    PDIallSF(:, :, :, filenum) = PDI ./ noise;
 end
 
 %% Visualize the PDI and CDI across the experiment
-% mwr = 30:50; % MIP window range
-% mdim = 1; % MIP dimension
-% newsize = size(CBViallSF);
-% newsize(mdim) = 1; % Set the size of the new variable to 1
-% CBViMIPStack = zeros(newsize);
-PDIMIPStack = squeeze(max(PDIallSF{1}(30:50, :, :, :), [], 1));
-CDIMIPStack = squeeze(max(CDIallSF{1}(30:50, :, :, :), [], 1));
-
-%
-generateTiffStack_acrossframes(PDIallSF{3} .^ 0.7, [8.8, 8.8, 8], 'hot', 1:80)
+% generateTiffStack_acrossframes(PDIallSF{3} .^ 0.7, [8.8, 8.8, 8], 'hot', 1:80)
 generateTiffStack_acrossframes(PDIallSF .^ 0.5, [8.8, 8.8, 8], 'hot', 1:80)
 
-%% Visualize the CBVi across the experiment
-% mwr = 30:50; % MIP window range
-% mdim = 1; % MIP dimension
-% newsize = size(CBViallSF);
-% newsize(mdim) = 1; % Set the size of the new variable to 1
-% CBViMIPStack = zeros(newsize);
-CBViMIPStack = squeeze(max(CBViallSF(30:50, :, :, :), [], 1));
 %% Check different MIPs across superframes
-yr = 20:40;
-generateTiffStack_acrossframes(CBViallSF .^ 0.7, [8.8, 8.8, 8], 'hot', yr)
+% yr = 20:40;
+yr = 1:80;
+generateTiffStack_acrossframes(PDIallSF .^ 0.5, [8.8, 8.8, 8], 'hot', yr)
 % generateTiffStack_acrossframes(CBViallSF .^ 1, [8.8, 8.8, 8], 'hot', yr)
 
 
@@ -629,8 +489,6 @@ figure; plot((1:length(roi_rCBFspeed_TA)) .* interp_factor ./ P.daqrate, roi_rCB
 
 %% Prepare template(s) for atlas registration
 % Create templates for each hemodynamic parameter, averaging across superframes
-CBVi_allSF_avg = mean(CBViallSF, 4);
-CBFsi_allSF_avg = mean(CBFsiallSF, 4);
 PDI_allSF_avg = mean(PDIallSF, 4);
 
 voxel_size = PData.PDelta .* P.wl; % Voxel size (y, x, z) in meters
@@ -638,7 +496,7 @@ fUS_volume_dimensions_m = [P.Trans.numelements/2 * P.Trans.spacingMm / 1e3, P.Tr
 fUS_volume_dimensions_voxels = PData.Size; % Volume size in voxels (from the recon PData)
 
 % Adjust the sizes based on the pre-SVD/clutter filtering cropping
-fUS_cropped_volume_dimensions_voxels = size(CBVi_allSF_avg);
+fUS_cropped_volume_dimensions_voxels = size(PDI_allSF_avg);
 fUS_cropped_volume_dimensions_m = fUS_cropped_volume_dimensions_voxels ./ fUS_volume_dimensions_voxels .* fUS_volume_dimensions_m;
 
 targetVoxelSizePrompt = {'y Target Voxel Size [um]', 'x Target Voxel Size [um]', 'z Target Voxel Size [um]'};
@@ -653,8 +511,6 @@ target_voxel_size(3) = str2double(targetVoxelSizeUserInput{3}) ./ 1e6;
 prereg_interp_factor = voxel_size ./ target_voxel_size;
 
 % Resample hemodynamic parameter template maps to the desired voxel size
-CBVi_allSF_avg_rs = imresize3(CBVi_allSF_avg, 'Scale', prereg_interp_factor, 'Method', 'cubic');
-CBFsi_allSF_avg_rs = imresize3(CBFsi_allSF_avg, 'Scale', prereg_interp_factor, 'Method', 'cubic');
 PDI_allSF_avg_rs = imresize3(PDI_allSF_avg, 'Scale', prereg_interp_factor, 'Method', 'cubic');
 
 % Store pre-registration parameters
@@ -666,37 +522,6 @@ prereg_params.fUS_cropped_volume_dimensions_m = fUS_cropped_volume_dimensions_m;
 prereg_params.target_voxel_size = target_voxel_size;
 prereg_params.prereg_interp_factor = prereg_interp_factor;
 % prereg_params. = 
-
-%% Look at a ROI (rPDI thresholded)
-numPtsUSI = P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_factor; % # of time points per trial for the upsampling
-% Calculate the timecourse from the average within that ROI
-roi_rPDI_TA = zeros(size(rPDI_TA, 3), 1);
-% repmat(roi_mask, [1, 1, stim_pattern.trial_duration])
-for ti = 1:numPtsUSI
-% for ti = 1
-     temp_rPDI_TA = rPDI_TA(:, :, :, ti);
-%      temp_roi_rPDI_avg = mean(temp_rPDI_TA(roi_mask));
-     temp_roi_rPDI_avg = mean(temp_rPDI_TA(am_rPDI_t_roi_mask));
-     roi_rPDI_TA(ti) = temp_roi_rPDI_avg;
-end
-
-% Plot the average timecourse in the ROI
-figure; plot((1:length(roi_rPDI_TA)) .* interp_factor ./ P.daqrate, roi_rPDI_TA); xlabel('Time [s]'); ylabel('rPDI'); title("rPDI ROI timecourse")
-mmws = 30; % Movmean window size (in units of the trial interpolation rate)
-figure; plot((1:length(roi_rPDI_TA)) .* interp_factor ./ P.daqrate, smoothdata(roi_rPDI_TA, 'movmean', mmws)); xlabel('Time [s]'); ylabel('rPDI'); title("rPDI ROI timecourse, moving mean over " + num2str(mmws/length(roi_rPDI_TA) * P.Mcr_fcp.apis.seq_length_s) + "s")
-
-%% Plot activation at each slice
-for slice = 1:10
-    my_inds = (slice-1)*5:slice*5;
-    my_inds = my_inds+1;
-    figure; imagesc(squeeze(mean(test(my_inds, :, :), 1))')
-    title(num2str(mean(my_inds)))
-end
-
-kernel = ones(3, 3, 3);
-kernel(2, 2, 2) = 3;%sum(kernel, 'all');
-
-test_r_CBVi_relative_change_conv = convn(test_r_CBVi_relative_change, kernel, 'same');
 
 %% Helper functions
 
