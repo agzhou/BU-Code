@@ -2,26 +2,46 @@
 % Apply deformable registration and do correlation analysis for functional
 % connectivity (in 3D space + time)
 
+%% Add paths for reading nrrd files + Load the template atlas
 
-%% Load the timing data
-[timingFilePathFN, timingFilePath] = uigetfile(['..\Timing data\TD.mat'], 'Select the timing data');
-timingFilePath = [timingFilePath, timingFilePathFN];
-load(timingFilePath)
+% Load the Allen Atlas CCFv3 path
+AACCFv3dirpath = uigetdir('H:\Allen Atlas CCFv3', 'Select the Allen Atlas CCFv3 directory');
+AACCFv3dirpath = [AACCFv3dirpath, '\'];
+addpath(genpath(AACCFv3dirpath))
+% addpath([AACCFv3dirpath, 'nrrdread']) % Add the nrrdread path
 
-% %% Load the Allen Atlas CCFv3 path
-% AAdirpath = uigetdir('H:\Allen Atlas CCFv3', 'Select the Allen Atlas CCFv3 directory');
-% AAdirpath = [AAdirpath, '\'];
-% 
-% addpath([AAdirpath, 'nrrdread']) % Add the nrrdread path
-% 
-% %% Load the template (50 um voxel size)
-% [AAFilePathFN, AAFilePath] = uigetfile([AAdirpath, 'annotation_50.nrrd'], 'Select the annotated atlas');
-% AAFilePath = [AAFilePath, AAFilePathFN];
-% 
-% % load(templateFilePath)
-% [AA_up, AA_metadata] = nrrdread(AAFilePath); % Unpermuted annotated atlas
-% 
-% AA = permute(AA_up, [2, 3, 1]); % Permuted annotated atlas
+% % Load the template (10 um voxel size)
+% [AA_template_FilePathFN, AA_template_FilePath] = uigetfile([AACCFv3dirpath, 'average_template_10.nrrd'], 'Select the average template atlas (10 um)');
+% AA_template_FilePath = [AA_template_FilePath, AA_template_FilePathFN];
+% [AA_template_10um_up, AA_template_10um_up_metadata] = nrrdread(AA_template_FilePath); % Unpermuted annotated atlas
+% AA_template_10um = double(permute(AA_template_10um_up, [2, 3, 1])); % Permuted annotated atlas
+% % Note: atlas dimensions are [dorsal-ventral, anterior-posterior, lateral] when read
+
+% Load the template (50 um voxel size)
+[AA_template_FilePathFN, AA_template_FilePath] = uigetfile([AACCFv3dirpath, 'average_template_50.nrrd'], 'Select the average template atlas (50 um)');
+AA_template_FilePath = [AA_template_FilePath, AA_template_FilePathFN];
+[AA_template_50um_up, AA_template_50um_up_metadata] = nrrdread(AA_template_FilePath); % Unpermuted annotated atlas
+AA_template_50um = double(permute(AA_template_50um_up, [2, 3, 1])); % Permuted annotated atlas
+% Note: atlas dimensions are [dorsal-ventral, anterior-posterior, lateral] when read
+
+
+%% Load the ultrasound map of interest
+% Load fUS data (template map)
+[US_template_FilePathFN, US_template_FilePath] = uigetfile(['PDI_template_10um.mat'], 'Select the ultrasound template (10 um)');
+US_template_FilePath = [US_template_FilePath, US_template_FilePathFN];
+load(US_template_FilePath)
+
+% ... resize to 50 um for ease of manual registration ...
+
+%% (Optional) Open GUI for slightly "easier" manual registration
+US_Atlas_Reg
+
+%% Store the manual registration transformation info and 
+rigid_tform_50um = fUSmap_50um_rigid_reg.tform;
+
+% Not sure if we need this: redefine the tform for 10 um voxel size
+% rigid_tform_10um = fUSmap_50um_rigid_reg.tform;
+% rigid_tform_10um.A(1:3, 4) = rigid_tform_50um.A(1:3, 4) .* (50/10);
 
 %% Load the NPY path
 NPYdirpath = uigetdir('C:\Users\Allen\Documents\GitHub\npy-matlab', 'Select the NPY-Matlab directory');
@@ -71,6 +91,17 @@ MOs_ind = [25:30]; % Secondary motor area (MOs)
 SSPn_ind = [45:51]; % Primary somatosensory area, nose (SSp-n)
 
 VISp_ind = [186:192]; % Primary visual area (VISp)
+
+
+
+% After making the masks, resize
+% them!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+%% Load the timing data
+[timingFilePathFN, timingFilePath] = uigetfile(['..\Timing data\TD.mat'], 'Select the timing data');
+timingFilePath = [timingFilePath, timingFilePathFN];
+load(timingFilePath)
 
 
 %% Separate each trial
