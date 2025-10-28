@@ -1,11 +1,22 @@
+%% Description
+% Apply deformable registration and do correlation analysis for functional
+% connectivity (in 3D space + time)
+
+
 %% Load the timing data
 [timingFilePathFN, timingFilePath] = uigetfile(['..\Timing data\TD.mat'], 'Select the timing data');
 timingFilePath = [timingFilePath, timingFilePathFN];
 load(timingFilePath)
 
+%% Load the Allen Atlas CCFv3 path
+AAdirpath = uigetdir('H:\Allen Atlas CCFv3', 'Select the Allen Atlas CCFv3 directory');
+AAdirpath = [AAdirpath, '\'];
+
+addpath([AAdirpath, 'nrrdread']) % Add the nrrdread path
 %% Load the template (50 um voxel size)
 [AAFilePathFN, AAFilePath] = uigetfile(['J:\Allen Atlas CCFv3\annotated_50.nrrd'], 'Select the annotated atlas');
 AAFilePath = [AAFilePath, AAFilePathFN];
+
 % load(templateFilePath)
 [AA_up, AA_metadata] = nrrdread(AAFilePath); % Unpermuted annotated atlas
 
