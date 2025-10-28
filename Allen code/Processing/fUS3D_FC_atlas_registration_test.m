@@ -1,15 +1,18 @@
-%%
-addpath('C:\Users\agzhou\Downloads\nrrdread')
-
-%%
+%% Add paths for reading nrrd files
+% addpath('C:\Users\agzhou\Downloads\nrrdread')
+addpath('J:\Allen Atlas CCFv3\nrrdread')
+%% Load the data and atlas
 % Load fUS data (template map)
-load('H:\Ultrasound data from 7-21-2025\10-21-2025 AZ01 FC RCA\Test proc 10-23-25\PDI average across sf 100-500\fUSmap_50um.mat')
+% load('H:\Ultrasound data from 7-21-2025\10-21-2025 AZ01 FC RCA\Test proc 10-23-25\PDI average across sf 100-500\fUSmap_50um.mat')
+load('J:\Ultrasound data from 09-x-2025\10-21-2025 RCA US FC\Test proc 10-23-25\fUSmap_50um.mat')
 
 % Load Allen atlas (10 um voxel size)
 % [atlas, atlas_metadata] = nrrdread('C:\Users\agzhou\Downloads\average_template_10.nrrd');
-[atlas] = nrrdread('C:\Users\agzhou\Downloads\average_template_10.nrrd');
+% [atlas] = nrrdread('C:\Users\agzhou\Downloads\average_template_10.nrrd');
+[atlas, metadata] = nrrdread('J:\Allen Atlas CCFv3\average_template_10.nrrd');
 % [atlas, atlas_metadata] = nrrdread('D:\Allen\Data\Allen Atlas CCFv3\Annotated 25\annotation_25.nrrd');
-atlas_double = permute(double(atlas), [1, 3, 2]);
+% atlas_double = permute(double(atlas), [1, 3, 2]);
+atlas_double = permute(double(atlas), [2, 3, 1]);
 % Note: atlas dimensions are [dorsal-ventral, anterior-posterior, lateral]
 % when read
 
