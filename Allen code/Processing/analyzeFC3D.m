@@ -8,19 +8,70 @@
 timingFilePath = [timingFilePath, timingFilePathFN];
 load(timingFilePath)
 
-%% Load the Allen Atlas CCFv3 path
-AAdirpath = uigetdir('H:\Allen Atlas CCFv3', 'Select the Allen Atlas CCFv3 directory');
-AAdirpath = [AAdirpath, '\'];
+% %% Load the Allen Atlas CCFv3 path
+% AAdirpath = uigetdir('H:\Allen Atlas CCFv3', 'Select the Allen Atlas CCFv3 directory');
+% AAdirpath = [AAdirpath, '\'];
+% 
+% addpath([AAdirpath, 'nrrdread']) % Add the nrrdread path
+% 
+% %% Load the template (50 um voxel size)
+% [AAFilePathFN, AAFilePath] = uigetfile([AAdirpath, 'annotation_50.nrrd'], 'Select the annotated atlas');
+% AAFilePath = [AAFilePath, AAFilePathFN];
+% 
+% % load(templateFilePath)
+% [AA_up, AA_metadata] = nrrdread(AAFilePath); % Unpermuted annotated atlas
+% 
+% AA = permute(AA_up, [2, 3, 1]); % Permuted annotated atlas
 
-addpath([AAdirpath, 'nrrdread']) % Add the nrrdread path
-%% Load the template (50 um voxel size)
-[AAFilePathFN, AAFilePath] = uigetfile(['J:\Allen Atlas CCFv3\annotated_50.nrrd'], 'Select the annotated atlas');
-AAFilePath = [AAFilePath, AAFilePathFN];
+%% Load the NPY path
+NPYdirpath = uigetdir('C:\Users\Allen\Documents\GitHub\npy-matlab', 'Select the NPY-Matlab directory');
+NPYdirpath = [NPYdirpath, '\'];
 
-% load(templateFilePath)
-[AA_up, AA_metadata] = nrrdread(AAFilePath); % Unpermuted annotated atlas
+addpath(genpath(NPYdirpath)) % Add the NPY-Matlab path + all subfolders
+% addpath([NPYdirpath, 'npy-matlab\']) % Add the NPY-Matlab path
 
-AA = permute(AA_up, [2, 3, 1]); % Permuted annotated atlas
+%% Load the allenCCF path (use the Cortex Lab's functions)
+allenCCFdirpath = uigetdir('C:\Users\Allen\Documents\GitHub\allenCCF', 'Select the allenCCF directory');
+allenCCFdirpath = [allenCCFdirpath, '\'];
+
+addpath(genpath(allenCCFdirpath))
+% addpath([allenCCFdirpath, 'npy-matlab\']) % Add the NPY-Matlab path
+
+%% Load the 2017 modified templates from the Cortex Lab
+% Load the annotated volume
+% Note: the number at each voxel corresponds to the region/area index:
+% "The original volume has numbers that correspond to the "id" field in the structure tree, 
+%  but since I wanted to make a colormap for these, I re-indexed the annotation volume by 
+%  the row number of the structure tree. So in this version the values correspond to "index"+1. 
+%  This also allows using uint16 datatype, cutting file size in half. See setup_utils.m."
+
+AA_up = readNPY('C:\Users\Allen\Documents\BU\PhD\2025-2026\Boas Lab\Allen Atlas CCFv3\2017 modified by Cortex Lab UCL\annotation_volume_10um_by_index.npy'); % Unpermuted annotated atlas (10 um voxel size)
+AA = permute(AA_up, [1, 3, 2]); % Permuted annotated atlas (10 um voxel size)
+
+% Load the structure tree for the annotated volume
+ST = loadStructureTree('structure_tree_safe_2017.csv'); % Structure tree: a table of what all the labels in the annotated volume mean
+
+%% (Checking) view the annotation
+% volumeViewer(AA)
+
+figure; imagesc(squeeze(AA(600, :, :))')
+
+
+
+%% Define which regions to look at
+% use the "index + 1" part of the table and combine subregions inf needed
+region_indices = {};
+
+% ==== I should define these in a spreadsheet and auto read ==== %
+
+% MO_ind = [13:18]; % Somatomotor areas (MO)
+MOp_ind = [19:24]; % Primary motor area (MOp)
+MOs_ind = [25:30]; % Secondary motor area (MOs)
+% SSp_ind = [38:44]; % Primary somatosensory area (SSp)
+SSPn_ind = [45:51]; % Primary somatosensory area, nose (SSp-n)
+
+VISp_ind = [186:192]; % Primary visual area (VISp)
+
 
 %% Separate each trial
 ah = 3; % Approximate a cutoff value for analog high
