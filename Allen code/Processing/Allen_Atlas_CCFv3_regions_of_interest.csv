@@ -1,2 +1,5 @@
 ﻿Name,Acronym,"Start ""index + 1""","End ""index + 1"""
-Primary motor area,MOp,,
+Primary motor area,MOp,19,24
+Secondary motor area,MOs,25,30
+"Primary somatosensory area, nose",SSp-n,45,51
+Primary visual area,VISp,186,192

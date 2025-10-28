@@ -84,18 +84,40 @@ region_indices = {};
 
 % ==== I should define these in a spreadsheet and auto read ==== %
 
-% MO_ind = [13:18]; % Somatomotor areas (MO)
-MOp_ind = [19:24]; % Primary motor area (MOp)
-MOs_ind = [25:30]; % Secondary motor area (MOs)
-% SSp_ind = [38:44]; % Primary somatosensory area (SSp)
-SSPn_ind = [45:51]; % Primary somatosensory area, nose (SSp-n)
+% % MO_ind = [13:18]; % Somatomotor areas (MO)
+% MOp_ind = [19:24]; % Primary motor area (MOp)
+% MOs_ind = [25:30]; % Secondary motor area (MOs)
+% % SSp_ind = [38:44]; % Primary somatosensory area (SSp)
+% SSPn_ind = [45:51]; % Primary somatosensory area, nose (SSp-n)
+% 
+% VISp_ind = [186:192]; % Primary visual area (VISp)
 
-VISp_ind = [186:192]; % Primary visual area (VISp)
+[regions_FilePathFN, regions_FilePath] = uigetfile('C:\Users\Allen\Documents\GitHub\BU-Code\Allen code\Processing\Allen_Atlas_CCFv3_regions_of_interest.csv', 'Select the .csv for the brain regions of interest (Allen Atlas CCFv3)');
+regions_FilePath = [regions_FilePath, regions_FilePathFN];
 
+% Read the .csv
+regions_opts = detectImportOptions(regions_FilePath);
+regionsTable = readtable(regions_FilePath, regions_opts);
+regionsCell = table2cell(regionsTable);
 
+% Store the regions of interest's names, abbreviations, and start/end
+% "index + 1"s into cell arrays
+region_names = regionsCell(:, 1);
+region_acronyms = regionsCell(:, 2);
+region_inds = regionsCell(:, 3:4);
+num_regions = size(regionsCell, 1); % # of regions of interest
 
-% After making the masks, resize
-% them!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+% region_masks_10um = cell(num_regions, 1);
+region_masks_50um = cell(num_regions, 1);
+for rn = 1:num_regions % region number
+    region_mask_10um_temp = ( AA >= region_inds{rn, 1} & AA <= region_inds{rn, 2} );
+    % region_masks_10um{rn} = region_mask_10um_temp;
+
+    % Resize the 10um mask to 50um voxel size
+    region_masks_50um{rn} = imresize3(region_mask_10um_temp, 10/50, 'Method', 'cubic');
+end
+
+%% Apply the masks to the ultrasound data....
 
 
 %% Load the timing data
