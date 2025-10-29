@@ -74,7 +74,7 @@ addpath(genpath(allenCCFdirpath))
 %  the row number of the structure tree. So in this version the values correspond to "index"+1. 
 %  This also allows using uint16 datatype, cutting file size in half. See setup_utils.m."
 
-AA_up = readNPY('C:\Users\Allen\Documents\BU\PhD\2025-2026\Boas Lab\Allen Atlas CCFv3\2017 modified by Cortex Lab UCL\annotation_volume_10um_by_index.npy'); % Unpermuted annotated atlas (10 um voxel size)
+AA_up = readNPY([AACCFv3dirpath, '2017 modified by Cortex Lab UCL\annotation_volume_10um_by_index.npy']); % Unpermuted annotated atlas (10 um voxel size)
 AA = permute(AA_up, [1, 3, 2]); % Permuted annotated atlas (10 um voxel size)
 
 % Load the structure tree for the annotated volume (should be in the allenCCF Github directory)
@@ -134,7 +134,8 @@ Rout = imref3d(size(AA_template_50um)); % Reference for the output of the transf
 tic
 % Go through every superframe and 1) resize to the 50 um voxel size, and 2) apply the registration
 for sfi = 1:size(PDIallSF, 4) % superframe index
-% for sfi = 1
+% for sfi = 1:2
+    disp(sfi)
     PDI_sfi = squeeze(PDIallSF(:, :, :, sfi)); % PDI volume at superframe # sfi
     PDI_sfi_rs = imresize3(PDI_sfi, 'Scale', prereg_params.prereg_interp_factor, 'Method', 'cubic'); % Resize/resample
 
@@ -151,7 +152,8 @@ toc
 timingFilePath = [timingFilePath, timingFilePathFN];
 load(timingFilePath)
 
-%% Upsample over time to match the timing data...
+%% Upsample/interpolate over time to match the timing data...
+pupil_fr = 10; % Pupil data (behavioral camera) frame rate
 
 
 %% Correlation...

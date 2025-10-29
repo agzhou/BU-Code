@@ -485,10 +485,10 @@ clear ti fn trackTemp startPoints endPoints vfn nbif
 
 %% 9.5.1. 3D plots of the tracks
 % track3DPlot(tracksV, 1:length(tracksV))
-track3DPlot(tracksV, 40000:41000)
+track3DPlot(tracksV, 35000:36000)
 
 %% 9.5.2. Spaghetti plot of speed along each track
-trackSpeedSpaghettiPlot(tracksV, 40000:40010)
+trackSpeedSpaghettiPlot(tracksV, 35000:35010)
 
 %% 10. Smooth velocities across each track
 % Optionally, remove combined tracks that violate a distance criterion after applying a moving mean (low pass)
@@ -524,7 +524,7 @@ clear ti fn trackTemp startPoints endPoints vfn nbif
 tracksVS_MMS = tracksVS;
 for ti = 1:length(tracksVS_MMS)     % track index - go through each track
     trackTemp = tracksVS_MMS{ti};
-    tracksVS_MMS{ti}(:, 9:11) = tracksVS_MMS{ti}(:, 9:11) ./ [xpixelsPerM, ypixelsPerM, zpixelsPerM];
+    tracksVS_MMS{ti}(:, 9:11) = tracksVS_MMS{ti}(:, 9:11) ./ [xpixelsPerM, ypixelsPerM, zpixelsPerM] .* 1e3;
     % Note: I'm being sloppy with which dimension is x and y because they
     % will usually be the same in voxel size or # of voxels
 end
@@ -539,7 +539,7 @@ track3DPlot(tracksVS, 42000:42100)
 % smoothed velocities: removes way too many (probably too noisy)
 
 %% 10.5.2. Spaghetti plot of speed along each track after smoothing
-trackSpeedSpaghettiPlot(tracksVS, 40000:40010)
+trackSpeedSpaghettiPlot(tracksVS_MMS, 140000:140100)
 
 %% 11. Kalman filter as a function
 
