@@ -10,20 +10,20 @@ AACCFv3dirpath = [AACCFv3dirpath, '\'];
 addpath(genpath(AACCFv3dirpath))
 % addpath([AACCFv3dirpath, 'nrrdread']) % Add the nrrdread path
 
-% Load the template (10 um voxel size)
-[AA_template_FilePathFN, AA_template_FilePath] = uigetfile([AACCFv3dirpath, 'average_template_10.nrrd'], 'Select the average template atlas (10 um)');
-AA_template_FilePath = [AA_template_FilePath, AA_template_FilePathFN];
-[AA_template_10um_up, AA_template_10um_up_metadata] = nrrdread(AA_template_FilePath); % Unpermuted annotated atlas
-AA_template_10um = double(permute(AA_template_10um_up, [2, 3, 1])); % Permuted annotated atlas
-% Note: atlas dimensions are [dorsal-ventral, anterior-posterior, lateral] when read
-AA_template_50um = imresize3(AA_template_10um, 1/5, 'Method', 'cubic');
-
-% % Load the template (50 um voxel size)
-% [AA_template_FilePathFN, AA_template_FilePath] = uigetfile([AACCFv3dirpath, 'average_template_50.nrrd'], 'Select the average template atlas (50 um)');
+% % Load the template (10 um voxel size)
+% [AA_template_FilePathFN, AA_template_FilePath] = uigetfile([AACCFv3dirpath, 'average_template_10.nrrd'], 'Select the average template atlas (10 um)');
 % AA_template_FilePath = [AA_template_FilePath, AA_template_FilePathFN];
-% [AA_template_50um_up, AA_template_50um_up_metadata] = nrrdread(AA_template_FilePath); % Unpermuted annotated atlas
-% AA_template_50um = double(permute(AA_template_50um_up, [2, 3, 1])); % Permuted annotated atlas
+% [AA_template_10um_up, AA_template_10um_up_metadata] = nrrdread(AA_template_FilePath); % Unpermuted annotated atlas
+% AA_template_10um = double(permute(AA_template_10um_up, [2, 3, 1])); % Permuted annotated atlas
 % % Note: atlas dimensions are [dorsal-ventral, anterior-posterior, lateral] when read
+% AA_template_50um = imresize3(AA_template_10um, 1/5, 'Method', 'cubic');
+
+% Load the template (50 um voxel size)
+[AA_template_FilePathFN, AA_template_FilePath] = uigetfile([AACCFv3dirpath, 'average_template_50.nrrd'], 'Select the average template atlas (50 um)');
+AA_template_FilePath = [AA_template_FilePath, AA_template_FilePathFN];
+[AA_template_50um_up, AA_template_50um_up_metadata] = nrrdread(AA_template_FilePath); % Unpermuted annotated atlas
+AA_template_50um = double(permute(AA_template_50um_up, [2, 3, 1])); % Permuted annotated atlas
+% Note: atlas dimensions are [dorsal-ventral, anterior-posterior, lateral] when read
 
 
 %% Load the ultrasound map of interest
@@ -120,32 +120,35 @@ end
 
 %% Apply the masks to the ultrasound data....
 
-Rout = affineOutputView(size(PDI_allSF_avg_rs), rigid_tform_50um)
-
-
-
-
-% PDIallSF_reg = zeros([size(PDI_allSF_avg), size(PDIallSF, 4)]); % Initialize the registered PDI across time
+Rout = imref3d(size(AA_template_50um)); % Reference for the output of the transformation
+% temp_US_template = imwarp(PDI_allSF_avg_rs, rigid_tform_50um, 'cubic', 'OutputView', Rout);
 
 tic
 % Go through every superframe and 1) resize to the 50 um voxel size, and 2) apply the registration
-% for sfi = 1:size(PDIallSF, 4) % superframe index
-for sfi = 1
+for sfi = 1:size(PDIallSF, 4) % superframe index
+% for sfi = 1
     PDI_sfi = squeeze(PDIallSF(:, :, :, sfi)); % PDI volume at superframe # sfi
     PDI_sfi_rs = imresize3(PDI_sfi, 'Scale', prereg_params.prereg_interp_factor, 'Method', 'cubic'); % Resize/resample
 
     if sfi == 1
-        PDIallSF_reg = zeros([size(PDI_sfi_rs), size(PDIallSF, 4)]); % Initialize the registered PDI across time
+        PDIallSF_reg = zeros([size(AA_template_50um), size(PDIallSF, 4)], 'single'); % Initialize the registered PDI across time
     end
-    PDIallSF_reg(:, :, :, sfi) = imwarp(PDI_sfi_rs, rigid_tform_50um, 'cubic');
-
-
+    % Apply the transformation
+    PDIallSF_reg(:, :, :, sfi) = single(imwarp(PDI_sfi_rs, rigid_tform_50um, 'cubic', 'OutputView', Rout));
 end
 toc
+
 %% Load the timing data
 [timingFilePathFN, timingFilePath] = uigetfile(['..\Timing data\TD.mat'], 'Select the timing data');
 timingFilePath = [timingFilePath, timingFilePathFN];
 load(timingFilePath)
+
+%% Upsample over time to match the timing data...
+
+
+%% Correlation...
+
+
 
 
 %% Separate each trial
