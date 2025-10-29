@@ -28,11 +28,16 @@ AA_template_50um = double(permute(AA_template_50um_up, [2, 3, 1])); % Permuted a
 
 %% Load the ultrasound map of interest
 % Load fUS data (template map)
-[US_template_FilePathFN, US_template_FilePath] = uigetfile(['PDI_template_10um.mat'], 'Select the ultrasound template (10 um)');
+% [US_template_FilePathFN, US_template_FilePath] = uigetfile(['PDI_template_10um.mat'], 'Select the ultrasound template (10 um)');
+% US_template_FilePath = [US_template_FilePath, US_template_FilePathFN];
+% load(US_template_FilePath)
+% ... resize to 50 um for ease of manual registration ...
+
+% 50 um version
+[US_template_FilePathFN, US_template_FilePath] = uigetfile(['PDI_template_50um.mat'], 'Select the ultrasound template (50 um)');
 US_template_FilePath = [US_template_FilePath, US_template_FilePathFN];
 load(US_template_FilePath)
 
-% ... resize to 50 um for ease of manual registration ...
 
 %% (Optional) Open GUI for slightly "easier" manual registration
 US_Atlas_Reg
@@ -69,7 +74,7 @@ addpath(genpath(allenCCFdirpath))
 AA_up = readNPY('C:\Users\Allen\Documents\BU\PhD\2025-2026\Boas Lab\Allen Atlas CCFv3\2017 modified by Cortex Lab UCL\annotation_volume_10um_by_index.npy'); % Unpermuted annotated atlas (10 um voxel size)
 AA = permute(AA_up, [1, 3, 2]); % Permuted annotated atlas (10 um voxel size)
 
-% Load the structure tree for the annotated volume
+% Load the structure tree for the annotated volume (should be in the allenCCF Github directory)
 ST = loadStructureTree('structure_tree_safe_2017.csv'); % Structure tree: a table of what all the labels in the annotated volume mean
 
 %% (Checking) view the annotation
