@@ -2,6 +2,9 @@
 % Apply deformable registration and do correlation analysis for functional
 % connectivity (in 3D space + time)
 
+% REQUIREMENTS:
+% - Clone the allenCCF repository: https://github.com/cortex-lab/allenCCF.git
+% - Clone the npy-matlab repository: https://github.com/kwikteam/npy-matlab.git
 %% Add paths for reading nrrd files + Load the template atlas
 
 % Load the Allen Atlas CCFv3 path
