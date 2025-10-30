@@ -126,6 +126,8 @@ for rn = 1:num_regions % region number
     region_masks_50um{rn} = imresize3(region_mask_10um_temp, 10/50, 'Method', 'cubic');
 end
 
+clearvars region_mask_10um_temp rn
+
 %% Apply the masks to the ultrasound data....
 
 Rout = imref3d(size(AA_template_50um)); % Reference for the output of the transformation
@@ -146,6 +148,8 @@ for sfi = 1:size(PDIallSF, 4) % superframe index
     PDIallSF_reg(:, :, :, sfi) = single(imwarp(PDI_sfi_rs, rigid_tform_50um, 'cubic', 'OutputView', Rout));
 end
 toc
+
+clearvars PDI_sfi sfi PDI_sfi_rs
 
 %% Load the timing data
 [timingFilePathFN, timingFilePath] = uigetfile(['..\Timing data\TD.mat'], 'Select the timing data');
