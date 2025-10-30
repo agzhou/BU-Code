@@ -156,11 +156,41 @@ clearvars PDI_sfi sfi PDI_sfi_rs
 timingFilePath = [timingFilePath, timingFilePathFN];
 load(timingFilePath)
 
-%% Upsample/interpolate over time to match the timing data...
-pupil_fr = 10; % Pupil data (behavioral camera) frame rate
+% %% Upsample/interpolate over time to match the timing data...
+% pupil_fr = 10; % Pupil data (behavioral camera) frame rate
 
 
-%% Correlation...
+% %% Correlation...
+
+%% Correlation without resampling PDI in time
+% figure; plot(sfTimeTags)
+% figure; plot(diff(sfTimeTags))
+num_sf = size(PDIallSF, 4); % # of superframes
+
+corr_ws = 30; % Correlation sliding window size (I need to convert this to be specific with actual time)
+% For now, 30 represents around 30 sf * ~0.5 seconds per sf --> ~ 15 seconds
+
+PDI_ROI_timecourses = cell(num_regions, num_sf); % Store average ROI PDI timecourses in a cell array (each cell is an average timecourse)
+
+% THIS VERSION WORKS BASED ON THE SUPERFRAME INDICES, NOT TIME DIRECTLY
+% for wi = 1:num_sf - corr_ws
+% for wi = 1:num_sf
+for wi = 1:2
+
+    sfis = wi:( wi + corr_ws - 1 ); % Superframe indices in the window
+    
+    for ri = 1:num_regions % region/ROI index
+        ROI_mask_temp = region_masks_50um{ri}; % ROI #ri mask
+        
+        for ti = sfis % "time" index
+            PDIallSF_reg_ti_temp = squeeze(PDIallSF_reg(:, :, :, ti));
+            PDI_ri_masked_temp = PDIallSF_reg_ti_temp(ROI_mask_temp); % Vectorized voxels of the registered PDI at "time" index ti
+            PDI_ROI_timecourses{ri, wi}(ti - sfis(1) + 1) = mean(PDI_ri_masked_temp);
+
+        end
+    end
+    % Make sure that at the end, we pad the window or account for that!!!!!!
+end
 
 
 
