@@ -193,17 +193,43 @@ toc
 % figure; plot(PDI_ROI_timecourses{1})
 
 % -- Calculate changes in FC (seed correlation matrices) over time with sliding windows -- %
+corr_sw_PDI = zeros(num_regions, num_regions, num_sf); % Sliding window PDI seed correlation matrices 
 % THIS VERSION WORKS BASED ON THE SUPERFRAME INDICES, NOT TIME DIRECTLY
 % for wi = 1:num_sf - corr_ws
-% for wi = 1:num_sf
-for wi = 1:2
+for wi = 1:num_sf
+% for wi = 1:2
 
     sfis = wi:( wi + corr_ws - 1 ); % Superframe indices in the window
     
-    
+    corr_data_matrix_temp = zeros(corr_ws, num_regions); % Temporary data matrix for calculating the correlation matrix. Each column is the PDI timecourse for a region, within the time window defined by 'sfis'
+
+    % Go through each region and temporarily store the timecourse in the
+    % corresponding column of the data matrix
+    for ri = 1:num_regions
+        corr_data_matrix_temp(:, ri) = ( PDI_ROI_timecourses{ri}(sfis) )';
+    end
+
+    corr_sw_PDI(:, :, wi) = corrcoef(corr_data_matrix_temp); % Calculate the seed correlation matrix at that window
 
 end
 
+%% Plot the seed correlation matrices
+
+% Plot the matrix for one window
+figure; imagesc(squeeze(corr_sw_PDI(:, :, 1))); colormap hot; axis square; colorbar
+% xticks(1:num_regions); xticklabels(region_names); yticks(1:num_regions); yticklabels(region_names) % Set the tick labels to be the ROI names
+xticks(1:num_regions); xticklabels(region_acronyms); yticks(1:num_regions); yticklabels(region_acronyms) % Set the tick labels to be the ROI acronyms
+
+% Spaghetti plot of the correlation between each pair of regions, over time
+figure; hold on
+for m = 1:num_regions
+    for n = m:num_regions
+        plot(squeeze(corr_sw_PDI(m, n, :)))
+    end
+end
+hold off
+xlabel('sf index')
+ylabel('Correlation coefficient')
 
 %% Separate each trial
 ah = 3; % Approximate a cutoff value for analog high
