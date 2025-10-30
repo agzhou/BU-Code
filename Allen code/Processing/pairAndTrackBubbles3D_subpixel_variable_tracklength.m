@@ -459,6 +459,7 @@ hold off
 clearvars test_ind
 %% 9. Create the velocity map
 
+% tracksV: adds the x, y, z velocity within a track, in [voxels/second]
 tracksV = cell(size(tracksIndividualCombined)); % Matrix storage of the bubble data. Each element in the cell is a [# bubbles per frame in the track, 9, # persistence frames] matrix. Each row corresponds to [bubble f x coord, bubble f y coord, bubble f z coord, bubble f+1 x coord, bubble f+1 y coord, bubble f+1 z coord, x velocity, y velocity, z velocity]
 tic
 
@@ -493,7 +494,7 @@ trackSpeedSpaghettiPlot(tracksV, 35000:35010)
 %% 10. Smooth velocities across each track
 % Optionally, remove combined tracks that violate a distance criterion after applying a moving mean (low pass)
 
-tracksVS = tracksV; % Distance criterion applied
+tracksVS = tracksV; % Distance criterion applied (?)
 tic
 tracksToKeep_DC = true(size(tracksVS)); % Mask for which tracks to keep, for the distance criterion
 
@@ -502,7 +503,7 @@ for ti = 1:length(tracksVS)     % track index - go through each track
 % for ti = 30000
     trackTemp = tracksV{ti};           % Get track ti
     vTemp = trackTemp(:, 9:11);
-    vTempMM = movmean(vTemp, mmws, 1); % Moving mean in time on the velocities
+    vTempMM = movmean(vTemp, mmws, 5); % Moving mean in time on the velocities
 %     figure; plot(sqrt(sum(vTemp .^ 2, 2)))
 %     figure; plot(sqrt(sum(vTempMM .^ 2, 2)))
 
@@ -539,7 +540,30 @@ track3DPlot(tracksVS, 42000:42100)
 % smoothed velocities: removes way too many (probably too noisy)
 
 %% 10.5.2. Spaghetti plot of speed along each track after smoothing
-trackSpeedSpaghettiPlot(tracksVS_MMS, 140000:140100)
+% trackSpeedSpaghettiPlot(tracksVS_MMS, 140000:140010)
+trackSpeedSpaghettiPlot(tracksVS_MMS, 140200 + [0:10])
+
+%% Make a new variable that keeps only tracks with some velocity characteristics
+low_prctile = 25;
+low_speed_threshold = 2; % mm/s
+
+
+tracksVS_MMS_thresholded_mask = false(size(tracksVS_MMS));
+for ti = 1:length(tracksVS_MMS_thresholded)     % track index - go through each track
+    trackTemp = tracksVS_MMS_thresholded{ti};
+    speedsTemp = sqrt(sum(trackTemp(:, 9:11) .^ 2, 2));
+    
+    speed_low_prctile = prctile(speedsTemp, low_prctile);
+    if speed_low_prctile < low_speed_threshold
+        tracksVS_MMS_thresholded_mask(ti) = true;
+    end
+
+end
+
+tracksVS_MMS_thresholded = tracksVS_MMS(tracksVS_MMS_thresholded_mask);
+
+%% Spaghetti plot for the low velocity tracks
+trackSpeedSpaghettiPlot(tracksVS_MMS_thresholded, 1:length(tracksVS_MMS_thresholded))
 
 %% 11. Kalman filter as a function
 
