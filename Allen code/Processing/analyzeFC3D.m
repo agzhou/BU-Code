@@ -128,7 +128,7 @@ end
 
 clearvars region_mask_10um_temp rn
 
-%% Apply the masks to the ultrasound data....
+%% Apply the registration/warping to the ultrasound data
 
 Rout = imref3d(size(AA_template_50um)); % Reference for the output of the transformation
 % temp_US_template = imwarp(PDI_allSF_avg_rs, rigid_tform_50um, 'cubic', 'OutputView', Rout);
@@ -176,7 +176,7 @@ PDI_ROI_timecourses = cell(num_regions, 1); % Store average ROI PDI timecourses 
 % -- Calculate PDI [ROI average] timecourses -- %
 tic
 for ti = 1:num_sf % "time" index -- go through each superframe
-
+% for ti = 11
     PDIallSF_reg_ti_temp = squeeze(PDIallSF_reg(:, :, :, ti)); % Registered volume at "time" index ti
 
     for ri = 1:num_regions % region/ROI index -- loop through each region
@@ -192,44 +192,59 @@ toc
 
 % figure; plot(PDI_ROI_timecourses{1})
 
-% -- Calculate changes in FC (seed correlation matrices) over time with sliding windows -- %
+%% -- Calculate changes in FC (seed correlation matrices) over time with sliding windows -- %
 corr_sw_PDI = zeros(num_regions, num_regions, num_sf); % Sliding window PDI seed correlation matrices 
 % THIS VERSION WORKS BASED ON THE SUPERFRAME INDICES, NOT TIME DIRECTLY
+tic
 % for wi = 1:num_sf - corr_ws
 for wi = 1:num_sf
 % for wi = 1:2
+% for wi = 700
 
     sfis = wi:( wi + corr_ws - 1 ); % Superframe indices in the window
-    
+
     corr_data_matrix_temp = zeros(corr_ws, num_regions); % Temporary data matrix for calculating the correlation matrix. Each column is the PDI timecourse for a region, within the time window defined by 'sfis'
 
     % Go through each region and temporarily store the timecourse in the
     % corresponding column of the data matrix
     for ri = 1:num_regions
-        corr_data_matrix_temp(:, ri) = ( PDI_ROI_timecourses{ri}(sfis) )';
+        
+        if wi - num_sf - corr_ws < 0 % Mirror/pad the data at the end of the sliding window range
+            temp_PDI_ROI_timecourse_ri = padarray(PDI_ROI_timecourses{ri}', corr_ws, 'symmetric', 'post');
+            % temp_PDI_ROI_timecourse_ri = paddata(PDI_ROI_timecourses{ri}, corr_ws, Dimension = 2, Pattern = 'reflect', Side = 'trailing');
+            corr_data_matrix_temp(:, ri) = ( temp_PDI_ROI_timecourse_ri(sfis) );
+        else % Otherwise, no need for padding
+            corr_data_matrix_temp(:, ri) = ( PDI_ROI_timecourses{ri}(sfis) )';
+        end
+        
     end
 
     corr_sw_PDI(:, :, wi) = corrcoef(corr_data_matrix_temp); % Calculate the seed correlation matrix at that window
 
 end
+toc
 
 %% Plot the seed correlation matrices
 
 % Plot the matrix for one window
-figure; imagesc(squeeze(corr_sw_PDI(:, :, 1))); colormap hot; axis square; colorbar
+figure; imagesc(squeeze(corr_sw_PDI(:, :, 100))); colormap hot; axis square; colorbar
 % xticks(1:num_regions); xticklabels(region_names); yticks(1:num_regions); yticklabels(region_names) % Set the tick labels to be the ROI names
 xticks(1:num_regions); xticklabels(region_acronyms); yticks(1:num_regions); yticklabels(region_acronyms) % Set the tick labels to be the ROI acronyms
 
 % Spaghetti plot of the correlation between each pair of regions, over time
+corr_sw_legend = {}; % Legend for each pair
 figure; hold on
 for m = 1:num_regions
-    for n = m:num_regions
+    for n = m + 1:num_regions
         plot(squeeze(corr_sw_PDI(m, n, :)))
+        corr_sw_legend(end + 1) = {region_acronyms{m} + "-" + region_acronyms{n}};
     end
 end
 hold off
 xlabel('sf index')
 ylabel('Correlation coefficient')
+title("Correlation between ROIs, with sliding window size = " + num2str(corr_ws) + " superframes")
+legend(corr_sw_legend)
 
 %% Separate each trial
 ah = 3; % Approximate a cutoff value for analog high

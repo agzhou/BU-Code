@@ -1,5 +1,12 @@
-﻿Name,Acronym,"Start ""index + 1""","End ""index + 1"""
-Primary motor area,MOp,19,24
-Secondary motor area,MOs,25,30
-"Primary somatosensory area, nose",SSp-n,45,51
-Primary visual area,VISp,186,192
+Name	Acronym	"Start ""index + 1"""	"End ""index + 1"""
+Primary motor area	MOp	19	24
+Secondary motor area	MOs	25	30
+"Primary somatosensory area, nose"	SSp-n	45	51
+"Primary somatosensory area, barrel field"	SSp-bfd	52	58
+"Primary somatosensory area, lower limb"	SSp-ll	66	72
+"Primary somatosensory area, upper limb"	SSp-ul	80	86
+"Primary somatosensory area, mouth"	SSp-m	73	79
+Primary visual area	VISp	186	192
+Primary auditory area	AUDp	137	143
+Posterior auditory area	AUDpo	144	150
+Cortical amygdalar area	COA	427	444
