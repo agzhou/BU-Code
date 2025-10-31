@@ -91,7 +91,6 @@ figure; imagesc(squeeze(AA(600, :, :))')
 % use the "index + 1" part of the table and combine subregions inf needed
 region_indices = {};
 
-% ==== I should define these in a spreadsheet and auto read ==== %
 
 % % MO_ind = [13:18]; % Somatomotor areas (MO)
 % MOp_ind = [19:24]; % Primary motor area (MOp)
@@ -100,6 +99,8 @@ region_indices = {};
 % SSPn_ind = [45:51]; % Primary somatosensory area, nose (SSp-n)
 % 
 % VISp_ind = [186:192]; % Primary visual area (VISp)
+
+% ==== Regions are defined in a spreadsheet: auto read them ==== %
 
 [regions_FilePathFN, regions_FilePath] = uigetfile('C:\Users\Allen\Documents\GitHub\BU-Code\Allen code\Processing\Allen_Atlas_CCFv3_regions_of_interest.csv', 'Select the .csv for the brain regions of interest (Allen Atlas CCFv3)');
 regions_FilePath = [regions_FilePath, regions_FilePathFN];
@@ -151,21 +152,10 @@ toc
 
 clearvars PDI_sfi sfi PDI_sfi_rs
 
-%% Load the timing data
-[timingFilePathFN, timingFilePath] = uigetfile(['..\Timing data\TD.mat'], 'Select the timing data');
-timingFilePath = [timingFilePath, timingFilePathFN];
-load(timingFilePath)
-
-% %% Upsample/interpolate over time to match the timing data...
-% pupil_fr = 10; % Pupil data (behavioral camera) frame rate
-
-
-% %% Correlation...
-
 %% Correlation without resampling PDI in time
 % figure; plot(sfTimeTags)
 % figure; plot(diff(sfTimeTags))
-num_sf = size(PDIallSF, 4); % # of superframes
+num_sf = size(PDIallSF_reg, 4); % # of superframes
 
 corr_ws = 30; % Correlation sliding window size (I need to convert this to be specific with actual time)
 % For now, 30 represents around 30 sf * ~0.5 seconds per sf --> ~ 15 seconds
@@ -245,6 +235,42 @@ xlabel('sf index')
 ylabel('Correlation coefficient')
 title("Correlation between ROIs, with sliding window size = " + num2str(corr_ws) + " superframes")
 legend(corr_sw_legend)
+
+%% Plot all the ROI average PDI timecourses
+figure; hold on; xlabel('Time [s]'); ylabel('PDI ROI average')
+for ind = 1:length(PDI_ROI_timecourses)
+    % plot(sfTimeTags, filtfilt(ones(1,4),4,PDI_ROI_timecourses{ind}))
+    plot(sfTimeTags, PDI_ROI_timecourses{ind})
+end
+legend(region_acronyms)
+
+
+
+
+%% Load the timing data
+[timingFilePathFN, timingFilePath] = uigetfile(['..\Timing data\TD.mat'], 'Select the timing data');
+timingFilePath = [timingFilePath, timingFilePathFN];
+load(timingFilePath)
+
+% %% Upsample/interpolate over time to match the timing data...
+% pupil_fr = 10; % Pupil data (behavioral camera) frame rate
+
+%% Load pupil tracking video
+[pupilData] = readMP4;
+
+% Get and plot the time points of the pupil data relative to the start of the ultrasound acquisition
+time_diff = startTimetag - pupilData.startTimetag; % Time difference between the ultrasound acquisition and the pupil data start
+time_diff.Format = 'hh:mm:ss.SSS'; % Show millisecond precision
+pupilData.timestamps_relative_to_US_start = pupilData.timestamps - seconds(time_diff);
+
+figure;
+plot(sfTimeTags, 1, 'x')
+hold on
+plot(pupilData.timestamps_relative_to_US_start, 1, 'o')
+hold off
+xlabel('Time [s]')
+
+
 
 %% Separate each trial
 ah = 3; % Approximate a cutoff value for analog high
