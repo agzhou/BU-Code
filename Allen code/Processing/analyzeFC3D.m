@@ -226,12 +226,13 @@ corr_sw_legend = {}; % Legend for each pair
 figure; hold on
 for m = 1:num_regions
     for n = m + 1:num_regions
-        plot(squeeze(corr_sw_PDI(m, n, :)))
+        plot(sfTimeTags, squeeze(corr_sw_PDI(m, n, :)))
         corr_sw_legend(end + 1) = {region_acronyms{m} + "-" + region_acronyms{n}};
     end
 end
 hold off
-xlabel('sf index')
+% xlabel('sf index')
+xlabel('Time [s]')
 ylabel('Correlation coefficient')
 title("Correlation between ROIs, with sliding window size = " + num2str(corr_ws) + " superframes")
 legend(corr_sw_legend)
@@ -270,7 +271,9 @@ plot(pupilData.timestamps_relative_to_US_start, 1, 'o')
 hold off
 xlabel('Time [s]')
 
-
+%% Define ROIs for the eye
+addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Processing\Pupil tracking')
+eyeROIs = defineEyeROIs(pupilData.frames(:, :, 1));
 
 %% Separate each trial
 ah = 3; % Approximate a cutoff value for analog high
