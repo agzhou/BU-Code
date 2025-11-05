@@ -566,7 +566,7 @@ tracksVS_MMS_thresholded = tracksVS_MMS(tracksVS_MMS_thresholded_mask);
 trackSpeedSpaghettiPlot(tracksVS_MMS_thresholded, 1:length(tracksVS_MMS_thresholded))
 
 %% 11. Kalman filter as a function
-
+vMMStoPixelDispPerFrame = timePerFrame / 1e3 * [xpixelsPerM, ypixelsPerM, zpixelsPerM];
 tracksVS_KF_MMS = applyKF(tracksVS_MMS, vMMStoPixelDispPerFrame, img_size, pers);
 
 
@@ -699,22 +699,22 @@ actualSize = [lateral_width, lateral_width, axial_depth];
 BDM_video = interpolatedDensityMapWithVideo(bVelocityMSmoothedMMSConstrained, img_size, startFrame, maxPixelDistPerFrame, actualSize); % test density map interpolated
 % BDM_video = interpolatedDensityMapWithVideo(bVelocityM, img_size, startFrame, maxPixelDistPerFrame, actualSize); % test density map interpolated
 
-%% No KF test
-[SM_Smoothed_LI, SM_Smoothed_LI_counter] = interpolatedSpeedMap(tracksVS_MMS, img_size, maxPixelDistPerFrame); % flow speed map, linearly interpolated
-SM_Smoothed_LI_Rfn = SM_Smoothed_LI;
-SM_Smoothed_LI_Rfn = thresholdMaps(SM_Smoothed_LI_Rfn, SM_Smoothed_LI_counter, 2, 300);
+% %% No KF test
+% [SM_Smoothed_LI, SM_Smoothed_LI_counter] = interpolatedSpeedMap(tracksVS_MMS, img_size, maxPixelDistPerFrame); % flow speed map, linearly interpolated
+% SM_Smoothed_LI_Rfn = SM_Smoothed_LI;
+% SM_Smoothed_LI_Rfn = thresholdMaps(SM_Smoothed_LI_Rfn, SM_Smoothed_LI_counter, 2, 300);
 
 
 %% Get the speed maps
-% [SM_LI, SM_LI_counter] = interpolatedSpeedMap(bVelocityM, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
-% % Refine the speed map
+% Non-constrained no KF
+% [SM_LI, SM_LI_counter] = interpolatedSpeedMap(tracksVS_MMS, img_size, maxPixelDistPerFrame); % flow speed map, linearly interpolated
 % SM_LI_Rfn = SM_LI;
-% SM_LI_Rfn = thresholdMaps(SM_LI_Rfn, SM_LI_counter, 2, 300);
+% SM_LI_Rfn = thresholdMaps(SM_LI_Rfn, SM_LI_counter, 1, 300);
 
 % Non-constrained KF
 [SM_SmoothedKF_LI, SM_SmoothedKF_LI_counter] = interpolatedSpeedMap(tracksVS_KF_MMS, img_size, maxPixelDistPerFrame); % flow speed map, linearly interpolated
 SM_SmoothedKF_LI_Rfn = SM_SmoothedKF_LI;
-SM_SmoothedKF_LI_Rfn = thresholdMaps(SM_SmoothedKF_LI_Rfn, SM_SmoothedKF_LI_counter, 2, 300);
+SM_SmoothedKF_LI_Rfn = thresholdMaps(SM_SmoothedKF_LI_Rfn, SM_SmoothedKF_LI_counter, 1, 300);
 
 % Constrained KF
 % [SM_SmoothedKFConstrained_LI, SM_SmoothedKFConstrained_LI_counter] = interpolatedSpeedMap(bVelocityMSmoothedKFConstrainedMMS, img_size, startFrame, maxPixelDistPerFrame); % flow speed map, linearly interpolated
@@ -737,14 +737,14 @@ SM_SmoothedKF_LI_Rfn = thresholdMaps(SM_SmoothedKF_LI_Rfn, SM_SmoothedKF_LI_coun
 % volumeViewer(SM_SmoothedKFConstrained_LI_Rfn)
 
 cmap = colormap_ULM;
-% figure; imagesc(squeeze(max(SM_SmoothedKFConstrained_LI_Rfn(400:600, :, :), [], 1))'); colormap(cmap); clim([0, 40])
-% figure; imagesc(squeeze(max(SM_SmoothedKFConstrained_LI_Rfn(300:500, :, :), [], 1))'); colormap(cmap); clim([0, 40])
-% figure; imagesc(squeeze(max(SM_SmoothedKFConstrained_LI_Rfn(300:400, :, :), [], 1))'); colormap(cmap); clim([0, 40])
-% figure; imagesc(squeeze(max(SM_SmoothedKF_LI_Rfn(300:500, :, :), [], 1))'); colormap(cmap); clim([0, maxSpeedExpectedMMPerS])
-% figure; imagesc(squeeze(max(SM_SmoothedKF_LI_Rfn(300:500, :, :), [], 1))'); colormap(cmap); clim([0, maxSpeedExpectedMMPerS])
+% figure; imagesc(squeeze(max(SM_LI_Rfn(:, :, :), [], 1))'); colormap(cmap); clim([0, maxSpeedExpectedMMPerS])
+% figure; imagesc(squeeze(max(SM_LI_Rfn(:, :, :), [], 3))'); colormap(cmap); clim([0, maxSpeedExpectedMMPerS]); axis square
+% figure; imagesc(squeeze(max(SM_LI(:, :, :), [], 1))'); colormap(cmap); clim([0, maxSpeedExpectedMMPerS])
+% figure; imagesc(squeeze(max(SM_LI(:, :, :), [], 3))'); colormap(cmap); clim([0, maxSpeedExpectedMMPerS]); axis square
+
 figure; imagesc(squeeze(max(SM_SmoothedKF_LI_Rfn(:, :, :), [], 1))'); colormap(cmap); clim([0, maxSpeedExpectedMMPerS])
 figure; imagesc(squeeze(max(SM_SmoothedKF_LI_Rfn(:, :, :), [], 3))'); colormap(cmap); clim([0, maxSpeedExpectedMMPerS]); axis square
-% figure; imagesc(squeeze(max(SM_SmoothedKF_LI_counter(300:500, :, :), [], 1) .^ 0.7)'); colormap hot
+% % figure; imagesc(squeeze(max(SM_SmoothedKF_LI_counter(300:500, :, :), [], 1) .^ 0.7)'); colormap hot
 
 % figure; imagesc(squeeze(max(SM_LI_Rfn(300:500, :, :), [], 1))'); colormap(cmap);
 
@@ -764,7 +764,7 @@ cmap = colormap_ULM;
 % generateTiffStack_multi([{SM_SC_LI_Rfn}], [8.8, 8.8, 8], cmap, 10, [0, 50])
 % generateTiffStack_multi([{SM_SmoothedKFConstrained_LI_Rfn}], [8.8, 8.8, 8], cmap, 50, [0, 40])
 generateTiffStack_multi([{SM_SmoothedKF_LI_Rfn}], [8.8, 8.8, 8], cmap, 50, [0, 40])
-generateTiffStack_multi([{SM_SmoothedKF_LI_Rfn}], [8.8, 8.8, 8], cmap, 1, [0, 40])
+% generateTiffStack_multi([{SM_SmoothedKF_LI_Rfn}], [8.8, 8.8, 8], cmap, 1, [0, 40])
 % generateTiffStack_multi([{SMs_AZ04_baseline.SM_SmoothedKF_LI_Rfn}], [8.8, 8.8, 8], cmap, 1, [0, 40])
 % generateTiffStack_multi([{test}], [8.8, 8.8, 8], cmap, 50, [0, testlim])
 
@@ -1039,7 +1039,7 @@ function [speedMapInterpolated, speedMapInterpolatedCounter] = interpolatedSpeed
     speedMapInterpolatedCounter = zeros(size(speedMapInterpolated));
     
     tic
-    for ti = 1:size(tracksVS_KF_MMS, 1)
+    for ti = 1:length(tracksVS_KF_MMS)
 %     for ti = startFrame:startFrame+100
 %     for ti = 15000:15100
 %     for ti = 12000:size(bVelocityM, 1)
