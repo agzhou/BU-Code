@@ -712,7 +712,17 @@ high_speed_threshold = 50; % mm/s
 
 %% Look at low speed tracks post-KF
 % track3DPlot(tracksVS_KF_MMS_filtered, 100 + [1:10])
-trackSpeedSpaghettiPlot(tracksVS_KF_MMS_filtered, 1000 + [1:10])
+track3DPlot(tracksVS_KF_MMS_filtered, 1:length(tracksVS_KF_MMS_filtered))
+% trackSpeedSpaghettiPlot(tracksVS_KF_MMS_filtered, 200 + [1:10])
+
+%% Interpolated speed map for the non-constrained KF, low speed filtered data
+[SM_SmoothedKF_LS_LI, SM_SmoothedKF_LS_LI_counter] = interpolatedSpeedMap(tracksVS_KF_MMS_filtered, img_size, maxPixelDistPerFrame); % flow speed map, linearly interpolated
+SM_SmoothedKF_LS_LI_Rfn = SM_SmoothedKF_LS_LI;
+SM_SmoothedKF_LS_LI_Rfn = thresholdMaps(SM_SmoothedKF_LS_LI_Rfn, SM_SmoothedKF_LS_LI_counter, 1, 300);
+
+cmap = colormap_ULM;
+figure; imagesc(squeeze(max(SM_SmoothedKF_LS_LI_Rfn(:, :, :), [], 1))'); colormap(cmap); clim([0, maxSpeedExpectedMMPerS])
+figure; imagesc(squeeze(max(SM_SmoothedKF_LS_LI_Rfn(:, :, :), [], 3))'); colormap(cmap); clim([0, maxSpeedExpectedMMPerS]); axis square
 
 %% 12. Acceleration and direction constraints
 
