@@ -80,18 +80,20 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 % %     zstart = 50;
 %     zend = size(IQ, 3);
 %     zstart = 15;
-%     zstart = 45;
-    zstart = 52;
+    zstart = 45;
+    % zstart = 52;
 %     zend = 105;
-    zend = 127;
+    % zend = 127;
+    zend = 130;
 
 %% Save proc params
-numg1pts = 20; % Only calculate the first N points
+numg1pts = 10; % Only calculate the first N points
 save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'numg1pts', 'zstart', 'zend');
 
 %% Main loop
-for filenum = startFile:endFile
+% for filenum = startFile:endFile
 % for filenum = [2:endFile]
+for filenum = 4:8
 % for filenum = [endFile - 1:-1:startFile]
 % for filenum = [116:endFile]
 % for filenum = 1
@@ -167,7 +169,8 @@ for filenum = startFile:endFile
 %     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFsi', 'CBVi', 'PDI', 'CDI', '-v7.3', '-nocompression');
 %     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'CBFsi', 'CBVi', 'PDI', 'CDI', 'g1_n', 'g1_p', 'CBFsi_n', 'CBVi_n', 'CBFsi_p', 'CBVi_p',  '-v7.3', '-nocompression');
 %     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'g1_n', 'g1_p', 'PDI', 'CDI', '-v7.3', '-nocompression');
-    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'PDI', 'noise', '-v7.3', '-nocompression');
+    % save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'PDI', 'noise', '-v7.3', '-nocompression');
+    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'PDI', 'noise', '-v7.3');
 %     save([savepath, 'g1-', num2str(filenum), '.mat'], 'g1', 'g1_n', 'g1_p', '-v7.3', '-nocompression');
 %     save([savepath, 'g1-', num2str(filenum), '.mat'], 'g1', '-v7.3', '-nocompression');
 
@@ -203,23 +206,24 @@ g1_tau1_cutoff = 0.2;
 % g1_tau1_cutoff = 0.0;
 % tau_difference_cutoff = 0.2;
 
-for filenum = startFile:endFile
+% for filenum = startFile:endFile
 % for filenum = 21:endFile
 % for filenum = [endFile]
-% for filenum = 1
+for filenum = 3
 %     load([savepath, 'g1-', num2str(filenum)], 'g1') % Load the saved g1 mat files
     load([savepath, 'fUSdata-', num2str(filenum)], 'g1') % Load the saved g1 mat files
 
     [g1A_mask] = createg1mask(g1, g1_tau1_cutoff, tau1_index_CBF, tau2_index_CBF);
 %     [g1A_mask] = createg1mask(g1Avg, g1_tau1_cutoff, tau1_index_CBF, tau2_index_CBF);
 
-%     [CBFsi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
-    [CBFsi, CBVi] = g1_to_CBi_NEW(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV, n_CBV);
+    [CBFsi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
+    % [CBFsi, CBVi] = g1_to_CBi_NEW(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV, n_CBV);
 
 %     CBFsi(~g1A_mask) = -Inf; % Remove noisy points from the CBFspeed index (in theory)
     CBFsi(~g1A_mask) = 0; % Remove noisy points from the CBFspeed index (in theory)
 
-    save([savepath, 'tlfUSdata-', num2str(filenum), '.mat'], 'CBFsi', 'CBVi', '-v7.3', '-nocompression');
+    % save([savepath, 'tlfUSdata-', num2str(filenum), '.mat'], 'CBFsi', 'CBVi', '-v7.3', '-nocompression');
+    save([savepath, 'tlfUSdata-', num2str(filenum), '.mat'], 'CBFsi', 'CBVi', '-v7.3');
 %     save([savepath, 'tlfUSdatatest-', num2str(filenum), '.mat'], 'CBFsi', 'CBVi', '-v7.3', '-nocompression');
     disp("tl-fUS result for file " + num2str(filenum) + " saved" )
 
@@ -642,7 +646,8 @@ fUS_cropped_volume_dimensions_voxels = size(CBVi_allSF_avg);
 fUS_cropped_volume_dimensions_m = fUS_cropped_volume_dimensions_voxels ./ fUS_volume_dimensions_voxels .* fUS_volume_dimensions_m;
 
 targetVoxelSizePrompt = {'y Target Voxel Size [um]', 'x Target Voxel Size [um]', 'z Target Voxel Size [um]'};
-targetVoxelSizeDefaults = {'10', '10', '10'};
+% targetVoxelSizeDefaults = {'10', '10', '10'};
+targetVoxelSizeDefaults = {'50', '50', '50'};
 targetVoxelSizeUserInput = inputdlg(targetVoxelSizePrompt, 'Input Target Voxel Size', 1, targetVoxelSizeDefaults);
 
 % Store target voxel size inputs and convert to meters
