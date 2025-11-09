@@ -93,7 +93,7 @@ save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_uppe
 %% Main loop
 % for filenum = startFile:endFile
 % for filenum = [2:endFile]
-for filenum = 4:8
+for filenum = 6:endFile
 % for filenum = [endFile - 1:-1:startFile]
 % for filenum = [116:endFile]
 % for filenum = 1
