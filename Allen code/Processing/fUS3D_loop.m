@@ -93,7 +93,7 @@ save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_uppe
 %% Main loop
 % for filenum = startFile:endFile
 % for filenum = [2:endFile]
-for filenum = 9:endFile
+for filenum = 111:endFile
 % for filenum = [endFile - 1:-1:startFile]
 % for filenum = [116:endFile]
 % for filenum = 1
@@ -209,7 +209,7 @@ g1_tau1_cutoff = 0.2;
 % for filenum = startFile:endFile
 % for filenum = 21:endFile
 % for filenum = [endFile]
-for filenum = 8
+for filenum = 110
 %     load([savepath, 'g1-', num2str(filenum)], 'g1') % Load the saved g1 mat files
     load([savepath, 'fUSdata-', num2str(filenum)], 'g1') % Load the saved g1 mat files
 
