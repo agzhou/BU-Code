@@ -31,13 +31,51 @@ cmap = colormap_ULM;
 % v_rCBV = compareVolumes(CBVi_allSF_avg_rs .^ 0.5, am_rCBV_rs, gray, cmap, 0.5);
 % v_rCBFspeed = compareVolumes(CBVi_allSF_avg_rs .^ 0.5, am_rCBFspeed_rs, gray, cmap, 0.0);
 
-% v_rPDI = compareVolumes(CBVi_allSF_avg_rs_reg .^ 0.5, am_rPDI_rs_reg, gray, cmap, 0.2, 0.5);
-v_rCBV = compareVolumes(CBVi_allSF_avg_rs_reg .^ 0.5, am_rCBV_rs_reg, gray, cmap, 0.5);
-v_rCBFspeed = compareVolumes(CBVi_allSF_avg_rs_reg .^ 0.5, am_rCBFspeed_rs_reg, gray, cmap, 0.0);
+v_rPDI = compareVolumes(CBVi_allSF_avg_rs_reg .^ 0.5, am_rPDI_rs_reg, gray, cmap, 0.2, 0.5);
+v_rCBV = compareVolumes(CBVi_allSF_avg_rs_reg .^ 0.5, am_rCBV_rs_reg, gray, cmap, 0.2, 0.5);
+v_rCBFspeed = compareVolumes(CBVi_allSF_avg_rs_reg .^ 0.5, am_rCBFspeed_rs_reg, gray, cmap, 0.2, 0.0);
 
+
+
+% Top view
+% camPos = [100.7983 118.8956 -302.8276];
+% camTarget = [109.3857 129.9169 80.6888];
+% camUpVec = [-0.0092 0.7996 -0.6005];
+% cz = 1.4;
+
+% Side view
+% camPos = [85.0166 -241.9843 159.0635];
+% camTarget = [114.5000 132.5000 80.5000];
+% camUpVec = [-0.0650 -0.7294 -0.6810];
+camPos = [76.5936 -238.5990 170.6589];
+camTarget = [114.5000 132.5000 80.5000];
+camUpVec = [-0.0772 -0.7490 -0.6580];
+cz = 1.7;
+
+% Set the camera properties
+v_rPDI.CameraZoom = cz;
+v_rCBV.CameraZoom = cz;
+v_rCBFspeed.CameraZoom = cz;
+
+v_rPDI.CameraPosition = camPos;
+v_rCBV.CameraPosition = camPos;
+v_rCBFspeed.CameraPosition = camPos;
+v_rPDI.CameraTarget = camTarget;
+v_rCBV.CameraTarget = camTarget;
+v_rCBFspeed.CameraTarget = camTarget;
+v_rPDI.CameraUpVector = camUpVec;
+v_rCBV.CameraUpVector = camUpVec;
+v_rCBFspeed.CameraUpVector = camUpVec;
 % compareVolumes(PDI_allSF_avg_rs .^ 0.5, am_rPDI_rs)
 % compareVolumes(PDI_allSF_avg_rs .^ 0.5, am_rCBV_rs)
 % compareVolumes(PDI_allSF_avg_rs .^ 0.5, am_rCBFspeed_rs .^ 1)
+
+%% Plot the barrel region
+v_barrelfield = compareVolumes(CBVi_allSF_avg_rs_reg .^ 0.5, region_masks_50um{1}, gray, cmap, 0.2, 0.0);
+v_barrelfield.CameraZoom = cz;
+v_barrelfield.CameraPosition = camPos;
+v_barrelfield.CameraTarget = camTarget;
+v_barrelfield.CameraUpVector = camUpVec;
 
 %%
 function [viewerThresholded] = compareVolumes(vol1, vol2, varargin) % Can change this so it has a cell array input and goes through more than 2 volumes
@@ -116,6 +154,7 @@ function [viewerThresholded] = compareVolumes(vol1, vol2, varargin) % Can change
             Alphamap = ramp_alphamap2);
             
     % Hard coding for now...
+   
     % viewerThresholded.CameraPosition = [91.4553 -69.5688 -11.5372];
     % viewerThresholded.CameraTarget = [40.5000 40.5000 31];
     % viewerThresholded.CameraUpVector = [0.1305 -0.2423 -0.9614];
