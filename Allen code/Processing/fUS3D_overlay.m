@@ -4,8 +4,12 @@
 %% Load data (manual for now)
 % load('J:\08-28-2025 fUS activation map plotting\Trials 1 to 13\activation_maps.mat')
 % load('J:\08-28-2025 fUS activation map plotting\Trials 1 to 13 diff proc\activation_maps.mat')
-load('H:\Ultrasound data from 7-21-2025\08-28-2025 AZ01 RCA fUS air puff\run 1\fUS proc 11-08-2025 larger region\fUS_avg_templates.mat')
-load('H:\Ultrasound data from 7-21-2025\08-28-2025 AZ01 RCA fUS air puff\run 1\fUS proc 11-08-2025 larger region\fUS_activationmaps.mat')
+% load('H:\Ultrasound data from 7-21-2025\08-28-2025 AZ01 RCA fUS air puff\run 1\fUS proc 11-08-2025 larger region\fUS_avg_templates.mat')
+% load('H:\Ultrasound data from 7-21-2025\08-28-2025 AZ01 RCA fUS air puff\run 1\fUS proc 11-08-2025 larger region\fUS_activationmaps.mat')
+
+load('J:\08-28-2025 fUS activation map plotting\fUS proc 11-08-2025 larger region\Trials 1 to 13\fUS_avg_templates.mat')
+load('J:\08-28-2025 fUS activation map plotting\fUS proc 11-08-2025 larger region\Trials 1 to 13\fUS_activationmaps.mat')
+
 %%
 % figure; imagesc(squeeze(max(CBVi_allSF_avg(:, :, :), [], 1) .^ 0.5)'); colormap gray
 
@@ -23,29 +27,39 @@ cmap = colormap_ULM;
 % compareVolumes(CBVi_allSF_avg, am_rPDI, 'gray', cmap)
 
 
-% compareVolumes(CBVi_allSF_avg_rs .^ 0.5, am_rPDI_rs)
-compareVolumes(CBVi_allSF_avg_rs .^ 0.5, am_rCBV_rs)
-% compareVolumes(CBVi_allSF_avg_rs .^ 0.5, am_rCBFspeed_rs .^ 1)
+% v_rPDI = compareVolumes(CBVi_allSF_avg_rs .^ 0.5, am_rPDI_rs, gray, cmap, 0.5);
+% v_rCBV = compareVolumes(CBVi_allSF_avg_rs .^ 0.5, am_rCBV_rs, gray, cmap, 0.5);
+% v_rCBFspeed = compareVolumes(CBVi_allSF_avg_rs .^ 0.5, am_rCBFspeed_rs, gray, cmap, 0.0);
 
-% compareVolumes(test, am_rPDI)
+% v_rPDI = compareVolumes(CBVi_allSF_avg_rs_reg .^ 0.5, am_rPDI_rs_reg, gray, cmap, 0.2, 0.5);
+v_rCBV = compareVolumes(CBVi_allSF_avg_rs_reg .^ 0.5, am_rCBV_rs_reg, gray, cmap, 0.5);
+v_rCBFspeed = compareVolumes(CBVi_allSF_avg_rs_reg .^ 0.5, am_rCBFspeed_rs_reg, gray, cmap, 0.0);
 
-% compareVolumes(CBVi_allSF_avg, am_rCBV)
-% compareVolumes(CBVi_allSF_avg, am_rCBFspeed)
+% compareVolumes(PDI_allSF_avg_rs .^ 0.5, am_rPDI_rs)
+% compareVolumes(PDI_allSF_avg_rs .^ 0.5, am_rCBV_rs)
+% compareVolumes(PDI_allSF_avg_rs .^ 0.5, am_rCBFspeed_rs .^ 1)
 
-% grid_alphamap = linspace(0, 1, 256)';
-% % ramp_alphamap = grid_alphamap - round(length(grid_alphamap) ./ 4);
-% ramp_alphamap = grid_alphamap - max(grid_alphamap) ./ 4;
-% ramp_alphamap(ramp_alphamap < 0) = 0;
 %%
-function compareVolumes(vol1, vol2, varargin) % Can change this so it has a cell array input and goes through more than 2 volumes
+function [viewerThresholded] = compareVolumes(vol1, vol2, varargin) % Can change this so it has a cell array input and goes through more than 2 volumes
 
     % Set default colormaps
     cmap1 = gray;
     cmap2 = colormap_ULM;
+
+    % Default shift factors
+    shift_factor1 = 0.1;
+    shift_factor2 = 0.5;
+
     if nargin > 2
         cmap1 = varargin{1};
         if nargin > 3
             cmap2 = varargin{2};
+            if nargin > 4
+                shift_factor1 = varargin{3};
+                    if nargin > 5
+                        shift_factor2 = varargin{4};
+                    end
+            end
         end
     end
 
@@ -61,14 +75,16 @@ function compareVolumes(vol1, vol2, varargin) % Can change this so it has a cell
     %         Alphamap = "linear");   
 
     grid_alphamap = linspace(0, 1, 256)';
-    shift_factor = 0.1;
+    % shift_factor = 0.1;
+    % shift_factor1 = 0.4;
     % ramp_alphamap = grid_alphamap - round(length(grid_alphamap) ./ 4);
-    ramp_alphamap = grid_alphamap - max(grid_alphamap) .* shift_factor;
+    ramp_alphamap = grid_alphamap - max(grid_alphamap) .* shift_factor1;
     ramp_alphamap(ramp_alphamap < 0) = 0;
 
     % normalize
-    max_factor = 1;
-    ramp_alphamap(ramp_alphamap > 0) = ramp_alphamap(ramp_alphamap > 0) ./ max(ramp_alphamap) .* max_factor;
+    max_factor1 = 1;
+    % max_factor1 = 0.8;
+    ramp_alphamap(ramp_alphamap > 0) = ramp_alphamap(ramp_alphamap > 0) ./ max(ramp_alphamap) .* max_factor1;
 
     volshow(vol1 .^ 1, 'Colormap', cmap1, ...
             Parent = viewerThresholded, ...
@@ -77,14 +93,19 @@ function compareVolumes(vol1, vol2, varargin) % Can change this so it has a cell
             Alphamap = ramp_alphamap);
             % Alphamap = "linear");   
  
-    shift_factor2 = 0.4;
+
     ramp_alphamap2 = grid_alphamap - max(grid_alphamap) .* shift_factor2;
     ramp_alphamap2(ramp_alphamap2 < 0) = 0;
 
     % normalize
     max_factor2 = 1;
     ramp_alphamap2(ramp_alphamap2 > 0) = ramp_alphamap2(ramp_alphamap2 > 0) ./ max(ramp_alphamap2) .* max_factor2;
+    % figure; plot(ramp_alphamap2)
 
+    % volshow(vol2 .^ 1, Parent = viewerThresholded, ...
+    %         RenderingStyle = "MaximumIntensityProjection", ...
+    %         Colormap = cmap2, ...
+    %         Alphamap = "cubic");
     % volshow(vol2 .^ 1, Parent = viewerThresholded, ...
     %         RenderingStyle = "MaximumIntensityProjection", ...
     %         Colormap = cmap2, ...
@@ -92,7 +113,7 @@ function compareVolumes(vol1, vol2, varargin) % Can change this so it has a cell
     volshow(vol2 .^ 1, Parent = viewerThresholded, ...
             RenderingStyle = "MaximumIntensityProjection", ...
             Colormap = cmap2, ...
-            Alphamap = ramp_alphamap);
+            Alphamap = ramp_alphamap2);
             
     % Hard coding for now...
     % viewerThresholded.CameraPosition = [91.4553 -69.5688 -11.5372];
