@@ -69,7 +69,10 @@ function [r, z, activationMap] = activationMap3D(volumeData, stim, zt)
     % Convolve the activation map
     conv_kernel = ones(7, 7, 7);
     conv_kernel(4, 4, 4) = 49;
-    conv_kernel = conv_kernel ./ 49;
+    % conv_kernel(4, 4, 4) = 100;
+    % conv_kernel = conv_kernel ./ 49;
+    conv_kernel = conv_kernel ./ sum(conv_kernel(:)); % Change 11/9/25 --> normalize the kernel (integral = 1)
+    % conv_kernel = 1/16 .* [1 2 1; 2 4 2; 1 2 1];
     activationMap = convn(activationMap_nonconv, conv_kernel, 'same');
     
 end

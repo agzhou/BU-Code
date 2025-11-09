@@ -207,9 +207,9 @@ g1_tau1_cutoff = 0.2;
 % tau_difference_cutoff = 0.2;
 
 % for filenum = startFile:endFile
-% for filenum = 21:endFile
+for filenum = 4:endFile
 % for filenum = [endFile]
-for filenum = 110
+% for filenum = 110
 %     load([savepath, 'g1-', num2str(filenum)], 'g1') % Load the saved g1 mat files
     load([savepath, 'fUSdata-', num2str(filenum)], 'g1') % Load the saved g1 mat files
 
@@ -582,7 +582,7 @@ figure; imagesc(squeeze(max(am_rPDI(:, :, :), [], 3) .^ 1)'); colorbar; colormap
 % generateTiffStack_multi({am_rPDI}, [8.8, 8.8, 8], 'jet', 5)
 % generateTiffStack_multi({squeeze(mean(PDIallSF, 4)) .^ 0.5, am_rPDI}, [8.8, 8.8, 8], 'jet', 5)
 
-%% Plot ROIs defined by the half-max of the activation maps
+%% Plot ROIs defined by the fraction-max of the activation maps
 numPtsUSI = P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_factor; % # of time points per trial for the upsampling
 
 fraction = 0.75;
@@ -614,7 +614,7 @@ figure; plot((1:length(roi_rCBFspeed_TA)) .* interp_factor ./ P.daqrate, roi_rCB
 % am_rPDI_t(am_rPDI_t < 1.3) = 0;
 % am_rPDI_t_roi_mask = am_rPDI_t > 1.3;
 
-%% Plot median-averaged ROIs defined by the half-max of the activation maps
+%% Plot median-averaged ROIs defined by the fraction-max of the activation maps
 numPtsUSI = P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_factor; % # of time points per trial for the upsampling
 
 fraction = 0.75;
@@ -670,8 +670,18 @@ prereg_params.fUS_cropped_volume_dimensions_voxels = fUS_cropped_volume_dimensio
 prereg_params.fUS_cropped_volume_dimensions_m = fUS_cropped_volume_dimensions_m;
 prereg_params.target_voxel_size = target_voxel_size;
 prereg_params.prereg_interp_factor = prereg_interp_factor;
+prereg.params.orig_zstart = zstart;
+prereg.params.orig_zend = zend;
 % prereg_params. = 
 
+save([savepath, 'fUS_avg_templates.mat'], 'CBVi_allSF_avg_rs', 'CBFsi_allSF_avg_rs', 'PDI_allSF_avg_rs', 'prereg_params')
+
+% Resample activation maps to the desired voxel size
+am_rCBV_rs = imresize3(am_rCBV, 'Scale', prereg_interp_factor, 'Method', 'cubic');
+am_rCBFspeed_rs = imresize3(am_rCBFspeed, 'Scale', prereg_interp_factor, 'Method', 'cubic');
+am_rPDI_rs = imresize3(am_rPDI, 'Scale', prereg_interp_factor, 'Method', 'cubic');
+
+save([savepath, 'fUS_activationmaps.mat'], 'am_rCBV_rs', 'am_rCBFspeed_rs', 'am_rPDI_rs', 'prereg_params')
 %% Look at a ROI (rPDI thresholded)
 numPtsUSI = P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_factor; % # of time points per trial for the upsampling
 % Calculate the timecourse from the average within that ROI
