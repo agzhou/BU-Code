@@ -366,16 +366,18 @@ end
 %% Store all the PDI across the experiment into one matrix
 % load([savepath, 'PDI_CDI-', num2str(1), '.mat'], 'PDI', 'CDI')
 % load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI', 'CDI')
-load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI')
+load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI', 'noise')
 PDIallSF = zeros([size(PDI), endFile - startFile + 1]); % Matrix with the CBVi for every superframe
-PDIallSF(:, :, :, 1) = PDI;
+% PDIallSF(:, :, :, 1) = PDI;
+PDIallSF(:, :, :, 1) = PDI ./ noise;
 
 % for filenum = startFile + 1:endFile
 for filenum = startFile:endFile
 %     load([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI')
-    load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI')
+    load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'noise')
 
-    PDIallSF(:, :, :, filenum) = PDI;
+    % PDIallSF(:, :, :, filenum) = PDI;
+    PDIallSF(:, :, :, filenum) = PDI ./ noise;
 end
 
 %% Visualize the PDI and CDI across the experiment
