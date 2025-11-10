@@ -37,13 +37,13 @@ v_rCBFspeed = compareVolumes(CBVi_allSF_avg_rs_reg .^ 0.5, am_rCBFspeed_rs_reg, 
 
 
 
-% Top view
+%% Top view
 % camPos = [100.7983 118.8956 -302.8276];
 % camTarget = [109.3857 129.9169 80.6888];
 % camUpVec = [-0.0092 0.7996 -0.6005];
 % cz = 1.4;
 
-% Side view
+%% Side view
 % camPos = [85.0166 -241.9843 159.0635];
 % camTarget = [114.5000 132.5000 80.5000];
 % camUpVec = [-0.0650 -0.7294 -0.6810];
@@ -52,7 +52,13 @@ camTarget = [114.5000 132.5000 80.5000];
 camUpVec = [-0.0772 -0.7490 -0.6580];
 cz = 1.7;
 
-% Set the camera properties
+%% General 3D view
+camPos = [156.1447 -246.0457 32.8956];
+camTarget = [110.6955 131.8398 82.0577];
+camUpVec = [0.0502 -0.4653 -0.8837];
+cz = 1.5;
+
+%% Set the camera properties
 v_rPDI.CameraZoom = cz;
 v_rCBV.CameraZoom = cz;
 v_rCBFspeed.CameraZoom = cz;
@@ -76,7 +82,9 @@ v_barrelfield.CameraZoom = cz;
 v_barrelfield.CameraPosition = camPos;
 v_barrelfield.CameraTarget = camTarget;
 v_barrelfield.CameraUpVector = camUpVec;
-
+%%
+% test = volumeMIP(CBFsi_allSF_avg_rs_reg, cmap, 0.1);
+test = volumeMIP(CBVi_allSF_avg_rs_reg .^ 0.5, hot, 0.1);
 %%
 function [viewerThresholded] = compareVolumes(vol1, vol2, varargin) % Can change this so it has a cell array input and goes through more than 2 volumes
 
@@ -126,7 +134,7 @@ function [viewerThresholded] = compareVolumes(vol1, vol2, varargin) % Can change
 
     volshow(vol1 .^ 1, 'Colormap', cmap1, ...
             Parent = viewerThresholded, ...
-            RenderingStyle = "VolumeRendering", ...
+            RenderingStyle = "MaximumIntensityProjection", ...
             SpecularReflectance = 0.8, ...
             Alphamap = ramp_alphamap);
             % Alphamap = "linear");   
@@ -158,4 +166,51 @@ function [viewerThresholded] = compareVolumes(vol1, vol2, varargin) % Can change
     % viewerThresholded.CameraPosition = [91.4553 -69.5688 -11.5372];
     % viewerThresholded.CameraTarget = [40.5000 40.5000 31];
     % viewerThresholded.CameraUpVector = [0.1305 -0.2423 -0.9614];
+end
+
+function [viewerThresholded] = volumeMIP(vol1, varargin) % Can change this so it has a cell array input and goes through more than 2 volumes
+
+    % Set default colormaps
+    cmap1 = colormap_ULM;
+
+    % Default shift factors
+    shift_factor1 = 0.1;
+    % shift_factor2 = 0.5;
+
+    if nargin > 1
+        cmap1 = varargin{1};
+        if nargin > 2
+            cmap2 = varargin{2};
+            if nargin > 3
+                shift_factor1 = varargin{3};
+            end
+        end
+    end
+
+    viewerThresholded = viewer3d(BackgroundColor = "white", ...
+                                 BackgroundGradient="off", ...
+                                 RenderingQuality = "high", ...
+                                 Denoising = "on", ...
+                                 SpatialUnits = "pixels", ...
+                                 Box = "on");
+
+    grid_alphamap = linspace(0, 1, 256)';
+    % shift_factor = 0.1;
+    % shift_factor1 = 0.4;
+    % ramp_alphamap = grid_alphamap - round(length(grid_alphamap) ./ 4);
+    ramp_alphamap = grid_alphamap - max(grid_alphamap) .* shift_factor1;
+    ramp_alphamap(ramp_alphamap < 0) = 0;
+
+    % normalize
+    max_factor1 = 1;
+    % max_factor1 = 0.8;
+    ramp_alphamap(ramp_alphamap > 0) = ramp_alphamap(ramp_alphamap > 0) ./ max(ramp_alphamap) .* max_factor1;
+
+    volshow(vol1 .^ 1, 'Colormap', cmap1, ...
+            Parent = viewerThresholded, ...
+            RenderingStyle = "MaximumIntensityProjection", ...
+            SpecularReflectance = 1, ...
+            Alphamap = ramp_alphamap);
+            % Alphamap = "linear");   
+
 end
