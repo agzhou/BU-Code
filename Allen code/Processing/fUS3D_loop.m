@@ -684,6 +684,15 @@ am_rCBFspeed_rs = imresize3(am_rCBFspeed, 'Scale', prereg_interp_factor, 'Method
 am_rPDI_rs = imresize3(am_rPDI, 'Scale', prereg_interp_factor, 'Method', 'cubic');
 
 save([savepath, 'fUS_activationmaps.mat'], 'am_rCBV_rs', 'am_rCBFspeed_rs', 'am_rPDI_rs', 'prereg_params')
+
+%% Look at the per-trial timecourses for a parameter
+[~, am_rCBV_max_ind] = max(am_rCBV, [], 'all');
+[i, j, k] = ind2sub(size(am_rCBV), ind);
+spaghettiPlotTrials(trial_rCBV_usi, [i, j, k])
+
+
+
+
 %% Look at a ROI (rPDI thresholded)
 numPtsUSI = P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_factor; % # of time points per trial for the upsampling
 % Calculate the timecourse from the average within that ROI
@@ -701,19 +710,6 @@ end
 figure; plot((1:length(roi_rPDI_TA)) .* interp_factor ./ P.daqrate, roi_rPDI_TA); xlabel('Time [s]'); ylabel('rPDI'); title("rPDI ROI timecourse")
 mmws = 30; % Movmean window size (in units of the trial interpolation rate)
 figure; plot((1:length(roi_rPDI_TA)) .* interp_factor ./ P.daqrate, smoothdata(roi_rPDI_TA, 'movmean', mmws)); xlabel('Time [s]'); ylabel('rPDI'); title("rPDI ROI timecourse, moving mean over " + num2str(mmws/length(roi_rPDI_TA) * P.Mcr_fcp.apis.seq_length_s) + "s")
-
-%% Plot activation at each slice
-for slice = 1:10
-    my_inds = (slice-1)*5:slice*5;
-    my_inds = my_inds+1;
-    figure; imagesc(squeeze(mean(test(my_inds, :, :), 1))')
-    title(num2str(mean(my_inds)))
-end
-
-kernel = ones(3, 3, 3);
-kernel(2, 2, 2) = 3;%sum(kernel, 'all');
-
-test_r_CBVi_relative_change_conv = convn(test_r_CBVi_relative_change, kernel, 'same');
 
 %% Helper functions
 
@@ -733,3 +729,12 @@ function [g1A_mask] = createg1mask(g1, g1_tau1_cutoff, tau1_index_CBF, tau2_inde
 
 end
 
+function spaghettiPlotTrials(trial_param_usi, point)
+    figure;
+    hold on
+    for ind = 1:length(trial_param_usi)
+        
+        plot(squeeze(trial_param_usi{ind}(point(1), point(2), point(3), :)), '-')
+    end
+    hold off
+end
