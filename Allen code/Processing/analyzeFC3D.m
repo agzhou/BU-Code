@@ -85,8 +85,6 @@ ST = loadStructureTree('structure_tree_safe_2017.csv'); % Structure tree: a tabl
 
 figure; imagesc(squeeze(AA(600, :, :))')
 
-
-
 %% Define which regions to look at
 % use the "index + 1" part of the table and combine subregions inf needed
 region_indices = {};
@@ -128,6 +126,14 @@ for rn = 1:num_regions % region number
 end
 
 clearvars region_mask_10um_temp rn
+
+%% Load the timing data
+[timingFilePathFN, timingFilePath] = uigetfile(['..\Timing data\TD.mat'], 'Select the timing data');
+timingFilePath = [timingFilePath, timingFilePathFN];
+load(timingFilePath)
+
+% %% Upsample/interpolate over time to match the timing data...
+% pupil_fr = 10; % Pupil data (behavioral camera) frame rate
 
 %% Apply the registration/warping to the ultrasound data
 
@@ -248,13 +254,6 @@ legend(region_acronyms)
 
 
 
-%% Load the timing data
-[timingFilePathFN, timingFilePath] = uigetfile(['..\Timing data\TD.mat'], 'Select the timing data');
-timingFilePath = [timingFilePath, timingFilePathFN];
-load(timingFilePath)
-
-% %% Upsample/interpolate over time to match the timing data...
-% pupil_fr = 10; % Pupil data (behavioral camera) frame rate
 
 %% Load pupil tracking video
 [pupilData] = readMP4;
@@ -274,6 +273,9 @@ xlabel('Time [s]')
 %% Define ROIs for the eye
 addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Processing\Pupil tracking')
 eyeROIs = defineEyeROIs(pupilData.frames(:, :, 1));
+
+
+
 
 %% Separate each trial
 ah = 3; % Approximate a cutoff value for analog high

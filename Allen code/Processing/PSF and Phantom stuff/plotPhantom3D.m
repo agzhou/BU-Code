@@ -3,7 +3,8 @@
 [xnumpix, ynumpix, znumpix] = size(I_coherent_sum);
 
 % mask to get rid of the top line thing
-zStart = 200;
+% zStart = 200;
+zStart = 1;
 zEnd = znumpix;
 imgMask = {1:ynumpix, 1:xnumpix, zStart:zEnd};
 img = I_coherent_sum(imgMask{1}, imgMask{2}, imgMask{3});
@@ -22,14 +23,29 @@ yz_img = squeeze(img(:, 41, :))';
 
 hwRatio = (P.endDepth - P.startDepth) / (P.Trans.spacing * P.numElements) * (zEnd-zStart + 1) / znumpix; % height to width ratio, idk if the adjustment works (1/12/25 change)
 
-%
+% xz
 xzFig = figure; imagesc(xz_img)
 title(strcat("xz plane - ", num2str(P.na), " angles from -", num2str(P.maxAngle), " to ", num2str(P.maxAngle), " deg"))
-xlabel('x pixels')
-ylabel('z pixels')
+% xlabel('x pixels')
+% ylabel('z pixels')
+xlabel('x [mm]')
+ylabel('Depth [mm]')
+fontsize(xzFig, 20, 'points')
 colorbar
 xzFig.Position(4) = ceil(xzFig.Position(3) * hwRatio);
 
+% Manually change the ticks...
+new_yticks = round([0, 5, 10, 15, 20] ./ 20 .* (znumpix - zStart + 1)); new_yticks(1) = 1;
+new_yticklabels = {'0', '5', '10', '15', '20'};
+yticks(new_yticks);
+yticklabels(new_yticklabels);
+
+new_xticks = round([0, 1, 2] ./ 2 .* (xnumpix)); new_xticks(1) = 1;
+new_xticklabels = {'-8.8', '0', '8.8'};
+xticks(new_xticks);
+xticklabels(new_xticklabels);
+
+% yz
 yzFig = figure; imagesc(yz_img)
 title(strcat("yz plane - ", num2str(P.na), " angles from -", num2str(P.maxAngle), " to ", num2str(P.maxAngle), " deg"))
 xlabel('y pixels')
