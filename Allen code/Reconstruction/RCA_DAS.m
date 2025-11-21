@@ -14,8 +14,8 @@ function [IQ] = RCA_DAS(RcvData, P, ypix_spacing, xpix_spacing, zpix_spacing)
     
     
     %%
-    useGain = 1;
-    % Currently it's set to use the element sensitivity as a weight
+    useGain = false; % Do not do any gain adjustment
+%     useGain = true; % Set to use the element sensitivity as a weight
     
     %% potential to do/issues
     
