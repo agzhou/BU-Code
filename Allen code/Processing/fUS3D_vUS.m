@@ -147,8 +147,8 @@ for filenum = 1
     disp('SVD filtered images put together')
 
     % Apply the HPF to the post-SVD clutter filtered data
-    dim = length(size(IQf)); % Operate on the time dimension
-    IQf_HPF = filter(HPF.b, HPF.a, IQf, [], dim);
+    HPF.dim = length(size(IQf)); % Operate on the time dimension
+    IQf_HPF = filter(HPF.b, HPF.a, IQf, [], HPF.dim);
 
 %     volumeViewer(abs(IQf(:, :, :, 1)))
 %     figure; imagesc(squeeze(abs(max(IQf(:, :, :, 1), [], 1)))')
@@ -156,7 +156,12 @@ for filenum = 1
 
     % Use the IQf with separated negative and positive frequency components
     [IQf_HPF_separated, IQf_HPF_FT_separated] = separatePosNegFreqs(IQf_HPF);
-    
+
+    % Test: plot the frequency spectra for each at some point
+    for ind = 1:3
+        figure; plot(squeeze(abs(IQf_HPF_FT_separated{ind}(40, 56, 9, :))))
+    end
+
 %     g1_n = g1T(IQf_separated{1}, numg1pts);
 % %     [CBFsi_n, CBVi_n] = g1_to_CBi(g1_n, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 %     g1_p = g1T(IQf_separated{2}, numg1pts);
