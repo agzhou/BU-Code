@@ -131,16 +131,16 @@ for filenum = 1
     toc
     disp('SVs decomposed')
 
-    % Plot one SVD subspace as an image
-    subspace = 20;
-    subspace_img = reshape(U(:, subspace) * SVs(subspace) * V(:, subspace)', [xp, yp, zp, nf]);
-    figure; imagesc(squeeze(max(abs(subspace_img(:, :, :, 2)), [], 1))')
-%     volumeViewer(abs(subspace_img(:, :, :, 2)))
-
-    SSM = plotSSM(U, false);
-%     SSM = plotSSM(U, true);
-    [~, a_opt, b_opt] = fitSSM(SSM, false); % Get the optimal singular value thresholds
-%     [~, a_opt, b_opt] = fitSSM(SSM, true); % Get the optimal singular value thresholds
+%     % Plot one SVD subspace as an image
+%     subspace = 20;
+%     subspace_img = reshape(U(:, subspace) * SVs(subspace) * V(:, subspace)', [xp, yp, zp, nf]);
+%     figure; imagesc(squeeze(max(abs(subspace_img(:, :, :, 2)), [], 1))')
+% %     volumeViewer(abs(subspace_img(:, :, :, 2)))
+% 
+%     SSM = plotSSM(U, false);
+% %     SSM = plotSSM(U, true);
+%     [~, a_opt, b_opt] = fitSSM(SSM, false); % Get the optimal singular value thresholds
+% %     [~, a_opt, b_opt] = fitSSM(SSM, true); % Get the optimal singular value thresholds
 
     [IQf, noise] = applySVs2D(IQm, PP, SVs, V, sv_threshold_lower, sv_threshold_upper);
 %     [IQf, noise] = applySVs2D(IQm, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
@@ -158,32 +158,37 @@ for filenum = 1
     [IQf_HPF_separated, IQf_HPF_FT_separated] = separatePosNegFreqs(IQf_HPF);
 
     % Test: plot the frequency spectra for each at some point
-    for ind = 1:3
-        figure; plot(squeeze(abs(IQf_HPF_FT_separated{ind}(40, 56, 9, :))))
-    end
+%     for ind = 1:3
+%         figure; plot(squeeze(abs(IQf_HPF_FT_separated{ind}(40, 56, 9, :))))
+%     end
 
 %     g1_n = g1T(IQf_separated{1}, numg1pts);
 % %     [CBFsi_n, CBVi_n] = g1_to_CBi(g1_n, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 %     g1_p = g1T(IQf_separated{2}, numg1pts);
 %     [CBFsi_p, CBVi_p] = g1_to_CBi(g1_p, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 
-    % Calculate g1T
+    % Calculate frequency/direction-separated g1T
+    g1 = cell(3, 1);
     for ind = 1:3
         g1{ind} = g1T(IQf_HPF_separated{ind}, numg1pts);
     end
 
-    % Calculate PDI
+    % Calculate frequency/direction-separated PDI and CDI
     [PDI] = calcPowerDoppler(IQf_HPF_separated, noise);
-%     [CDI] = calcColorDoppler(IQf_FT_separated, P);
+    [CDI] = calcColorDoppler(IQf_HPF_FT_separated, P);
 
-%     figure; imagesc(squeeze(max(PDI, [], 1))' .^ 0.5); colormap hot
-    figure; imagesc(squeeze(max(PDI{1}, [], 1))' .^ 0.5); colormap hot
-    figure; imagesc(squeeze(max(PDI{2}, [], 1))' .^ 0.5); colormap hot
-    figure; imagesc(squeeze(max(PDI{3}, [], 1))' .^ 0.5); colormap hot
+%     for ind = 1:3
+%         figure; imagesc(squeeze(max(PDI{ind}, [], 1))' .^ 0.5); colormap hot
+%     end
+% 
+%     for ind = 1:3
+%         figure; imagesc(squeeze(max(CDI{ind}, [], 1))'); colormap jet
+%     end
+
 %     figure; imagesc(squeeze(max(PDI ./ noise, [], 1))' .^ 0.5); colormap hot
 %     volumeViewer(PDI)
 
-    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'PDI', 'noise', '-v7.3');
+    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1', 'PDI', 'CDI', 'noise', '-v7.3');
 %     save([savepath, 'g1-', num2str(filenum), '.mat'], 'g1', 'g1_n', 'g1_p', '-v7.3', '-nocompression');
 %     save([savepath, 'g1-', num2str(filenum), '.mat'], 'g1', '-v7.3', '-nocompression');
 
@@ -192,6 +197,20 @@ for filenum = 1
     toc
     
 end
+
+%% vUS fitting
+% for filenum = startFile:endFile
+% for filenum = 1
+%     load([savepath, 'fUSdata-', num2str(filenum)], 'g1') % Load the saved g1 mat files
+
+    vUSparams.F = squeeze(abs(g1{3}(:, :, :, 1))); % Set initial guess for F = F0
+%     [M, I] = min( squeeze(abs(g1{3})), [], 4 );
+    TF = islocalmin( squeeze(abs(g1{3})), 4);
+    I = find( TF, 1, "first" );
+    tau_V 
+    vUSparams.v_zgp = P.wl ./ (4 .* tau_V);
+    R = calcR(g1{3}, tau, F, v_xgp, v_ygp, v_zgp, sigma, p0, k0);
+% end
 
 %% Convert g1 into CBV, CBFspeed, etc.
 
