@@ -199,11 +199,22 @@ for filenum = 1
 end
 
 %% vUS fitting
+g1s = size(g1{3});
 % for filenum = startFile:endFile
 % for filenum = 1
 %     load([savepath, 'fUSdata-', num2str(filenum)], 'g1') % Load the saved g1 mat files
 
-    vUSparams.F = squeeze(abs(g1{3}(:, :, :, 1))); % Set initial guess for F = F0
+%     vUSparams.F = squeeze(abs(g1{3}(:, :, :, 1))); % Set initial guess for F = F0
+% %     [M, I] = min( squeeze(abs(g1{3})), [], 4 );
+%     TF = islocalmin( squeeze(abs(g1{3})), 4);
+%     I = find( TF, 1, "first" );
+%     tau_V 
+%     vUSparams.v_zgp = P.wl ./ (4 .* tau_V);
+%     R = calcR(g1{3}, tau, F, v_xgp, v_ygp, v_zgp, sigma, p0, k0);
+
+    % ---- Vectorize g1 first ----
+    g1v = reshape(g1{3}, g1s(1) * g1s(2) * g1s(3), g1s(4)); % Vectorize the spatial dimensions of g1
+    vUSparams.F = squeeze(abs(g1v(:, 2))); % Set initial guess for F = F0 using tau = tau1
 %     [M, I] = min( squeeze(abs(g1{3})), [], 4 );
     TF = islocalmin( squeeze(abs(g1{3})), 4);
     I = find( TF, 1, "first" );
