@@ -8,6 +8,8 @@ SP.frameRate = 2500; % Frame rate [Hz]
 % vesselY = 100e-6;    % y dimension
 % vesselZ = endDepthMM/1e3;  % z dimension
 SP.scatterReflectivity = 1.0;
+SP.sigma = [200e-6, 200e-6, 100e-6]; %%%% PSF testing %%%%
+
 
 SP.vesselDiam = 100e-6; % Vessel diameter [m]
 SP.vesselLength = SP.endDepthMM/1e3;  % Vessel length [m]
@@ -36,4 +38,35 @@ SP.flow_dim = 3
 new_cyl_vessel = movePoints(cyl_vessel, SP);
 figure; scatter3(new_cyl_vessel(:, 1), new_cyl_vessel(:, 2), new_cyl_vessel(:, 3), '.'); axis square
 
-%%
+%% Define a voxel
+voxel.center = [0, 0, 0]; % Center coords of the voxel
+voxel.size = [100e-6, 100e-6, 100e-6]; % Define x, y, z dimensions of the voxel
+
+% Define time steps
+SP.numFrames = 100;
+
+% Get all the data within the voxel at frame 1
+voxel.data = getDataInVoxel(cyl_vessel, voxel); % Note: voxel.data for now is just a container that is always changing
+voxel.sIQ(1) = voxel_sIQ(voxel, SP);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%% need to add noise to the sIQ %%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+new_cyl_vessel = movePoints(cyl_vessel, SP);
+% Go through each frame, moving the points, and update the voxel data/sIQ
+for fi = 2:SP.numFrames
+    voxel.data = getDataInVoxel(new_cyl_vessel, voxel);
+    voxel.sIQ(fi) = voxel_sIQ(voxel, SP);
+
+    new_cyl_vessel = movePoints(new_cyl_vessel, SP);
+end
+
+%% Plot for testing
+figure; plot(abs(voxel.sIQ))
+voxel.g1 = sim_g1T(voxel.sIQ);
+figure; plot(abs(voxel.g1))
+% figure; scatter3(voxel.data(:, 1), voxel.data(:, 2), voxel.data(:, 3), '.'); axis square
+
+
+%%%% something is wrong with moving the points - there are many being added
+%%%% over time, but the total # should be more or less constant

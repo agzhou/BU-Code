@@ -17,7 +17,7 @@ function [pts, SP] = genRandomPts3D_cyl(SP)
     SP.cellDensity = 1 / 100 / 1e-18; % 1/(100 um^3) from Bingxue's paper
 %     cellDensity = 1 / 1e-12; %%%%%%%%%%%% test %%%%%%%%%%%%
     % cellDensity = 1 / 1e-15; %%%%%%%%%%%% test %%%%%%%%%%%%
-    numCells = uint16(SP.vesselWidth * SP.vesselWidth * SP.vesselLength * SP.cellDensity)
+    numCells = uint16(SP.vesselWidth * SP.vesselWidth * SP.vesselLength * SP.cellDensity);
     
     % MIGHT want randn so the distribution of cells is in the Gaussian profile?
     xr = rand([1, numCells])';
