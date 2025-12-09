@@ -28,8 +28,8 @@ plotPoints(cyl_vessel, SP)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 SP.dim = 3;
 
-% SP.flow_v_mm_s = 30;
-SP.flow_v_mm_s = 125;
+SP.flow_v_mm_s = 30;
+% SP.flow_v_mm_s = 125;
 SP.flow_dim = 3; %%%%%%%%
 % new_cyl_vessel = movePoints(cyl_vessel, dim, flow_v_mm_s, frameRate, vesselDiam, startDepthMM, endDepthMM, xstart, ystart, zstart);
 [test_new_cyl_vessel, test_SP] = movePoints(cyl_vessel, SP);
@@ -40,7 +40,7 @@ voxel.center = [0, 0, 0]; % Center coords of the voxel
 voxel.size = [100e-6, 100e-6, 100e-6]; % Define x, y, z dimensions of the voxel
 
 % Define time steps
-SP.numFrames = 100;
+SP.numFrames = 1000;
 
 % Get all the data within the voxel at frame 1
 voxel.data = getDataInVoxel(cyl_vessel, voxel); % Note: voxel.data for now is just a container that is always changing
@@ -59,13 +59,36 @@ for fi = 2:SP.numFrames
 end
 
 %% Plot for testing
+tau = 0:1/SP.frameRate:(SP.numFrames-1)/SP.frameRate;
+
 plotPoints(new_cyl_vessel, SP)
-figure; plot(abs(voxel.sIQ))
+figure; plot(tau, abs(voxel.sIQ))
 voxel.g1 = sim_g1T(voxel.sIQ);
-figure; plot(abs(voxel.g1))
+figure; plot(tau, abs(voxel.g1))
 figure; plot(real(voxel.g1), imag(voxel.g1), '-o')
 % figure; scatter3(voxel.data(:, 1), voxel.data(:, 2), voxel.data(:, 3), '.'); axis square
 
 
-%%%% something is wrong with moving the points - there are many being added
-%%%% over time, but the total # should be more or less constant
+
+% test = autocorr(abs(voxel.sIQ));
+% test = sim_g1T(abs(voxel.sIQ));
+% figure; plot(abs(test))
+test = autocorr(abs(voxel.g1), NumLags=length(voxel.g1)-1);
+figure; plot(tau.*1e3, test, '-o'); xlabel('Tau [ms]')
+
+
+% %% Test
+% t = 0:0.1:2*pi * 4;
+% y1 = sin(t);
+% % y2 = cos(t);
+% figure;
+% hold on
+% plot(t, y1, t, y2);
+% 
+% 
+% % y1 = ones(size(t));
+% 
+% test = sim_g1T(y1);
+% % plot(t, test)
+% plot(test)
+% hold off

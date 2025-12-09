@@ -45,35 +45,3 @@ function [g1] = sim_g1T(data, varargin)
 
 %     disp(strcat("Temporal g_{1} processing done, elapsed time is ", num2str(etime(tend, tstart)), "s"))
 end
-
-% function [g1] = g1T(data)
-%     tstart = clock;
-%     frameDim = length(size(data)); % Usually the frame dimension is the last dimension. 3 for 2D data and 4 for 3D data.
-%     nf = size(data, frameDim); % # of frames
-%     dataSize = size(data);
-% 
-%     g1 = zeros(dataSize); % g1 is calculated for each spatial dimension and tau step
-%                                 % e.g., in 3D: (x, y, z, tau step)
-%     numer = zeros(dataSize);
-%     denom = mean((conj(data) .* data), frameDim); % temporal (frame) average
-%     switch frameDim
-%         case 2 % 1D
-%             for f = 1:nf % go through each subframe to get the g1 at each tau step
-%                 numer = mean(conj(data(:, 1:(nf - f + 1))) .* data(:, f:end), frameDim);
-%                 g1(:, f) = numer ./ denom;
-%             end
-%         case 3 % 2D
-%             for f = 1:nf % go through each subframe to get the g1 at each tau step
-%                 numer = mean(conj(data(:, :, 1:(nf - f + 1))) .* data(:, :, f:end), frameDim);
-%                 g1(:, :, f) = numer ./ denom;
-%             end
-%         case 4 % 3D
-%             for f = 1:nf % go through each subframe to get the g1 at each tau step
-%                 numer = mean(conj(data(:, :, :, 1:(nf - f + 1))) .* data(:, :, :, f:end), frameDim);
-%                 g1(:, :, :, f) = numer ./ denom;
-%             end
-%     end
-% 
-%     tend = clock;
-%     disp(strcat("Temporal g_{1} processing done, elapsed time is ", num2str(etime(tend, tstart)), "s"))
-% end
