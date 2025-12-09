@@ -1,6 +1,6 @@
 clearvars
 %% Define Simulation Parameter struct
-SP.endDepthMM = 5; % End depth [mm]
+SP.endDepthMM = 1; % End depth [mm]
 SP.startDepthMM = 0; % Start depth [mm]
 SP.wl = 1540 ./ 13.8889 ./ 1e6; % Wavelength [m]
 SP.frameRate = 2500; % Frame rate [Hz]
@@ -10,6 +10,7 @@ SP.frameRate = 2500; % Frame rate [Hz]
 SP.scatterReflectivity = 1.0;
 SP.sigma = [300e-6, 300e-6, 150e-6]; %%%% PSF testing %%%%
 
+SP.snr = 5; % Choose the SNR for the data vs. Gaussian white noise (5 is what Bingxue used)
 
 % SP.vesselDiam = 50e-6; % Vessel diameter [m]
 SP.vesselDiam = 100e-6; % Vessel diameter [m]
@@ -48,11 +49,9 @@ SP.numFrames = 100;
 % Get all the data within the voxel at frame 1
 voxel.data = getDataInVoxel(cyl_vessel, voxel); % Note: voxel.data for now is just a container that is always changing
 voxel.sIQ(1) = voxel_sIQ(voxel, SP);
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%% need to add noise to the sIQ %%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 new_cyl_vessel = movePoints(cyl_vessel, SP);
+
 % Go through each frame, moving the points, and update the voxel data/sIQ
 for fi = 2:SP.numFrames
     voxel.data = getDataInVoxel(new_cyl_vessel, voxel);
@@ -70,22 +69,24 @@ tau = 0:1/SP.frameRate:(SP.numFrames-1)/SP.frameRate;
 % plotPoints(new_cyl_vessel, SP)
 figure; plot(tau, abs(voxel.sIQ))
 voxel.g1 = sim_g1T(voxel.sIQ);
-figure; plot(tau, abs(voxel.g1))
+% voxel.g1 = sim_g1T(voxel.sIQ - mean(voxel.sIQ));
+figure; plot(tau .* 1e3, abs(voxel.g1)); xlabel('tau [ms]'); ylabel("|g_1|")
 figure; plot(real(voxel.g1), imag(voxel.g1), '-o')
 % figure; scatter3(voxel.data(:, 1), voxel.data(:, 2), voxel.data(:, 3), '.'); axis square
 
 
-
-% test = autocorr(abs(voxel.sIQ));
-% test = sim_g1T(abs(voxel.sIQ));
-% figure; plot(abs(test))
 test = autocorr(abs(voxel.g1), NumLags=length(voxel.g1)-1);
 figure; plot(tau.*1e3, test, '-o'); xlabel('Tau [ms]'); title("autocorr test")
+% figure; plot(tau.*1e3, abs(test), '-o'); xlabel('Tau [ms]'); title("autocorr test")
 
+%% FFT test
+% F = fftshift(fft(voxel.sIQ));
+% f = linspace(-SP.frameRate/2, SP.frameRate/2, length(F));
+% figure; plot(f, abs(F)); xlabel('f [Hz]')
 
 %% Test
-% t = 0:0.1:2*pi * 4;
-% y1 = sin(t);
+% t = 0:0.1:2*pi * 10;
+% y1 = 5.*sin(t);
 % % y2 = cos(t);
 % figure;
 % hold on

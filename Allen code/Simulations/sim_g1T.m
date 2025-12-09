@@ -39,6 +39,11 @@ function [g1] = sim_g1T(data, varargin)
                 % hold on
                 % plot(abs(data(:, f:end)))
                 % hold off
+
+                % test3 = abs(conj(data(:, 1:(nf - f + 1))));
+                % test4 = abs(data(:, f:end));
+                % figure; plot(test3); hold on; plot(test4); hold off
+                % corrcoef(test3, test4)
             end
         case 3 % 2D
             for f = 1:np % go through each frame to get the g1 at each tau step
