@@ -24,7 +24,7 @@ function [g1] = g1T(data, varargin)
 
     g1 = zeros(dataSize); % g1 is calculated for each spatial dimension and tau step
                                 % e.g., in 3D: (x, y, z, tau step)
-    numer = zeros(dataSize);
+    % numer = zeros(dataSize);
     denom = mean((conj(data) .* data), frameDim); % temporal (frame) average
     switch frameDim
         case 2 % 1D

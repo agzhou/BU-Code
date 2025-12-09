@@ -24,7 +24,7 @@ SP.zstart = 0;
 % Get points in a cylindrical "vessel"
 % cyl_vessel = genRandomPts3D_cyl(vesselDiam, vesselLength, startDepthMM/1e3, xstart, ystart, zstart);
 [cyl_vessel, SP] = genRandomPts3D_cyl(SP);
-plotPoints(cyl_vessel, SP)
+% plotPoints(cyl_vessel, SP)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Define a rotation matrix for final manipulation %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -35,14 +35,15 @@ SP.flow_v_mm_s = 30;
 SP.flow_dim = 3; %%%%%%%%
 % new_cyl_vessel = movePoints(cyl_vessel, dim, flow_v_mm_s, frameRate, vesselDiam, startDepthMM, endDepthMM, xstart, ystart, zstart);
 [test_new_cyl_vessel, test_SP] = movePoints(cyl_vessel, SP);
-plotPoints(test_new_cyl_vessel, test_SP)
+% plotPoints(test_new_cyl_vessel, test_SP)
 
 %% Define a voxel
 voxel.center = [0, 0, 0]; % Center coords of the voxel
 voxel.size = [100e-6, 100e-6, 100e-6]; % Define x, y, z dimensions of the voxel
 
 % Define time steps
-SP.numFrames = 50;
+% SP.numFrames = 50;
+SP.numFrames = 100;
 
 % Get all the data within the voxel at frame 1
 voxel.data = getDataInVoxel(cyl_vessel, voxel); % Note: voxel.data for now is just a container that is always changing
@@ -58,7 +59,7 @@ for fi = 2:SP.numFrames
     voxel.sIQ(fi) = voxel_sIQ(voxel, SP);
 
     % plotPoints(voxel.data, SP)
-    plotPoints(new_cyl_vessel, SP)
+    % plotPoints(new_cyl_vessel, SP)
 
     [new_cyl_vessel, SP] = movePoints(new_cyl_vessel, SP); % Update points after moving
 end
@@ -66,7 +67,7 @@ end
 %% Plot for testing
 tau = 0:1/SP.frameRate:(SP.numFrames-1)/SP.frameRate;
 
-plotPoints(new_cyl_vessel, SP)
+% plotPoints(new_cyl_vessel, SP)
 figure; plot(tau, abs(voxel.sIQ))
 voxel.g1 = sim_g1T(voxel.sIQ);
 figure; plot(tau, abs(voxel.g1))
@@ -79,7 +80,7 @@ figure; plot(real(voxel.g1), imag(voxel.g1), '-o')
 % test = sim_g1T(abs(voxel.sIQ));
 % figure; plot(abs(test))
 test = autocorr(abs(voxel.g1), NumLags=length(voxel.g1)-1);
-figure; plot(tau.*1e3, test, '-o'); xlabel('Tau [ms]')
+figure; plot(tau.*1e3, test, '-o'); xlabel('Tau [ms]'); title("autocorr test")
 
 
 %% Test
