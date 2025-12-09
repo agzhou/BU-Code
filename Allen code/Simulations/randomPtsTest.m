@@ -25,17 +25,18 @@ SP.zstart = 0;
 % Get points in a cylindrical "vessel"
 % cyl_vessel = genRandomPts3D_cyl(vesselDiam, vesselLength, startDepthMM/1e3, xstart, ystart, zstart);
 [cyl_vessel, SP] = genRandomPts3D_cyl(SP);
-% plotPoints(cyl_vessel, SP)
+plotPoints(cyl_vessel, SP)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Define a rotation matrix for final manipulation %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 SP.dim = 3;
 
-SP.flow_v_mm_s = 30;
+% SP.flow_v_mm_s = 30;
 % SP.flow_v_mm_s = 125;
+SP.flow_v_mm_s = 1250;
 SP.flow_dim = 3; %%%%%%%%
 % new_cyl_vessel = movePoints(cyl_vessel, dim, flow_v_mm_s, frameRate, vesselDiam, startDepthMM, endDepthMM, xstart, ystart, zstart);
-[test_new_cyl_vessel, test_SP] = movePoints(cyl_vessel, SP);
+% [test_new_cyl_vessel, test_SP] = movePoints(cyl_vessel, SP);
 % plotPoints(test_new_cyl_vessel, test_SP)
 
 %% Define a voxel
@@ -50,7 +51,8 @@ SP.numFrames = 100;
 voxel.data = getDataInVoxel(cyl_vessel, voxel); % Note: voxel.data for now is just a container that is always changing
 voxel.sIQ(1) = voxel_sIQ(voxel, SP);
 
-new_cyl_vessel = movePoints(cyl_vessel, SP);
+[new_cyl_vessel, SP] = movePoints(cyl_vessel, SP);
+plotPoints(new_cyl_vessel, SP)
 
 % Go through each frame, moving the points, and update the voxel data/sIQ
 for fi = 2:SP.numFrames
@@ -80,26 +82,26 @@ figure; plot(tau.*1e3, test, '-o'); xlabel('Tau [ms]'); title("autocorr test")
 % figure; plot(tau.*1e3, abs(test), '-o'); xlabel('Tau [ms]'); title("autocorr test")
 
 %% FFT test
-% F = fftshift(fft(voxel.sIQ));
-% f = linspace(-SP.frameRate/2, SP.frameRate/2, length(F));
-% figure; plot(f, abs(F)); xlabel('f [Hz]')
+F = fftshift(fft(voxel.sIQ));
+f = linspace(-SP.frameRate/2, SP.frameRate/2, length(F));
+figure; plot(f, abs(F)); xlabel('f [Hz]')
 
 %% Test
-% t = 0:0.1:2*pi * 10;
-% y1 = 5.*sin(t);
-% % y2 = cos(t);
-% figure;
-% hold on
-% % plot(t, y1, t, y2);
-% % plot(t, y1);
-% plot(y1);
-% 
-% 
-% % y1 = ones(size(t));
-% 
-% test = sim_g1T(y1);
-% autocorr_test = autocorr(y1, "NumLags", length(y1) - 1);
-% % plot(t, test)
-% plot(test)
+t = 0:0.1:2*pi * 10;
+y1 = 5.*sin(t);
+% y2 = cos(t);
+figure;
+hold on
+% plot(t, y1, t, y2);
+% plot(t, y1);
+plot(y1);
+
+
+% y1 = ones(size(t));
+
+test = sim_g1T(y1);
+autocorr_test = autocorr(y1, "NumLags", length(y1) - 1);
+% plot(t, test)
+plot(test)
 % plot(autocorr_test)
-% hold off
+hold off
