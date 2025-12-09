@@ -1,6 +1,6 @@
 clearvars
 %% Define Simulation Parameter struct
-SP.endDepthMM = 1; % End depth [mm]
+SP.endDepthMM = 5; % End depth [mm]
 SP.startDepthMM = 0; % Start depth [mm]
 SP.wl = 1540 ./ 13.8889 ./ 1e6; % Wavelength [m]
 SP.frameRate = 2500; % Frame rate [Hz]
@@ -11,7 +11,9 @@ SP.scatterReflectivity = 1.0;
 SP.sigma = [300e-6, 300e-6, 150e-6]; %%%% PSF testing %%%%
 
 
-SP.vesselDiam = 50e-6; % Vessel diameter [m]
+% SP.vesselDiam = 50e-6; % Vessel diameter [m]
+SP.vesselDiam = 100e-6; % Vessel diameter [m]
+
 SP.vesselLength = (SP.endDepthMM - SP.startDepthMM)/1e3;  % Vessel length [m]
 
 % Define the center of the vessel  
@@ -40,7 +42,7 @@ voxel.center = [0, 0, 0]; % Center coords of the voxel
 voxel.size = [100e-6, 100e-6, 100e-6]; % Define x, y, z dimensions of the voxel
 
 % Define time steps
-SP.numFrames = 1000;
+SP.numFrames = 50;
 
 % Get all the data within the voxel at frame 1
 voxel.data = getDataInVoxel(cyl_vessel, voxel); % Note: voxel.data for now is just a container that is always changing
@@ -55,7 +57,10 @@ for fi = 2:SP.numFrames
     voxel.data = getDataInVoxel(new_cyl_vessel, voxel);
     voxel.sIQ(fi) = voxel_sIQ(voxel, SP);
 
-    [new_cyl_vessel, SP] = movePoints(new_cyl_vessel, SP);
+    % plotPoints(voxel.data, SP)
+    plotPoints(new_cyl_vessel, SP)
+
+    [new_cyl_vessel, SP] = movePoints(new_cyl_vessel, SP); % Update points after moving
 end
 
 %% Plot for testing
@@ -77,18 +82,22 @@ test = autocorr(abs(voxel.g1), NumLags=length(voxel.g1)-1);
 figure; plot(tau.*1e3, test, '-o'); xlabel('Tau [ms]')
 
 
-% %% Test
+%% Test
 % t = 0:0.1:2*pi * 4;
 % y1 = sin(t);
 % % y2 = cos(t);
 % figure;
 % hold on
-% plot(t, y1, t, y2);
+% % plot(t, y1, t, y2);
+% % plot(t, y1);
+% plot(y1);
 % 
 % 
 % % y1 = ones(size(t));
 % 
 % test = sim_g1T(y1);
+% autocorr_test = autocorr(y1, "NumLags", length(y1) - 1);
 % % plot(t, test)
 % plot(test)
+% plot(autocorr_test)
 % hold off

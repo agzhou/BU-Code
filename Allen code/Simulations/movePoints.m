@@ -4,6 +4,7 @@
 %   frameRate: frame rate
 % function newPts = movePoints(pts, dim, flow_v_mm_s, frameRate, vesselDiam, startDepthMM, endDepthMM, xstart, ystart, zstart)
 function [newPts, SP] = movePoints(pts, SP)
+
     SP.dist_per_frame_mm = SP.flow_v_mm_s/SP.frameRate; % move v mm/s, which is (v/fps_target) mm / frame
     SP.dist_per_frame_m = SP.dist_per_frame_mm/1e3;
     
@@ -32,6 +33,7 @@ function [newPts, SP] = movePoints(pts, SP)
     RP = SP;
     % RP.vesselLength = max(temp_pts(:, SP.dim)) - SP.bound(SP.dim); % Get the approximate width of points that need replacing
     RP.vesselLength = SP.dist_per_frame_m;
+    
     which_dims_need_extra_shift = zeros(3, 1);
     which_dims_need_extra_shift(SP.dim) = 1;
 
@@ -43,7 +45,7 @@ function [newPts, SP] = movePoints(pts, SP)
     % [replacePoints, ~] = genRandomPts3D_cyl(replaceDiam, replaceLength, startDepthMM/1e3, xstart, ystart, zstart);
     [replacePoints, ~] = genRandomPts3D_cyl(RP);
     
-    % figure; scatter3(replacePoints(:, 1), replacePoints(:, 2), replacePoints(:, 3))
+    % figure; scatter3(replacePoints(:, 1), replacePoints(:, 2), replacePoints(:, 3), '.'); axis square
     
     newPts = [replacePoints; temp_pts(~mask_past_boundary, :)];
     % figure; scatter3(newPts(:, 1), newPts(:, 2), newPts(:, 3), '.'); axis square
