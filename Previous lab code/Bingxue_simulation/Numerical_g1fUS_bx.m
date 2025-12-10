@@ -21,7 +21,7 @@ function [IQ, FIQ, g1,Numer, tCoor, fCoor, tauCoor, Noise, nparticle] = Numerica
 pixsize = 0.1; % in um
 f0=15e6; % center frequency, Hz
 C=1540; % sound speed, m/s
-k0=2*pi*f0/C/1; 
+k0=2*pi*f0/C/1;
 z0=0e-6;  x0= 0e-6;  y0=0;
 A_FWHM=[110 300 85]*1*1e-6; % [x,y,z]spatial resolution, FWHM, m 110 [110 300 85]
 % Sigma=R_FWHM/(2*sqrt(2*log(2)));

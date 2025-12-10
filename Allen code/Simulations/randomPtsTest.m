@@ -2,7 +2,9 @@ clearvars
 %% Define Simulation Parameter struct
 SP.endDepthMM = 1; % End depth [mm]
 SP.startDepthMM = 0; % Start depth [mm]
-SP.wl = 1540 ./ 13.8889 ./ 1e6; % Wavelength [m]
+SP.c = 1540; % Speed of sound [m/s]
+SP.f = 13.8889 * 1e6; % Ultrasound frequency [Hz]
+SP.wl = SP.c / SP.f; % Wavelength [m]
 SP.frameRate = 2500; % Frame rate [Hz]
 % vesselX = 100e-6;    % x dimension
 % vesselY = 100e-6;    % y dimension
@@ -10,7 +12,7 @@ SP.frameRate = 2500; % Frame rate [Hz]
 SP.scatterReflectivity = 1.0;
 SP.sigma = [300e-6, 300e-6, 150e-6]; %%%% PSF testing %%%%
 
-SP.snr = 5; % Choose the SNR for the data vs. Gaussian white noise (5 is what Bingxue used)
+SP.snr = 50; % Choose the SNR for the data vs. Gaussian white noise (5 is what Bingxue used)
 
 % SP.vesselDiam = 50e-6; % Vessel diameter [m]
 SP.vesselDiam = 100e-6; % Vessel diameter [m]
@@ -31,9 +33,9 @@ plotPoints(cyl_vessel, SP)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 SP.dim = 3;
 
-% SP.flow_v_mm_s = 30;
+SP.flow_v_mm_s = 30;
 % SP.flow_v_mm_s = 125;
-SP.flow_v_mm_s = 1250;
+% SP.flow_v_mm_s = 1250;
 SP.flow_dim = 3; %%%%%%%%
 % new_cyl_vessel = movePoints(cyl_vessel, dim, flow_v_mm_s, frameRate, vesselDiam, startDepthMM, endDepthMM, xstart, ystart, zstart);
 % [test_new_cyl_vessel, test_SP] = movePoints(cyl_vessel, SP);
@@ -45,7 +47,7 @@ voxel.size = [100e-6, 100e-6, 100e-6]; % Define x, y, z dimensions of the voxel
 
 % Define time steps
 % SP.numFrames = 50;
-SP.numFrames = 100;
+SP.numFrames = 1000;
 
 % Get all the data within the voxel at frame 1
 voxel.data = getDataInVoxel(cyl_vessel, voxel); % Note: voxel.data for now is just a container that is always changing
@@ -58,18 +60,26 @@ plotPoints(new_cyl_vessel, SP)
 for fi = 2:SP.numFrames
     voxel.data = getDataInVoxel(new_cyl_vessel, voxel);
     voxel.sIQ(fi) = voxel_sIQ(voxel, SP);
+    % temp_sIQ = voxel_sIQ(voxel, SP);
+    % voxel.sIQ(fi) = temp_sIQ - mean(temp_sIQ);
+    % voxel.sIQ(fi) = temp_sIQ;
 
     % plotPoints(voxel.data, SP)
     % plotPoints(new_cyl_vessel, SP)
 
     [new_cyl_vessel, SP] = movePoints(new_cyl_vessel, SP); % Update points after moving
 end
+clearvars fi temp_sIQ
+voxel.sIQ = voxel.sIQ - mean(voxel.sIQ); % ZERO MEAN THE sIQ
 
 %% Plot for testing
 tau = 0:1/SP.frameRate:(SP.numFrames-1)/SP.frameRate;
 
 % plotPoints(new_cyl_vessel, SP)
-figure; plot(tau, abs(voxel.sIQ))
+% figure; plot(tau, abs(voxel.sIQ))
+% figure; plot(tau, abs(voxel.sIQ - mean(voxel.sIQ)))
+% figure; plot(tau, real(voxel.sIQ - mean(voxel.sIQ)))
+% figure; plot(tau, imag(voxel.sIQ - mean(voxel.sIQ)))
 voxel.g1 = sim_g1T(voxel.sIQ);
 % voxel.g1 = sim_g1T(voxel.sIQ - mean(voxel.sIQ));
 figure; plot(tau .* 1e3, abs(voxel.g1)); xlabel('tau [ms]'); ylabel("|g_1|")
@@ -81,27 +91,32 @@ test = autocorr(abs(voxel.g1), NumLags=length(voxel.g1)-1);
 figure; plot(tau.*1e3, test, '-o'); xlabel('Tau [ms]'); title("autocorr test")
 % figure; plot(tau.*1e3, abs(test), '-o'); xlabel('Tau [ms]'); title("autocorr test")
 
-%% FFT test
+%% FFT to visualize the flow speed's effect
+fD = -2 * SP.f * (SP.flow_v_mm_s/1e3)/SP.c;
 F = fftshift(fft(voxel.sIQ));
 f = linspace(-SP.frameRate/2, SP.frameRate/2, length(F));
-figure; plot(f, abs(F)); xlabel('f [Hz]')
+figure; plot(f, abs(F)); xlabel('f [Hz]'); hold on
+xline(abs(fD), 'r-', 'LineWidth', 2)
 
 %% Test
-t = 0:0.1:2*pi * 10;
-y1 = 5.*sin(t);
-% y2 = cos(t);
-figure;
-hold on
-% plot(t, y1, t, y2);
-% plot(t, y1);
-plot(y1);
-
-
-% y1 = ones(size(t));
-
-test = sim_g1T(y1);
-autocorr_test = autocorr(y1, "NumLags", length(y1) - 1);
-% plot(t, test)
-plot(test)
-% plot(autocorr_test)
-hold off
+% t = 0:0.1:2*pi * 10;
+% y1 = 5.*sin(t) + 2;
+% % y2 = cos(t);
+% figure;
+% hold on
+% % plot(t, y1, t, y2);
+% % plot(t, y1);
+% plot(y1);
+% 
+% 
+% % y1 = ones(size(t));
+% 
+% test_nozeromean = sim_g1T(y1);
+% test_zeromean = sim_g1T(y1 - mean(y1));
+% % autocorr_test = autocorr(y1, "NumLags", length(y1) - 1);
+% % autocorr_test = xcorr(y1, 'normalized');
+% % plot(t, test)
+% plot(test_nozeromean)
+% plot(test_zeromean)
+% % plot(autocorr_test)
+% hold off

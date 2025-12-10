@@ -9,7 +9,15 @@
 % Notes: 
 
 function [g1] = sim_g1T(data, varargin)
+    
+
+
     frameDim = length(size(data)); % Usually the frame dimension is the last dimension. 3 for 2D data and 4 for 3D data.
+    
+    %%%%%%%%%%%%% NEW: ZERO-MEAN THE data %%%%%%%%%%%%%
+    data = data - mean(data, frameDim);
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
     nf = size(data, frameDim); % # of frames
     
     if nargin > 1 % If the # of points to calculate g1 at is specified
@@ -31,7 +39,7 @@ function [g1] = sim_g1T(data, varargin)
                 % numer = mean(conj(data(:, 1:(nf - f + 1))) .* data(:, f:end), frameDim);
                 numer = sum(conj(data(:, 1:(nf - f + 1))) .* data(:, f:end), frameDim) / (nf - f + 1); % This is faster than the mean function
                 g1(:, f) = numer ./ denom;
-
+                % g1(:, f) = numer; % TESTING%%%%%%%%%%%%%%%%%%%%%%%%
 
                 % test1 = conj(data(:, 1:(nf - f + 1)));
                 % test2 = data(:, f:end);
