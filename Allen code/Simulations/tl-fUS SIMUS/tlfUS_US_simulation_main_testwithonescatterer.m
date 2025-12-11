@@ -119,6 +119,7 @@ bf.zvals = (volume_grid.z_bounds(1) : lambda : volume_grid.z_bounds(2))';
 figure; scatter3(bf.x, bf.y, bf.z, 20, 'filled')
 
 IQbf = das3(IQ, bf.x, bf.y, bf.z, [txdel], param);
+% IQbf = das3(IQ, bf.x(:), bf.y(:), bf.z(:), [txdel], param);
 
 %%
 % volshow(abs(IQbf)); axis square
