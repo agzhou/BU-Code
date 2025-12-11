@@ -1,6 +1,6 @@
 clearvars
 %% Define Simulation Parameter struct
-SP.endDepthMM = 1; % End depth [mm]
+SP.endDepthMM = 100; % End depth [mm]
 SP.startDepthMM = 0; % Start depth [mm]
 SP.c = 1540; % Speed of sound [m/s]
 SP.f = 13.8889 * 1e6; % Ultrasound frequency [Hz]
@@ -26,7 +26,7 @@ SP.zstart = 0;
 
 % Get points in a cylindrical "vessel"
 % cyl_vessel = genRandomPts3D_cyl(vesselDiam, vesselLength, startDepthMM/1e3, xstart, ystart, zstart);
-[cyl_vessel, SP] = genRandomPts3D_cyl(SP);
+[cyl_vessel] = [0, 0, 0, SP.scatterReflectivity];
 % plotPoints(cyl_vessel, SP)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Define a rotation matrix for final manipulation %
@@ -43,7 +43,8 @@ SP.flow_dim = 3; %%%%%%%%
 
 %% Define a voxel
 voxel.center = [0, 0, 0]; % Center coords of the voxel
-voxel.size = [100e-6, 100e-6, 100e-6]; % Define x, y, z dimensions of the voxel
+% voxel.size = [100e-6, 100e-6, 100e-6]; % Define x, y, z dimensions of the voxel
+voxel.size = [15e-3, 15e-3, 15e-3]; % Define x, y, z dimensions of the voxel
 
 % Define time steps
 % SP.numFrames = 50;
@@ -99,6 +100,7 @@ xline(abs(fD), 'r-', 'LineWidth', 2)
 % Define a maximum tau to fit to (improve accuracy)
 tau_max = 50 / 1e3; % [s]
 tau_mask = tau < tau_max;
+tau_mask = tau_mask(2:end); % Don't use the tau=0 point????
 tau_range = tau(tau_mask);
 
 % Define a function handle for |g1T|
@@ -115,7 +117,7 @@ abs_g1T_model = @(x, tau) x(1)*Rs*(pi^1.5)*SP.sigma(1)*SP.sigma(2)*SP.sigma(3) .
 
 % Fit the unknown parameters (x) with the simulation and compare to the ground truth
 % TESTING: INITIAL GUESS AND UPPER/LOWER BOUNDS
-testx = [size(voxel.data, 1), 0, 0, SP.flow_v_mm_s/1e3];
+testx = [1, 0, 0, SP.flow_v_mm_s/1e3];
 x0 = testx %%%%%%%% testing
 lb = [0, 0, 0, 0]
 ub = [Inf, 0, 0, 1000e-3]
