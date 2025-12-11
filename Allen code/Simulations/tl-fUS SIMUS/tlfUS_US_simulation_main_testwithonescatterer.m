@@ -150,3 +150,7 @@ end
 figure; imagesc(squeeze(max(abs(IQbf_cpwc), [], 1))')
 figure; imagesc(squeeze(max(abs(IQbf_cpwc), [], 2))')
 figure; imagesc(squeeze(max(abs(IQbf_cpwc), [], 3)))
+
+% figure; imagesc(squeeze(max(abs(IQbf{1}), [], 1))')
+% figure; imagesc(squeeze(max(abs(IQbf{1}), [], 2))')
+% figure; imagesc(squeeze(max(abs(IQbf{1}), [], 3)))
