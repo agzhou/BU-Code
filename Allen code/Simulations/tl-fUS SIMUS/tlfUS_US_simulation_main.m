@@ -31,8 +31,8 @@ volume_grid.z_bounds = [0, 10e-3];
 
 %% Choose tilt angles (about x and y)
 % With a matrix array, we get na x na total transmits/plane waves
-% TX.na = 5; % # of angles per axis
-TX.na = 1; % # of angles per axis
+TX.na = 5; % # of angles per axis
+% TX.na = 1; % # of angles per axis
 TX.nta = TX.na^2; % # of total angles/transmissions
 TX.ma = 5 * pi/180; % max angle [rad]
 TX.angles = linspace(-TX.ma, TX.ma, TX.na); % Angles for one axis
@@ -116,12 +116,23 @@ SP.flow_dim = 3; %%%%%%%%
 % ss.z = cyl_vessel(:, 3); % z coordinates [m]
 
 % ---- Rotate the vessel ---- %
-% Make the vessel horizontal
-cyl_vessel_rot = cyl_vessel;
 
-% ss.x = cyl_vessel(:, 1); % x coordinates [m]
-% ss.y = cyl_vessel(:, 2); % y coordinates [m]
-% ss.z = cyl_vessel(:, 3); % z coordinates [m]
+% Make the vessel horizontal
+xa = 90;
+ya = 0;
+za = 0;
+cyl_vessel_rot = rotateVessel(cyl_vessel, xa, ya, za, SP);
+
+
+
+
+% plotPoints(cyl_vessel, SP)
+% plotPoints(cyl_vessel_rot, SP)
+
+% Set the scatterer points for SIMUS
+ss.x = cyl_vessel_rot(:, 1); % x coordinates [m]
+ss.y = cyl_vessel_rot(:, 2); % y coordinates [m]
+ss.z = cyl_vessel_rot(:, 3); % z coordinates [m]
 ss.Rc = cyl_vessel(:, 4); % Reflection coefficients
 
 %% %-- Display the elements and the scatterers
