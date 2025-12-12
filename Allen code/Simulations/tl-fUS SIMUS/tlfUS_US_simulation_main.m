@@ -6,6 +6,7 @@ addpath([cd, '\..'])
 %% Set up parameters for the simulated probe
 % param.fc = 13.8889e6; % Center frequency [Hz]
 param.fc = 3e6; % Center frequency [Hz]
+% param.fc = 8e6;
 param.fs = 4*param.fc; % Sampling frequency [Hz]f
 param.bandwidth = 70; % Bandwidth [% of center frequency]
 param.width = 250e-6; % Array element width (x) [m]
@@ -27,11 +28,12 @@ param.TXapodization = h(:);
 % Define volume grid
 volume_grid.x_bounds = [-5e-3, 5e-3];
 volume_grid.y_bounds = [-5e-3, 5e-3];
-volume_grid.z_bounds = [0, 10e-3];
+volume_grid.z_bounds = [0, 5e-3];
 
 %% Choose tilt angles (about x and y)
 % With a matrix array, we get na x na total transmits/plane waves
-TX.na = 5; % # of angles per axis
+% TX.na = 5; % # of angles per axis
+TX.na = 3; % # of angles per axis
 % TX.na = 1; % # of angles per axis
 TX.nta = TX.na^2; % # of total angles/transmissions
 TX.ma = 5 * pi/180; % max angle [rad]
@@ -76,8 +78,6 @@ end
 
 %% Define coordinates of scatterers (stored in struct ss)
 % Define Simulation Parameter struct
-SP.endDepthMM = 1; % End depth [mm]
-SP.startDepthMM = 0; % Start depth [mm]
 % SP.c = 1540; % Speed of sound [m/s]
 SP.c = param.c; % Speed of sound [m/s]
 % SP.f = 13.8889 * 1e6; % Ultrasound frequency [Hz]
@@ -92,20 +92,17 @@ SP.snr = 50; % Choose the SNR for the data vs. Gaussian white noise (5 is what B
 % SP.vesselDiam = 50e-6; % Vessel diameter [m]
 SP.vesselDiam = 100e-6; % Vessel diameter [m]
 
-SP.vesselLength = (SP.endDepthMM - SP.startDepthMM)/1e3;  % Vessel length [m]
+SP.vesselLength = 5/1e3;  % Vessel length [m]
 
 % Define the center of the vessel [m]
 SP.xstart = 0;
 SP.ystart = 0;
-SP.zstart = 5 * 1e-3;
+SP.zstart = 3 * 1e-3;
 
 % Get points in a cylindrical "vessel"
 % cyl_vessel = genRandomPts3D_cyl(vesselDiam, vesselLength, startDepthMM/1e3, xstart, ystart, zstart);
 [cyl_vessel, SP] = genRandomPts3D_cyl(SP);
 % plotPoints(cyl_vessel, SP)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Define a rotation matrix for final manipulation %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 SP.dim = 3;
 
 SP.flow_v_mm_s = 30;
@@ -148,8 +145,10 @@ ss.Rc = cyl_vessel(:, 4); % Reflection coefficients
 
 %% Simulate backscattered RF signals
 RF = cell(TX.nta, 1);
+
+sim_options.ParPool = true; % Enable parallel computing
 for ti = 1:TX.nta % Go through each transmission index
-    RF{ti} = simus3(ss.x, ss.y, ss.z, ss.Rc, TX.txdel{ti}, param);
+    RF{ti} = simus3(ss.x, ss.y, ss.z, ss.Rc, TX.txdel{ti}, param, sim_options);
 end
 
 %% Look at 4 random RF signals (adapted from the example code)
@@ -195,6 +194,21 @@ end
       title(['Element #' int2str(n(k))])
       % ylim([-1 1])
   end
+
+%% Beamforming with the matrix testing
+lambda = param.c/param.fc;
+% beamforming grid
+bf.xvals = (volume_grid.x_bounds(1) : lambda/2 : volume_grid.x_bounds(2))';
+bf.yvals = (volume_grid.y_bounds(1) : lambda/2 : volume_grid.y_bounds(2))';
+bf.zvals = (volume_grid.z_bounds(1) : lambda/2 : volume_grid.z_bounds(2))';
+[bf.x, bf.y, bf.z] = meshgrid(bf.xvals, ...
+                              bf.yvals, ...
+                              bf.zvals);
+% figure; scatter3(bf.x, bf.y, bf.z, 20, 'filled')
+
+% IQbf = cell(TX.nta, 1);
+
+M = dasmtx3([size(IQ{1}, 1) size(IQ{1}, 2)], bf.x, bf.y, bf.z, TX.txdel{1}, param);
 %% Beamforming
 
 lambda = param.c/param.fc;
@@ -208,10 +222,11 @@ bf.zvals = (volume_grid.z_bounds(1) : lambda/2 : volume_grid.z_bounds(2))';
 % figure; scatter3(bf.x, bf.y, bf.z, 20, 'filled')
 
 IQbf = cell(TX.nta, 1);
+tic
 for ti = 1:TX.nta % Go through each transmission index
     IQbf{ti} = das3(IQ{ti}, bf.x, bf.y, bf.z, TX.txdel{ti}, param);
 end
-
+toc
 %% Combine all the transmissions into one coherently compounded volume
 IQbf_cpwc = IQbf{1}; % Initialize the CPWC IQ volume
 if TX.nta > 1 % If there is more than one transmission
@@ -219,10 +234,10 @@ if TX.nta > 1 % If there is more than one transmission
         IQbf_cpwc = IQbf_cpwc + IQbf{ti};
     end
 end
-% volshow(abs(IQbf)); axis square
-figure; imagesc(squeeze(max(abs(IQbf_cpwc), [], 1))')
-figure; imagesc(squeeze(max(abs(IQbf_cpwc), [], 2))')
-figure; imagesc(squeeze(max(abs(IQbf_cpwc), [], 3)))
+% volshow(abs(IQbf_cpwc)); axis square
+figure; imagesc(squeeze(max(abs(IQbf_cpwc), [], 1))'); title('xz MIP')
+figure; imagesc(squeeze(max(abs(IQbf_cpwc), [], 2))'); title('yz MIP')
+figure; imagesc(squeeze(max(abs(IQbf_cpwc), [], 3))); title('xy MIP')
 
 % figure; imagesc(squeeze(max(abs(IQbf{1}), [], 1))')
 % figure; imagesc(squeeze(max(abs(IQbf{1}), [], 2))')
