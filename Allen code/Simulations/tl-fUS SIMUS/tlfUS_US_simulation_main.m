@@ -7,7 +7,7 @@ addpath([cd, '\..'])
 % param.fc = 13.8889e6; % Center frequency [Hz]
 param.fc = 3e6; % Center frequency [Hz]
 % param.fc = 8e6;
-param.fs = 4*param.fc; % Sampling frequency [Hz]f
+param.fs = 4*param.fc; % Sampling frequency [Hz]
 param.bandwidth = 70; % Bandwidth [% of center frequency]
 param.width = 250e-6; % Array element width (x) [m]
 param.height = 250e-6; % Array element height (y) [m]
@@ -15,6 +15,7 @@ param.c = 1540; % Speed of sound [m/s]
 
 % x/y coords of each element
 ne = 32; % # of elements in one dimension, for ne x ne matrix
+% ne = 16; % # of elements in one dimension, for ne x ne matrix
 pitch = 300e-6; % pitch (in m)
 % [xe, ye] = meshgrid(((1:32)-16.5)*pitch);
 [xe, ye] = meshgrid(((1:ne) - (ne + 1)/2)*pitch);
@@ -32,8 +33,8 @@ volume_grid.z_bounds = [0, 5e-3];
 
 %% Choose tilt angles (about x and y)
 % With a matrix array, we get na x na total transmits/plane waves
-% TX.na = 5; % # of angles per axis
-TX.na = 3; % # of angles per axis
+TX.na = 5; % # of angles per axis
+% TX.na = 3; % # of angles per axis
 % TX.na = 1; % # of angles per axis
 TX.nta = TX.na^2; % # of total angles/transmissions
 TX.ma = 5 * pi/180; % max angle [rad]
@@ -196,19 +197,19 @@ end
   end
 
 %% Beamforming with the matrix testing
-lambda = param.c/param.fc;
-% beamforming grid
-bf.xvals = (volume_grid.x_bounds(1) : lambda/2 : volume_grid.x_bounds(2))';
-bf.yvals = (volume_grid.y_bounds(1) : lambda/2 : volume_grid.y_bounds(2))';
-bf.zvals = (volume_grid.z_bounds(1) : lambda/2 : volume_grid.z_bounds(2))';
-[bf.x, bf.y, bf.z] = meshgrid(bf.xvals, ...
-                              bf.yvals, ...
-                              bf.zvals);
-% figure; scatter3(bf.x, bf.y, bf.z, 20, 'filled')
-
-% IQbf = cell(TX.nta, 1);
-
-M = dasmtx3([size(IQ{1}, 1) size(IQ{1}, 2)], bf.x, bf.y, bf.z, TX.txdel{1}, param);
+% lambda = param.c/param.fc;
+% % beamforming grid
+% bf.xvals = (volume_grid.x_bounds(1) : lambda/2 : volume_grid.x_bounds(2))';
+% bf.yvals = (volume_grid.y_bounds(1) : lambda/2 : volume_grid.y_bounds(2))';
+% bf.zvals = (volume_grid.z_bounds(1) : lambda/2 : volume_grid.z_bounds(2))';
+% [bf.x, bf.y, bf.z] = meshgrid(bf.xvals, ...
+%                               bf.yvals, ...
+%                               bf.zvals);
+% % figure; scatter3(bf.x, bf.y, bf.z, 20, 'filled')
+% 
+% % IQbf = cell(TX.nta, 1);
+% 
+% M = dasmtx3([size(IQ{1}, 1) size(IQ{1}, 2)], bf.x, bf.y, bf.z, TX.txdel{1}, param);
 %% Beamforming
 
 lambda = param.c/param.fc;
@@ -223,8 +224,14 @@ bf.zvals = (volume_grid.z_bounds(1) : lambda/2 : volume_grid.z_bounds(2))';
 
 IQbf = cell(TX.nta, 1);
 tic
-for ti = 1:TX.nta % Go through each transmission index
-    IQbf{ti} = das3(IQ{ti}, bf.x, bf.y, bf.z, TX.txdel{ti}, param);
+% for ti = 1:TX.nta % Go through each transmission index
+%     IQbf{ti} = das3(IQ{ti}, bf.x, bf.y, bf.z, TX.txdel{ti}, param);
+% end
+
+% Try parfor
+txdel = TX.txdel;
+parfor ti = 1:TX.nta % Go through each transmission index
+    IQbf{ti} = das3(IQ{ti}, bf.x, bf.y, bf.z, txdel{ti}, param);
 end
 toc
 %% Combine all the transmissions into one coherently compounded volume
