@@ -35,3 +35,7 @@ P.samplesPerWave = Receive(1).samplesPerWave;
 if exist('bufferDutyCycle', 'var')
     P.bufferDutyCycle = bufferDutyCycle;
 end
+
+% For sim
+P.Mcr_SP = Mcr_SP;
+P.vrp = vrp;

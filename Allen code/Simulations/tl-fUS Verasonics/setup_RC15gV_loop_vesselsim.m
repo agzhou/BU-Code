@@ -24,11 +24,14 @@ cd 'C:\Users\agzhou\Vantage-4.9.5-2409181500'
 activate
 
 %%
-savepath = uigetdir('F:\', 'Select the save path');
+savepath = uigetdir('H:\', 'Select the save path');
 savepath = [savepath, '\'];
 
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe'}; % 'Save RF data (0-no, 1-yes)', 
-parameterDefaults = {'20', '2', '10', '60000', '450', '11', '5', '13.6', '1540', '1', '1', '200'};
+% parameterDefaults = {'20', '0', '5', '50000', '500', '11', '5', '13.6', '1540', '1', '1', '1'};
+parameterDefaults = {'20', '0', '5', '50000', '2500', '11', '5', '13.6', '1540', '1', '1', '1000'};
+% parameterDefaults = {'20', '0', '5', '50000', '500', '21', '9', '13.6', '1540', '1', '1', '1'};
+% parameterDefaults = {'20', '0', '5', '50000', '500', '1', '0', '13.6', '1540', '1', '1', '4'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % Store the user inputs for parameters into the corresponding variables
@@ -47,7 +50,7 @@ numFramesPerSF = str2double(parameterUserInput{12});
 
 bufferIndex = 0;
 runVSX = 1;
-movePointsOrNot = 0;
+movePointsOrNot = 1; % Enable calling the Media.function --> when to call is defined in the Receive structure
 numChannels = 256; % enable channels
 
 numBuffers = 1;
@@ -103,7 +106,7 @@ TimeTagEna = 0;
 % Define coordinates of scatterers (stored in struct ss)
 % Define Simulation Parameter struct
 Mcr_SP.c = speedOfSound; % Speed of sound [m/s]
-Mcr_SP.f = probe_freq; % Ultrasound frequency [Hz]
+Mcr_SP.f = probe_freq * 1e6; % Ultrasound frequency [Hz]
 Mcr_SP.wl = Mcr_SP.c / Mcr_SP.f; % Wavelength [m]
 Mcr_SP.frameRate = frameRate; % Frame rate [Hz]
 Mcr_SP.scatterReflectivity = 1.0;
@@ -122,7 +125,7 @@ Mcr_SP.zstart = 3 * 1e-3;
 % cyl_vessel = genRandomPts3D_cyl(vesselDiam, vesselLength, startDepthMM/1e3, xstart, ystart, zstart);
 [cyl_vessel, Mcr_SP] = genRandomPts3D_cyl(Mcr_SP);
 % plotPoints(cyl_vessel, SP)
-Mcr_SP.dim = 3;
+
 
 Mcr_SP.flow_v_mm_s = 30;
 Mcr_SP.flow_dim = 3; %%%%%%%%
@@ -134,12 +137,10 @@ Mcr_SP.flow_dim = 3; %%%%%%%%
 % ---- Rotate the vessel ---- %
 
 % Make the vessel horizontal
-xa = 90;
-ya = 0;
-za = 0;
-
-
-
+% Vessel rotation parameters
+vrp.xa = 90;
+vrp.ya = 0;
+vrp.za = 0;
 
 
 Resource.Parameters.simulateMode = simMode; % run script in simulate mode. Set to 0 if not
@@ -151,12 +152,18 @@ Resource.Parameters.simulateMode = simMode; % run script in simulate mode. Set t
 % and reflectivity. For 1D transducer arrays, they are aligned on the
 % x-axis with the center at x = 0, and scan depth is in z.
 % Media.MP: [x, y, z, reflectivity]. x, y, z are defined as # of wavelengths.
-Media.MP = rotateVessel(cyl_vessel, xa, ya, za, Mcr_SP);
+
+Media.MP = rotateVessel(cyl_vessel, vrp.xa, vrp.ya, vrp.za, Mcr_SP);
+% Media.MP = [[0, 1, 3] .* 1e-3, Mcr_SP.scatterReflectivity]; %%%%%%%%%%%%%%%
+Media.MP(:, 1:3) = Media.MP(:, 1:3) ./ wl; % CONVERT TO WAVELENGTHS!!!!!!
+
+Mcr_SP.dim = 3; % The code works by moving the stuff in z, then rotating later
+% Mcr_SP.dim = 1; % Move points in x
 
 Media.attenuation = 0;
 % Media.attenuation = -0.7; % media attenuation in dB/cm/MHz
 
-% Media.function = 'movePointsZ3D'; % move points in _ dimension after each frame
+Media.function = 'movePointsVerasonics'; % Move points along the vessel's axis after each frame
 
 %% PData structure (Pixel Data --> image reconstruction range)
 % For 2D scans and slices of 3D scans, it's always a rectangular area at a
@@ -184,12 +191,22 @@ PData.Origin = [-half_probe_dist, half_probe_dist, startDepth];
 % Set a local region to view/use for processing
 PData.Region(1) = struct('Shape',struct('Name','PData'));
 
-PData.Region(2).Shape = struct('Name', 'Slice', 'Orientation', 'xz', ...
-                            'oPAIntersect', PData.Origin(2) - (numElements-1).*Trans.spacing./2); % out of Plane Axis Intersection
-PData.Region(3).Shape = struct('Name', 'Slice', 'Orientation', 'yz', ...
-                            'oPAIntersect', PData.Origin(1) + (numElements-1).*Trans.spacing./2);
-PData.Region(4).Shape = struct('Name', 'Slice', 'Orientation', 'xy', ...
-                            'oPAIntersect', Media.MP(3)); % currently set to the plane intersecting the only scatter point
+% PData.Region(2).Shape = struct('Name', 'Slice', 'Orientation', 'xz', ...
+%                             'oPAIntersect', PData.Origin(2) - (numElements-1).*Trans.spacing./2); % out of Plane Axis Intersection
+% PData.Region(3).Shape = struct('Name', 'Slice', 'Orientation', 'yz', ...
+%                             'oPAIntersect', PData.Origin(1) + (numElements-1).*Trans.spacing./2);
+% PData.Region(4).Shape = struct('Name', 'Slice', 'Orientation', 'xy', ...
+%                             'oPAIntersect', Media.MP(3)); % currently set to the plane intersecting the only scatter point
+
+
+
+
+
+
+
+
+
+
 
 %     'Position', [0, 0, 10], ...
 %                      'width', PData.Size(2), 'height', PData.Size(1)./2);
@@ -500,7 +517,7 @@ for nbuf = 1:numBuffers
 end
 
 %%
-makeParameterStructureSmall_ULM;
+makeParameterStructureSmall_vs;
 %% New Event structure
 
 Resource.VDAS.dmaTimeout = 1000;
@@ -548,10 +565,10 @@ frameTimeGapDMALimit = timePerTransferSeconds * 1e6; % [us]
 frameRateDMALimit = 1/(frameTimeGapDMALimit * 1e-6);
 
 % Check if the inputted frame rate is faster than what the DMA time allows
-if frameRateDMALimit < frameRate
-    warning("**** DMA time limits the frame rate to " + num2str(frameRateDMALimit) + " Hz, exiting ****")
-    return
-end
+% if frameRateDMALimit < frameRate
+%     warning("**** DMA time limits the frame rate to " + num2str(frameRateDMALimit) + " Hz, exiting ****")
+%     return
+% end
 
 scInd = scInd + 1;
 SeqControl(scInd).command = 'timeToNextAcq';
@@ -657,14 +674,14 @@ for nbuf = 1:numBuffers
 
 end
 
-n = n + 1;
-
-Event(n).info = 'Jump';
-Event(n).tx = 0; 
-Event(n).rcv = 0; 
-Event(n).recon = 0;
-Event(n).process = 0; 
-Event(n).seqControl = 3; 
+% n = n + 1;
+% 
+% Event(n).info = 'Jump';
+% Event(n).tx = 0; 
+% Event(n).rcv = 0; 
+% Event(n).recon = 0;
+% Event(n).process = 0; 
+% Event(n).seqControl = 3; 
 
 
 % %% User specified UI Control Elements
@@ -692,37 +709,6 @@ filename = 'RC15gV_Allen_vessel_sim.mat';
 
 save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+filename);
 
-%% Initialize time tagging if enabled
-import com.verasonics.hal.hardware.*
-switch TimeTagEna
-    case 0
-        % disable time tag
-        rc = Hardware.enableAcquisitionTimeTagging(false);
-        if ~rc
-            error('Error from enableAcqTimeTagging')
-        end
-        tagstr = 'off';
-    case 1
-        % enable time tag
-        rc = Hardware.enableAcquisitionTimeTagging(true);
-        if ~rc
-            error('Error from enableAcqTimeTagging')
-        end
-        tagstr = 'on';
-        disp('**** Time tagging enabled on mode 1 ****')
-    case 2
-        % enable time tag and reset counter
-        rc = Hardware.enableAcquisitionTimeTagging(true);
-        if ~rc
-            error('Error from enableAcqTimeTagging')
-        end
-        rc = Hardware.setTimeTaggingAttributes(false, true); % reset hardware counter to 0 (otherwise, it continuously counts up from system bootup until it gets to 107,000s - see p37 of User Manual
-        if ~rc
-            error('Error from setTimeTaggingAttributes')
-        end
-        tagstr = 'on, reset';
-        disp('**** Time tagging enabled on mode 2 ****')
-end
 
 %% Run VSX automatically and make parameter structure for RF file naming
 
@@ -736,7 +722,7 @@ end
 % save([savepath, 'params.mat'], 'angles', 'startDepth', 'startDepthMM', 'endDepth', 'endDepthMM', 'Event', 'fps_target', 'maxAcqLength_adjusted', 'maxAngle', 'Media', 'na', 'nf', 'Receive', 'Resource', 'SeqControl', 'TGC', 'Trans', 'TW', 'TX', 'wl', 'numElements', '-v7.3')
 % save([savepath, 'params.mat'], 'P')
 
-makeParameterStructure_ULM;
+makeParameterStructure_vs;
 savefast([savepath, 'params.mat'], 'P')
 % saveRcvData(RcvData{1})
 clearvars RcvData
