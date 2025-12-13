@@ -21,6 +21,8 @@ addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Simula
 % cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 % cd '\\ad\eng\users\a\g\agzhou\Desktop\Vantage-5.0.0'
 cd 'C:\Users\agzhou\Vantage-4.9.5-2409181500'
+addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Simulations')
+addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Simulations\tl-fUS Verasonics')
 activate
 
 %%
@@ -114,7 +116,7 @@ Mcr_SP.scatterReflectivity = 1.0;
 % SP.vesselDiam = 50e-6; % Vessel diameter [m]
 Mcr_SP.vesselDiam = 100e-6; % Vessel diameter [m]
 
-Mcr_SP.vesselLength = 5/1e3;  % Vessel length [m]
+Mcr_SP.vesselLength = 8/1e3;  % Vessel length [m]
 
 % Define the center of the vessel [m]
 Mcr_SP.xstart = 0;
