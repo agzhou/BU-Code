@@ -129,7 +129,7 @@ Mcr_SP.zstart = 3 * 1e-3;
 % plotPoints(cyl_vessel, SP)
 
 
-Mcr_SP.flow_v_mm_s = 10;
+Mcr_SP.flow_v_mm_s = 50;
 Mcr_SP.flow_dim = 3; %%%%%%%%
 
 % ss.x = cyl_vessel(:, 1); % x coordinates [m]
