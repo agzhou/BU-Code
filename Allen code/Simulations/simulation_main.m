@@ -1,7 +1,7 @@
 clearvars
 %% Define Simulation Parameter struct
-SP.endDepthMM = 1; % End depth [mm]
-SP.startDepthMM = 0; % Start depth [mm]
+% SP.endDepthMM = 1; % End depth [mm]
+% SP.startDepthMM = 0; % Start depth [mm]
 SP.c = 1540; % Speed of sound [m/s]
 SP.f = 13.8889 * 1e6; % Ultrasound frequency [Hz]
 SP.wl = SP.c / SP.f; % Wavelength [m]
@@ -17,7 +17,8 @@ SP.snr = 50; % Choose the SNR for the data vs. Gaussian white noise (5 is what B
 % SP.vesselDiam = 50e-6; % Vessel diameter [m]
 SP.vesselDiam = 100e-6; % Vessel diameter [m]
 
-SP.vesselLength = (SP.endDepthMM - SP.startDepthMM)/1e3;  % Vessel length [m]
+% SP.vesselLength = (SP.endDepthMM - SP.startDepthMM)/1e3;  % Vessel length [m]
+SP.vesselLength = 8 * 1e-3;  % Vessel length [m]
 
 % Define the center of the vessel  
 SP.xstart = 0;
@@ -47,7 +48,7 @@ voxel.size = [100e-6, 100e-6, 100e-6]; % Define x, y, z dimensions of the voxel
 
 % Define time steps
 % SP.numFrames = 50;
-SP.numFrames = 1000;
+SP.numFrames = 500;
 
 % Get all the data within the voxel at frame 1
 voxel.data = getDataInVoxel(cyl_vessel, voxel); % Note: voxel.data for now is just a container that is always changing
