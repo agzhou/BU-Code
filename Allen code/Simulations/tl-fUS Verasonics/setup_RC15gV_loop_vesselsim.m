@@ -31,7 +31,7 @@ savepath = [savepath, '\'];
 
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe'}; % 'Save RF data (0-no, 1-yes)', 
 % parameterDefaults = {'20', '0', '5', '50000', '500', '11', '5', '13.6', '1540', '1', '1', '1'};
-parameterDefaults = {'20', '0', '5', '50000', '2500', '11', '5', '13.6', '1540', '1', '1', '1000'};
+parameterDefaults = {'20', '0', '5', '50000', '2500', '11', '5', '13.6', '1540', '1', '1', '500'};
 % parameterDefaults = {'20', '0', '5', '50000', '500', '21', '9', '13.6', '1540', '1', '1', '1'};
 % parameterDefaults = {'20', '0', '5', '50000', '500', '1', '0', '13.6', '1540', '1', '1', '4'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
@@ -129,7 +129,7 @@ Mcr_SP.zstart = 3 * 1e-3;
 % plotPoints(cyl_vessel, SP)
 
 
-Mcr_SP.flow_v_mm_s = 30;
+Mcr_SP.flow_v_mm_s = 10;
 Mcr_SP.flow_dim = 3; %%%%%%%%
 
 % ss.x = cyl_vessel(:, 1); % x coordinates [m]
