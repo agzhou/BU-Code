@@ -287,6 +287,7 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
 %     IQ = squeeze(IData + 1i .* QData); 
 
     savefast([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData')
+%     save([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData', '-v7.3')
     disp(strcat("IQ file ", num2str(Mcr_filenum), " saved."))
     
     toc
