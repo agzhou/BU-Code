@@ -10,7 +10,10 @@ SP.frameRate = 2500; % Frame rate [Hz]
 % vesselY = 100e-6;    % y dimension
 % vesselZ = endDepthMM/1e3;  % z dimension
 SP.scatterReflectivity = 1.0;
-SP.sigma = [300e-6, 300e-6, 150e-6]; %%%% PSF testing %%%%
+
+% Sigma is the 1/e * PSF max, so convert from FWHM
+SP.sigma = [300e-6, 300e-6, 150e-6] .* 1/(2*sqrt(2*log(2))); %%%% PSF testing %%%%
+% SP.sigma = [300e-6, 300e-6, 150e-6] ./ 5; %%%% PSF testing %%%%
 
 SP.snr = 50; % Choose the SNR for the data vs. Gaussian white noise (5 is what Bingxue used)
 
@@ -34,7 +37,7 @@ SP.zstart = 0;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 SP.dim = 3;
 
-SP.flow_v_mm_s = 30;
+SP.flow_v_mm_s = 20;
 % SP.flow_v_mm_s = 125;
 % SP.flow_v_mm_s = 1250;
 SP.flow_dim = 3; %%%%%%%%
@@ -44,7 +47,9 @@ SP.flow_dim = 3; %%%%%%%%
 
 %% Define a voxel
 voxel.center = [0, 0, 0]; % Center coords of the voxel
-voxel.size = [100e-6, 100e-6, 100e-6]; % Define x, y, z dimensions of the voxel
+% voxel.size = [100e-6, 100e-6, 100e-6]; % Define x, y, z dimensions of the voxel
+voxel.size = [500e-6, 500e-6, 500e-6]; % Define x, y, z dimensions of the voxel
+% voxel.size = [1000e-6, 1000e-6, 1000e-6]; % Define x, y, z dimensions of the voxel
 
 % Define time steps
 % SP.numFrames = 50;
@@ -92,13 +97,19 @@ figure; plot(real(voxel.g1), imag(voxel.g1), '-o')
 fD = -2 * SP.f * (SP.flow_v_mm_s/1e3)/SP.c;
 F = fftshift(fft(voxel.sIQ));
 f = linspace(-SP.frameRate/2, SP.frameRate/2, length(F));
-figure; plot(f, abs(F)); xlabel('f [Hz]'); hold on
+figure; plot(f, abs(F), 'LineWidth', 2); xlabel('f [Hz]'); hold on
 xline(abs(fD), 'r-', 'LineWidth', 2)
+hold off
+% ylabel("|F(sIQ)|")
+ylabel("Amplitude")
+title("Fourier spectrum of simulated sIQ for v = " + num2str(SP.flow_v_mm_s) + " mm/s")
+fontsize(20, 'points')
+legend("Fourier spectrum of sIQ", "Predicted Doppler frequency for v = " + num2str(SP.flow_v_mm_s) + " mm/s --> f_D = " + num2str(abs(fD)) + " Hz", 'Location', 'northwest')
 
 %% Nonlinear Least Squares fitting of |g1T|
 
 % Define a maximum tau to fit to (improve accuracy)
-tau_max = 50 / 1e3; % [s]
+tau_max = 40 / 1e3; % [s]
 tau_mask = tau < tau_max;
 tau_range = tau(tau_mask);
 
@@ -111,33 +122,35 @@ Re = 0 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Re = 1e-8
 abs_g1T_model = @(x, tau) x(1)*Rs*(pi^1.5)*SP.sigma(1)*SP.sigma(2)*SP.sigma(3) ...
                           / ( x(1)*Rs*(pi^1.5)*SP.sigma(1)*SP.sigma(2)*SP.sigma(3) + Re ) ...
-                          .* exp( -(x(2) .* tau).^2./(4.*SP.sigma(1)^2) -(x(3) .* tau).^2./(4.*SP.sigma(2)^2) -(x(4) .* tau).^2./(4.*SP.sigma(3)^2) );
+                          .* exp( -(x(2) .* tau).^2./(4.*SP.sigma(1)^2) -(x(3) .* tau).^2./(4.*SP.sigma(2)^2) -( (x(4) .* tau).^2) ./(4.*SP.sigma(3)^2) );
 
 
 % Fit the unknown parameters (x) with the simulation and compare to the ground truth
 % TESTING: INITIAL GUESS AND UPPER/LOWER BOUNDS
 testx = [size(voxel.data, 1), 0, 0, SP.flow_v_mm_s/1e3];
 x0 = testx %%%%%%%% testing
-lb = [0, 0, 0, 0]
-ub = [Inf, 0, 0, 1000e-3]
+lb = [0, 0, 0, -1000] .* 1e-3
+ub = [Inf, 0, 0, 1000] .* 1e-3
 % x_fit = lsqcurvefit(abs_g1T_model, x0, tau, abs(voxel.g1))
 % x_fit = lsqcurvefit(abs_g1T_model, x0, tau, abs(voxel.g1), lb, ub)
 x_fit = lsqcurvefit(abs_g1T_model, x0, tau_range, abs(voxel.g1(tau_mask)), lb, ub)
 
 %% Input the ground truth parameters to see what the |g1T| model looks like
-
+lw = 2; % line width
 test_abs_g1T_model = abs_g1T_model(testx, tau_range);
-figure; plot(tau_range*1e3, test_abs_g1T_model); xlabel('tau [ms]'); ylabel("|g_1|")
-hold on; plot(tau_range .* 1e3, abs(voxel.g1(tau_mask)));
+figure; plot(tau_range*1e3, test_abs_g1T_model, 'LineWidth', lw); xlabel('tau [ms]'); ylabel("|g_1|")
+hold on; plot(tau_range .* 1e3, abs(voxel.g1(tau_mask)), 'LineWidth', lw);
 
 % Plot the fit
 abs_g1T_fit = abs_g1T_model(x_fit, tau_range);
-plot(tau_range .* 1e3, abs_g1T_fit);
+plot(tau_range .* 1e3, abs_g1T_fit, 'LineWidth', lw);
 % test2 = abs_g1T_model([7849, 0, 0, .0445], tau);
 % test2 = abs_g1T_model([7849, 0, 0, .0845], tau);
 % plot(tau .* 1e3, test2);
 hold off
-legend("|g_1| model with ground truth parameters", "|g_1| simulation", "Fit")
+legend("Ground truth |g_1| model: v = " + num2str(SP.flow_v_mm_s) + " mm/s", "|g_1| simulation", "Nonlinear fit on simulated |g_1|: v = " + num2str(x_fit(4) * 1e3) + " mm/s")
+title("|g_1| model, simulation, and fit: v = " + num2str(SP.flow_v_mm_s) + " mm/s")
+fontsize(20, 'points')
 %%
 
 % %% Nonlinear Least Squares fitting of FULL g1T
