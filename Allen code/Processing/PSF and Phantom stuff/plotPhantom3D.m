@@ -91,7 +91,7 @@ legend('Data', 'Fit')
 % fwhm_lateral_um = fwhm_lateral .* P.Trans.spacingMm / 1e3 .* 1e6
 [fwhm_lateral(1)] = fwhm(lateral_pixels_finer, lateral_psf_gFit_values);
 fwhm_lateral_um = fwhm_lateral .* P.Trans.spacingMm / 1e3 .* 1e6
-
+fw_1overe_lateral_um = fw_anymax(lateral_pixels_finer, lateral_psf_gFit_values, 1/exp(1)) .* P.Trans.spacingMm / 1e3 .* 1e6
 
 % Axial
 figure
