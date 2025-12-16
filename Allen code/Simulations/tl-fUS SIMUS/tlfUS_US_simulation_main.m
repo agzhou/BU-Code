@@ -93,7 +93,7 @@ SP.snr = 50; % Choose the SNR for the data vs. Gaussian white noise (5 is what B
 % SP.vesselDiam = 50e-6; % Vessel diameter [m]
 SP.vesselDiam = 100e-6; % Vessel diameter [m]
 
-SP.vesselLength = 5/1e3;  % Vessel length [m]
+SP.vesselLength = 8/1e3;  % Vessel length [m]
 
 % Define the center of the vessel [m]
 SP.xstart = 0;
@@ -141,9 +141,12 @@ ss.Rc = cyl_vessel(:, 4); % Reflection coefficients
   scatter3(xe*1e3,ye*1e3,0*xe,3,'b','filled')
   axis equal, box on
   set(gca,'zdir','reverse')
-  zlabel('[mm]')
-  title([int2str(size(cyl_vessel, 1)) ' scatterers'])
-
+  xlabel('x [mm]')
+  ylabel('y [mm]')
+  zlabel('z [mm]')
+  % title([int2str(size(cyl_vessel, 1)) ' scatterers'])
+  fontsize(20, "points")
+  zlim([volume_grid.z_bounds .* 1e3])
 %% Simulate backscattered RF signals
 RF = cell(TX.nta, 1);
 

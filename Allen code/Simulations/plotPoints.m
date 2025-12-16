@@ -15,5 +15,10 @@ function plotPoints(pts, SP)
     xlabel("x")
     ylabel("y")
     zlabel("z")
+
+    % xlabel("x [m]")
+    % ylabel("y [m]")
+    % zlabel("z [m]")
+
 %     fontsize(20, "points")
 end

@@ -37,7 +37,7 @@ SP.zstart = 0;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 SP.dim = 3;
 
-SP.flow_v_mm_s = 20;
+SP.flow_v_mm_s = 5;
 % SP.flow_v_mm_s = 125;
 % SP.flow_v_mm_s = 1250;
 SP.flow_dim = 3; %%%%%%%%
@@ -48,7 +48,8 @@ SP.flow_dim = 3; %%%%%%%%
 %% Define a voxel
 voxel.center = [0, 0, 0]; % Center coords of the voxel
 % voxel.size = [100e-6, 100e-6, 100e-6]; % Define x, y, z dimensions of the voxel
-voxel.size = [500e-6, 500e-6, 500e-6]; % Define x, y, z dimensions of the voxel
+voxel.size = [100e-6, 100e-6, 100e-6] .* 2; % Define x, y, z dimensions of the voxel
+% voxel.size = [500e-6, 500e-6, 500e-6]; % Define x, y, z dimensions of the voxel
 % voxel.size = [1000e-6, 1000e-6, 1000e-6]; % Define x, y, z dimensions of the voxel
 
 % Define time steps
@@ -83,7 +84,7 @@ tau = 0:1/SP.frameRate:(SP.numFrames-1)/SP.frameRate;
 
 % plotPoints(new_cyl_vessel, SP)
 % figure; plot(tau, abs(voxel.sIQ))
-% figure; plot(tau, abs(voxel.sIQ - mean(voxel.sIQ)))
+figure; plot(tau, abs(voxel.sIQ - mean(voxel.sIQ)))
 % figure; plot(tau, real(voxel.sIQ - mean(voxel.sIQ)))
 % figure; plot(tau, imag(voxel.sIQ - mean(voxel.sIQ)))
 voxel.g1 = sim_g1T(voxel.sIQ);
