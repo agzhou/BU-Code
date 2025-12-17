@@ -37,7 +37,7 @@ load(timingFilePath)
 %% Define some parameters
 
 parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Tau 1 index for CBFspeed', 'Tau 2 index for CBFspeed', 'Tau 1 index for CBV'};
-parameterDefaults = {'1', '', '20', '', '2', '11', '2'};
+parameterDefaults = {'1', '', '50', '', '2', '3', '2'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % define # of files manually for now
@@ -69,6 +69,15 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 % 
 % [HPF_b, HPF_a] = butter(HPF_order, fc/(fs/2), 'high');
 
+%% Set up the High Pass Filter (parameters from the 2020 vUS paper)
+HPF.fc = 25; % Cutoff frequency [Hz]
+% 25 Hz corresponds to 1 mm/s
+
+HPF.fs = P.frameRate; % Sampling frequency [Hz]
+HPF.order = 4; % Butterworth filter order
+
+[HPF.b, HPF.a] = butter(HPF.order, HPF.fc/(HPF.fs/2), 'high');
+
 %% Define the mask manually for now
 
 % load('E:\Allen BME-BOAS-27 Data Backup\AZ01 fUS\07-21-2025 awake RC15gV manual right whisker stim\coronal_mask_rep_07_24_2025.mat')
@@ -87,13 +96,13 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
     zend = 130;
 
 %% Save proc params
-numg1pts = 10; % Only calculate the first N points
+numg1pts = 20; % Only calculate the first N points
 save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'numg1pts', 'zstart', 'zend');
 
 %% Main loop
 % for filenum = startFile:endFile
-% for filenum = [2:endFile]
-for filenum = 111:endFile
+for filenum = [2:endFile]
+% for filenum = 111:endFile
 % for filenum = [endFile - 1:-1:startFile]
 % for filenum = [116:endFile]
 % for filenum = 1
@@ -120,12 +129,11 @@ for filenum = 111:endFile
     % Apply the HPF
 %     dim = length(size(IQm)); % Operate on the time dimension
 %     IQm_HPF = filter(HPF_b, HPF_a, IQm, [], dim);
-    IQm_HPF = IQm;
 
     % SVD decluttering
 %     [PP, EVs, V_sort] = getSVs2D(IQm);
-    [xp, yp, zp, nf] = size(IQm_HPF);
-    PP = reshape(IQm_HPF, [xp*yp*zp, nf]);
+    [xp, yp, zp, nf] = size(IQm);
+    PP = reshape(IQm, [xp*yp*zp, nf]);
     tic
 %     [U, S, V] = svd(PP); % Already sorted in decreasing order
     [U, S, V] = svd(PP, 'econ'); % Already sorted in decreasing order
@@ -134,7 +142,19 @@ for filenum = 111:endFile
     toc
     disp('SVs decomposed')
 
-    [IQf_HPF, noise] = applySVs2D(IQm_HPF, PP, SVs, V, sv_threshold_lower, sv_threshold_upper);
+%     % Plot one SVD subspace as an image
+%     subspace = 20;
+%     subspace_img = reshape(U(:, subspace) * SVs(subspace) * V(:, subspace)', [xp, yp, zp, nf]);
+%     figure; imagesc(squeeze(max(abs(subspace_img(:, :, :, 2)), [], 1))')
+%     volumeViewer(abs(subspace_img(:, :, :, 2)))
+% 
+%     SSM = plotSSM(U, false);
+% %     SSM = plotSSM(U, true);
+%     [~, a_opt, b_opt] = fitSSM(SSM, false); % Get the optimal singular value thresholds
+% %     [~, a_opt, b_opt] = fitSSM(SSM, true); % Get the optimal singular value thresholds
+
+
+    [IQf, noise] = applySVs2D(IQm, PP, SVs, V, sv_threshold_lower, sv_threshold_upper);
 %     [IQf, noise] = applySVs2D(IQm, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
     disp('SVD filtered images put together')
 
@@ -142,23 +162,33 @@ for filenum = 111:endFile
 %     figure; imagesc(squeeze(abs(max(IQf(:, :, :, 1), [], 1)))')
     % clearvars IQ
 
+    % Apply the HPF to the post-SVD clutter filtered data
+    HPF.dim = length(size(IQf)); % Operate on the time dimension
+    IQf_HPF = filter(HPF.b, HPF.a, IQf, [], HPF.dim);
+
     % Use the IQf with separated negative and positive frequency components
 %     [IQf_separated, IQf_FT_separated] = separatePosNegFreqs(IQf);
+%     tic
+%     [IQf_HPF_separated, IQf_HPF_FT_separated] = separatePosNegFreqs(IQf_HPF);
+%     toc
     
 %     g1_n = g1T(IQf_separated{1}, numg1pts);
 % %     [CBFsi_n, CBVi_n] = g1_to_CBi(g1_n, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 %     g1_p = g1T(IQf_separated{2}, numg1pts);
 %     [CBFsi_p, CBVi_p] = g1_to_CBi(g1_p, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 % 
+    tic
     g1 = g1T(IQf_HPF, numg1pts);
+    toc
 %     g1 = g1T(IQf);
 %     [CBFsi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 % 
 % %     savefast([savepath, 'fUSdata-', num2str(filenum), '.mat'], g1, CBFi, CBVi);
 
-%     [PDI] = calcPowerDoppler(IQf_separated);
+%     [PDI] = calcPowerDoppler(IQf_HPF_separated);
     PDI = sum(abs(IQf_HPF) .^ 2, 4) ./ size(IQf_HPF, 4);
-%     [CDI] = calcColorDoppler(IQf_FT_separated, P);
+%     [CDI] = calcColorDoppler(IQf_HPF_FT_separated, P);
+%     figure; imagesc(squeeze(max(CDI{3}, [], 1))' .^ 1); colormap jet
 
 %     figure; imagesc(squeeze(max(PDI, [], 1))' .^ 0.5); colormap hot
 %     figure; imagesc(squeeze(max(PDI ./ noise, [], 1))' .^ 0.5); colormap hot
@@ -206,10 +236,10 @@ g1_tau1_cutoff = 0.2;
 % g1_tau1_cutoff = 0.0;
 % tau_difference_cutoff = 0.2;
 
-% for filenum = startFile:endFile
-for filenum = 4:endFile
+for filenum = startFile:endFile
+% for filenum = 4:endFile
 % for filenum = [endFile]
-% for filenum = 110
+% for filenum = 1
 %     load([savepath, 'g1-', num2str(filenum)], 'g1') % Load the saved g1 mat files
     load([savepath, 'fUSdata-', num2str(filenum)], 'g1') % Load the saved g1 mat files
 
