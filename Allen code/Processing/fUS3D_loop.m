@@ -494,7 +494,15 @@ interp_factor = 100;
 % [trial_CBFsi_usi] = resampleTrials(CBFsiallSF_ro, trial_sf, trial_windows, sfStarts, P, interp_factor);
 % [trial_PDI_usi] = resampleTrials(PDIallSF_ro, trial_sf, trial_windows, sfStarts, P, interp_factor);
 
+%% Look at the volume-averaged PDI per superframe
+PDI_volume_avg_allSF = squeeze(mean(PDIallSF, [1, 2, 3]));
+figure; plot(PDI_volume_avg_allSF)
 
+figure; histogram(PDI_volume_avg_allSF)
+
+%%
+% test_PDI_interp_outliers = trial_PDI_usi;
+% test_PDI_interp_outliers = filloutliers(trial_PDI_usi, )
 %% Select usable trials
 trials_to_remove_dlg = inputdlg('Enter space-separated trial numbers to remove:',...
              'Sample', [1 50]);

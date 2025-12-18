@@ -67,7 +67,9 @@ figure; imagesc(squeeze( max(PDI_fracmax, [], 1) )')
 % volumeViewer(PDI_fracmax)
 %% Go through voxels "in vessel" and average the g1
 g1_vessel_avg = calc_ROI_avg(g1, vessel_mask);
+% figure; plot(squeeze(abs(g1_vessel_avg)))
 
+% IQ_vessel_avg = calc_ROI_avg(IQ - mean(IQ, 4), vessel_mask);
 %% Plot the average g1 "in vessel"
 g1af = figure; plot(tau_ms(1:num_g1_pts), squeeze(abs(g1_vessel_avg)), 'LineWidth', 4); xlabel("Tau [ms]"); ylabel("|g_1|")
 title("|g_1| average across vessel; flow speed = " + num2str(P.Mcr_SP.flow_v_mm_s) + " mm/s")
@@ -110,8 +112,11 @@ tau_range = tau(tau_mask);
 % % Let x = [Ns, vx, vy, vz]
 % Let x = [vx, vy, vz]
 
-% P.Mcr_SP.sigma = [300e-6, 300e-6, 150e-6]; %%%% PSF testing %%%%
-P.Mcr_SP.sigma = [300e-6, 300e-6, 10e-6]; %%%% PSF testing %%%%
+% Sigma is the 1/e * PSF max, so convert from FWHM
+P.Mcr_SP.sigma = [300e-6, 300e-6, 150e-6] .* 1/(2*sqrt(2*log(2))); %%%% PSF testing %%%%
+% P.Mcr_SP.sigma = [300e-6, 300e-6, 100e-6] .* 1/(2*sqrt(2*log(2))); %%%% PSF testing %%%%
+% P.Mcr_SP.sigma = [300e-6, 300e-6, 10e-6]; %%%% PSF testing %%%%
+
 Rs = P.Mcr_SP.scatterReflectivity;
 % Rs = mean(voxel.data(:, 4)); % Average reflection coefficient of scatterer
 % Re = SP.snr; % "Noise level of imaging system"
@@ -138,12 +143,12 @@ x_fit = lsqcurvefit(abs_g1T_model, x0, tau_range, abs(g1_vessel_avg(tau_mask)), 
 %% Input the ground truth parameters to see what the |g1T| model looks like
 
 test_abs_g1T_model = abs_g1T_model(testx, tau_range);
-figure; plot(tau_range*1e3, test_abs_g1T_model); xlabel('tau [ms]'); ylabel("|g_1|")
-hold on; plot(tau_range .* 1e3, abs(g1_vessel_avg(tau_mask)));
+figure; plot(tau_range*1e3, test_abs_g1T_model, 'LineWidth', 2); xlabel('tau [ms]'); ylabel("|g_1|")
+hold on; plot(tau_range .* 1e3, abs(g1_vessel_avg(tau_mask)), 'LineWidth', 2);
 
 % Plot the fit
 abs_g1T_fit = abs_g1T_model(x_fit, tau_range);
-plot(tau_range .* 1e3, abs_g1T_fit);
+plot(tau_range .* 1e3, abs_g1T_fit, 'LineWidth', 2);
 % test2 = abs_g1T_model([7849, 0, 0, .0445], tau);
 % test2 = abs_g1T_model([7849, 0, 0, .0845], tau);
 % plot(tau .* 1e3, test2);
