@@ -3,12 +3,10 @@
 % trange - defines the range for the block average [tPre tPost dt]. If dt
 %           defined, time series are interpolated prior to 
 
-function [] = fUS_GLM_scratch(data, t, stim, Aaux, tIncAuto, trange, glmSolveMethod, idxBasis, paramsBasis, driftOrder)
-
-    % I don't want to use the DataClass and snirf stuff
+function [data_yavg, data_yavgstd] = fUS_GLM_scratch(data, t, stim, Aaux, tIncAuto, trange, glmSolveMethod, idxBasis, paramsBasis, driftOrder)
 
     %%%% Get characteristics of the timing
-    dt = t(2) - t(1); % Time step %%%%%%%%%%%%%
+    dt = t(2) - t(1); % Time step
     fq = 1/dt;        % Sampling/measurement frequency
     nPre = round(trange(1)/dt); % Which index for the block average Pre point
     nPost = round(trange(2)/dt);% Which index for the block average Post point
@@ -16,7 +14,7 @@ function [] = fUS_GLM_scratch(data, t, stim, Aaux, tIncAuto, trange, glmSolveMet
     nTpts = length(t); % # of time points
     tHRF = (1*nPre*dt:dt:nPost*dt)';
     ntHRF = length(tHRF); % # of points in the HRF
-    nT = length(t); % Also # of time points?
+    nT = length(t); % should be the same as nTpts (?)
 
     %%%% Update stimulus vectors
     % Note: it's assumed that the stimulus vector has the same length and
@@ -26,11 +24,6 @@ function [] = fUS_GLM_scratch(data, t, stim, Aaux, tIncAuto, trange, glmSolveMet
     stimStates(stimStates > 0) = stimStates(stimStates > 0) ./ stimStates(stimStates > 0);
     stimStates = logical(stimStates); % stimStates: a logical version of the stim vector. True = stim on, false = stim off
     stimAmps = stim; % stimAmps: a quantitative version of the stim vector. The amplitude of the stimulus is preserved.
-    
-    
-    
-    % for 
-
 
     %%%%%%%%%%%%%%%%
     % Prune good stim, generate onset matrix
