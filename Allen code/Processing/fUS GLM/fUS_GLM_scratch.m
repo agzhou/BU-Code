@@ -265,9 +265,9 @@ function [data_yavg, data_yavgstd] = fUS_GLM_scratch(data, t, stim, Aaux, tIncAu
         ynew = y;
         yresid = zeros(size(y));
         
-        foo = nTrials{iBlk};
-        nTrials{iBlk} = zeros(1,size(stimAmps,2));
-        nTrials{iBlk}(lstCond) = foo;
+        foo = nTrials;
+        nTrials = zeros(1,size(stimAmps,2));
+        nTrials(lstCond) = foo;
         
         foo = yavg;
         yavg = zeros(size(foo,1),size(foo,2),size(foo,3),size(stimAmps,2));
