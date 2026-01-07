@@ -136,7 +136,7 @@ if flagNuisanceRMethod==3 && isempty(rcMap)
     return
 end
 
-% Use my preferred format
+% Use my preferred format!!
 
 % Get stim vector by instantiating temporary SnirfClass object with this
 % function's stim argument as input, and then using the SnirfClass object's
@@ -271,6 +271,8 @@ for iBlk = 1:length(data_y) % This is a snirf thing, remove it (it was originall
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Construct the basis functions
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    % tbasis = "temporal" basis, probably
     if idxBasis==1
         % Gaussians
         gms = paramsBasis(1);
@@ -280,7 +282,7 @@ for iBlk = 1:length(data_y) % This is a snirf thing, remove it (it was originall
         tbasis = zeros(ntHRF,nB);
         for b=1:nB
             tbasis(:,b) = exp(-(tHRF-(trange(1)+b*gms)).^2/(2*gstd.^2));
-            tbasis(:,b) = tbasis(:,b)./max(tbasis(:,b));
+            tbasis(:,b) = tbasis(:,b)./max(tbasis(:,b)); % Normalize the basis function to [0, 1]
         end
         
     elseif idxBasis==2
@@ -361,6 +363,8 @@ for iBlk = 1:length(data_y) % This is a snirf thing, remove it (it was originall
         for iCond=1:nCond
             for b=1:nB
                 iC = iC + 1;
+                % Convolve the basis functions with the boxcars to get the
+                % actual bases for GLM
                 if size(tbasis,3)==1
                     clmn = conv(onset(:,iCond),tbasis(:,b));
                 else
@@ -457,7 +461,7 @@ for iBlk = 1:length(data_y) % This is a snirf thing, remove it (it was originall
             end
     end
     
-    nCh = size(y,3);
+    nCh = size(y,3); % # of channels (1 for ultrasound)
     
     % Exit if not enough data to analyze the 3 here is arbitrary.
     % Certainly needs to be larger than 1
