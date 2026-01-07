@@ -252,7 +252,7 @@ function [data_yavg, data_yavgstd] = fUS_GLM_scratch(data, t, stim, Aaux, tIncAu
     foo     = zeros(nB*nCond+driftOrder+1+nAux+nMC,nCh,2); % 4 extra for 3rd order drift + nAux
 
 
-    %tcheck if the matrix is well conditionned
+    % check if the matrix is well conditionned
     ATA=At(lstInc,:)'*At(lstInc,:);
     rco=rcond(full(ATA));
     if rco<10^-14 && rco>10^-25
