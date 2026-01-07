@@ -253,8 +253,8 @@ function [data_yavg, data_yavgstd] = fUS_GLM_scratch(data, t, stim, Aaux, tIncAu
 
 
     % check if the matrix is well conditionned
-    ATA=At(lstInc,:)'*At(lstInc,:);
-    rco=rcond(full(ATA));
+    ATA=At(lstInc,:)'*At(lstInc,:); % what is lstInc doing???????
+    rco = rcond(full(ATA)); % Reciprocal condition
     if rco<10^-14 && rco>10^-25
         fprintf('Design matrix is poorly scaled...(RCond=%e)\n', rco);
     elseif rco<10^-25
