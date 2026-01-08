@@ -18,6 +18,12 @@ roi_CBFsi = calc_ROI_avg(CBFsiallSF, roi_indices);
 %     roi_CBFsi_usi{ti} = calc_ROI_avg(CBFsiallSF{ti}, roi_indices);
 % end
 %%
-figure; plot(roi_PDI); title("ROI PDI"); xlabel("Superframe index")
-figure; plot(roi_CBVi); title("ROI CBVi"); xlabel("Superframe index")
-figure; plot(roi_CBFsi); title("ROI CBFsi"); xlabel("Superframe index")
+% figure; plot(roi_PDI); title("ROI PDI"); xlabel("Superframe index")
+% figure; plot(roi_CBVi); title("ROI CBVi"); xlabel("Superframe index")
+% figure; plot(roi_CBFsi); title("ROI CBFsi"); xlabel("Superframe index")
+
+%% Plot ROI data with actual time
+figure; plot(t, roi_PDI, 'LineWidth', 2); title("ROI PDI"); xlabel("Time [s]")
+hold on
+xline(stimOnsets, 'r', 'LineWidth', 2)
+hold off

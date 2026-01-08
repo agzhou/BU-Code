@@ -97,7 +97,7 @@ HPF.order = 4; % Butterworth filter order
 
 %% Save proc params
 numg1pts = 20; % Only calculate the first N points
-save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'numg1pts', 'zstart', 'zend');
+save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'HPF', 'startFile', 'endFile', 'tau', 'tau_ms', 'numg1pts', 'zstart', 'zend');
 
 %% Main loop
 % for filenum = startFile:endFile
@@ -446,8 +446,8 @@ ind_rising_edge = ind_above_ah(ind_shift_below_ah); % Store the original indices
 % plot(ind_rising_edge, ones(size(ind_rising_edge)) .* 5, 'o')
 % hold off
 
-stim_starts_gap = (P.Mcr_fcp.apis.seq_length_s - P.Mcr_fcp.apis.stim_length_s) * P.daqrate; % How long we expect the stim gap to be between the end of one stim to the start of the next
 stim_prestart_baseline = (P.Mcr_fcp.apis.delay_time_ms / 1e3) * P.daqrate; % The duration between the baseline period and the corresponding stim start
+stim_starts_gap = (P.Mcr_fcp.apis.seq_length_s - P.Mcr_fcp.apis.stim_length_s - (P.Mcr_fcp.apis.delay_time_ms / 1e3)) * P.daqrate; % How long we expect the stim gap to be between the end of one stim to the start of the next
 stim_starts = ind_rising_edge([true; diff(ind_rising_edge) > stim_starts_gap]); % Add a 1/true at the beginning index for the first stim
 
 % Plot the air puff signal and the calculated start points of each stim period
@@ -471,6 +471,14 @@ for trial = 1:length(trial_windows)
     trial_sf{trial} = find(sfStarts >= trial_windows{trial}(1) & sfStarts <= trial_windows{trial}(end));
 end
 clearvars trial
+
+%% Prep variables for GLM
+t = sfStarts ./ P.daqrate; % Timestamps at each superframe start (same size as [data]allSF) [s]
+stimOnsets = stim_starts ./ P.daqrate; % Timestamps at each stim start/onset [s]
+
+% Vector of stim amplitudes
+stimAmps = zeros(size(t)); % Same size as t
+stimAmps() = 1;
 
 %% Remove outliers
 % Use the "median" method of the filloutliers function
