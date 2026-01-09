@@ -6,9 +6,8 @@
 %       - (not implemented) stimOnsets: [# time points x 1] vector of stim starts/onsets (0 = off, 1 = start)
 % trange - defines the range for the block average [tPre tPost dt]. If dt
 %           defined, time series are interpolated prior to 
-% driftOrder: the order of which to perform polynomial drift correction
 
-function [data_yavg, data_yavgstd] = fUS_GLM_scratch(data, ti, Aaux, tIncAuto, trange, glmSolveMethod, idxBasis, paramsBasis, driftOrder)
+function [data_yavg, data_yavgstd] = fUS_GLM_scratch_FIR(data, ti, trange, FIR_order, glmSolveMethod, paramsBasis)
 
     t = ti.t; % Get the time vector from the input struct
 
@@ -24,60 +23,6 @@ function [data_yavg, data_yavgstd] = fUS_GLM_scratch(data, ti, Aaux, tIncAuto, t
     ntHRF = length(tHRF); % # of points in the HRF
     nT = length(t); % should be the same as nTpts (?)
 
-    % Check input args
-    if isempty(tIncAuto) % If tIncAuto is empty (no inputted motion information), don't correct for motion
-        tIncAuto = true(length(t), 1); % a vector (#time points x 1) indicating which data time points are motion (false/0) or not (true/1)
-    end
-    tInc = tIncAuto; % Time indices to include in the analysis (for now, all)
-
-    % %%%% Update stimulus vectors
-    % % Note: it's assumed that the stimulus vector has the same length and
-    % % timesteps of the data vector.
-    % % stim represents the onsets of the active stimulus periods.
-    % stimStates = stim;
-    % stimStates(stimStates > 0) = stimStates(stimStates > 0) ./ stimStates(stimStates > 0);
-    % stimStates = logical(stimStates); % stimStates: a logical version of the stim vector. True = stim on, false = stim off
-    % stimAmps = stim; % stimAmps: a quantitative version of the stim vector. The amplitude of the stimulus is preserved.
-    % 
-    % %%%%%%%%%%%%%%%%
-    % % Prune good stim, generate onset matrix
-    % %%%%%%%%%%%%%%%%
-    % % Get only indices of conditions with any stimStates that are 1
-    % % lstCond = find(sum(stimStates == 1, 1) > 0);
-    % lstCond = find(stimStates == true); % Indices at the active stim onsets
-    % % nCond = length(lstCond); % # of stim onsets
-    % % nTrials = zeros(nCond, 1); % # of trials??......
-    % nCond = 1; % Only one condition
-    % nTrials = length(lstCond);
-    % 
-    % onset = zeros(nT, nCond);
-    % avg_pulses = {};
-    % for iCond = 1:nCond
-    %     % lstT = find(stimStates(:, lstCond(iCond)) == 1);  % Indices of stims enabled (== 1)
-    %     % lstp = find((lstT+nPre) >= 1 & (lstT+nPost) <= nTpts);  % Indices of stims not clipped by signal
-    %     lstT = find(stimStates == true);  % Indices of stims enabled (== 1)
-    %     lstp = find((lstT+nPre) >= 1 & (lstT+nPost) <= nTpts);  % Indices of stims not clipped by signal
-    %     lst = lstT(lstp); % Final list of stim onset indices to use
-    %     % nTrials(iCond) = length(lst);
-    % 
-    %     % Generate basis boxcars of stim amplitude and duration
-    %     starts = lst+nPre; % Get the start indices of each trial's "stim" --> include the Pre offset
-    %     % if ~isempty(stim(lstCond(iCond)))
-    %         durations = stim(lstCond(iCond)).data(:, 2);
-    %         amplitudes = stim(lstCond(iCond)).data(:, 3);
-    %         avg_pulses{iCond} = ones(round(mean(durations) / dt), 1); %#ok<AGROW>
-    %         for i = 1:length(starts)
-    %             if idxBasis == 1  % Gaussian has no duration T (yet)
-    %                pulse_duration = 1; 
-    %             else
-    %                pulse_duration = round(durations(i) / dt); 
-    %             end
-    %             pulse = (amplitudes(i) / pulse_duration) * ones(pulse_duration, 1);
-    %             onset(starts(i):starts(i) + pulse_duration - 1, iCond) = onset(starts(i):starts(i) + pulse_duration - 1, iCond) + pulse;
-    %         end
-    %     % end
-    % end
-
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % My version of the stim info
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -88,146 +33,18 @@ function [data_yavg, data_yavgstd] = fUS_GLM_scratch(data, ti, Aaux, tIncAuto, t
     % Construct the basis functions
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    % nB: # of basis functions to use
-    % tbasis = "temporal" basis, probably [# of HRF time points by # of basis functions]
-    switch idxBasis
-        case 1
-            % Gaussians
-            gms = paramsBasis(1);  % Mean
-            gstd = paramsBasis(2); % Standard deviation
-            
-            nB = floor((trange(2) - trange(1)) / gms) - 1;
-            tbasis = zeros(ntHRF, nB);
-            for b = 1:nB % go through each basis function
-                tbasis(:, b) = exp( -(tHRF-(trange(1)+b*gms)).^2/(2*gstd.^2) );
-                tbasis(:, b) = tbasis(:, b) ./ max(tbasis(:, b));
-            end
-        
-        case 2
-            % Modified Gamma
-            nConc = 1; % Should only need 1 set of basis functions. Their nConc = 2 should stand for multiple chromophores (HbO, HbR)
-            nB = 1; % 1 basis
-            tbasis = zeros(ntHRF, nB, nConc);
-            for iConc = 1:nConc
-                tau = paramsBasis((iConc-1)*2 + 1);
-                sigma = paramsBasis((iConc-1)*2 + 2);
-                
-                tbasis(:, 1, iConc) = ( exp(1)*(tHRF-tau).^2/sigma^2 ) .* exp( -(tHRF-tau).^2/sigma^2 );
-                lstNeg = find(tHRF < 0); % List of indices where the HRF time is negative 
-                tbasis(lstNeg, 1, iConc) = 0; % ^ Set those points' basis values to 0
-                
-                if tHRF(1)<tau
-                    tbasis(1:round((tau-tHRF(1))/dt),1,iConc) = 0; % Set the basis values to 0 when ...
-                end
-                
-            end
-        
-        case 3
-            % Modified Gamma and Derivative
-            nConc = 1;
-            nB = 2;
-            tbasis = zeros(ntHRF, nB, nConc);
-            for iConc = 1:nConc
-                tau = paramsBasis((iConc-1)*2+1);
-                sigma = paramsBasis((iConc-1)*2+2);
-                
-                tbasis(:,1,iConc) = (exp(1)*(tHRF-tau).^2/sigma^2) .* exp( -(tHRF-tau).^2/sigma^2 );
-                tbasis(:,2,iConc) = 2*exp(1)*( (tHRF-tau)/sigma^2 - (tHRF-tau).^3/sigma^4 ) .* exp( -(tHRF-tau).^2/sigma^2 );
-                
-                if tHRF(1)<tau
-                    tbasis(1:round((tau-tHRF(1))/dt),1:2,iConc) = 0;
-                end
-                
-            end
-        
-        case 4
-            % AFNI Gamma function
-            nConc = 1;
-            nB = 1;
-            tbasis = zeros(ntHRF, nB, nConc);
-            for iConc = 1:nConc
-                
-                p = paramsBasis((iConc-1)*2+1);
-                q = paramsBasis((iConc-1)*2+2);
-                
-                tbasis(:, 1, iConc) = (tHRF/(p*q)).^p.* exp(p-tHRF/q);
-                
-            end
-        
-    end
+    tbasis = ti.stimAmps; % is this right??? does it have the correct time stamps?
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Construct design matrix
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % dA=zeros(nT, nB*nCond, 2);
-    dA = zeros(nT, nB*nCond);
-    for iConc = 1
-        iC = 0;
-        for iCond = 1:nCond % Go through each condition (should be just 1 for us)
-            for b = 1:nB % Go through each basis
-                iC = iC + 1;
+    A = repmat(tbasis, 1, FIR_order); % ???
 
-                % Convolve the basis functions with the boxcars to get the
-                % actual bases for GLM
-                if size(tbasis, 3)==1
-                    clmn = conv(ti.stimAmps(:, iCond), tbasis(:, b));
-                else
-                    clmn = conv(ti.stimAmps(:, iCond), tbasis(:, b, iConc));
-                end
-                clmn = clmn(1:nT);
-                dA(:, iC, iConc) = clmn;
-                beta_label{b + (iCond-1)*nB} = "Cond" + num2str(iCond);
-            end
-        end
-    end
-
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Expand design matrix nth order polynomial for drift correction
-    %   Go from 0th order to driftOrder-th order (Allen's change - before it started from 1st order)
-    %   Rescale polynomial to avoid bad conditioning
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    xDrift = ones(nT, driftOrder + 1);
-    for dopo = 1:(driftOrder + 1) % drift order plus one dopo = order + 1
-        xDrift(:, dopo) = ([1:nT]') .^ (dopo - 1); % Create each drift polynomial
-        xDrift(:, dopo) = xDrift(:, dopo) / xDrift(end, dopo); % Rescale the polynomial to make its last value = 1
-    end
-    
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Expand design matrix with Aaux
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    nAux = size(Aaux, 2); % # of auxiliary regressors
-
-
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Expand design matrix for Motion Correction
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %     if flagMotionCorrect==1
-    %         idxMA = find(diff(tInc)==1);  % number of motion artifacts
-    %         if isempty(idxMA)
-    nMC = 0; % # of motion correction regressors???
-    Amotion = [];
-    %         else
-    %             nMA = length(idxMA);
-    %             nMC = nMA+1;
-    %             Amotion = zeros(nT,nMC);
-    %             Amotion(1:idxMA(1),1) = 1;
-    %             for ii=2:nMA
-    %                 Amotion((idxMA(ii-1)+1):idxMA(ii),ii) = 1;
-    %             end
-    %             Amotion((idxMA(nMA)+1):end,end) = 1;
-    %         end
-    %     else
-    %         nMC = 0;
-    %         Amotion = [];
-    %     end
-    lstInc = find(tInc==1); % List to include (only keep indices where tInc is true --> no labeled motion)
-    
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Final design matrix (A)
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     nRegs = size(beta_label, 2); % A dummy variable that keeps track of the number of regressors used (previously called 'dummy')
 
-    A = [dA, xDrift, Aaux, Amotion]; % Final design matrix
     
     % Update beta (weight) labels
     for ixDrift = 1:size(xDrift, 2) % Label each drift (order)
