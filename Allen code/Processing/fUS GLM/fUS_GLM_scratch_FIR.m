@@ -5,11 +5,14 @@
 %       - tOnsets: [# stims x 1] vector of time points corresponding to stim starts/onsets
 %       - (not implemented) stimOnsets: [# time points x 1] vector of stim starts/onsets (0 = off, 1 = start)
 % trange - defines the range for the block average [tPre tPost dt]. If dt
-%           defined, time series are interpolated prior to 
+%           defined, time series are interpolated prior to analysis
+%       Homer3's example trange: [-2.0, 20.0]
+%       We probably want [-5, 55] for the 60s long trials
 
 function [data_yavg, data_yavgstd] = fUS_GLM_scratch_FIR(data, ti, trange, FIR_order, glmSolveMethod, paramsBasis)
 
     t = ti.t; % Get the time vector from the input struct
+    tOnsets = ti.tOnsets; % Get the stim timestamp vector from the input struct
 
     %%%% Get characteristics of the timing
     % dt = t(2) - t(1); % Time step
@@ -33,12 +36,20 @@ function [data_yavg, data_yavgstd] = fUS_GLM_scratch_FIR(data, ti, trange, FIR_o
     % Construct the basis functions
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    tbasis = ti.stimAmps; % is this right??? does it have the correct time stamps?
+    % A = 
+    % tbasis = ti.stimAmps; % is this right??? does it have the correct time stamps?
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Construct design matrix
+    %   Equation: y = A*x, where y is the input data,
+    %                      A is the design matrix [# time points x # HRF time points],
+    %                      x are the FIR weights [# HRF time points x 1]
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    A = repmat(tbasis, 1, FIR_order); % ???
+    A = zeros(nT, ntHRF); % check this
+    for Ti = 1:length(ntHRF) % tau index
+        t_nearest_ind = find(min(abs(t - tHRF(Ti))));
+        % I think the tOnsets and dt could be used?
+    end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Final design matrix (A)
