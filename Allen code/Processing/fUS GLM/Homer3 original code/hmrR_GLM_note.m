@@ -425,7 +425,7 @@ for iBlk = 1:length(data_y) % This is a snirf thing, remove it (it was originall
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Final design matrix
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    dummy = size(beta_label,2);
+    dummy = size(beta_label,2); % A dummy variable that keeps track of the number of regressors used
     
     switch flagNuisanceRMethod
         case {0,1,2} % short separation
@@ -442,8 +442,9 @@ for iBlk = 1:length(data_y) % This is a snirf thing, remove it (it was originall
                     end
                     dummy = size(beta_label,2);
                     for iAmotion = 1:size(Amotion,2)
-                        beta_label{ixDrift + dummy} = ['Motion'];
+                        beta_label{ixDrift + dummy} = ['Motion']; % This should use iAmotion, not ixDrift
                     end
+                    % dummy should be updated again...
                 end
                 
             end
@@ -459,6 +460,7 @@ for iBlk = 1:length(data_y) % This is a snirf thing, remove it (it was originall
                     for iAmotion = 1:size(Amotion,2)
                         beta_label{ixDrift + dummy} = ['Motion'];
                     end
+                    % dummy should be updated again...
                 end
                 
             end

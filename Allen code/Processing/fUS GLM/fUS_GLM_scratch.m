@@ -6,6 +6,7 @@
 %       - (not implemented) stimOnsets: [# time points x 1] vector of stim starts/onsets (0 = off, 1 = start)
 % trange - defines the range for the block average [tPre tPost dt]. If dt
 %           defined, time series are interpolated prior to 
+% driftOrder: the order of which to perform polynomial drift correction
 
 function [data_yavg, data_yavgstd] = fUS_GLM_scratch(data, ti, Aaux, tIncAuto, trange, glmSolveMethod, idxBasis, paramsBasis, driftOrder)
 
@@ -175,25 +176,26 @@ function [data_yavg, data_yavgstd] = fUS_GLM_scratch(data, ti, Aaux, tIncAuto, t
                 end
                 clmn = clmn(1:nT);
                 dA(:, iC, iConc) = clmn;
-                beta_label{b + (iCond-1)*nB} = ['Cond' num2str(iCond)];
+                beta_label{b + (iCond-1)*nB} = "Cond" + num2str(iCond);
             end
         end
     end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Expand design matrix nth order polynomial for drift correction
-    % rescale polynomial to avoid bad conditionning
+    %   Go from 0th order to driftOrder-th order (Allen's change - before it started from 1st order)
+    %   Rescale polynomial to avoid bad conditioning
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    xDrift = ones(nT, driftOrder);
-    for ii = 2:(driftOrder+1) % ii = n + 1...
-        xDrift(:, ii) = ([1:nT]').^(ii-1); % Create each drift polynomial
-        xDrift(:, ii) = xDrift(:, ii) / xDrift(end, ii);
+    xDrift = ones(nT, driftOrder + 1);
+    for dopo = 1:(driftOrder + 1) % drift order plus one dopo = order + 1
+        xDrift(:, dopo) = ([1:nT]') .^ (dopo - 1); % Create each drift polynomial
+        xDrift(:, dopo) = xDrift(:, dopo) / xDrift(end, dopo); % Rescale the polynomial to make its last value = 1
     end
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Expand design matrix with Aaux
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    nAux = size(Aaux, 2);
+    nAux = size(Aaux, 2); % # of auxiliary regressors
 
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -202,7 +204,7 @@ function [data_yavg, data_yavgstd] = fUS_GLM_scratch(data, ti, Aaux, tIncAuto, t
     %     if flagMotionCorrect==1
     %         idxMA = find(diff(tInc)==1);  % number of motion artifacts
     %         if isempty(idxMA)
-    nMC = 0;
+    nMC = 0; % # of motion correction regressors???
     Amotion = [];
     %         else
     %             nMA = length(idxMA);
@@ -223,19 +225,33 @@ function [data_yavg, data_yavgstd] = fUS_GLM_scratch(data, ti, Aaux, tIncAuto, t
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Final design matrix (A)
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    dummy = size(beta_label, 2);
+    nRegs = size(beta_label, 2); % A dummy variable that keeps track of the number of regressors used (previously called 'dummy')
 
-    A = [dA xDrift Amotion]; % Final design matrix
+    A = [dA, xDrift, Aaux, Amotion]; % Final design matrix
+    
+    % Update beta (weight) labels
+    for ixDrift = 1:size(xDrift, 2) % Label each drift (order)
+        beta_label{ixDrift + nRegs} = "xDrift: order " + num2str(ixDrift - 1);
+    end
+    nRegs = size(beta_label, 2);
+    for iAaux = 1:size(Aaux, 2)    % Label each auxiliary regressor
+        beta_label{iAaux + nRegs} = "Aux # " + num2str(iAaux);
+    end
+    nRegs = size(beta_label, 2);
+    for iAmotion = 1:size(Amotion, 2)
+        beta_label{iAmotion + nRegs} = "Motion # " + num2str(iAmotion);
+    end
+    nRegs = size(beta_label, 2);
 
     nCh = 1; % # of channels (1 for ultrasound)
 
     % Exit if not enough data to analyze; the 3 here is arbitrary.
     % Certainly needs to be larger than 1
-    if length(lstInc) < 3*size(A, 2) || nCond==0
+    if length(lstInc) < 3*size(A, 2) || nCond==0 % If there are much fewer included time points than the number of basis functions...
         warning('Not enough data to find a solution')
-        yavg    = zeros(ntHRF, nCh, 3, nCond);
-        yavgstd = zeros(ntHRF, nCh, 3, nCond);
-        ysum2   = zeros(ntHRF, nCh, 3, nCond);
+        yavg    = zeros(ntHRF, nCh, nCond);
+        yavgstd = zeros(ntHRF, nCh, nCond);
+        ysum2   = zeros(ntHRF, nCh, nCond);
         return
     end
 
@@ -243,22 +259,21 @@ function [data_yavg, data_yavgstd] = fUS_GLM_scratch(data, ti, Aaux, tIncAuto, t
     % SOLVE
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     tb = zeros(nB, nCh, nCond);
-    % b = zeros(driftOrder+1+nAux,nCh,2);
     yavg    = zeros(ntHRF, nCh, nCond);
     yavgstd = zeros(ntHRF, nCh, nCond);
     ysum2   = zeros(ntHRF, nCh, nCond);
     yresid  = zeros(nT, nCh);
     ynew    = zeros(nT, nCh);
     yR      = zeros(nCh);
-    foo     = zeros(nB*nCond+driftOrder+1+nAux+nMC,nCh,2); % 4 extra for 3rd order drift + nAux
+    foo     = zeros(nB*nCond + (driftOrder + 1) + 1 + nAux + nMC, nCh); % original comment: 4 extra for 3rd order drift + nAux
 
 
     % check if the matrix is well conditionned
-    ATA=At(lstInc,:)'*At(lstInc,:); % what is lstInc doing???????
+    ATA = A(lstInc, :)' * A(lstInc, :); % lstInc keeps the "non-motion" points (if that's inputted)
     rco = rcond(full(ATA)); % Reciprocal condition
-    if rco<10^-14 && rco>10^-25
+    if rco < 10^-14 && rco > 10^-25
         fprintf('Design matrix is poorly scaled...(RCond=%e)\n', rco);
-    elseif rco<10^-25
+    elseif rco < 10^-25
         fprintf('Design matrix is VERY poorly scaled...(RCond=%e), cannot perform computation\n', rco);
         yavg = permute(yavg,[1 3 2 4]);
         yavgstd = permute(yavgstd,[1 3 2 4]);
@@ -266,36 +281,38 @@ function [data_yavg, data_yavgstd] = fUS_GLM_scratch(data, ti, Aaux, tIncAuto, t
         ynew = y;
         yresid = zeros(size(y));
         
+        % ????
         foo = nTrials;
-        nTrials = zeros(1,size(stimAmps,2));
+        nTrials = zeros(1, size(ti.stimAmps, 2));
         nTrials(lstCond) = foo;
         
         foo = yavg;
-        yavg = zeros(size(foo,1),size(foo,2),size(foo,3),size(stimAmps,2));
-        yavg(:,:,:,lstCond) = foo;
+        yavg = zeros(size(foo, 1), size(foo, 2), size(foo, 3), size(ti.stimAmps, 2));
+        yavg(:, :, :,lstCond) = foo;
         
         foo = yavgstd;
-        yavgstd = zeros(size(foo,1),size(foo,2),size(foo,3),size(stimAmps,2));
-        yavgstd(:,:,:,lstCond) = foo;
+        yavgstd = zeros(size(foo, 1), size(foo, 2), size(foo, 3), size(ti.stimAmps, 2));
+        yavgstd(:, :, :, lstCond) = foo;
         
         foo = ysum2;
-        ysum2 = zeros(size(foo,1),size(foo,2),size(foo,3),size(stimAmps,2));
-        ysum2(:,:,:,lstCond) = foo;
+        ysum2 = zeros(size(foo, 1),size(foo, 2), size(foo, 3), size(ti.stimAmps, 2));
+        ysum2(:, :, :, lstCond) = foo;
         
         beta = [];
         return
     end
     
     % Compute pseudo-inverse and deconvolve
-    if glmSolveMethod==1 % ~flagUseTed
-        pinvA=ATA\At(lstInc,:)';
+    if glmSolveMethod == 1 % Least squares (original comment: ~flagUseTed)
+
+        pinvA = ATA \ A(lstInc, :)'; % Solve for weights
         foo = [];
-        ytmp = y(lstInc,conc,lstML);
-        foo(:,lstML,conc)=pinvA*squeeze(ytmp);
-    elseif glmSolveMethod==2
+        ytmp = y(lstInc, conc, lstML); % ??????????????????????????????????????????????????????????
+        foo(:,lstML,conc) = pinvA*squeeze(ytmp);
+    elseif glmSolveMethod == 2 % Iterative weighted least squares
         % Use the iWLS code from Barker et al
         foo = [];
-        ytmp = y(lstInc,conc,lstML);
+        ytmp = y(lstInc,conc,lstML); %..............................
         for chanIdx=1:length(lstML)
             ytmp2 = y(lstInc,conc,lstML(chanIdx));
             [dmoco, beta, tstat(:,lstML(chanIdx),conc), pval(:,lstML(chanIdx),conc), sigma, CovB(:,:,lstML(chanIdx),conc), dfe, w, P, f] = ar_glm_final(squeeze(ytmp2),At(lstInc,:), round(fq*2));
