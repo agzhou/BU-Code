@@ -1,3 +1,6 @@
+% Annotations from Allen
+
+
 % SYNTAX:
 % [data_yavg, data_yavgstd, nTrials, data_ynew, data_yresid, data_ysum2, beta_blks, yR_blks, hmrstats] = ...
 % hmrR_GLM(data_y, stim, probe, mlActAuto, Aaux, tIncAuto, rcMap, trange, glmSolveMethod, idxBasis, paramsBasis, rhoSD_ssThresh, flagNuisanceRMethod, driftOrder, c_vector)
@@ -127,7 +130,7 @@ hmrstats        = []; % More advanced, want this eventually
 
 % Check input args
 if isempty(tIncAuto)
-    tIncAuto = cell(length(data_y),1);
+    tIncAuto = cell(length(data_y),1); % a vector (#time points x 1) indicating which data time points are motion (=0) or not (=1)
 end
 if isempty(mlActAuto)
     mlActAuto = cell(length(data_y),1);
@@ -246,7 +249,7 @@ for iBlk = 1:length(data_y) % This is a snirf thing, remove it (it was originall
     onset = zeros(nT, nCond);
     avg_pulses = {};
     for iCond = 1:nCond
-        lstT = find(stimStates(:, lstCond(iCond)) == 1);  % Indices of stims enabled (== 1)
+        lstT = find(stimStates(:, lstCond(iCond)) == 1);  % (wrong) Indices of stims enabled (== 1)
         lstp = find((lstT+nPre) >= 1 & (lstT+nPost) <= nTpts);  % Indices of stims not clipped by signal
         lst = lstT(lstp);
         nTrials{iBlk}(iCond) = length(lst);
