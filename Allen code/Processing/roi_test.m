@@ -25,5 +25,11 @@ roi_CBFsi = calc_ROI_avg(CBFsiallSF, roi_indices);
 %% Plot ROI data with actual time
 figure; plot(t, roi_PDI, 'LineWidth', 2); title("ROI PDI"); xlabel("Time [s]")
 hold on
-xline(stimOnsets, 'r', 'LineWidth', 2)
+xline(tOnsets, 'r', 'LineWidth', 2)
+hold off
+
+
+figure; plot(t, roi_CBVi, 'LineWidth', 2); title("ROI CBVi"); xlabel("Time [s]")
+hold on
+xline(tOnsets, 'r', 'LineWidth', 2)
 hold off

@@ -475,11 +475,24 @@ clearvars trial
 
 %% Prep variables for GLM
 t = sfStarts ./ P.daqrate; % Timestamps at each superframe start (same size as [data]allSF) [s]
-stimOnsets = stim_starts ./ P.daqrate; % Timestamps at each stim start/onset [s]
+tOnsets = stim_starts ./ P.daqrate; % Timestamps at each stim start/onset [s]
+% stimOnsets = false(size(t));
+% stimOnsets
 
-% Vector of stim amplitudes
+% Vector of stim amplitudes (0 when off, 1 when on)
 stimAmps = zeros(size(t)); % Same size as t
-% stimAmps() = 1;
+stim_sf = cell(size(trial_windows));    % Cell array of size (# trials, 1). Each cell contains the superframe indices that started within that trial.
+for trial = 1:length(trial_windows)
+    stim_sf{trial} = find(sfStarts >= stim_starts(trial) & sfStarts <= stim_starts(trial) + stim_duration);
+    stimAmps(stim_sf{trial}) = 1;
+end
+% figure; plot(t, stimAmps)
+
+% Add the stim variables into a struct ti (timing info)
+ti = struct();
+ti.t = t; % Timestamps [s]
+ti.stimAmps = stimAmps; % Stim amplitudes
+ti.tOnsets = tOnsets;
 
 %% Remove outliers
 % Use the "median" method of the filloutliers function

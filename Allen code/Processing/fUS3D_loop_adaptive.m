@@ -336,9 +336,10 @@ ind_rising_edge = ind_above_ah(ind_shift_below_ah); % Store the original indices
 % plot(ind_rising_edge, ones(size(ind_rising_edge)) .* 5, 'o')
 % hold off
 
-stim_starts_gap = (P.Mcr_fcp.apis.seq_length_s - P.Mcr_fcp.apis.stim_length_s) * P.daqrate; % How long we expect the stim gap to be between the end of one stim to the start of the next
 stim_prestart_baseline = (P.Mcr_fcp.apis.delay_time_ms / 1e3) * P.daqrate; % The duration between the baseline period and the corresponding stim start
+stim_starts_gap = (P.Mcr_fcp.apis.seq_length_s - P.Mcr_fcp.apis.stim_length_s - (P.Mcr_fcp.apis.delay_time_ms / 1e3)) * P.daqrate; % How long we expect the stim gap to be between the end of one stim to the start of the next
 stim_starts = ind_rising_edge([true; diff(ind_rising_edge) > stim_starts_gap]); % Add a 1/true at the beginning index for the first stim
+stim_duration = P.Mcr_fcp.apis.stim_length_s * P.daqrate; % Length of the stim duration per trial [# DAQ samples]
 
 % Plot the air puff signal and the calculated start points of each stim period
 figure; plot(TD.airPuffOutput)
@@ -356,7 +357,7 @@ sfStarts = (TD.sfTimeTagsDAQStart_adj - TD.sfWidth_adj); % Adjust the superframe
 
 % Go through each trial within the run and assign the trial timepoints and the corresponding superframe indices
 for trial = 1:length(trial_windows)
-    trial_windows{trial} = stim_starts(trial) - stim_prestart_baseline : stim_starts(trial) + stim_starts_gap;
+    trial_windows{trial} = stim_starts(trial) - stim_prestart_baseline : stim_starts(trial) + stim_duration + stim_starts_gap;
 
     trial_sf{trial} = find(sfStarts >= trial_windows{trial}(1) & sfStarts <= trial_windows{trial}(end));
 end
