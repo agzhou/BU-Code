@@ -19,6 +19,9 @@ function generateTiffStack_acrossframes(volumeData, varargin)
             cmap = varargin{2};
             if nargin > 3
                 mwr = varargin{3}; % MIP window range
+                if nargin > 4
+                    t = varargin{4}; % Timestamp vector for each superframe [s]
+                end
             end
         end
     end
@@ -47,21 +50,34 @@ function generateTiffStack_acrossframes(volumeData, varargin)
         colormap(cmap)
     
         % adjust size of the image
-    %     if exist('actualSize', 'var')
-    %         hwRatio_xz = actualSize(3) / actualSize(2); % height to width ratio
-    %     else
-    %         hwRatio_xz = 1;
-    %     end
+        if exist('actualSize', 'var')
+            hwRatio_xz = actualSize(3) / actualSize(2); % height to width ratio
+        else
+            hwRatio_xz = 1;
+        end
     
         for f = 1:size(volumeData, 4)
             planeTemp = squeeze(max(volumeData(mwr, :, :, f), [], 1));
     
             imagesc(squeeze(planeTemp)')
-            title("Frame " + num2str(f))
+
+            % Use the timestamp or frame # as the title of each Tiff frame
+            if exist("t", 'var')
+                title("Time = " + num2str(t(f)) + " [s]")
+            else
+                title("Frame " + num2str(f))
+            end
+
             if showColorbar
                 colorbar
             end
             clim(cr)
+
+            % **** temporary **** %
+            axis equal
+            axis tight
+            % ******************* %
+
             cv = getframe(tf);
             rgb = frame2im(cv);      % convert the frame to rgb data
             if f == 1
@@ -69,13 +85,17 @@ function generateTiffStack_acrossframes(volumeData, varargin)
                 xz_tagstruct.ImageWidth = size(rgb, 2);
                 setTag(xz_stack, xz_tagstruct) % set the tags
                 
-    %             tf.Position(4) = ceil(tf.Position(3) * hwRatio_xz);
+                % tf.Position(4) = ceil(tf.Position(3) * hwRatio_xz);
                 
             else
+                % tf.Position(4) = ceil(tf.Position(3) * hwRatio_xz);
                 writeDirectory(xz_stack)
                 setTag(xz_stack, xz_tagstruct)
             end
-    
+
+            % cv = getframe(tf);
+            % rgb = frame2im(cv);      % convert the frame to rgb data
+
             write(xz_stack, rgb)
         end
         close(xz_stack)

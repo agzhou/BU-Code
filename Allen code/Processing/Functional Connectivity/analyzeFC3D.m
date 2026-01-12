@@ -231,6 +231,15 @@ for ri = 1:num_regions % region/ROI index -- loop through each region
 end
 % figure; plot(PDI_ROI_timecourses{1})
 
+%% Calculate the Global Variance of the Temporal Derivative (GVTD): data-driven motion quantification
+% diff_PDIallSF_reg = diff(PDIallSF_reg, 1, length(size(PDIallSF_reg))); % 1st order diff of the registered PDI across superframes, across time (the last dimension)
+size_PDIallSF_reg = size(PDIallSF_reg);
+numVoxelsInVolume = size_PDIallSF_reg(1) * size_PDIallSF_reg(2) * size_PDIallSF_reg(3); % # of voxels in each volume
+GVTD = squeeze( sum( diff(PDIallSF_reg, 1, length(size(PDIallSF_reg))) .^ 2, [1, 2, 3] ) ./ numVoxelsInVolume ) .^ 0.5;
+GVTD(end + 1) = NaN; % pad the end with a NaN, since there is no forward point past the last time point
+
+figure; plot(t, GVTD); title("Global Variance of the Temporal Derivative (GVTD) - PDIallSF"); xlabel("Time [s]"); ylabel("GVTD")
+
 %% Plot each ROI's PDI timecourse
 % % subplot(num_regions, 1, 1)
 % figure;
@@ -247,7 +256,8 @@ end
 % ylabel(ROI_PDI_timecourse_tl, "PDI magnitude [au]")
 
 figure
-ROI_PDI_timecourse_sp = stackedplot(t, PDI_ROI_timecourses_mat, 'DisplayLabels', region_acronyms);
+% ROI_PDI_timecourse_sp = stackedplot(t, PDI_ROI_timecourses_mat, 'DisplayLabels', region_acronyms);
+ROI_PDI_timecourse_sp = stackedplot(t, [PDI_ROI_timecourses_mat, GVTD], 'DisplayLabels', [region_acronyms; {'GVTD'}]);
 title("ROI average PDI timecourses")
 xlabel("Time [s]")
 % fontsize(14, 'points')
@@ -287,7 +297,7 @@ toc
 %% Plot the seed correlation matrices
 
 % Plot the matrix for one window
-figure; imagesc(squeeze(corr_sw_PDI(:, :, 100))); colormap hot; axis square; colorbar
+figure; imagesc(squeeze(corr_sw_PDI(:, :, 100))); colormap jet; axis square; colorbar; clim([-1, 1])
 % xticks(1:num_regions); xticklabels(region_names); yticks(1:num_regions); yticklabels(region_names) % Set the tick labels to be the ROI names
 xticks(1:num_regions); xticklabels(region_acronyms); yticks(1:num_regions); yticklabels(region_acronyms) % Set the tick labels to be the ROI acronyms
 
@@ -296,7 +306,7 @@ corr_sw_legend = {}; % Legend for each pair
 figure; hold on
 for m = 1:num_regions
     for n = m + 1:num_regions
-        plot(sfTimeTags, squeeze(corr_sw_PDI(m, n, :)))
+        plot(t, squeeze(corr_sw_PDI(m, n, :)))
         corr_sw_legend(end + 1) = {region_acronyms{m} + "-" + region_acronyms{n}};
     end
 end
@@ -318,9 +328,14 @@ legend(region_acronyms)
 
 
 
+%% Plot the registered PDI across superframes (MIPs)
+addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Processing')
+% figure; imagesc(squeeze(max(PDIallSF_reg(:, :, :, 1), [], 1))'); colormap hot; axis equal
+reg_volume_size_mm = size(AA_template_50um) .* 50e-6 .* 1e3;
+generateTiffStack_acrossframes(PDIallSF_reg .^ 1, reg_volume_size_mm, 'hot', 1:size(PDIallSF_reg, 1), t)
 
 %% Load pupil tracking video
-[pupilData] = readMP4;
+[pupilData] = readMP4; % Select the pupil video and read it
 
 % Get and plot the time points of the pupil data relative to the start of the ultrasound acquisition
 time_diff = startTimetag - pupilData.startTimetag; % Time difference between the ultrasound acquisition and the pupil data start
@@ -338,233 +353,4 @@ xlabel('Time [s]')
 addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Processing\Pupil tracking')
 eyeROIs = defineEyeROIs(pupilData.frames(:, :, 1));
 
-
-
-
-%% Separate each trial
-ah = 3; % Approximate a cutoff value for analog high
-
-ind_above_ah = find(TD.airPuffOutput > ah); % Get indices of the air puff output above analog high
-ind_shift_below_ah = find(TD.airPuffOutput(ind_above_ah - 1) < ah); % See which indices above analog high have an analog low when shifted by -1 (rising edge)
-ind_rising_edge = ind_above_ah(ind_shift_below_ah); % Store the original indices for the rising edges
-% hold on
-% plot(ind_rising_edge, ones(size(ind_rising_edge)) .* 5, 'o')
-% hold off
-
-stim_starts_gap = (P.Mcr_fcp.apis.seq_length_s - P.Mcr_fcp.apis.stim_length_s) * P.daqrate; % How long we expect the stim gap to be between the end of one stim to the start of the next
-stim_prestart_baseline = (P.Mcr_fcp.apis.delay_time_ms / 1e3) * P.daqrate; % The duration between the baseline period and the corresponding stim start
-stim_starts = ind_rising_edge([true; diff(ind_rising_edge) > stim_starts_gap]); % Add a 1/true at the beginning index for the first stim
-
-% Plot the air puff signal and the calculated start points of each stim period
-figure; plot(TD.airPuffOutput)
-hold on
-plot(stim_starts, ones(size(stim_starts)) .* 5, 'o')
-hold off
-
-clearvars ind_above_ah ind_shift_below_ah ind_rising_edge
-% figure; plot(TD.sfTimeTagsDAQStart_adj) % plot the time tags for each superframe, adjusted to match the DAQ sampling rate
-
-trial_windows = cell(size(stim_starts)); % Cell array of size (# trials, 1). Each cell contains the time points (according to the DAQ rate) that correspond to that trial.
-trial_sf = cell(size(trial_windows));    % Cell array of size (# trials, 1). Each cell contains the superframe indices that started within that trial.
-
-sfStarts = (TD.sfTimeTagsDAQStart_adj - TD.sfWidth_adj); % Adjust the superframe time tags so each index is at the start of the superframe acquisition
-
-% Go through each trial within the run and assign the trial timepoints and the corresponding superframe indices
-for trial = 1:length(trial_windows)
-    trial_windows{trial} = stim_starts(trial) - stim_prestart_baseline : stim_starts(trial) + stim_starts_gap;
-
-    trial_sf{trial} = find(sfStarts >= trial_windows{trial}(1) & sfStarts <= trial_windows{trial}(end));
-end
-clearvars trial
-
-%% Remove outliers
-% Use the "median" method of the filloutliers function
-ro_fillmethod = "linear"; %
-ro_findmethod = "percentiles";
-quartile_threshold = [0, 99];
-ro_dim = 4;
-
-PDIallSF_ro = filloutliers(PDIallSF, ro_fillmethod, ro_findmethod, quartile_threshold, ro_dim);
-CBViallSF_ro = filloutliers(CBViallSF, ro_fillmethod, ro_findmethod, quartile_threshold, ro_dim);
-CBFsiallSF_ro = filloutliers(CBFsiallSF, ro_fillmethod, ro_findmethod, quartile_threshold, ro_dim);
-
-%% Resample the trials for the hemodynamic parameters
-interp_factor = 100;
-% interp_factor = 1000;
-[trial_CBVi_usi] = resampleTrials(CBViallSF, trial_sf, trial_windows, sfStarts, P, interp_factor);
-[trial_CBFsi_usi] = resampleTrials(CBFsiallSF, trial_sf, trial_windows, sfStarts, P, interp_factor);
-[trial_PDI_usi] = resampleTrials(PDIallSF, trial_sf, trial_windows, sfStarts, P, interp_factor);
-
-% [trial_CBVi_usi] = resampleTrials(CBViallSF_ro, trial_sf, trial_windows, sfStarts, P, interp_factor);
-% [trial_CBFsi_usi] = resampleTrials(CBFsiallSF_ro, trial_sf, trial_windows, sfStarts, P, interp_factor);
-% [trial_PDI_usi] = resampleTrials(PDIallSF_ro, trial_sf, trial_windows, sfStarts, P, interp_factor);
-
-
-%% Select usable trials
-trials_to_remove_dlg = inputdlg('Enter space-separated trial numbers to remove:',...
-             'Sample', [1 50]);
-trials_to_remove = str2num(trials_to_remove_dlg{1});
-
-% trial_CBVi_usi(trials_to_remove) = [];
-% trial_CBFsi_usi(trials_to_remove) = [];
-% trial_PDI_usi(trials_to_remove) = [];
-
-trials_to_keep = setdiff(1:P.numTrials, trials_to_remove);
-
-%% Calculate the relative hemodynamic changes for each trial
-
-[trial_CBVi_usi_baseline, trial_rCBV_usi] = fUS_calc_rHP(trial_CBVi_usi(trials_to_keep), P, interp_factor);
-[trial_CBFsi_usi_baseline, trial_rCBFspeed_usi] = fUS_calc_rHP(trial_CBFsi_usi(trials_to_keep), P, interp_factor);
-[trial_PDI_usi_baseline, trial_rPDI_usi] = fUS_calc_rHP(trial_PDI_usi(trials_to_keep), P, interp_factor);
-
-% [trial_CBVi_usi_baseline_alltrials, trial_rCBV_usi_alltrials] = fUS_calc_rHP(trial_CBVi_usi, P, interp_factor);
-% [trial_CBFsi_usi_baseline_alltrials, trial_rCBFspeed_usi_alltrials] = fUS_calc_rHP(trial_CBFsi_usi, P, interp_factor);
-% [trial_PDI_usi_baseline_alltrials, trial_rPDI_usi_alltrials] = fUS_calc_rHP(trial_PDI_usi, P, interp_factor);
-
-%% Inspect the trials
-% fUS_plotTrials(trial_rPDI_usi, [48, 68, 12])
-% fUS_plotTrials(trial_rCBV_usi, [48, 68, 12])
-% fUS_plotTrials(trial_rCBFspeed_usi, [48, 68, 12])
-
-%% Trial average the relative hemodynamic changes
-
-rCBV_TA = fUS_trialAverage(trial_rCBV_usi);
-rCBFspeed_TA = fUS_trialAverage(trial_rCBFspeed_usi);
-rPDI_TA = fUS_trialAverage(trial_rPDI_usi);
-
-%% Correlation on the trial averaged rCBV
-
-% Resample the stim pattern/predicted HRF
-trial_stim_pattern = zeros(P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_factor, 1);
-trial_stim_pattern(P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor : ...
-    P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor + ...
-    P.Mcr_fcp.apis.stim_length_s * P.daqrate / interp_factor) = 1;
-figure; plot((1:length(trial_stim_pattern)) .* interp_factor ./ P.daqrate, trial_stim_pattern); title('Trial stim pattern'); xlabel('Time [s]')
-
-% zt = 2;
-zt = 2.58;
-[r_rCBV, z_rCBV, am_rCBV] = activationMap3D(rCBV_TA, trial_stim_pattern, zt);
-
-% volumeViewer(r_rCBV)
-% volumeViewer(z_rCBV)
-% volumeViewer(am_rCBV)
-figure; imagesc(squeeze(max(r_rCBV(:, :, :), [], 1))'); colorbar; colormap jet; title('Correlation map coronal MIP'); clim([0, 1]) %clim([-1, 1])]
-figure; imagesc(squeeze(max(z_rCBV(:, :, :), [], 1))'); colorbar; colormap jet; title('z-score map coronal MIP');
-% figure; imagesc(squeeze(mean(z_rCBV(:, :, :), 1))'); colormap jet; clim([0, 1]) % clim([-1, 1])
-% figure; imagesc(am_rCBV); colormap jet; title("Activation Map (rCBV) with z threshold = " + num2str(zt))
-figure; imagesc(squeeze(max(am_rCBV(:, :, :), [], 1))'); colorbar; colormap jet; title("Activation Map (rCBV) coronal MIP with z threshold = " + num2str(zt))
-figure; imagesc(squeeze(max(am_rCBV(:, :, :), [], 3))'); colorbar; colormap jet; title("Activation Map (rCBV) axial MIP with z threshold = " + num2str(zt))
-
-% generateTiffStack_multi({r_rCBV}, [8.8, 8.8, 8], 'jet', 5)
-% generateTiffStack_multi({z_rCBV}, [8.8, 8.8, 8], 'jet', 5)
-% generateTiffStack_multi({am_rCBV}, [8.8, 8.8, 8], 'jet', 5)
-
-%% Correlation on the trial averaged rCBFspeed
-
-% Resample the stim pattern/predicted HRF
-trial_stim_pattern = zeros(P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_factor, 1);
-trial_stim_pattern(P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor : ...
-    P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor + ...
-    P.Mcr_fcp.apis.stim_length_s * P.daqrate / interp_factor) = 1;
-figure; plot((1:length(trial_stim_pattern)) .* interp_factor ./ P.daqrate, trial_stim_pattern); title('Trial stim pattern'); xlabel('Time [s]')
-
-% zt = 2;
-zt = 2.58;
-
-% [r_rCBFspeed, z_rCBFspeed, am_rCBFspeed] = activationMap3D_boxfilt(rCBFspeed_TA, trial_stim_pattern, zt);
-[r_rCBFspeed, z_rCBFspeed, am_rCBFspeed] = activationMap3D(rCBFspeed_TA, trial_stim_pattern, zt);
-
-% volumeViewer(r_rCBFspeed)
-% volumeViewer(z_rCBFspeed)
-% volumeViewer(am_rCBFspeed)
-figure; imagesc(squeeze(max(r_rCBFspeed(:, :, :), [], 1))'); colorbar; colormap jet; title('Correlation map coronal MIP'); clim([0, 1]) %clim([-1, 1])]
-figure; imagesc(squeeze(max(z_rCBFspeed(:, :, :), [], 1))'); colorbar; colormap jet; title('z-score map coronal MIP');
-% figure; imagesc(squeeze(mean(z_rCBFspeed(:, :, :), 1))'); colormap jet; clim([0, 1]) % clim([-1, 1])
-% figure; imagesc(am_rCBFspeed); colormap jet; title("Activation Map (rCBV) with z threshold = " + num2str(zt))
-figure; imagesc(squeeze(max(am_rCBFspeed(:, :, :), [], 1))'); colorbar; colormap jet; title("Activation Map (rCBFspeed) coronal MIP with z threshold = " + num2str(zt))
-figure; imagesc(squeeze(max(am_rCBFspeed(:, :, :), [], 3))'); colorbar; colormap jet; title("Activation Map (rCBFspeed) axial MIP with z threshold = " + num2str(zt))
-
-% generateTiffStack_multi({r_rCBFspeed}, [8.8, 8.8, 8], 'jet', 5)
-% generateTiffStack_multi({z_rCBFspeed}, [8.8, 8.8, 8], 'jet', 5)
-% generateTiffStack_multi({am_rCBFspeed}, [8.8, 8.8, 8], 'jet', 5)
-
-%% Correlation on the trial averaged rPDI
-
-% Resample the stim pattern/predicted HRF
-trial_stim_pattern = zeros(P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_factor, 1);
-trial_stim_pattern(P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor : ...
-    P.Mcr_fcp.apis.delay_time_ms/1000 * P.daqrate / interp_factor + ...
-    P.Mcr_fcp.apis.stim_length_s * P.daqrate / interp_factor) = 1;
-figure; plot((1:length(trial_stim_pattern)) .* interp_factor ./ P.daqrate, trial_stim_pattern); title('Trial stim pattern'); xlabel('Time [s]')
-
-% zt = 2;
-zt = 2.58;
-
-[r_rPDI, z_rPDI, am_rPDI] = activationMap3D(rPDI_TA, trial_stim_pattern, zt);
-
-% volumeViewer(r_rPDI)
-% volumeViewer(z_rPDI)
-% volumeViewer(am_rPDI)
-% figure; imagesc(squeeze(mean(r_rPDI(:, :, :), 1))'); colorbar; colormap jet; title('Correlation map coronal Mean IP'); clim([0, 1]) %clim([-1, 1])]
-
-figure; imagesc(squeeze(max(r_rPDI(:, :, :), [], 1))'); colorbar; colormap jet; title('Correlation map coronal MIP'); clim([0, 1]) %clim([-1, 1])]
-figure; imagesc(squeeze(max(z_rPDI(:, :, :), [], 1))'); colorbar; colormap jet; title('z-score map coronal MIP');
-% figure; imagesc(squeeze(mean(z_rPDI(:, :, :), 1))'); colormap jet; clim([0, 1]) % clim([-1, 1])
-% figure; imagesc(am_rPDI); colormap jet; title("Activation Map (rCBV) with z threshold = " + num2str(zt))
-figure; imagesc(squeeze(max(am_rPDI(:, :, :), [], 1))'); colorbar; colormap jet; title("Activation Map (rPDI) coronal MIP with z threshold = " + num2str(zt))
-figure; imagesc(squeeze(max(am_rPDI(:, :, :), [], 3) .^ 1)'); colorbar; colormap jet; title("Activation Map (rPDI) axial MIP with z threshold = " + num2str(zt))
-
-% generateTiffStack_multi({r_rPDI}, [8.8, 8.8, 8], 'jet', 5)
-% generateTiffStack_multi({z_rPDI}, [8.8, 8.8, 8], 'jet', 5)
-% generateTiffStack_multi({am_rPDI}, [8.8, 8.8, 8], 'jet', 5)
-% generateTiffStack_multi({squeeze(mean(PDIallSF, 4)) .^ 0.5, am_rPDI}, [8.8, 8.8, 8], 'jet', 5)
-
-%% Plot ROIs defined by the half-max of the activation maps
-numPtsUSI = P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_factor; % # of time points per trial for the upsampling
-
-fraction = 0.75;
-roi_indices_rPDI = roi_prop_max(am_rPDI, fraction);
-roi_rPDI_TA = calc_ROI_avg(rPDI_TA, roi_indices_rPDI);
-roi_indices_rCBV = roi_prop_max(am_rCBV, fraction);
-roi_rCBV_TA = calc_ROI_avg(rCBV_TA, roi_indices_rCBV);
-roi_indices_rCBFspeed = roi_prop_max(am_rCBFspeed, fraction);
-roi_rCBFspeed_TA = calc_ROI_avg(rCBFspeed_TA, roi_indices_rCBFspeed);
-
-figure; plot((1:length(roi_rPDI_TA)) .* interp_factor ./ P.daqrate, roi_rPDI_TA); xlabel('Time [s]'); ylabel('rPDI'); title("rPDI ROI timecourse")
-figure; plot((1:length(roi_rCBV_TA)) .* interp_factor ./ P.daqrate, roi_rCBV_TA); xlabel('Time [s]'); ylabel('rCBV'); title("rCBV ROI timecourse")
-figure; plot((1:length(roi_rCBFspeed_TA)) .* interp_factor ./ P.daqrate, roi_rCBFspeed_TA); xlabel('Time [s]'); ylabel('rCBFspeed'); title("rCBFspeed ROI timecourse")
-
-% % Look at the max point
-% [m, ind] = max(am_rPDI, [], 'all')
-% [i, j, k] = ind2sub(size(am_rPDI), ind)
-% 
-% ts = 2; % test size
-% testsection = rPDI_TA(i - ts : i + ts, j - ts : j + ts, k - ts : k + ts, :);
-% % figure; plot(squeeze(rPDI_TA(i, j, k, :)))
-% figure; plot(squeeze(mean(mean(mean(testsection, 1), 2), 3)))
-% 
-% [m, ind] = max(r_rPDI, [], 'all')
-% [i, j, k] = ind2sub(size(am_rPDI), ind)
-% figure; plot(squeeze(rPDI_TA(i, j, k, :)))
-% 
-% am_rPDI_t = am_rPDI; % thresholded
-% am_rPDI_t(am_rPDI_t < 1.3) = 0;
-% am_rPDI_t_roi_mask = am_rPDI_t > 1.3;
-
-%% Plot median-averaged ROIs defined by the half-max of the activation maps
-numPtsUSI = P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_factor; % # of time points per trial for the upsampling
-
-fraction = 0.75;
-median_filter_windowsize = 51;
-
-roi_indices_rPDI = roi_prop_max(am_rPDI, fraction);
-roi_rPDI_TA = calc_ROI_avg(movmedian(rPDI_TA, median_filter_windowsize, 4), roi_indices_rPDI);
-roi_indices_rCBV = roi_prop_max(am_rCBV, fraction);
-roi_rCBV_TA = calc_ROI_avg(movmedian(rCBV_TA, median_filter_windowsize, 4), roi_indices_rCBV);
-roi_indices_rCBFspeed = roi_prop_max(am_rCBFspeed, fraction);
-roi_rCBFspeed_TA = calc_ROI_avg(movmedian(rCBFspeed_TA, median_filter_windowsize, 4), roi_indices_rCBFspeed);
-
-figure; plot((1:length(roi_rPDI_TA)) .* interp_factor ./ P.daqrate, roi_rPDI_TA); xlabel('Time [s]'); ylabel('rPDI'); title("rPDI ROI timecourse with median filter; window size = " + num2str(median_filter_windowsize))
-figure; plot((1:length(roi_rCBV_TA)) .* interp_factor ./ P.daqrate, roi_rCBV_TA); xlabel('Time [s]'); ylabel('rCBV'); title("rCBV ROI timecourse with median filter; window size = " + num2str(median_filter_windowsize))
-figure; plot((1:length(roi_rCBFspeed_TA)) .* interp_factor ./ P.daqrate, roi_rCBFspeed_TA); xlabel('Time [s]'); ylabel('rCBFspeed'); title("rCBFspeed ROI timecourse with median filter; window size = " + num2str(median_filter_windowsize))
 
