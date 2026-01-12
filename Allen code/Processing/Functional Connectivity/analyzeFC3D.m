@@ -301,7 +301,7 @@ figure; imagesc(squeeze(corr_sw_PDI(:, :, 100))); colormap jet; axis square; col
 % xticks(1:num_regions); xticklabels(region_names); yticks(1:num_regions); yticklabels(region_names) % Set the tick labels to be the ROI names
 xticks(1:num_regions); xticklabels(region_acronyms); yticks(1:num_regions); yticklabels(region_acronyms) % Set the tick labels to be the ROI acronyms
 
-% Spaghetti plot of the correlation between each pair of regions, over time
+%% Spaghetti plot of the correlation between each pair of regions, over time
 corr_sw_legend = {}; % Legend for each pair
 figure; hold on
 for m = 1:num_regions
@@ -317,6 +317,117 @@ ylabel('Correlation coefficient')
 title("Correlation between ROIs, with sliding window size = " + num2str(corr_ws) + " superframes")
 legend(corr_sw_legend)
 
+%% Spaghetti plot of the correlation between each pair of regions, over time
+% **** with the GVTD plotted below ****
+corr_sw_legend = {}; % Legend for each pair
+figure
+tiledlayout('vertical')
+nexttile; hold on
+for m = 1:num_regions
+    for n = m + 1:num_regions
+        plot(t, squeeze(corr_sw_PDI(m, n, :)))
+        corr_sw_legend(end + 1) = {region_acronyms{m} + "-" + region_acronyms{n}};
+    end
+end
+hold off
+% xlabel('sf index')
+xlabel('Time [s]')
+ylabel('Correlation coefficient')
+title("Correlation between ROIs, with sliding window size = " + num2str(corr_ws) + " superframes")
+legend(corr_sw_legend)
+
+nexttile
+plot(t, GVTD); xlabel("Time [s]"); ylabel("GVTD [au]")
+
+%% Spaghetti plot of the correlation between each pair of regions, over time
+% **** Testing: plot the % change in correlation coefficient compared to
+%               its mean or median
+corr_sw_legend = {}; % Legend for each pair
+figure; hold on
+for m = 1:num_regions
+    for n = m + 1:num_regions
+        % plot(t, (squeeze(corr_sw_PDI(m, n, :)) - mean(squeeze(corr_sw_PDI(m, n, :))) ./ squeeze(corr_sw_PDI(m, n, :))) .* 100)
+        plot(t, (squeeze(corr_sw_PDI(m, n, :)) - median(squeeze(corr_sw_PDI(m, n, :))) ./ squeeze(corr_sw_PDI(m, n, :))) .* 100)
+        corr_sw_legend(end + 1) = {region_acronyms{m} + "-" + region_acronyms{n}};
+    end
+end
+hold off
+ylim([-1, 1])
+% xlabel('sf index')
+xlabel('Time [s]')
+ylabel('% change')
+% title("Percent change in correlation coefficient (vs. temporal mean) between ROIs, with sliding window size = " + num2str(corr_ws) + " superframes")
+title("Percent change in correlation coefficient (vs. temporal median) between ROIs, with sliding window size = " + num2str(corr_ws) + " superframes")
+legend(corr_sw_legend)
+
+%% Spaghetti plot of the correlation between each pair of regions, over time
+% **** Testing: plot the relative value of the correlation coefficient compared to
+%               its mean or median
+corr_sw_legend = {}; % Legend for each pair
+figure;
+tiledlayout('vertical')
+nexttile
+hold on
+for m = 1:num_regions
+    for n = m + 1:num_regions
+        % plot(t, squeeze(corr_sw_PDI(m, n, :)) ./ mean(squeeze(corr_sw_PDI(m, n, :))) .* 100)
+        plot(t, squeeze(corr_sw_PDI(m, n, :)) ./ median(squeeze(corr_sw_PDI(m, n, :))) .* 100)
+        corr_sw_legend(end + 1) = {region_acronyms{m} + "-" + region_acronyms{n}};
+    end
+end
+hold off
+% xlabel('sf index')
+xlabel('Time [s]')
+ylabel('Relative correlation coefficient')
+% title("Relative correlation coefficient (vs. temporal mean) between ROIs, with sliding window size = " + num2str(corr_ws) + " superframes")
+title("Relative correlation coefficient (vs. temporal median) between ROIs, with sliding window size = " + num2str(corr_ws) + " superframes")
+legend(corr_sw_legend)
+
+nexttile
+plot(t, GVTD); xlabel("Time [s]"); ylabel("GVTD [au]")
+
+%% Spaghetti plot of the correlation between each pair of regions, over time
+% **** Testing: plot the normalized relative change in correlation coefficient compared to its mean
+corr_sw_legend = {}; % Legend for each pair
+figure; hold on
+for m = 1:num_regions
+    for n = m + 1:num_regions
+        % temp = squeeze(corr_sw_PDI(m, n, :)) ./ mean(squeeze(corr_sw_PDI(m, n, :)));
+        temp = (squeeze(corr_sw_PDI(m, n, :)) - mean(squeeze(corr_sw_PDI(m, n, :))) ./ squeeze(corr_sw_PDI(m, n, :)));
+        temp = temp ./ max(abs(temp));
+        plot(t, temp)
+        corr_sw_legend(end + 1) = {region_acronyms{m} + "-" + region_acronyms{n}};
+    end
+end
+clearvars temp
+hold off
+% xlabel('sf index')
+xlabel('Time [s]')
+ylabel('% change')
+title("Normalized relative change in correlation coefficient (vs. temporal mean) between ROIs, with sliding window size = " + num2str(corr_ws) + " superframes")
+legend(corr_sw_legend)
+
+%% Spaghetti plot of the diff of the correlation between each pair of regions, over time
+% **** Testing
+corr_sw_legend = {}; % Legend for each pair
+figure;
+% tiledlayout('vertical')
+% nexttile
+hold on
+for m = 1:num_regions
+    for n = m + 1:num_regions
+        % plot(t, squeeze(corr_sw_PDI(m, n, :)) ./ mean(squeeze(corr_sw_PDI(m, n, :))) .* 100)
+        plot(t(1:end - 1), diff(squeeze(corr_sw_PDI(m, n, :))) )
+        corr_sw_legend(end + 1) = {region_acronyms{m} + "-" + region_acronyms{n}};
+    end
+end
+hold off
+% xlabel('sf index')
+xlabel('Time [s]')
+ylabel('Temporal difference of correlation coefficient')
+title("Temporal difference of correlation coefficient between ROIs, with sliding window size = " + num2str(corr_ws) + " superframes")
+legend(corr_sw_legend)
+
 %% Plot all the ROI average PDI timecourses
 figure; hold on; xlabel('Time [s]'); ylabel('PDI ROI average')
 for ind = 1:length(PDI_ROI_timecourses)
@@ -328,7 +439,7 @@ legend(region_acronyms)
 
 
 
-%% Plot the registered PDI across superframes (MIPs)
+%% Video of the registered PDI across superframes (MIPs)
 addpath('\\ad\eng\users\a\g\agzhou\My Documents\GitHub\BU-Code\Allen code\Processing')
 % figure; imagesc(squeeze(max(PDIallSF_reg(:, :, :, 1), [], 1))'); colormap hot; axis equal
 reg_volume_size_mm = size(AA_template_50um) .* 50e-6 .* 1e3;
