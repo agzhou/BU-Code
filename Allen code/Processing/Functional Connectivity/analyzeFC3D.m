@@ -148,10 +148,14 @@ end
 
 clearvars region_mask_10um_temp rn
 
-%% Load the timing data
+%% Load the timing data (output of plotfUStiming_FC.m) and convert to actual time
 [timingFilePathFN, timingFilePath] = uigetfile([data_dirpath, '..\..\Timing data\TD.mat'], 'Select the timing data');
 timingFilePath = [timingFilePath, timingFilePathFN];
 load(timingFilePath)
+
+% Rename the actual time
+t = TD.sfTimeTags;
+
 
 % %% Upsample/interpolate over time to match the timing data...
 % pupil_fr = 10; % Pupil data (behavioral camera) frame rate
@@ -220,7 +224,33 @@ end
 clearvars ti ri PDIallSF_reg_ti_temp ROI_mask_temp PDI_ri_masked_temp
 toc
 
+% Store the ROI timecourses in matrix form, for plotting
+PDI_ROI_timecourses_mat = zeros(length(t), num_regions); % Still ROI-averaged PDI timecourses, but in matrix form (each column is a separate ROI timecourse). Dimensions: [# time points, # ROIs]
+for ri = 1:num_regions % region/ROI index -- loop through each region
+    PDI_ROI_timecourses_mat(:, ri) = PDI_ROI_timecourses{ri};
+end
 % figure; plot(PDI_ROI_timecourses{1})
+
+%% Plot each ROI's PDI timecourse
+% % subplot(num_regions, 1, 1)
+% figure;
+% ROI_PDI_timecourse_tl = tiledlayout("vertical"); % Vertical tile layout
+% for ri = 1:num_regions % region/ROI index -- loop through each region
+%     nexttile
+%     % subplot(num_regions, 1, ri)
+%     plot(t, PDI_ROI_timecourses{ri})
+% end
+% ROI_PDI_timecourse_tl.TileSpacing = 'compact';
+% ROI_PDI_timecourse_tl.Padding = 'compact';
+% title(ROI_PDI_timecourse_tl, "ROI average PDI timecourses")
+% xlabel(ROI_PDI_timecourse_tl, "Time [s]")
+% ylabel(ROI_PDI_timecourse_tl, "PDI magnitude [au]")
+
+figure
+ROI_PDI_timecourse_sp = stackedplot(t, PDI_ROI_timecourses_mat, 'DisplayLabels', region_acronyms);
+title("ROI average PDI timecourses")
+xlabel("Time [s]")
+% fontsize(14, 'points')
 
 %% -- Calculate changes in FC (seed correlation matrices) over time with sliding windows -- %
 corr_sw_PDI = zeros(num_regions, num_regions, num_sf); % Sliding window PDI seed correlation matrices 

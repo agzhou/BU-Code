@@ -42,37 +42,39 @@ clearvars timetag
 
 % ------------- ............. -------------
 
-%%
+%% ?
 
 sfTimeTagsDAQStart = sfTimeTags + seconds(startTimetag - daqStartTimetag); % Superframe timetags relative to the DAQ start
 sfTimeTagsDAQStart_adj = round(sfTimeTagsDAQStart * P.daqrate); % Round to the nearest time according to the DAQ rate (so we can plot it)
-figure(tf)
-
+% figure(tf)
+% 
 %%%%%%% check if this works for the uneven spacing!! %%%%%%%
 sfWidth = P.numFramesPerBuffer / P.frameRate; % How long each superframe takes to acquire
 sfWidth_adj = round(sfWidth * P.daqrate); % Adjust for the DAQ sampling rate (so we can plot it)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-maxValue = max(max(airPuffOutput), max(P.Mcr_fcp.vts.signal)); % max value across both timecourses to get a max value for shading
-minValue = 0;
-yshade = [maxValue, minValue, minValue, maxValue]; % Go top right and clockwise for the shading patch vertices
-
-% Go through the superframe time tags and shade the corresponding regions
-for tti = 1:length(sfTimeTagsDAQStart_adj) % time tag index
-    tt = sfTimeTagsDAQStart_adj(tti); % time tag
-%     xline(round(tt))
-    xshade = [tt, tt, tt - sfWidth_adj, tt - sfWidth_adj];
-    patch(xshade, yshade, 'g', 'FaceAlpha', .3) % Plot the shaded region
-end
-legend('Air puff output', 'Verasonics trigger', 'Superframe acquisition')
+% 
+% maxValue = max(max(airPuffOutput), max(P.Mcr_fcp.vts.signal)); % max value across both timecourses to get a max value for shading
+% minValue = 0;
+% yshade = [maxValue, minValue, minValue, maxValue]; % Go top right and clockwise for the shading patch vertices
+% 
+% % Go through the superframe time tags and shade the corresponding regions
+% for tti = 1:length(sfTimeTagsDAQStart_adj) % time tag index
+%     tt = sfTimeTagsDAQStart_adj(tti); % time tag
+% %     xline(round(tt))
+%     xshade = [tt, tt, tt - sfWidth_adj, tt - sfWidth_adj];
+%     patch(xshade, yshade, 'g', 'FaceAlpha', .3) % Plot the shaded region
+% end
+% legend('Air puff output', 'Verasonics trigger', 'Superframe acquisition')
 
 %% Add relevant variables to a structure 'TD' (Timing Data)
-TD.acqStart = startTimetag;
-TD.airPuffOutput = airPuffOutput;
-TD.daqStartTimetag = daqStartTimetag;
+% TD.acqStart = startTimetag;
+% TD.airPuffOutput = airPuffOutput;
+% TD.daqStartTimetag = daqStartTimetag;
 TD.sfTimeTags = sfTimeTags;
-TD.sfTimeTagsDAQStart = sfTimeTagsDAQStart;
-TD.sfTimeTagsDAQStart_adj = sfTimeTagsDAQStart_adj;
-TD.sfWidth = sfWidth;
-TD.sfWidth_adj = sfWidth_adj;
-TD.timeStamp = timeStamp;
+% TD.sfTimeTagsDAQStart = sfTimeTagsDAQStart;
+% TD.sfTimeTagsDAQStart_adj = sfTimeTagsDAQStart_adj;
+% TD.sfWidth = sfWidth;
+% TD.sfWidth_adj = sfWidth_adj;
+% TD.timeStamp = timeStamp;
+
+TD.startTimetag = startTimetag;
