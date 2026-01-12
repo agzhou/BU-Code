@@ -1,11 +1,25 @@
 %% Description
-% Apply deformable registration and do correlation analysis for functional
-% connectivity (in 3D space + time)
+% - Apply deformable registration and do correlation analysis for functional
+%   connectivity (in 3D space + time)
+% - The ultrasound data should already be processed
+
+% Inputs:
+% - Power Doppler (PDI) template volume, usually an average across all
+%   superframes in an experiment, at [50, 50, 50] um voxel size
+% - PDI volumes at each superframe (PDIallSF)
 
 % REQUIREMENTS:
+% - Matlab 2024 and newer (for the registration, which uses the medical registration package)
 % - Clone the allenCCF repository: https://github.com/cortex-lab/allenCCF.git
 % - Clone the npy-matlab repository: https://github.com/kwikteam/npy-matlab.git
 % - Add the Allen Atlas CCFv3 .nrrd files (average and annotated atlases) to a folder
+
+%% Add paths for the preprocessed data (and any processed data to re-load)
+
+data_dirpath = uigetdir('H:\Ultrasound data from 7-21-2025\10-21-2025 AZ01 FC RCA\Test proc 10-23-25\FC', 'Select the data directory');
+data_dirpath = [data_dirpath, '\'];
+% addpath(genpath(data_dirpath))
+
 %% Add paths for reading nrrd files + Load the template atlas
 
 % Load the Allen Atlas CCFv3 path
@@ -38,13 +52,18 @@ AA_template_50um = double(permute(AA_template_50um_up, [2, 3, 1])); % Permuted a
 % ... resize to 50 um for ease of manual registration ...
 
 % 50 um version
-[US_template_FilePathFN, US_template_FilePath] = uigetfile(['PDI_template_50um.mat'], 'Select the ultrasound template (50 um)');
+[US_template_FilePathFN, US_template_FilePath] = uigetfile([data_dirpath, 'PDI_template_50um.mat'], 'Select the ultrasound template (50 um)');
 US_template_FilePath = [US_template_FilePath, US_template_FilePathFN];
 load(US_template_FilePath)
 
 
 %% (Optional) Open GUI for slightly "easier" manual registration
 US_Atlas_Reg
+
+%% (Optional) If loading already-registered data, load here
+[saved_reg_data_FilePathFN, saved_reg_data_FilePath] = uigetfile([data_dirpath, 'fUSmap_50um.mat'], 'Select the registered ultrasound data (50 um)');
+saved_reg_data_FilePath = [saved_reg_data_FilePath, saved_reg_data_FilePathFN];
+load(saved_reg_data_FilePath)
 
 %% Store the manual registration transformation info and 
 rigid_tform_50um = fUSmap_50um_rigid_reg.tform;
@@ -116,6 +135,7 @@ region_acronyms = regionsCell(:, 2);
 region_inds = regionsCell(:, 3:4);
 num_regions = size(regionsCell, 1); % # of regions of interest
 
+%% Create the ROI masks (at 50 um voxel size)
 % region_masks_10um = cell(num_regions, 1);
 region_masks_50um = cell(num_regions, 1);
 for rn = 1:num_regions % region number
@@ -129,12 +149,17 @@ end
 clearvars region_mask_10um_temp rn
 
 %% Load the timing data
-[timingFilePathFN, timingFilePath] = uigetfile(['..\Timing data\TD.mat'], 'Select the timing data');
+[timingFilePathFN, timingFilePath] = uigetfile([data_dirpath, '..\..\Timing data\TD.mat'], 'Select the timing data');
 timingFilePath = [timingFilePath, timingFilePathFN];
 load(timingFilePath)
 
 % %% Upsample/interpolate over time to match the timing data...
 % pupil_fr = 10; % Pupil data (behavioral camera) frame rate
+
+%% Load the PDI across superframes data
+[PDIallSF_FilePathFN, PDIallSF_FilePath] = uigetfile([data_dirpath, 'PDIallSF.mat'], 'Select the PDI across superframes data');
+PDIallSF_FilePath = [PDIallSF_FilePath, PDIallSF_FilePathFN];
+load(PDIallSF_FilePath)
 
 %% Apply the registration/warping to the ultrasound data
 
@@ -158,6 +183,14 @@ end
 toc
 
 clearvars PDI_sfi sfi PDI_sfi_rs
+
+%% (Optional) Save the registered PDI across superframes data, along with the ROI masks
+save([data_dirpath, 'PDIallSF_reg_ROI_masks_50um.mat'], "PDIallSF_reg", "region_masks_50um", '-v7.3')
+
+%% (Optional) Load the registered PDI across superframes data, along with the ROI masks
+[PDIallSF_reg_ROI_masks_FilePathFN, PDIallSF_reg_ROI_masks_FilePath] = uigetfile([data_dirpath, 'PDIallSF_reg_ROI_masks_50um.mat'], 'Select the registered PDI across superframes data');
+PDIallSF_reg_ROI_masks_FilePath = [PDIallSF_reg_ROI_masks_FilePath, PDIallSF_reg_ROI_masks_FilePathFN];
+load(PDIallSF_reg_ROI_masks_FilePath)
 
 %% Correlation without resampling PDI in time
 % figure; plot(sfTimeTags)
