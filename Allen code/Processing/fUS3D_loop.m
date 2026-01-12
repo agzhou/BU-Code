@@ -494,7 +494,7 @@ ti.t = t; % Timestamps [s]
 ti.stimAmps = stimAmps; % Stim amplitudes
 ti.tOnsets = tOnsets;
 
-save([savepath, 'timingInfo.m'], 'ti') % Save the timing info
+save([savepath, 'timingInfo.mat'], 'ti') % Save the timing info
 %% Remove outliers
 % Use the "median" method of the filloutliers function
 ro_fillmethod = "linear"; %
