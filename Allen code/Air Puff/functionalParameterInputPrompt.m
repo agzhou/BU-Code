@@ -1,6 +1,6 @@
 function [apis, vts, daqrate, numTrials] = functionalParameterInputPrompt
 %     functionalParameterPrompt = {'Stim delay time [ms]', 'Stim frequency [Hz]', 'Stim pulse width [ms]', 'Stim duration within each trial [s]', 'Stim trial duration [s]', 'Verasonics trigger delay [s]', 'Verasonics trigger delay total duration [s]', 'Verasonics trigger pulse width [ms]'};
-    functionalParameterPrompt = {'Stim delay time [ms]', 'Stim frequency [Hz]', 'Stim pulse width [ms]', 'Stim duration within each trial [s]', 'Stim trial duration [s]', 'Verasonics trigger delay [s]', 'Verasonics trigger pulse width [ms]', 'DAQ sample rate [Hz]', 'Number of trials per run'};
+    functionalParameterPrompt = {'Stim delay time [ms]', 'Stim frequency [Hz]', 'Stim pulse width [ms]', 'Stim duration within each trial [s]', 'Trial duration [s]', 'Verasonics trigger delay [s]', 'Verasonics trigger pulse width [ms]', 'DAQ sample rate [Hz]', 'Number of trials per run'};
 %     functionalParameterDefaults = {'5000', '3', '100', '1', '20', '6', '500', '1000', '1'};
     functionalParameterDefaults = {'5000', '3', '150', '5', '30', '10', '500', '1000', '10'};
 %     functionalParameterDefaults = {'5000', '3', '100', '1', '20', '10', '500', '1000', '1'};
@@ -13,12 +13,12 @@ function [apis, vts, daqrate, numTrials] = functionalParameterInputPrompt
     apis.seq_length_s = str2double(functionalParameterUserInput{5});   % Total duration of the trial [s]
         
     % Verasonics trigger signal (vts)
-    vts.delay_s = str2double(functionalParameterUserInput{6});
+    vts.delay_s = str2double(functionalParameterUserInput{6}); % Delay between starting VSX and sending the start trigger [s]
 %     vts.total_duration_s = str2double(functionalParameterUserInput{7});
 %     vts.pulse_width_ms = str2double(functionalParameterUserInput{8});
     vts.pulse_width_ms = str2double(functionalParameterUserInput{7});
 %     vts.total_duration_s = apis.seq_length_s; % same as the air puff total duration
 
-    daqrate = str2double(functionalParameterUserInput{8});
-    numTrials = str2double(functionalParameterUserInput{9});
+    daqrate = str2double(functionalParameterUserInput{8}); % DAQ sample rate [Hz]
+    numTrials = str2double(functionalParameterUserInput{9}); % # of trials per run
 end
