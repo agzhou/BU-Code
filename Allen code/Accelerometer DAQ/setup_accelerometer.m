@@ -17,6 +17,8 @@ function [Mcr_d, Mcr_fcp] = setup_accelerometer()
     daqrate = str2double(parameterUserInput{3}); % DAQ sample rate [Hz]
     seq_length = str2double(parameterUserInput{4}); % Experiment/sequence duration [s]
     
+    Mcr_fcp.daqrate = daqrate;
+    
     %% Set up the hardware and channels
     Mcr_d = daq('ni'); % Create the DAQ object
 

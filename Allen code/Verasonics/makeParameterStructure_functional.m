@@ -52,7 +52,13 @@ if exist('useTriggers', 'var')
         if exist('numTrials', 'var')
             P.numTrials = numTrials;
         end
-        P.daqrate = daqrate;
+
+        if exist('daqrate', 'var')
+            P.daqrate = daqrate;
+        elseif exist('Mcr_fcp.daqrate', 'var')
+            P.daqrate = Mcr_fcp.daqrate;
+        end
+        
         % P.Mcr_d = Mcr_d;
         P.Mcr_fcp = Mcr_fcp;
     end

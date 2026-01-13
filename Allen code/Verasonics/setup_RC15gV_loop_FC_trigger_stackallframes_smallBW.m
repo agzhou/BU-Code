@@ -16,7 +16,9 @@ codeDir_split = split(string(codeDir), filesep);
 AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "Allen code"))), '\') + "\Verasonics");
 addpath(AllenVerasonicsCodePath)
 
-addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Air Puff\')
+
+addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Accelerometer DAQ\')
+% addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Air Puff\')
 
 cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 % cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
@@ -575,7 +577,8 @@ SeqControl(scInd).condition = 'syncNone'; % syncNone -> generate the trigger asa
 % Sync to make the software sequencer also wait for the trigger input
 scInd = scInd + 1;
 SeqControl(scInd).command = 'sync';
-SeqControl(scInd).argument = 10000000; % 10 s
+% SeqControl(scInd).argument = 10000000; % 10 s
+SeqControl(scInd).argument = 60000000; % 60 s
 
 % Sync for aligning the hardware to when the data is done saving
 scInd = scInd + 1;
@@ -776,7 +779,7 @@ if runVSX
     VSX
 end
 
-%% Read the air puff data - may need to put this in the saveRcvData Processing...
+%% Read the DAQ data
 if useTriggers
     [inScanData, timeStamp, triggerTime] = read(Mcr_d, seconds(Mcr_d.NumScansAvailable / Mcr_d.Rate), "OutputFormat", "Matrix");
 end
