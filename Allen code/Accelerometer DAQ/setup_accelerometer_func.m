@@ -1,8 +1,9 @@
 
-% Trying to write my own air puff code
+% Description: Get accelerometer
+
 % Requires Data Acquisition Toolbox and the NI package
 % Connect the air puffer (PicoSpritzer III) to the NI DAQ
-function [Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts, daqrate, numTrials)
+function [Mcr_d, Mcr_fcp] = setup_accelerometer_func(apis, vts, daqrate, numTrials)
     %% Set up the hardware and channels
     Mcr_d = daq('ni'); % Create the DAQ object
     airPuffInputCh = addoutput(Mcr_d, 'Dev1', 'ao0', 'Voltage');  % Trigger to the air puff input
