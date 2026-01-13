@@ -43,9 +43,15 @@ end
 % Functional params
 if exist('useTriggers', 'var')
     if useTriggers
-        P.apis = apis;
-        P.vts = vts;
-        P.numTrials = numTrials;
+        if exist('apis', 'var')
+            P.apis = apis;
+        end
+        if exist('numTrials', 'var')
+            P.vts = vts;
+        end
+        if exist('numTrials', 'var')
+            P.numTrials = numTrials;
+        end
         P.daqrate = daqrate;
         % P.Mcr_d = Mcr_d;
         P.Mcr_fcp = Mcr_fcp;

@@ -25,11 +25,11 @@ activate
 savepath = uigetdir('G:\', 'Select the save path');
 savepath = [savepath, '\'];
 
-parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use air puff (0-no, 1-yes)'}; % 'Save RF data (0-no, 1-yes)', 
+parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use accelerometer (0-no, 1-yes)'}; % 'Save RF data (0-no, 1-yes)', 
 % parameterDefaults = {'5', '0', '10', '40000', '2000', '11', '5', '13.6', '1540', '0', '0', '1000'};
 % parameterDefaults = {'5', '0', '10', '50000', '2000', '11', '5', '13.6', '1540', '0', '1', '500'};
 % parameterDefaults = {'20', '0', '8', '60000', '500', '51', '18.4321', '13.6', '1540', '0', '1', '100', '0'};
-parameterDefaults = {'20', '0', '8', '60000', '500', '21', '9', '13.6', '1540', '0', '1', '100', '0'};
+parameterDefaults = {'20', '0', '8', '60000', '500', '21', '9', '13.6', '1540', '0', '1', '100', '1'};
 % parameterDefaults = {'20', '0', '8', '56000', '2500', '11', '5', '13.6', '1540', '0', '1', '296', '0'};
 % parameterDefaults = {'20', '0', '20', '30000', '1000', '11', '5', '13.6', '1540', '0', '1', '80'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
@@ -91,9 +91,9 @@ Resource.Parameters.numRcvChannels = numChannels; % number of receive channels
 Resource.Parameters.speedOfSound = speedOfSound; % speed of sound in m/s, the 1540 is for average human tissue
 
 %% 1.5. Specify the functional stimulus parameters
-if useTriggers
-    [apis, vts, daqrate, numTrials] = functionalParameterInputPrompt;
-end
+% if useTriggers
+%     [apis, vts, daqrate, numTrials] = functionalParameterInputPrompt;
+% end
 
 %% 2. Define Transducer structure
 
@@ -581,7 +581,8 @@ SeqControl(scInd).argument = 10000000; % 10 s
 scInd = scInd + 1;
 SeqControl(scInd).command = 'sync';
 if useTriggers
-    SeqControl(scInd).argument = 1000000 * vts.delay_s*5; % Timeout set to 5x the input delay just in case
+%     SeqControl(scInd).argument = 1000000 * vts.delay_s*5; % Timeout set to 5x the input delay just in case
+    SeqControl(scInd).argument = 10000000; % 10 s (change 1/13/26)
 else
     SeqControl(scInd).argument = 10000000; % 10 s
 end
@@ -722,11 +723,18 @@ filename = 'RC15gV_Allen_loop_functional.mat';
 
 save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+filename);
 
-%% Run the air puff script before running VSX
+% %% Run the air puff script before running VSX
+% if useTriggers
+%     [Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts, daqrate, numTrials); % Need to use Mcr_ because VSX will autoclear most variables
+%     daqStartTimetag = datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss.SSS');
+%     savefast([savepath, 'daqStartTimetag'], 'daqStartTimetag')
+% end
+%% Run the accelerometer setup before running VSX
 if useTriggers
-    [Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts, daqrate, numTrials); % Need to use Mcr_ because VSX will autoclear most variables
-    daqStartTimetag = datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss.SSS');
+    [Mcr_d, Mcr_fcp] = setup_accelerometer(); % Need to use Mcr_ because VSX will autoclear most variables
+    daqStartTimetag = datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss.SSS'); % Save the timetag at which the DAQ starts
     savefast([savepath, 'daqStartTimetag'], 'daqStartTimetag')
+    
 end
 
 %% Initialize time tagging if enabled
