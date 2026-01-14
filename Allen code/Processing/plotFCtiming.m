@@ -2,6 +2,7 @@
 % - Retrieve the time tags from each superframe file of a fUS acquisition
 % - For use with Functional Connectivity data (no triggers)
 
+clearvars
 %% Choose data path and load the parameters and timing data
 datapath = uigetdir('J:\', 'Select the raw data path');
 datapath = [datapath, '\'];
@@ -60,6 +61,8 @@ VSXVsDAQDelay = seconds(startTimetag - daqStartTimetag) - sfWidth; % Delay betwe
 
 daqTimeTags = daqTimeTags_daqstart - VSXVsDAQDelay; % DAQ time stamps relative to the first superframe start [s]
 
+% figure; plot(daqTimeTags, inScanData); xlabel("Time [s]")
+
 %% Manually input the behavioral camera start time...
 
 % ------------- ............. -------------
@@ -98,3 +101,9 @@ TD.daqTimeTags = daqTimeTags;           % DAQ time stamps relative to the first 
 
 % TD.sfWidth_adj = sfWidth_adj;
 % TD.timeStamp = timeStamp;
+
+%% Save TD as a mat file
+TDpath = uigetdir('J:\', 'Select the TD save path');
+TDpath = [TDpath, '\'];
+
+save([TDpath, 'TD.mat', 'TD'])

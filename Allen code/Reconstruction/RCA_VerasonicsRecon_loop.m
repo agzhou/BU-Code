@@ -336,6 +336,7 @@ savefast([Mcr_savepath, 'PData'], 'PData') % Save the PData structure
 % save([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IQ', '-v7.3')
 % toc
 %% random stuff and plotting
+% volumeViewer(squeeze(abs(IQ(:, :, :, 2))))
 % IQ = IData{1} + 1i .* QData{1};
 % figure; imagesc(abs(squeeze(IQ(40, :, :, 1, 1)))')
 % figure; imagesc(abs(squeeze(IQ(:, 40, :, 1, 1)))')

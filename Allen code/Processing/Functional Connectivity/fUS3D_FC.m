@@ -2,6 +2,7 @@
 %       3D fUS and functional connectivity (FC) processing
 %       Timing data should be processed and saved with plotfUStiming_FC.m first
 
+clearvars
 %% load params and stuff
 IQpath = uigetdir('D:\Allen\Data\', 'Select the IQ data path');
 IQpath = [IQpath, '\'];
