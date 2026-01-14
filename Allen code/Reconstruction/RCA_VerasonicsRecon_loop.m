@@ -9,7 +9,8 @@
 % This version uses the same Recon structure (assumes the same Receive
 % parameters) for each subframe
 
-% Last updated on 01/29/2024 and working for an input of one superframe
+% Last updated on 01/29/2024 and working for an input of multiple
+% superframes (goes through a folder of raw data)
 
 %% TO DO
 % make into a function
