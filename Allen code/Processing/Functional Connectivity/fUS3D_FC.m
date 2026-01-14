@@ -37,7 +37,7 @@ load(timingFilePath)
 %% Define some parameters
 
 parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Tau 1 index for CBFspeed', 'Tau 2 index for CBFspeed', 'Tau 1 index for CBV'};
-parameterDefaults = {'1', '', '20', '', '2', '11', '2'};
+parameterDefaults = {'1', '', '15', '', '2', '11', '2'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % define # of files manually for now
@@ -75,30 +75,41 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 % load('I:\Ultrasound Data from 04-11-2025 to 05-08-2025\05-06-2025 AZ03 fUS pre-stroke\run 1 all frames stacked\coronal_mask_rep_07_31_2025.mat')
 % load('J:\Ultrasound data from 7-21-2025\08-06-2025 AZ01 RCA fUS\coronal_mask_rep.mat')
 
-%% Define other cropping
-%     zstart = 40;
-% %     zstart = 50;
-%     zend = size(IQ, 3);
-%     zstart = 15;
-%     zstart = 45;
-    % zstart = 52;
-%     zend = 105;
-    % zend = 127;
+%% Look at the IQ MIP to get an idea for where to crop
 
-    zstart = 45; zend = 135;
+% Load the first IQ data file
+tic
+load([IQpath, IQfilenameStructure, num2str(1)])
+
+IQ = single(squeeze(IData + 1i .* QData));
+clearvars IData QData
+
+figure; imagesc(squeeze(max(abs(IQ(:, :, :, 2)), [], 1))')
+% volumeViewer(squeeze(abs(IQ(:, :, :, 2))))
+
+%% Prompt for the z crop
+zCropPrompt = {'z start (voxel number)', 'z end (voxel number)'};
+zCropDefaults = {'1', num2str(size(IQ, 3))};
+zCropUserInput = inputdlg(zCropPrompt, 'Input Parameters', 1, zCropDefaults);
+
+%     zstart = 45; zend = 135;
+zstart = str2double(zCropUserInput{1});
+zend = str2double(zCropUserInput{2});
 
 %% Save proc params
 % numg1pts = 20; % Only calculate the first N points
 % save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'numg1pts', 'zstart', 'zend');
-save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'zstart', 'zend');
+save([savepath, 'FC_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'zstart', 'zend');
+
+% Add band pass filter params later............
 
 %% Main loop
 % for filenum = startFile:endFile
 % for filenum = [2:endFile]
 % for filenum = [endFile - 1:-1:startFile]
 % for filenum = [8:endFile]
-for filenum = 100:502
-% for filenum = 1
+% for filenum = 100:502
+for filenum = 3
 
     % Load the IQ data
     tic
@@ -169,7 +180,7 @@ for filenum = 100:502
 %     volumeViewer(PDI ./ noise)
 
 %     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'noise', '-v7.3', '-nocompression');
-    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'noise', '-v7.3')
+    save([savepath, 'FCdata-', num2str(filenum), '.mat'], 'PDI', 'noise', '-v7.3')
 
     disp("fUS result for file " + num2str(filenum) + " saved" )
 %     disp("g1 result for file " + num2str(filenum) + " saved" )
