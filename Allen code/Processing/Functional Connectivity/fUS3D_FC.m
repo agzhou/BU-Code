@@ -28,7 +28,8 @@ IQfilenameStructure = ['IQ-', num2str(round(P.maxAngle)), '-', num2str(P.na), '-
 savepath = uigetdir(IQpath + "..\", 'Select the save path');
 savepath = [savepath, '\'];
 
-addpath([cd, '\Speckle tracking']) % add path for the g1 calculation functions
+addpath([cd, '\..\Speckle tracking']) % add path for the g1 calculation functions
+addpath([cd, '\..\']) % Add the main "Processing" path
 
 % Load the timing data
 [timingFilePathFN, timingFilePath] = uigetfile([IQpath, '..\Timing data\TD.mat'], 'Select the timing data');
@@ -38,7 +39,7 @@ load(timingFilePath)
 %% Define some parameters
 
 parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Tau 1 index for CBFspeed', 'Tau 2 index for CBFspeed', 'Tau 1 index for CBV'};
-parameterDefaults = {'1', '', '15', '', '2', '11', '2'};
+parameterDefaults = {'1', '', '20', '', '2', '3', '2'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % define # of files manually for now
@@ -110,7 +111,7 @@ save([savepath, 'FC_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper
 % for filenum = [endFile - 1:-1:startFile]
 % for filenum = [8:endFile]
 % for filenum = 100:502
-for filenum = 3
+for filenum = 1
 
     % Load the IQ data
     tic
@@ -165,7 +166,8 @@ for filenum = 3
     disp('SVD filtered images put together')
 
 %     volumeViewer(abs(IQf(:, :, :, 1)))
-%     figure; imagesc(squeeze(abs(max(IQf(:, :, :, 1), [], 1)))')
+%     figure; imagesc(squeeze(abs(max(IQf(:, :, :, 1), [], 1)))'); colorbar
+%     generateTiffStack_acrossframes(abs(IQf), [8.8, 8.8, 8], 'hot', 1:80)
     % clearvars IQ
 
     % Use the IQf with separated negative and positive frequency components
@@ -175,8 +177,8 @@ for filenum = 3
     PDI = sum(abs(IQf) .^ 2, 4) ./ size(IQf, 4);
 %     [CDI] = calcColorDoppler(IQf_FT_separated, P);
 
-%     figure; imagesc(squeeze(max(PDI, [], 1))' .^ 0.5); colormap hot
-%     figure; imagesc(squeeze(max(PDI ./ noise, [], 1))' .^ 0.5); colormap hot
+%     figure; imagesc(squeeze(max(PDI, [], 1))' .^ 0.5); colormap hot; colorbar
+%     figure; imagesc(squeeze(max(PDI ./ noise, [], 1))' .^ 0.5); colormap hot; colorbar
 %     volumeViewer(PDI)
 %     volumeViewer(PDI ./ noise)
 

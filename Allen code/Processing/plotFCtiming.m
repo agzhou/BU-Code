@@ -106,4 +106,4 @@ TD.daqTimeTags = daqTimeTags;           % DAQ time stamps relative to the first 
 TDpath = uigetdir('J:\', 'Select the TD save path');
 TDpath = [TDpath, '\'];
 
-save([TDpath, 'TD.mat', 'TD'])
+save([TDpath, 'TD.mat'], 'TD')

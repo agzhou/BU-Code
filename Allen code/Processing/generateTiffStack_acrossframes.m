@@ -74,8 +74,8 @@ function generateTiffStack_acrossframes(volumeData, varargin)
             clim(cr)
 
             % **** temporary **** %
-            axis equal
-            axis tight
+%             axis equal
+%             axis tight
             % ******************* %
 
             cv = getframe(tf);
