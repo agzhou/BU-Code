@@ -789,7 +789,7 @@ end
 makeParameterStructure_functional;
 save([savepath, 'params.mat'], 'P')
 if useTriggers
-    save([savepath, 'triggerData.mat'], 'inScanData', 'timeStamp', 'triggerTime')
+    save([savepath, 'daqData.mat'], 'inScanData', 'timeStamp', 'triggerTime')
 end
 % saveRcvData(RcvData{1})
 clear RcvData

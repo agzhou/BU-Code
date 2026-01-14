@@ -7,7 +7,7 @@ function [Mcr_d, Mcr_fcp] = setup_accelerometer()
 
     %% User input: parameters for the DAQ and its Verasonics start trigger
     parameterPrompt = {'Verasonics trigger delay [s]', 'Verasonics trigger pulse width [ms]', 'DAQ sample rate [Hz]', 'Experiment length [s]'};
-    parameterDefaults = {'10', '500', '1000', '360'};
+    parameterDefaults = {'10', '500', '1000', '300'};
     parameterUserInput = inputdlg(parameterPrompt, 'Input DAQ Parameters', 1, parameterDefaults);
     
     % Verasonics trigger signal (vts)
