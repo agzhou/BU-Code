@@ -24,7 +24,7 @@ savepath = uigetdir('F:\', 'Select the save path');
 savepath = [savepath, '\'];
 
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Number of buffers'}; % 'Save RF data (0-no, 1-yes)', 
-parameterDefaults = {'20', '2', '10', '30000', '300', '11', '5', '13.6', '1540', '0', '1', '300', '2'};
+parameterDefaults = {'20', '2', '10', '30000', '400', '11', '5', '13.6', '1540', '0', '1', '400', '2'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 ADC_sampleMode = 'BS67BW'; % ADC sampling mode
@@ -59,7 +59,8 @@ st_pa_200BW_est = 3e-4; % Estimated save time per angle, for 200% BW and 2-10 mm
 % st_psf_200BW_est = st_pa_200BW_est * (na * pair) * numFramesPerSF; % Estimated save time per superframe
 st_psf_67BW_est = (st_pa_200BW_est / 3) * (na * pair) * numFramesPerSF; % Estimated save time per superframe
 
-safety_factor = 1.2;
+% safety_factor = 1.2;
+safety_factor = 1.1;
 if st_psf_67BW_est * safety_factor >= (numFramesPerSF/frameRate)
     error('The estimated save time exceeds the acquisition time')
     return
@@ -730,7 +731,7 @@ makeParameterStructure_ULM;
 savefast([savepath, 'params.mat'], 'P')
 % saveRcvData(RcvData{1})
 clearvars RcvData
-% save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
+save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
 
 
 %% **** Callback routines used by UIControls (UI) ****
