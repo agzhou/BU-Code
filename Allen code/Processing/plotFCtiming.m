@@ -43,6 +43,7 @@ for filenum = startFile:endFile
 end
 clearvars timetag
 
+figure; plot(diff(sfTimeTags))
 %% Move the superframe time tags back the width of each superframe (so the time corresponds to the start of each superframe acquisition)
 % ** actually, this is not necessary for sfTimeTags since we are using the
 % relative timing for those, but adjusting for the sfWidth would be
