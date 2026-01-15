@@ -4,14 +4,30 @@ Secondary motor area,MOs,25,30
 "Primary somatosensory area, nose",SSp-n,45,51
 "Primary somatosensory area, barrel field",SSp-bfd,52,58
 "Primary somatosensory area, lower limb",SSp-ll,66,72
+"Primary somatosensory area, mouth",SSp-m,73,79
 "Primary somatosensory area, upper limb",SSp-ul,80,86
 Primary somatosensory area trunk,SSp-tr,87,93
 Primary somatosensory area unassigned,SSp-un,94,100
-"Primary somatosensory area, mouth",SSp-m,73,79
-Primary visual area,VISp,186,192
+Supplemental somatosensory area,SSs,101,107
+Dorsal auditory area,AUDd,123,129
 Primary auditory area,AUDp,137,143
 Posterior auditory area,AUDpo,144,150
-Dorsal auditory area,AUDd,123,129
+Ventral auditory area,AUDv,151,157
+Anterolateral visual area,VISal,165,171
+Anteromedial visual area,VISam,172,178
+Lateral visual area,VISl,179,185
+Primary visual area,VISp,186,192
+Posterolateral visual area,VISpl,193,199
+Posteromedial visual area,VISpm,200,206
+Laterointermediate area,VISli,207,213
+Postrhinal area,VISpor,214,220
+Anterior cingulate area dorsal part,ACAd,227,232
+Anterior cingulate area ventral part,ACAv,233,238
+Retrosplenial area lateral agranular part,RSPagl,299,304
+Retrosplenial area dorsal part,RSPd,326,332
+Retrosplenial area ventral part,RSPv,333,339
+Anterior area,VISa,347,353
+Rostrolateral visual area,VISrl,354,360
 Ventral auditory area,AUDv,151,157
 Cortical amygdalar area,COA,427,444
 Rostrolateral lateral visual area,Visrll,59,65
