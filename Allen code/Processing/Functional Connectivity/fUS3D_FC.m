@@ -285,8 +285,10 @@ fUS_volume_dimensions_voxels = PData.Size; % Volume size in voxels (from the rec
 fUS_cropped_volume_dimensions_voxels = size(PDI_allSF_avg);
 fUS_cropped_volume_dimensions_m = fUS_cropped_volume_dimensions_voxels ./ fUS_volume_dimensions_voxels .* fUS_volume_dimensions_m;
 
+% User input for target voxel size (post-interpolation)
 targetVoxelSizePrompt = {'y Target Voxel Size [um]', 'x Target Voxel Size [um]', 'z Target Voxel Size [um]'};
-targetVoxelSizeDefaults = {'10', '10', '10'};
+% targetVoxelSizeDefaults = {'10', '10', '10'};
+targetVoxelSizeDefaults = {'50', '50', '50'};
 targetVoxelSizeUserInput = inputdlg(targetVoxelSizePrompt, 'Input Target Voxel Size', 1, targetVoxelSizeDefaults);
 
 % Store target voxel size inputs and convert to meters
@@ -321,8 +323,10 @@ PDI_allSF_avg = mean(PDIallSF, 4);
 fUS_cropped_volume_dimensions_voxels = size(PDI_allSF_avg);
 fUS_cropped_volume_dimensions_m = fUS_cropped_volume_dimensions_voxels ./ prereg_params.fUS_volume_dimensions_voxels .* prereg_params.fUS_volume_dimensions_m;
 
+% User input for target voxel size (post-interpolation)
 targetVoxelSizePrompt = {'y Target Voxel Size [um]', 'x Target Voxel Size [um]', 'z Target Voxel Size [um]'};
-targetVoxelSizeDefaults = {'10', '10', '10'};
+% targetVoxelSizeDefaults = {'10', '10', '10'};
+targetVoxelSizeDefaults = {'50', '50', '50'};
 targetVoxelSizeUserInput = inputdlg(targetVoxelSizePrompt, 'Input Target Voxel Size', 1, targetVoxelSizeDefaults);
 
 % Store target voxel size inputs and convert to meters
