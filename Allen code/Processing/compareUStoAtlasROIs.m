@@ -57,10 +57,12 @@ function compareUStoAtlasROIs(US_template, region_masks)
     % volshow(allMasks .^ 1, Parent = viewerThresholded, RenderingStyle = "VolumeRendering", ...
     %     Colormap=jet, Alphamap = "linear");
 
-    for ind = 1:length(region_masks)
+    for ind = 1:length(region_masks) %%
         volshow(region_masks{ind} .^ 1, Parent = viewerThresholded, RenderingStyle = "Isosurface", ...
                 Colormap=rand(1, 3), Alphamap = 1);
+        pause(0.1) % For some reason, some regions will not get plotted if it goes too quickly
     end
+
     % volshow(US_template .^ US_gamma, Parent=viewerThresholded, RenderingStyle = "Isosurface", ...
     %     Colormap=[1 0 1], Alphamap=1);
     % volshow(allMasks .^ 1, Parent = viewerThresholded, RenderingStyle = "Isosurface", ...

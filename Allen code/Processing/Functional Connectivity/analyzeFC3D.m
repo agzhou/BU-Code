@@ -205,7 +205,8 @@ load(PDIallSF_reg_ROI_masks_FilePath)
 
 %% (Optional) Overlay the ROI masks onto a PDI template
 % compareUStoAtlasROIs(PDI_template_reg_50um, region_masks_50um)
-compareUStoAtlasROIs(fUSmap_50um_rigid_reg.regVol.Voxels, region_masks_50um)
+% compareUStoAtlasROIs(fUSmap_50um_rigid_reg.regVol.Voxels, region_masks_50um)
+compareUStoAtlasROIs(fUSmap_50um_rigid_reg.regVol.Voxels, roi.masks_50um)
 
 %% Correlation without resampling PDI in time
 % figure; plot(sfTimeTags)
