@@ -101,7 +101,7 @@ zend = str2double(zCropUserInput{2});
 %% Save proc params
 % numg1pts = 20; % Only calculate the first N points
 % save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'numg1pts', 'zstart', 'zend');
-save([savepath, 'FC_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'zstart', 'zend');
+save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'zstart', 'zend');
 
 % Add band pass filter params later............
 
@@ -109,16 +109,16 @@ save([savepath, 'FC_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper
 % for filenum = startFile:endFile
 % for filenum = [2:endFile]
 % for filenum = [endFile - 1:-1:startFile]
-% for filenum = [8:endFile]
+for filenum = [4:endFile]
 % for filenum = 100:502
-for filenum = 1
+% for filenum = 1
 
     % Load the IQ data
     tic
     load([IQpath, IQfilenameStructure, num2str(filenum)])
     
     IQ = single(squeeze(IData + 1i .* QData));
-    clearvars IData QData
+%     clearvars IData QData
 
     % figure; imagesc(squeeze(max(abs(IQ(:, :, :, 2)), [], 1))')
     
@@ -150,7 +150,7 @@ for filenum = 1
 
     % -- Some adaptive thresholding stuff -- %
     % Plot one SVD subspace as an image
-%     subspace = 40;
+%     subspace = 20;
 %     subspace_img = reshape(U(:, subspace) * SVs(subspace) * V(:, subspace)', [xp, yp, zp, nf]);
 %     figure; imagesc(squeeze(max(abs(subspace_img(:, :, :, 2)), [], 1))')
 % %     volumeViewer(abs(subspace_img(:, :, :, 2)))
@@ -183,7 +183,7 @@ for filenum = 1
 %     volumeViewer(PDI ./ noise)
 
 %     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'noise', '-v7.3', '-nocompression');
-    save([savepath, 'FCdata-', num2str(filenum), '.mat'], 'PDI', 'noise', '-v7.3')
+    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'noise', '-v7.3')
 
     disp("fUS result for file " + num2str(filenum) + " saved" )
 %     disp("g1 result for file " + num2str(filenum) + " saved" )
