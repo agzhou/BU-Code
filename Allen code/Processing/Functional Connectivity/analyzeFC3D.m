@@ -148,6 +148,13 @@ end
 
 clearvars region_mask_10um_temp rn
 
+%% Add ROI stuff to a struct for saving
+roi.names = region_names;
+roi.acronyms = region_acronyms;
+roi.inds = region_inds;
+roi.num_regions = num_regions;
+roi.masks_50um = region_masks_50um;
+
 %% Load the timing data (output of plotfUStiming_FC.m) and convert to actual time
 [timingFilePathFN, timingFilePath] = uigetfile([data_dirpath, '..\..\Timing data\TD.mat'], 'Select the timing data');
 timingFilePath = [timingFilePath, timingFilePathFN];
