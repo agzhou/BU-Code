@@ -148,6 +148,35 @@ end
 
 clearvars region_mask_10um_temp rn
 
+%% Separate the ROI masks by hemisphere (this all only works if the hemisphere axis is #2 in the data)
+region_masks_50um_hemis = cell(num_regions, 2); % second dimension corresponds to 1 = left, 2 = right
+
+% Define the indices for separating the hemispheres
+hemis_dim = 2; % Dimension of the left-right axis
+if mod(size(region_masks_50um{1}, hemis_dim), 2) ~= 0
+    error("Code is not set up to deal with an odd # of voxels in the hemisphere axis direction")
+end
+
+% volumeViewer(squeeze(fUSmap_50um_rigid_reg.regVol.Voxels(:, 1:size(region_masks_50um{1}, hemis_dim)/2, :)))
+% volumeViewer(squeeze(fUSmap_50um_rigid_reg.regVol.Voxels(:, size(region_masks_50um{1}, hemis_dim)/2 + 1:end, :)))
+% 
+% figure; imagesc(squeeze(max(fUSmap_50um_rigid_reg.regVol.Voxels(:, size(region_masks_50um{1}, hemis_dim)/2 + 1:end, :), [], 1)))
+
+% Left should start from index = 1
+hemis_inds.left = 1:size(region_masks_50um{1}, hemis_dim)/2;
+hemis_inds.right = size(region_masks_50um{1}, hemis_dim)/2 + 1:size(region_masks_50um{1}, hemis_dim);
+
+for rn = 1:num_regions % region number
+    
+    % Left
+    region_masks_50um_hemis{rn, 1} = region_masks_50um{rn}(:, hemis_inds.left, :);
+
+    % Right
+    region_masks_50um_hemis{rn, 2} = region_masks_50um{rn}(:, hemis_inds.left, :);
+end
+
+clearvars region_mask_10um_temp rn
+
 %% Add ROI info to a struct for saving
 roi.names = region_names;
 roi.acronyms = region_acronyms;
