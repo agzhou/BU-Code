@@ -175,7 +175,19 @@ for rn = 1:num_regions % region number
     region_masks_50um_hemis{rn, 2} = region_masks_50um{rn}(:, hemis_inds.left, :);
 end
 
-clearvars region_mask_10um_temp rn
+% Add ROI name and acronyms for the hemisphere separation
+region_names_hemis = cell(size(region_names, 1), 2);
+region_acronyms_hemis = cell(size(region_acronyms, 1), 2);
+for rn = 1:num_regions % region number
+    region_name_temp = region_names{rn};
+    region_acronym_temp = region_acronyms{rn};
+
+    region_names_hemis{rn, 1} = region_name_temp + " - left";
+    region_names_hemis{rn, 2} = region_name_temp + " - right";
+    region_acronyms_hemis{rn, 1} = region_acronym_temp + " (L)";
+    region_acronyms_hemis{rn, 2} = region_acronym_temp + " (R)";
+end
+clearvars region_mask_10um_temp rn region_name_temp region_acronym_temp
 
 %% Add ROI info to a struct for saving
 roi.names = region_names;
@@ -183,12 +195,21 @@ roi.acronyms = region_acronyms;
 roi.inds = region_inds;
 roi.num_regions = num_regions;
 roi.masks_50um = region_masks_50um;
+roi.names_hemis = region_names_hemis;
+roi.acronyms_hemis = region_acronyms_hemis;
+roi.masks_50um_hemis = region_masks_50um_hemis;
 
 % Save ROI info as a mat file
 roi_savepath = uigetdir('J:\', 'Select the ROI info save path');
 roi_savepath = [roi_savepath, '\'];
 
 save([roi_savepath, 'roi_info.mat'], 'roi')
+
+%% (Optional) Overlay the ROI masks onto a PDI template
+% compareUStoAtlasROIs(PDI_template_reg_50um, region_masks_50um)
+% compareUStoAtlasROIs(fUSmap_50um_rigid_reg.regVol.Voxels, region_masks_50um)
+compareUStoAtlasROIs(fUSmap_50um_rigid_reg.regVol.Voxels, roi.masks_50um) % Non-hemisphere separated ROIs
+compareUStoAtlasROIs(fUSmap_50um_rigid_reg.regVol.Voxels, roi.masks_50um_hemis(:)) % Hemisphere separated ROIs
 
 %% Load the timing data (output of plotfUStiming_FC.m) and convert to actual time
 [timingFilePathFN, timingFilePath] = uigetfile([data_dirpath, '..\..\Timing data\TD.mat'], 'Select the timing data');
@@ -231,50 +252,63 @@ toc
 clearvars PDI_sfi sfi PDI_sfi_rs
 
 %% (Optional) Save the registered PDI across superframes data, along with the ROI masks
-save([data_dirpath, 'PDIallSF_reg_ROI_masks_50um.mat'], "PDIallSF_reg", "region_masks_50um", '-v7.3')
+% save([data_dirpath, 'PDIallSF_reg_ROI_masks_50um.mat'], "PDIallSF_reg", "region_masks_50um", '-v7.3')
+save([data_dirpath, 'PDIallSF_reg_ROI_info_50um.mat'], "PDIallSF_reg", "roi", '-v7.3')
 
 %% (Optional) Load the registered PDI across superframes data, along with the ROI masks
-[PDIallSF_reg_ROI_masks_FilePathFN, PDIallSF_reg_ROI_masks_FilePath] = uigetfile([data_dirpath, 'PDIallSF_reg_ROI_masks_50um.mat'], 'Select the registered PDI across superframes data');
+[PDIallSF_reg_ROI_masks_FilePathFN, PDIallSF_reg_ROI_masks_FilePath] = uigetfile([data_dirpath, 'PDIallSF_reg_ROI_info_50um.mat'], 'Select the registered PDI across superframes data');
 PDIallSF_reg_ROI_masks_FilePath = [PDIallSF_reg_ROI_masks_FilePath, PDIallSF_reg_ROI_masks_FilePathFN];
 load(PDIallSF_reg_ROI_masks_FilePath)
 
-%% (Optional) Overlay the ROI masks onto a PDI template
-% compareUStoAtlasROIs(PDI_template_reg_50um, region_masks_50um)
-% compareUStoAtlasROIs(fUSmap_50um_rigid_reg.regVol.Voxels, region_masks_50um)
-compareUStoAtlasROIs(fUSmap_50um_rigid_reg.regVol.Voxels, roi.masks_50um)
-
-%% Correlation without resampling PDI in time
+%% Get ROI averaged PDI timecourses
+% (old incorrect title: Correlation without resampling PDI in time (with sliding window))
 % figure; plot(sfTimeTags)
 % figure; plot(diff(sfTimeTags))
 num_sf = size(PDIallSF_reg, 4); % # of superframes
 
-corr_ws = 30; % Correlation sliding window size (I need to convert this to be specific with actual time)
-% For now, 30 represents around 30 sf * ~0.5 seconds per sf --> ~ 15 seconds
-
 % PDI_ROI_timecourses = cell(num_regions, num_sf); % Store average ROI PDI timecourses in a cell array (each cell is an average timecourse)
 PDI_ROI_timecourses = cell(num_regions, 1); % Store average ROI PDI timecourses in a cell array (each cell is an average timecourse)
+PDI_ROI_hemis_timecourses = cell(num_regions, 2); % Store average ROI PDI (hemisphere-separated) timecourses in a cell array (each cell is an average timecourse)
 
 % -- Calculate PDI [ROI average] timecourses -- %
 tic
 for ti = 1:num_sf % "time" index -- go through each superframe
 % for ti = 11
+    disp(ti)
     PDIallSF_reg_ti_temp = squeeze(PDIallSF_reg(:, :, :, ti)); % Registered volume at "time" index ti
 
     for ri = 1:num_regions % region/ROI index -- loop through each region
 
+        % Normal
         ROI_mask_temp = region_masks_50um{ri}; % ROI #ri mask
         PDI_ri_masked_temp = PDIallSF_reg_ti_temp(ROI_mask_temp); % Vectorized voxels of the registered PDI at "time" index ti
         PDI_ROI_timecourses{ri}(ti) = mean(PDI_ri_masked_temp);
+        
+        % Hemisphere-separated
+        ROI_mask_temp_left = region_masks_50um_hemis{ri, 1}; % ROI #ri mask (left)
+        ROI_mask_temp_right = region_masks_50um_hemis{ri, 2}; % ROI #ri mask (right)
+        PDI_ri_masked_temp_left = PDIallSF_reg_ti_temp(ROI_mask_temp_left); % Vectorized voxels of the registered PDI at "time" index ti
+        PDI_ri_masked_temp_right = PDIallSF_reg_ti_temp(ROI_mask_temp_right); % Vectorized voxels of the registered PDI at "time" index ti
+        PDI_ROI_timecourses{ri, 1}(ti) = mean(PDI_ri_masked_temp_left);
+        PDI_ROI_timecourses{ri, 2}(ti) = mean(PDI_ri_masked_temp_right);
 
     end
 end
-clearvars ti ri PDIallSF_reg_ti_temp ROI_mask_temp PDI_ri_masked_temp
+% clearvars ti ri PDIallSF_reg_ti_temp ROI_mask_temp PDI_ri_masked_temp
 toc
 
-% Store the ROI timecourses in matrix form, for plotting
+%% Store the ROI timecourses in matrix form, for plotting
 PDI_ROI_timecourses_mat = zeros(length(t), num_regions); % Still ROI-averaged PDI timecourses, but in matrix form (each column is a separate ROI timecourse). Dimensions: [# time points, # ROIs]
 for ri = 1:num_regions % region/ROI index -- loop through each region
     PDI_ROI_timecourses_mat(:, ri) = PDI_ROI_timecourses{ri};
+end
+% figure; plot(PDI_ROI_timecourses{1})
+
+% Hemisphere-separated version
+PDI_ROI_hemis_timecourses_mat = zeros(length(t), num_regions*2); % Still ROI-averaged PDI timecourses, but in matrix form (each column is a separate ROI timecourse). Dimensions: [# time points, # ROIs]
+for ri = 1:num_regions % region/ROI index -- loop through each region
+    PDI_ROI_hemis_timecourses_mat(:, (ri - 1)*2 + 1) = PDI_ROI_timecourses{ri, 1};
+    PDI_ROI_hemis_timecourses_mat(:, ri*2) = PDI_ROI_timecourses{ri, 2};
 end
 % figure; plot(PDI_ROI_timecourses{1})
 
@@ -302,14 +336,28 @@ figure; plot(t, GVTD); title("Global Variance of the Temporal Derivative (GVTD) 
 % xlabel(ROI_PDI_timecourse_tl, "Time [s]")
 % ylabel(ROI_PDI_timecourse_tl, "PDI magnitude [au]")
 
+% Normal
 figure
 % ROI_PDI_timecourse_sp = stackedplot(t, PDI_ROI_timecourses_mat, 'DisplayLabels', region_acronyms);
-ROI_PDI_timecourse_sp = stackedplot(t, [PDI_ROI_timecourses_mat, GVTD], 'DisplayLabels', [region_acronyms; {'GVTD'}]);
+ROI_PDI_timecourse_sp = stackedplot(t, [PDI_ROI_hemis_timecourses_mat, GVTD], 'DisplayLabels', [region_acronyms; {'GVTD'}]);
 title("ROI average PDI timecourses")
 xlabel("Time [s]")
 % fontsize(14, 'points')
 
+% Hemisphere-separated
+figure
+% !!!!!!!!!!! NEED TO INTERLACE THE LABELS IN A VECTORIZED FORMAT !!!!!!!!!!!!!!!!!!!!!!!
+ROI_PDI_hemis_timecourse_sp = stackedplot(t, PDI_ROI_hemis_timecourses_mat, 'DisplayLabels', roi.acronyms_hemis); 
+% ROI_PDI_timecourse_sp = stackedplot(t, [PDI_ROI_hemis_timecourses_mat, GVTD], 'DisplayLabels', [region_acronyms; {'GVTD'}]);
+title("ROI average (hemisphere-separated) PDI timecourses")
+xlabel("Time [s]")
+% fontsize(14, 'points')
+
 %% -- Calculate changes in FC (seed correlation matrices) over time with sliding windows -- %
+
+corr_ws = 30; % Correlation sliding window size (I need to convert this to be specific with actual time)
+% For now, 30 represents around 30 sf * ~0.5 seconds per sf --> ~ 15 seconds
+
 corr_sw_PDI = zeros(num_regions, num_regions, num_sf); % Sliding window PDI seed correlation matrices 
 % THIS VERSION WORKS BASED ON THE SUPERFRAME INDICES, NOT TIME DIRECTLY
 tic
