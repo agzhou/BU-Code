@@ -197,7 +197,9 @@ roi.num_regions = num_regions;
 roi.masks_50um = region_masks_50um;
 roi.names_hemis = region_names_hemis;
 roi.acronyms_hemis = region_acronyms_hemis;
+roi.acronyms_hemis_interleaved = roi.acronyms_hemis'; roi.acronyms_hemis_interleaved = roi.acronyms_hemis_interleaved(:);
 roi.masks_50um_hemis = region_masks_50um_hemis;
+
 
 % Save ROI info as a mat file
 roi_savepath = uigetdir('J:\', 'Select the ROI info save path');
@@ -319,39 +321,58 @@ numVoxelsInVolume = size_PDIallSF_reg(1) * size_PDIallSF_reg(2) * size_PDIallSF_
 GVTD = squeeze( sum( diff(PDIallSF_reg, 1, length(size(PDIallSF_reg))) .^ 2, [1, 2, 3] ) ./ numVoxelsInVolume ) .^ 0.5;
 GVTD(end + 1) = NaN; % pad the end with a NaN, since there is no forward point past the last time point
 
-figure; plot(t, GVTD); title("Global Variance of the Temporal Derivative (GVTD) - PDIallSF"); xlabel("Time [s]"); ylabel("GVTD")
+% figure; plot(t, GVTD); title("Global Variance of the Temporal Derivative (GVTD) - PDIallSF"); xlabel("Time [s]"); ylabel("GVTD")
+
+figure
+yyaxis left
+plot(t, GVTD, 'LineWidth', 2); title("Global Variance of the Temporal Derivative (GVTD) of PDIallSF vs. Accelerometer"); xlabel("Time [s]"); ylabel("GVTD")
+
+% Add accelerometer
+yyaxis right
+plot(TD.daqTimeTags, TD.inScanData)
+ylabel("Accelerometer amplitude")
+legend("GVTD", "Accelerometer component 1", "Accelerometer component 2", "Accelerometer component 3")
 
 %% Plot each ROI's PDI timecourse
-% % subplot(num_regions, 1, 1)
-% figure;
-% ROI_PDI_timecourse_tl = tiledlayout("vertical"); % Vertical tile layout
-% for ri = 1:num_regions % region/ROI index -- loop through each region
-%     nexttile
-%     % subplot(num_regions, 1, ri)
-%     plot(t, PDI_ROI_timecourses{ri})
-% end
-% ROI_PDI_timecourse_tl.TileSpacing = 'compact';
-% ROI_PDI_timecourse_tl.Padding = 'compact';
-% title(ROI_PDI_timecourse_tl, "ROI average PDI timecourses")
-% xlabel(ROI_PDI_timecourse_tl, "Time [s]")
-% ylabel(ROI_PDI_timecourse_tl, "PDI magnitude [au]")
+% subplot(num_regions, 1, 1)
+figure;
+ROI_PDI_timecourse_tl = tiledlayout("vertical"); % Vertical tile layout
+for ri = 1:num_regions % region/ROI index -- loop through each region
+    nexttile
+    % subplot(num_regions, 1, ri)
+    plot(t, PDI_ROI_timecourses{ri})
+end
+ROI_PDI_timecourse_tl.TileSpacing = 'compact';
+ROI_PDI_timecourse_tl.Padding = 'compact';
+title(ROI_PDI_timecourse_tl, "ROI average PDI timecourses")
+xlabel(ROI_PDI_timecourse_tl, "Time [s]")
+ylabel(ROI_PDI_timecourse_tl, "PDI magnitude [au]")
 
+% - NOTE: stackedplot only allows for 25 columns max - % 
 % Normal
 figure
 % ROI_PDI_timecourse_sp = stackedplot(t, PDI_ROI_timecourses_mat, 'DisplayLabels', region_acronyms);
-ROI_PDI_timecourse_sp = stackedplot(t, [PDI_ROI_hemis_timecourses_mat, GVTD], 'DisplayLabels', [region_acronyms; {'GVTD'}]);
+ROI_PDI_timecourse_sp = stackedplot(t, [PDI_ROI_timecourses_mat, GVTD], 'DisplayLabels', [roi.acronyms; {'GVTD'}]);
 title("ROI average PDI timecourses")
 xlabel("Time [s]")
 % fontsize(14, 'points')
 
 % Hemisphere-separated
 figure
-% !!!!!!!!!!! NEED TO INTERLACE THE LABELS IN A VECTORIZED FORMAT !!!!!!!!!!!!!!!!!!!!!!!
-ROI_PDI_hemis_timecourse_sp = stackedplot(t, PDI_ROI_hemis_timecourses_mat, 'DisplayLabels', roi.acronyms_hemis); 
+ROI_PDI_hemis_timecourse_sp = stackedplot(t, PDI_ROI_hemis_timecourses_mat, 'DisplayLabels', roi.acronyms_hemis_interleaved); 
 % ROI_PDI_timecourse_sp = stackedplot(t, [PDI_ROI_hemis_timecourses_mat, GVTD], 'DisplayLabels', [region_acronyms; {'GVTD'}]);
 title("ROI average (hemisphere-separated) PDI timecourses")
 xlabel("Time [s]")
 % fontsize(14, 'points')
+
+%% FC correlation matrix (full timecourse)
+corr_PDI = corrcoef(PDI_ROI_timecourses_mat);
+corr_PDI_hemis = corrcoef(PDI_ROI_hemis_timecourses_mat);
+
+%% Plot the FC correlation matrices (full timecourse)
+
+plotCM(corr_PDI, roi)
+plotCM(corr_PDI_hemis, roi, true)
 
 %% -- Calculate changes in FC (seed correlation matrices) over time with sliding windows -- %
 
@@ -388,6 +409,7 @@ for wi = 1:num_sf
 
 end
 toc
+clearvars wi ri sfis temp_PDI_ROI_timecourse_ri corr_data_matrix_temp
 
 %% Plot the seed correlation matrices
 

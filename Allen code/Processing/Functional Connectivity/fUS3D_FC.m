@@ -311,7 +311,7 @@ prereg_params.target_voxel_size = target_voxel_size;
 prereg_params.prereg_interp_factor = prereg_interp_factor;
 % prereg_params. = 
 
-%% Prepare template(s) for atlas registration (using the prereg_params struct)
+%% Prepare template(s) for atlas registration (using the preloaded prereg_params struct)
 % Create templates for each hemodynamic parameter, averaging across superframes
 PDI_allSF_avg = mean(PDIallSF, 4);
 
