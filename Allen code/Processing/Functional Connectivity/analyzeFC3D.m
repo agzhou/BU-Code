@@ -169,10 +169,14 @@ hemis_inds.right = size(region_masks_50um{1}, hemis_dim)/2 + 1:size(region_masks
 for rn = 1:num_regions % region number
     
     % Left
-    region_masks_50um_hemis{rn, 1} = region_masks_50um{rn}(:, hemis_inds.left, :);
+    % region_masks_50um_hemis{rn, 1} = region_masks_50um{rn}(:, hemis_inds.left, :);
+    region_masks_50um_hemis{rn, 1} = region_masks_50um{rn};
+    region_masks_50um_hemis{rn, 1}(:, hemis_inds.right, :) = false;
 
     % Right
-    region_masks_50um_hemis{rn, 2} = region_masks_50um{rn}(:, hemis_inds.left, :);
+    % region_masks_50um_hemis{rn, 2} = region_masks_50um{rn}(:, hemis_inds.right, :);
+    region_masks_50um_hemis{rn, 2} = region_masks_50um{rn};
+    region_masks_50um_hemis{rn, 2}(:, hemis_inds.left, :) = false;
 end
 
 % Add ROI name and acronyms for the hemisphere separation
@@ -335,18 +339,18 @@ legend("GVTD", "Accelerometer component 1", "Accelerometer component 2", "Accele
 
 %% Plot each ROI's PDI timecourse
 % subplot(num_regions, 1, 1)
-figure;
-ROI_PDI_timecourse_tl = tiledlayout("vertical"); % Vertical tile layout
-for ri = 1:num_regions % region/ROI index -- loop through each region
-    nexttile
-    % subplot(num_regions, 1, ri)
-    plot(t, PDI_ROI_timecourses{ri})
-end
-ROI_PDI_timecourse_tl.TileSpacing = 'compact';
-ROI_PDI_timecourse_tl.Padding = 'compact';
-title(ROI_PDI_timecourse_tl, "ROI average PDI timecourses")
-xlabel(ROI_PDI_timecourse_tl, "Time [s]")
-ylabel(ROI_PDI_timecourse_tl, "PDI magnitude [au]")
+% figure;
+% ROI_PDI_timecourse_tl = tiledlayout("vertical"); % Vertical tile layout
+% for ri = 1:num_regions % region/ROI index -- loop through each region
+%     nexttile
+%     % subplot(num_regions, 1, ri)
+%     plot(t, PDI_ROI_timecourses{ri})
+% end
+% ROI_PDI_timecourse_tl.TileSpacing = 'compact';
+% ROI_PDI_timecourse_tl.Padding = 'compact';
+% title(ROI_PDI_timecourse_tl, "ROI average PDI timecourses")
+% xlabel(ROI_PDI_timecourse_tl, "Time [s]")
+% ylabel(ROI_PDI_timecourse_tl, "PDI magnitude [au]")
 
 % - NOTE: stackedplot only allows for 25 columns max - % 
 % Normal
