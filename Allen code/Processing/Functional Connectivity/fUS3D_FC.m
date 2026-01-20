@@ -162,7 +162,7 @@ for filenum = [4:endFile]
 %     
 
     [IQf, noise] = applySVs2D(IQm, PP, SVs, V, sv_threshold_lower, sv_threshold_upper);
-%     [IQf, noise] = applySVs2D(IQm, PP, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
+%     [IQf, noise] = applySVs2D(IQm, PP, SVs, V, a_opt, b_opt);
     disp('SVD filtered images put together')
 
 %     volumeViewer(abs(IQf(:, :, :, 1)))
