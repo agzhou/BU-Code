@@ -375,6 +375,7 @@ for spi = 1:num_sps*2
     % Hemisphere-separated
     figure
     temp_ind_spi = (spi - 1)*num_cols_per_sp + 1:spi*num_cols_per_sp;
+    
     ROI_PDI_timecourse_sp = stackedplot(t, [PDI_ROI_hemis_timecourses_mat(:, temp_ind_spi), GVTD], 'DisplayLabels', [roi.acronyms_hemis_interleaved(temp_ind_spi); {'GVTD'}]);
     title("ROI average (hemisphere-separated) PDI timecourses")
     xlabel("Time [s]")

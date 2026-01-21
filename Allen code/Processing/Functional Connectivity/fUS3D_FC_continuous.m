@@ -106,6 +106,8 @@ save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_uppe
 % for filenum = 100:502
 for bn = 1
 
+    frames_bn = (bn - 1)*b
+
     % Load the IQ data
     tic
     load([IQpath, IQfilenameStructure, num2str(bn)])
