@@ -81,8 +81,12 @@ zstart = str2double(zCropUserInput{1});
 zend = str2double(zCropUserInput{2});
 
 %% Define how to slice each block
-nsfpb = bs / P.numFramesPerBuffer; % # of superframes needed per block
-nfpsfib = P.numFramesPerBuffer .* ones(ceil(nsfpb), 1); nfpsfib(end) = P.numFramesPerBuffer .* (nsfpb - floor(nsfpb)); % # of frames per superframe in each block
+% nsfpb = bs / P.numFramesPerBuffer; % # of superframes needed per block
+% nfpsfib = P.numFramesPerBuffer .* ones(ceil(nsfpb), 1); nfpsfib(end) = P.numFramesPerBuffer .* (nsfpb - floor(nsfpb)); % # of frames per superframe in each block
+nfpbo = bs * bo; % # of frames per block overlap
+if nfpbo ~= floor(nfpbo) % If nfpbo is not a natural number
+    error("Block overlap must a natural number of frames")
+end
 
 %% Set up the High Pass Filter
 % fc = 50; % Cutoff frequency [Hz]
@@ -106,7 +110,19 @@ save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_uppe
 % for filenum = 100:502
 for bn = 1
 
-    frames_bn = (bn - 1)*b
+    % Define which frame numbers (relative to the experiment start) should be used
+    if bn == 1
+        frames_bn = 1:bs;
+    else
+        frames_bn = ( (bn - 1)*bs + 1 : (bn)*bs ) - nfpbo;
+    end
+
+    % Define which superframes (and which portions of each) to load and use
+    % for each block
+    sf_start_bn = ceil(frames_bn(1) ./ P.numFramesPerBuffer); % The superframe to start on for block bn
+    pctOfStartSFToUse = ceil( (frames_bn(1) - 1)./ P.numFramesPerBuffer ) - (frames_bn(1) - 1)./ P.numFramesPerBuffer; % Percent of the first superframe to use in block bn (starting from the end of the superframe)
+    numFramesOfStartSFToUse = pctOfStartSFToUse * P.numFramesPerBuffer; % # of frames in the first superframe to use in block bn (starting from the end of the superframe)
+    numFramesPerSFToUse = 
 
     % Load the IQ data
     tic
