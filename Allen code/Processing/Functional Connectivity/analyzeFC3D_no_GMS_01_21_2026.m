@@ -270,6 +270,7 @@ load(PDIallSF_reg_ROI_masks_FilePath)
 PDI_reg_global_mean = squeeze(mean(PDIallSF_reg, [1, 2, 3])); % Global mean timecourse (voxelwise) of the registered PDI
 figure; plot(t, PDI_reg_global_mean); title("Global mean (voxelwise)"); xlabel("Time [s]"); ylabel("PDI")
 
+
 %% Get ROI averaged PDI timecourses
 % (old incorrect title: Correlation without resampling PDI in time (with sliding window))
 % figure; plot(sfTimeTags)
@@ -292,38 +293,21 @@ for ti = 1:num_sf % "time" index -- go through each superframe
         % Normal
         ROI_mask_temp = region_masks_50um{ri}; % ROI #ri mask
         PDI_ri_masked_temp = PDIallSF_reg_ti_temp(ROI_mask_temp); % Vectorized voxels of the registered PDI at "time" index ti
-        PDI_ROI_timecourses{ri}(ti) = mean(PDI_ri_masked_temp)';
+        PDI_ROI_timecourses{ri}(ti) = mean(PDI_ri_masked_temp);
         
         % Hemisphere-separated
         ROI_mask_temp_left = region_masks_50um_hemis{ri, 1}; % ROI #ri mask (left)
         ROI_mask_temp_right = region_masks_50um_hemis{ri, 2}; % ROI #ri mask (right)
         PDI_ri_masked_temp_left = PDIallSF_reg_ti_temp(ROI_mask_temp_left); % Vectorized voxels of the registered PDI at "time" index ti
         PDI_ri_masked_temp_right = PDIallSF_reg_ti_temp(ROI_mask_temp_right); % Vectorized voxels of the registered PDI at "time" index ti
-        PDI_ROI_hemis_timecourses{ri, 1}(ti) = mean(PDI_ri_masked_temp_left)';
-        PDI_ROI_hemis_timecourses{ri, 2}(ti) = mean(PDI_ri_masked_temp_right)';
+        PDI_ROI_hemis_timecourses{ri, 1}(ti) = mean(PDI_ri_masked_temp_left);
+        PDI_ROI_hemis_timecourses{ri, 2}(ti) = mean(PDI_ri_masked_temp_right);
 
     end
 end
 % clearvars ti ri PDIallSF_reg_ti_temp ROI_mask_temp PDI_ri_masked_temp
 toc
 
-% % Make any row timecourses into column vectors (don't normally need this)
-% for ri = 1:num_regions
-%     PDI_ROI_timecourses{ri} = squeeze(PDI_ROI_timecourses{ri}');
-% 
-%     PDI_ROI_hemis_timecourses{ri, 1} = squeeze(PDI_ROI_hemis_timecourses{ri, 1}');
-%     PDI_ROI_hemis_timecourses{ri, 2} = squeeze(PDI_ROI_hemis_timecourses{ri, 2}');
-% 
-% end
-
-%% Add global mean subtracted versions
-PDI_ROI_GMS_timecourses = cell(num_regions, 1);
-PDI_ROI_hemis_GMS_timecourses = cell(num_regions, 2);
-for ri = 1:num_regions
-    PDI_ROI_GMS_timecourses{ri} = PDI_ROI_timecourses{ri} - PDI_reg_global_mean;
-    PDI_ROI_hemis_GMS_timecourses{ri, 1} = PDI_ROI_hemis_timecourses{ri, 1} - PDI_reg_global_mean;
-    PDI_ROI_hemis_GMS_timecourses{ri, 2} = PDI_ROI_hemis_timecourses{ri, 2} - PDI_reg_global_mean;
-end
 %% Store the ROI timecourses in matrix form, for plotting
 PDI_ROI_timecourses_mat = zeros(length(t), num_regions); % Still ROI-averaged PDI timecourses, but in matrix form (each column is a separate ROI timecourse). Dimensions: [# time points, # ROIs]
 for ri = 1:num_regions % region/ROI index -- loop through each region
