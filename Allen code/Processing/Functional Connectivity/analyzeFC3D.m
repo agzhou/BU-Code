@@ -324,7 +324,7 @@ for ri = 1:num_regions
     PDI_ROI_hemis_GMS_timecourses{ri, 1} = PDI_ROI_hemis_timecourses{ri, 1} - PDI_reg_global_mean;
     PDI_ROI_hemis_GMS_timecourses{ri, 2} = PDI_ROI_hemis_timecourses{ri, 2} - PDI_reg_global_mean;
 end
-%% Store the ROI timecourses in matrix form, for plotting
+%% Store the ROI timecourses in matrix form
 PDI_ROI_timecourses_mat = zeros(length(t), num_regions); % Still ROI-averaged PDI timecourses, but in matrix form (each column is a separate ROI timecourse). Dimensions: [# time points, # ROIs]
 for ri = 1:num_regions % region/ROI index -- loop through each region
     PDI_ROI_timecourses_mat(:, ri) = PDI_ROI_timecourses{ri};
@@ -339,6 +339,19 @@ for ri = 1:num_regions % region/ROI index -- loop through each region
 end
 % figure; plot(PDI_ROI_timecourses{1})
 
+%% Store the ROI timecourses in matrix form (GMS version)
+PDI_ROI_GMS_timecourses_mat = zeros(length(t), num_regions); % Still ROI-averaged PDI timecourses, but in matrix form (each column is a separate ROI timecourse). Dimensions: [# time points, # ROIs]
+for ri = 1:num_regions % region/ROI index -- loop through each region
+    PDI_ROI_GMS_timecourses_mat(:, ri) = PDI_ROI_GMS_timecourses{ri};
+end
+
+% Hemisphere-separated version
+PDI_ROI_hemis_GMS_timecourses_mat = zeros(length(t), num_regions*2); % Still ROI-averaged PDI timecourses, but in matrix form (each column is a separate ROI timecourse). Dimensions: [# time points, # ROIs]
+for ri = 1:num_regions % region/ROI index -- loop through each region
+    PDI_ROI_hemis_GMS_timecourses_mat(:, (ri - 1)*2 + 1) = PDI_ROI_hemis_GMS_timecourses{ri, 1};
+    PDI_ROI_hemis_GMS_timecourses_mat(:, ri*2) = PDI_ROI_hemis_GMS_timecourses{ri, 2};
+end
+% figure; plot(PDI_ROI_timecourses{1})
 
 %% Calculate the Global Variance of the Temporal Derivative (GVTD): data-driven motion quantification
 % diff_PDIallSF_reg = diff(PDIallSF_reg, 1, length(size(PDIallSF_reg))); % 1st order diff of the registered PDI across superframes, across time (the last dimension)
@@ -388,8 +401,9 @@ for spi = 1:num_sps
     % Normal
     figure
     temp_ind_spi = (spi - 1)*num_cols_per_sp + 1:spi*num_cols_per_sp;
-    % ROI_PDI_timecourse_sp = stackedplot(t, PDI_ROI_timecourses_mat, 'DisplayLabels', region_acronyms);
-    ROI_PDI_timecourse_sp = stackedplot(t, [PDI_ROI_timecourses_mat(:, temp_ind_spi), GVTD], 'DisplayLabels', [roi.acronyms(temp_ind_spi); {'GVTD'}]);
+    % % ROI_PDI_timecourse_sp = stackedplot(t, PDI_ROI_timecourses_mat, 'DisplayLabels', region_acronyms);
+    % ROI_PDI_timecourse_sp = stackedplot(t, [PDI_ROI_timecourses_mat(:, temp_ind_spi), GVTD], 'DisplayLabels', [roi.acronyms(temp_ind_spi); {'GVTD'}]);
+    ROI_PDI_timecourse_sp = stackedplot(t, [PDI_ROI_GMS_timecourses_mat(:, temp_ind_spi), GVTD], 'DisplayLabels', [roi.acronyms(temp_ind_spi); {'GVTD'}]);
     title("ROI average PDI timecourses")
     xlabel("Time [s]")
     % fontsize(14, 'points')
@@ -403,7 +417,8 @@ for spi = 1:num_sps*2
     figure
     temp_ind_spi = (spi - 1)*num_cols_per_sp + 1:spi*num_cols_per_sp;
 
-    ROI_PDI_timecourse_sp = stackedplot(t, [PDI_ROI_hemis_timecourses_mat(:, temp_ind_spi), GVTD], 'DisplayLabels', [roi.acronyms_hemis_interleaved(temp_ind_spi); {'GVTD'}]);
+    % ROI_PDI_timecourse_sp = stackedplot(t, [PDI_ROI_hemis_timecourses_mat(:, temp_ind_spi), GVTD], 'DisplayLabels', [roi.acronyms_hemis_interleaved(temp_ind_spi); {'GVTD'}]);
+    ROI_PDI_timecourse_sp = stackedplot(t, [PDI_ROI_hemis_GMS_timecourses_mat(:, temp_ind_spi), GVTD], 'DisplayLabels', [roi.acronyms_hemis_interleaved(temp_ind_spi); {'GVTD'}]);
     title("ROI average (hemisphere-separated) PDI timecourses")
     xlabel("Time [s]")
     % fontsize(14, 'points')
@@ -430,10 +445,16 @@ end
 corr_PDI = corrcoef(PDI_ROI_timecourses_mat);
 corr_PDI_hemis = corrcoef(PDI_ROI_hemis_timecourses_mat);
 
+corr_PDI_GMS = corrcoef(PDI_ROI_GMS_timecourses_mat);
+corr_PDI_hemis_GMS = corrcoef(PDI_ROI_hemis_GMS_timecourses_mat);
+
 %% Plot the FC correlation matrices (full timecourse)
 
 plotCM(corr_PDI, roi)
 plotCM(corr_PDI_hemis, roi, true)
+
+plotCM(corr_PDI_GMS, roi)
+plotCM(corr_PDI_hemis_GMS, roi, true)
 
 %% -- Calculate changes in FC (seed correlation matrices) over time with sliding windows -- %
 
