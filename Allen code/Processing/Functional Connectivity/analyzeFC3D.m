@@ -295,8 +295,8 @@ for ti = 1:num_sf % "time" index -- go through each superframe
         ROI_mask_temp_right = region_masks_50um_hemis{ri, 2}; % ROI #ri mask (right)
         PDI_ri_masked_temp_left = PDIallSF_reg_ti_temp(ROI_mask_temp_left); % Vectorized voxels of the registered PDI at "time" index ti
         PDI_ri_masked_temp_right = PDIallSF_reg_ti_temp(ROI_mask_temp_right); % Vectorized voxels of the registered PDI at "time" index ti
-        PDI_ROI_timecourses{ri, 1}(ti) = mean(PDI_ri_masked_temp_left);
-        PDI_ROI_timecourses{ri, 2}(ti) = mean(PDI_ri_masked_temp_right);
+        PDI_ROI_hemis_timecourses{ri, 1}(ti) = mean(PDI_ri_masked_temp_left);
+        PDI_ROI_hemis_timecourses{ri, 2}(ti) = mean(PDI_ri_masked_temp_right);
 
     end
 end
@@ -313,8 +313,8 @@ end
 % Hemisphere-separated version
 PDI_ROI_hemis_timecourses_mat = zeros(length(t), num_regions*2); % Still ROI-averaged PDI timecourses, but in matrix form (each column is a separate ROI timecourse). Dimensions: [# time points, # ROIs]
 for ri = 1:num_regions % region/ROI index -- loop through each region
-    PDI_ROI_hemis_timecourses_mat(:, (ri - 1)*2 + 1) = PDI_ROI_timecourses{ri, 1};
-    PDI_ROI_hemis_timecourses_mat(:, ri*2) = PDI_ROI_timecourses{ri, 2};
+    PDI_ROI_hemis_timecourses_mat(:, (ri - 1)*2 + 1) = PDI_ROI_hemis_timecourses{ri, 1};
+    PDI_ROI_hemis_timecourses_mat(:, ri*2) = PDI_ROI_hemis_timecourses{ri, 2};
 end
 % figure; plot(PDI_ROI_timecourses{1})
 
@@ -352,22 +352,51 @@ legend("GVTD", "Accelerometer component 1", "Accelerometer component 2", "Accele
 % xlabel(ROI_PDI_timecourse_tl, "Time [s]")
 % ylabel(ROI_PDI_timecourse_tl, "PDI magnitude [au]")
 
-% - NOTE: stackedplot only allows for 25 columns max - % 
-% Normal
-figure
-% ROI_PDI_timecourse_sp = stackedplot(t, PDI_ROI_timecourses_mat, 'DisplayLabels', region_acronyms);
-ROI_PDI_timecourse_sp = stackedplot(t, [PDI_ROI_timecourses_mat, GVTD], 'DisplayLabels', [roi.acronyms; {'GVTD'}]);
-title("ROI average PDI timecourses")
-xlabel("Time [s]")
-% fontsize(14, 'points')
+% Plot multiple stackedplots to visualize ROI PDI timecourses
+num_cols_per_sp = 16;
+num_sps = ceil(num_regions/num_cols_per_sp); % # of stackedplot to use since they only allow 25 columns max
 
-% Hemisphere-separated
-figure
-ROI_PDI_hemis_timecourse_sp = stackedplot(t, PDI_ROI_hemis_timecourses_mat, 'DisplayLabels', roi.acronyms_hemis_interleaved); 
-% ROI_PDI_timecourse_sp = stackedplot(t, [PDI_ROI_hemis_timecourses_mat, GVTD], 'DisplayLabels', [region_acronyms; {'GVTD'}]);
-title("ROI average (hemisphere-separated) PDI timecourses")
-xlabel("Time [s]")
-% fontsize(14, 'points')
+for spi = 1:num_sps
+    % - NOTE: stackedplot only allows for 25 columns max - % 
+    % Normal
+    figure
+    temp_ind_spi = (spi - 1)*num_cols_per_sp + 1:spi*num_cols_per_sp;
+    % ROI_PDI_timecourse_sp = stackedplot(t, PDI_ROI_timecourses_mat, 'DisplayLabels', region_acronyms);
+    ROI_PDI_timecourse_sp = stackedplot(t, [PDI_ROI_timecourses_mat(:, temp_ind_spi), GVTD], 'DisplayLabels', [roi.acronyms(temp_ind_spi); {'GVTD'}]);
+    title("ROI average PDI timecourses")
+    xlabel("Time [s]")
+    % fontsize(14, 'points')
+
+end
+
+for spi = 1:num_sps*2
+    % - NOTE: stackedplot only allows for 25 columns max - % 
+    
+    % Hemisphere-separated
+    figure
+    temp_ind_spi = (spi - 1)*num_cols_per_sp + 1:spi*num_cols_per_sp;
+    ROI_PDI_timecourse_sp = stackedplot(t, [PDI_ROI_hemis_timecourses_mat(:, temp_ind_spi), GVTD], 'DisplayLabels', [roi.acronyms_hemis_interleaved(temp_ind_spi); {'GVTD'}]);
+    title("ROI average (hemisphere-separated) PDI timecourses")
+    xlabel("Time [s]")
+    % fontsize(14, 'points')
+end
+
+% % - NOTE: stackedplot only allows for 25 columns max - % 
+% % Normal
+% figure
+% % ROI_PDI_timecourse_sp = stackedplot(t, PDI_ROI_timecourses_mat, 'DisplayLabels', region_acronyms);
+% ROI_PDI_timecourse_sp = stackedplot(t, [PDI_ROI_timecourses_mat, GVTD], 'DisplayLabels', [roi.acronyms; {'GVTD'}]);
+% title("ROI average PDI timecourses")
+% xlabel("Time [s]")
+% % fontsize(14, 'points')
+% 
+% % Hemisphere-separated
+% figure
+% ROI_PDI_hemis_timecourse_sp = stackedplot(t, PDI_ROI_hemis_timecourses_mat, 'DisplayLabels', roi.acronyms_hemis_interleaved); 
+% % ROI_PDI_timecourse_sp = stackedplot(t, [PDI_ROI_hemis_timecourses_mat, GVTD], 'DisplayLabels', [region_acronyms; {'GVTD'}]);
+% title("ROI average (hemisphere-separated) PDI timecourses")
+% xlabel("Time [s]")
+% % fontsize(14, 'points')
 
 %% FC correlation matrix (full timecourse)
 corr_PDI = corrcoef(PDI_ROI_timecourses_mat);
