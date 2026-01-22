@@ -106,10 +106,10 @@ save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_uppe
 % Add band pass filter params later............
 
 %% Main loop
-% for filenum = startFile:endFile
+for filenum = startFile:endFile
 % for filenum = [2:endFile]
 % for filenum = [endFile - 1:-1:startFile]
-for filenum = [4:endFile]
+% for filenum = [4:endFile]
 % for filenum = 100:502
 % for filenum = 1
 

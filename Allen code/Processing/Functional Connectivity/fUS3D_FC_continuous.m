@@ -114,15 +114,21 @@ for bn = 1
     if bn == 1
         frames_bn = 1:bs;
     else
-        frames_bn = ( (bn - 1)*bs + 1 : (bn)*bs ) - nfpbo;
+        frames_bn = ( (bn - 1)*bs + 1 : (bn)*bs ) - nfpbo*(bn - 1);
     end
 
     % Define which superframes (and which portions of each) to load and use
     % for each block
-    sf_start_bn = ceil(frames_bn(1) ./ P.numFramesPerBuffer); % The superframe to start on for block bn
+    sf_start_bn = ceil(frames_bn(1) ./ P.numFramesPerBuffer); % The superframe to start on for block bn (out of the whole experiment)
     pctOfStartSFToUse = ceil( (frames_bn(1) - 1)./ P.numFramesPerBuffer ) - (frames_bn(1) - 1)./ P.numFramesPerBuffer; % Percent of the first superframe to use in block bn (starting from the end of the superframe)
     numFramesOfStartSFToUse = pctOfStartSFToUse * P.numFramesPerBuffer; % # of frames in the first superframe to use in block bn (starting from the end of the superframe)
-    numFramesPerSFToUse = 
+    numFullSFToUseAfterStartSF = floor( (bs - numFramesOfStartSFToUse)/P.numFramesPerBuffer ); % # of full superframes to use after the first superframe
+    if floor(numFullSFToUseAfterStartSF) == (bs - numFramesOfStartSFToUse)/P.numFramesPerBuffer % If there is no need for a partial end superframe
+        numFramesPerSFToUse = [numFramesOfStartSFToUse, P.numFramesPerBuffer .* ones(1, numFullSFToUseAfterStartSF)]';
+    else
+        numFramesOfEndSFToUse = bs - numFramesOfStartSFToUse - numFullSFToUseAfterStartSF * P.numFramesPerBuffer;
+        numFramesPerSFToUse = [numFramesOfStartSFToUse, P.numFramesPerBuffer .* ones(1, numFullSFToUseAfterStartSF), numFramesOfEndSFToUse]';
+    end
 
     % Load the IQ data
     tic
