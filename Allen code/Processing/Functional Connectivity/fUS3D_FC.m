@@ -266,6 +266,7 @@ end
 %% Visualize the PDI and CDI across the experiment
 % generateTiffStack_acrossframes(PDIallSF{3} .^ 0.7, [8.8, 8.8, 8], 'hot', 1:80)
 generateTiffStack_acrossframes(PDIallSF .^ 0.5, [8.8, 8.8, 8], 'hot', 1:80)
+% generateTiffStack_acrossframes(PDIallSF, [8.8, 8.8, 8], 'hot', 1:80)
 
 %% Check different MIPs across superframes
 % yr = 20:40;
@@ -311,6 +312,7 @@ prereg_params.target_voxel_size = target_voxel_size;
 prereg_params.prereg_interp_factor = prereg_interp_factor;
 % prereg_params. = 
 
+save([savepath, 'prereg_PDI_params_50um.mat'], 'PDI_allSF_avg_rs', 'prereg_params')
 %% Prepare template(s) for atlas registration (using the preloaded prereg_params struct)
 % Create templates for each hemodynamic parameter, averaging across superframes
 PDI_allSF_avg = mean(PDIallSF, 4);
