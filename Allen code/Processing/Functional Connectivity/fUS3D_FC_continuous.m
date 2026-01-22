@@ -219,7 +219,7 @@ for filenum = 1:numBlocks
 %     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'noise', '-v7.3', '-nocompression');
     save([savepath, 'fUSdata-', num2str(bn), '.mat'], 'PDI', 'noise', 'SVs', 'numFramesPerSFToUse', '-v7.3')
 
-    disp("fUS result for file " + num2str(bn) + " saved" )
+    disp("fUS result for block " + num2str(bn) + " saved" )
 %     disp("g1 result for file " + num2str(filenum) + " saved" )
 
     toc
