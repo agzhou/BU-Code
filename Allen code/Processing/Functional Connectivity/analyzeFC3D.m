@@ -373,10 +373,11 @@ accel_zm = accel - mean(accel);
 plot(TD.daqTimeTags, accel_zm ./ max(accel_zm), '--')
 hold on
 plot(t, GVTD ./ max(GVTD), 'LineWidth', 2); title("Global Variance of the Temporal Derivative (GVTD) of PDIallSF vs. Accelerometer"); xlabel("Time [s]"); ylabel("GVTD")
-
+plot(t, PDI_reg_global_mean ./ max(PDI_reg_global_mean))
 ylabel("Accelerometer amplitude")
 % legend("GVTD", "Accelerometer component 1", "Accelerometer component 2", "Accelerometer component 3")
-legend("Accelerometer component 1", "GVTD")
+legend("Accelerometer component 1", "GVTD", "PDI global mean")
+
 %% Plot each ROI's PDI timecourse
 % subplot(num_regions, 1, 1)
 % figure;
