@@ -58,6 +58,7 @@ load(US_template_FilePath)
 
 
 %% (Optional) Open GUI for slightly "easier" manual registration
+addpath([cd, '\..\'])
 US_Atlas_Reg
 
 %% (Optional) If loading already-registered data, load here

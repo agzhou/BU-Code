@@ -80,6 +80,8 @@ zCropUserInput = inputdlg(zCropPrompt, 'Input Parameters', 1, zCropDefaults);
 zstart = str2double(zCropUserInput{1});
 zend = str2double(zCropUserInput{2});
 
+clearvars zCropPrompt zCropDefaults zCropUserInput
+
 %% Define how to slice each block
 % nsfpb = bs / P.numFramesPerBuffer; % # of superframes needed per block
 % nfpsfib = P.numFramesPerBuffer .* ones(ceil(nsfpb), 1); nfpsfib(end) = P.numFramesPerBuffer .* (nsfpb - floor(nsfpb)); % # of frames per superframe in each block
@@ -98,7 +100,7 @@ end
 %% Save proc params
 % numg1pts = 20; % Only calculate the first N points
 % save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'numg1pts', 'zstart', 'zend');
-save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'zstart', 'zend');
+save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'zstart', 'zend', 'bs', 'bo', 'max_freq_expected');
 
 % Add band pass filter params later............
 
@@ -108,7 +110,7 @@ save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_uppe
 % for filenum = [endFile - 1:-1:startFile]
 % for filenum = [4:endFile]
 % for filenum = 100:502
-for bn = 1
+for bn = 1:2
 
     % Define which frame numbers (relative to the experiment start) should be used
     if bn == 1
@@ -120,8 +122,12 @@ for bn = 1
     % Define which superframes (and which portions of each) to load and use
     % for each block
     sf_start_bn = ceil(frames_bn(1) ./ P.numFramesPerBuffer); % The superframe to start on for block bn (out of the whole experiment)
-    pctOfStartSFToUse = ceil( (frames_bn(1) - 1)./ P.numFramesPerBuffer ) - (frames_bn(1) - 1)./ P.numFramesPerBuffer; % Percent of the first superframe to use in block bn (starting from the end of the superframe)
-    numFramesOfStartSFToUse = pctOfStartSFToUse * P.numFramesPerBuffer; % # of frames in the first superframe to use in block bn (starting from the end of the superframe)
+    if bn == 1 & bs > P.numFramesPerBuffer
+        fracOfStartSFToUse = 1; % Special case for the first block
+    else
+        fracOfStartSFToUse = ceil( (frames_bn(1) - 1)./ P.numFramesPerBuffer ) - (frames_bn(1) - 1)./ P.numFramesPerBuffer; % Fraction of the first superframe to use in block bn (starting from the end of the superframe)
+    end
+    numFramesOfStartSFToUse = fracOfStartSFToUse * P.numFramesPerBuffer; % # of frames in the first superframe to use in block bn (starting from the end of the superframe)
     numFullSFToUseAfterStartSF = floor( (bs - numFramesOfStartSFToUse)/P.numFramesPerBuffer ); % # of full superframes to use after the first superframe
     if floor(numFullSFToUseAfterStartSF) == (bs - numFramesOfStartSFToUse)/P.numFramesPerBuffer % If there is no need for a partial end superframe
         numFramesPerSFToUse = [numFramesOfStartSFToUse, P.numFramesPerBuffer .* ones(1, numFullSFToUseAfterStartSF)]';
@@ -130,12 +136,22 @@ for bn = 1
         numFramesPerSFToUse = [numFramesOfStartSFToUse, P.numFramesPerBuffer .* ones(1, numFullSFToUseAfterStartSF), numFramesOfEndSFToUse]';
     end
 
-    % Load the IQ data
-    tic
-    load([IQpath, IQfilenameStructure, num2str(bn)])
-    
-    IQ = single(squeeze(IData + 1i .* QData));
-%     clearvars IData QData
+    IQ = [];
+    for sfi = sf_start_bn:sf_start_bn + length(numFramesPerSFToUse) - 1 % Go through and load each superframe, with slicing
+        % Load the IQ data
+        load([IQpath, IQfilenameStructure, num2str(sfi)])
+        
+        IQ_sfi = single(squeeze(IData + 1i .* QData));
+        clearvars IData QData
+        
+        if sfi == sf_start_bn % Special case if it's the starting superframe, where the ending chunk needs to be added
+            IQ = cat(4, IQ, IQ_sfi(:, :, :, P.numFramesPerBuffer - numFramesPerSFToUse(sfi - sf_start_bn + 1) + 1 : end));
+        else
+            IQ = cat(4, IQ, IQ_sfi(:, :, :, 1:numFramesPerSFToUse(sfi - sf_start_bn + 1)));
+        end
+
+    end
+
 
     % figure; imagesc(squeeze(max(abs(IQ(:, :, :, 2)), [], 1))')
     
@@ -200,7 +216,7 @@ for bn = 1
 %     volumeViewer(PDI ./ noise)
 
 %     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'noise', '-v7.3', '-nocompression');
-    save([savepath, 'fUSdata-', num2str(bn), '.mat'], 'PDI', 'noise', '-v7.3')
+    save([savepath, 'fUSdata-', num2str(bn), '.mat'], 'PDI', 'noise', 'SVs', 'numFramesPerSFToUse', '-v7.3')
 
     disp("fUS result for file " + num2str(bn) + " saved" )
 %     disp("g1 result for file " + num2str(filenum) + " saved" )
