@@ -295,7 +295,6 @@ save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"
 
 
 for Mcr_filenum = Mcr_startFile:Mcr_endFile
-% for Mcr_filenum = 264:Mcr_endFile
     tic
 
     load([Mcr_datapath, Mcr_filenameStructure, num2str(Mcr_filenum)]);
@@ -303,7 +302,7 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
     
     % Put RcvData into a cell array for VSX
     r = RcvData;
-    clear RcvData;
+    clearvars RcvData;
     
     RcvData{1} = r;
     clear r;
@@ -326,9 +325,10 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
     
     toc
 
-    clear IData QData RcvData
+    clearvars IData QData RcvData ImgData ImgDataP
 end
 savefast([Mcr_savepath, 'PData'], 'PData') % Save the PData structure
+
 %% saving speed test
 % tic
 % test = IData{1};
