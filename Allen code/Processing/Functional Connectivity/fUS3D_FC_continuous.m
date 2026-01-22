@@ -105,12 +105,13 @@ save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_uppe
 % Add band pass filter params later............
 
 %% Main loop: go through each block
-% for filenum = startFile:endFile
+numBlocks = floor( (endFile * P.numFramesPerBuffer / bs) / bo ); % **** CHECK THIS ****
+for filenum = 1:numBlocks
 % for filenum = [2:endFile]
 % for filenum = [endFile - 1:-1:startFile]
 % for filenum = [4:endFile]
 % for filenum = 100:502
-for bn = 1:2
+% for bn = 5:numBlocks
 
     % Define which frame numbers (relative to the experiment start) should be used
     if bn == 1
