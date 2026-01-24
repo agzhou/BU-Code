@@ -90,6 +90,8 @@ if nfpbo ~= floor(nfpbo) % If nfpbo is not a natural number
     error("Block overlap must a natural number of frames")
 end
 
+numBlocks = floor( (numFiles * P.numFramesPerBuffer / bs) / bo ) - 1; % **** CHECK THIS ****
+
 %% Set up the High Pass Filter
 % fc = 50; % Cutoff frequency [Hz]
 % fs = P.frameRate; % Sampling frequency [Hz]
@@ -105,14 +107,10 @@ save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_uppe
 % Add band pass filter params later............
 
 %% Main loop: go through each block
-numBlocks = floor( (endFile * P.numFramesPerBuffer / bs) / bo ); % **** CHECK THIS ****
-for filenum = 1:numBlocks
-% for filenum = [2:endFile]
-% for filenum = [endFile - 1:-1:startFile]
-% for filenum = [4:endFile]
-% for filenum = 100:502
-% for bn = 5:numBlocks
-
+for bn = 1:numBlocks
+% for bn = 195:numBlocks
+% for bn = 1:2
+    tic
     % Define which frame numbers (relative to the experiment start) should be used
     if bn == 1
         frames_bn = 1:bs;
@@ -153,11 +151,9 @@ for filenum = 1:numBlocks
 
     end
 
-
     % figure; imagesc(squeeze(max(abs(IQ(:, :, :, 2)), [], 1))')
     
     % Crop the IQ first 
-
     IQm = IQ(:, :, zstart:zend, :);
 
 %     figure; imagesc(squeeze(max(abs(IQm(:, :, :, 2)), [], 1))')
@@ -174,12 +170,12 @@ for filenum = 1:numBlocks
 %     [PP, EVs, V_sort] = getSVs2D(IQm);
     [xp, yp, zp, nf] = size(IQm);
     PP = reshape(IQm, [xp*yp*zp, nf]);
-    tic
+    % tic
 %     [U, S, V] = svd(PP); % Already sorted in decreasing order
     [U, S, V] = svd(PP, 'econ'); % Already sorted in decreasing order
     SVs = diag(S);
 %     disp('Full SVD done')
-    toc
+    % toc
     disp('SVs decomposed')
 
     % -- Some adaptive thresholding stuff -- %
@@ -226,48 +222,7 @@ for filenum = 1:numBlocks
     
 end
 
-%% Convert g1 into CBV, CBFspeed, etc.
-
-n_CBV = 2; % n for the new CBV index derivation
-
-g1_tau1_cutoff = 0.2;
-% g1_tau1_cutoff = 0.1;
-
-% g1_tau1_cutoff = 0.0;
-% tau_difference_cutoff = 0.2;
-
-for bn = startFile:endFile
-% for filenum = 21:endFile
-% for filenum = [endFile]
-% for filenum = 1
-%     load([savepath, 'g1-', num2str(filenum)], 'g1') % Load the saved g1 mat files
-    load([savepath, 'fUSdata-', num2str(bn)], 'g1') % Load the saved g1 mat files
-
-    [g1A_mask] = createg1mask(g1, g1_tau1_cutoff, tau1_index_CBF, tau2_index_CBF);
-%     [g1A_mask] = createg1mask(g1Avg, g1_tau1_cutoff, tau1_index_CBF, tau2_index_CBF);
-
-%     [CBFsi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
-    [CBFsi, CBVi] = g1_to_CBi_NEW(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV, n_CBV);
-
-%     CBFsi(~g1A_mask) = -Inf; % Remove noisy points from the CBFspeed index (in theory)
-    CBFsi(~g1A_mask) = 0; % Remove noisy points from the CBFspeed index (in theory)
-
-    save([savepath, 'tlfUSdata-', num2str(bn), '.mat'], 'CBFsi', 'CBVi', '-v7.3', '-nocompression');
-%     save([savepath, 'tlfUSdatatest-', num2str(filenum), '.mat'], 'CBFsi', 'CBVi', '-v7.3', '-nocompression');
-    disp("tl-fUS result for file " + num2str(bn) + " saved" )
-
-end
-% save([savepath, 'tlfUS_proc_params.mat'], 'tau1_index_CBV', 'tau1_index_CBF', 'tau2_index_CBF', 'g1_tau1_cutoff', 'g1A_mask');
-save([savepath, 'tlfUS_proc_params.mat'], 'tau1_index_CBV', 'n_CBV', 'tau1_index_CBF', 'tau2_index_CBF', 'g1_tau1_cutoff', 'g1A_mask');
-% save([savepath, 'tlfUStest_proc_params.mat'], 'tau1_index_CBV', 'tau1_index_CBF', 'tau2_index_CBF', 'g1_tau1_cutoff');
-figure; imagesc(squeeze(max(CBVi(:, :, :), [], 1) .^ 0.3)'); colormap hot
-figure; imagesc(squeeze(max(CBVi(:, :, :), [], 3) .^ 0.3)'); colormap hot
-vcmap = colormap_ULM;
-figure; imagesc(squeeze(mean(CBFsi(:, :, :), 1))'); colormap(vcmap)
-
-% generateTiffStack_multi({CBVi .^ 0.7}, [8.8, 8.8, 8], 'hot', 5)
-
-
+save([savepath, 'blocking_info.mat'], 'bn', 'bo', 'bs', 'startFile', 'endFile', 'nf', 'nfpbo', 'numBlocks', 'numFiles')
 
 
 %% Store all the updated CBVi and CBFsi across the experiment into one matrix
