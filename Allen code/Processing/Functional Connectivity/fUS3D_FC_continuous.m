@@ -108,8 +108,8 @@ save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_uppe
 
 %% Main loop: go through each block
 % for bn = 1:numBlocks
-for bn = 236:numBlocks
-% for bn = 1:2
+% for bn = 237:numBlocks
+for bn = 5
     tic
     % Define which frame numbers (relative to the experiment start) should be used
     if bn == 1
@@ -133,6 +133,11 @@ for bn = 236:numBlocks
     else
         numFramesOfEndSFToUse = bs - numFramesOfStartSFToUse - numFullSFToUseAfterStartSF * P.numFramesPerBuffer;
         numFramesPerSFToUse = [numFramesOfStartSFToUse, P.numFramesPerBuffer .* ones(1, numFullSFToUseAfterStartSF), numFramesOfEndSFToUse]';
+    end
+
+    % Sometimes there might be a zero at the beginning if the multiples are clean
+    if numFramesPerSFToUse(1) == 0
+        numFramesPerSFToUse = numFramesPerSFToUse(2:end);
     end
 
     IQ = [];
