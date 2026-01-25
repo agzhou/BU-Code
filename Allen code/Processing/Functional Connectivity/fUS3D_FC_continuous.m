@@ -176,7 +176,7 @@ for bn = 236:numBlocks
     SVs = diag(S);
 %     disp('Full SVD done')
     % toc
-    disp('SVs decomposed')
+    % disp('SVs decomposed')
 
     % -- Some adaptive thresholding stuff -- %
     % Plot one SVD subspace as an image
@@ -193,7 +193,7 @@ for bn = 236:numBlocks
 
     [IQf, noise] = applySVs2D(IQm, PP, SVs, V, sv_threshold_lower, sv_threshold_upper);
 %     [IQf, noise] = applySVs2D(IQm, PP, SVs, V, a_opt, b_opt);
-    disp('SVD filtered images put together')
+    % disp('SVD filtered images put together')
 
 %     volumeViewer(abs(IQf(:, :, :, 1)))
 %     figure; imagesc(squeeze(abs(max(IQf(:, :, :, 1), [], 1)))'); colorbar
