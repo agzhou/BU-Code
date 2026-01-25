@@ -90,7 +90,7 @@ if nfpbo ~= floor(nfpbo) % If nfpbo is not a natural number
     error("Block overlap must a natural number of frames")
 end
 
-numBlocks = floor( (numFiles * P.numFramesPerBuffer / bs) / bo ) - 1; % **** CHECK THIS ****
+numBlocks = floor( (numFiles * P.numFramesPerBuffer / bs) / (1-bo) ) - 1; % **** CHECK THIS ****
 
 %% Set up the High Pass Filter
 % fc = 50; % Cutoff frequency [Hz]
@@ -107,8 +107,8 @@ save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_uppe
 % Add band pass filter params later............
 
 %% Main loop: go through each block
-for bn = 1:numBlocks
-% for bn = 195:numBlocks
+% for bn = 1:numBlocks
+for bn = 236:numBlocks
 % for bn = 1:2
     tic
     % Define which frame numbers (relative to the experiment start) should be used
