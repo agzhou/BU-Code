@@ -58,6 +58,10 @@ load(US_template_FilePath)
 
 
 %% (Optional) Open GUI for slightly "easier" manual registration
+vs = prereg_params.target_voxel_size; % Voxel size in y, x, z
+% Rout = imref3d(size(AA_template_50um)); % Reference for the output of the transformation
+Rout = imref3d(size(AA_template_50um), vs(1), vs(2), vs(3)); % Reference for the output of the transformation
+
 addpath([cd, '\..\'])
 US_Atlas_Reg
 
@@ -265,7 +269,6 @@ load(PDIallSF_FilePath)
 
 %% Apply the registration/warping to the ultrasound data
 
-Rout = imref3d(size(AA_template_50um)); % Reference for the output of the transformation
 % temp_US_template = imwarp(PDI_allSF_avg_rs, rigid_tform_50um, 'cubic', 'OutputView', Rout);
 
 tic
