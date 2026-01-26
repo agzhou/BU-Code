@@ -69,6 +69,34 @@ load(saved_reg_data_FilePath)
 %% Store the manual registration transformation info and 
 rigid_tform_50um = fUSmap_50um_rigid_reg.tform;
 
+% % **** manually define the rigid tform ****
+% rigidRegParameterPrompt = {'x angle [deg]', 'y angle [deg]', 'z angle [deg]', 'x translation [voxels]', 'y translation [voxels]', 'z translation [voxels]'};
+% rigidRegParameterDefaults = {'', '', '', '', '', ''};
+% rigidRegParameterUserInput = inputdlg(rigidRegParameterPrompt, 'Input Parameters', 1, rigidRegParameterDefaults);
+% 
+% % define # of files manually for now
+% % str2double(parameterUserInput{});
+% rr.angles(2) = str2double(rigidRegParameterUserInput{1});
+% rr.angles(1) = str2double(rigidRegParameterUserInput{2});
+% rr.angles(3) = str2double(rigidRegParameterUserInput{3});
+% rr.transl(2) = str2double(rigidRegParameterUserInput{4});
+% rr.transl(1) = str2double(rigidRegParameterUserInput{5});
+% rr.transl(3) = str2double(rigidRegParameterUserInput{6});
+% 
+% % rr.angles(1) = str2double(rigidRegParameterUserInput{1});
+% % rr.angles(2) = str2double(rigidRegParameterUserInput{2});
+% % rr.angles(3) = str2double(rigidRegParameterUserInput{3});
+% % rr.transl(1) = str2double(rigidRegParameterUserInput{4});
+% % rr.transl(2) = str2double(rigidRegParameterUserInput{5});
+% % rr.transl(3) = str2double(rigidRegParameterUserInput{6});
+% 
+% rigid_tform_50um = rigidtform3d(rr.angles, rr.transl);
+% 
+% Rtest = imref3d(size(PDI_allSF_avg_rs))
+
+% test = single(imwarp(PDI_allSF_avg_rs, rigid_tform_50um, 'cubic', 'OutputView', Rout));
+% volumeViewer(test)
+
 % Not sure if we need this: redefine the tform for 10 um voxel size
 % rigid_tform_10um = fUSmap_50um_rigid_reg.tform;
 % rigid_tform_10um.A(1:3, 4) = rigid_tform_50um.A(1:3, 4) .* (50/10);
@@ -258,6 +286,8 @@ toc
 
 clearvars PDI_sfi sfi PDI_sfi_rs
 
+PDIallSF_reg_avg = mean(PDIallSF_reg, 4);
+
 %% (Optional) Save the registered PDI across superframes data, along with the ROI masks
 % save([data_dirpath, 'PDIallSF_reg_ROI_masks_50um.mat'], "PDIallSF_reg", "region_masks_50um", '-v7.3')
 save([data_dirpath, 'PDIallSF_reg_ROI_info_50um.mat'], "PDIallSF_reg", "roi", '-v7.3')
@@ -293,29 +323,29 @@ for ti = 1:num_sf % "time" index -- go through each superframe
         % Normal
         ROI_mask_temp = region_masks_50um{ri}; % ROI #ri mask
         PDI_ri_masked_temp = PDIallSF_reg_ti_temp(ROI_mask_temp); % Vectorized voxels of the registered PDI at "time" index ti
-        PDI_ROI_timecourses{ri}(ti) = mean(PDI_ri_masked_temp)';
+        PDI_ROI_timecourses{ri}(ti) = mean(PDI_ri_masked_temp);
         
         % Hemisphere-separated
         ROI_mask_temp_left = region_masks_50um_hemis{ri, 1}; % ROI #ri mask (left)
         ROI_mask_temp_right = region_masks_50um_hemis{ri, 2}; % ROI #ri mask (right)
         PDI_ri_masked_temp_left = PDIallSF_reg_ti_temp(ROI_mask_temp_left); % Vectorized voxels of the registered PDI at "time" index ti
         PDI_ri_masked_temp_right = PDIallSF_reg_ti_temp(ROI_mask_temp_right); % Vectorized voxels of the registered PDI at "time" index ti
-        PDI_ROI_hemis_timecourses{ri, 1}(ti) = mean(PDI_ri_masked_temp_left)';
-        PDI_ROI_hemis_timecourses{ri, 2}(ti) = mean(PDI_ri_masked_temp_right)';
+        PDI_ROI_hemis_timecourses{ri, 1}(ti) = mean(PDI_ri_masked_temp_left);
+        PDI_ROI_hemis_timecourses{ri, 2}(ti) = mean(PDI_ri_masked_temp_right);
 
     end
 end
 % clearvars ti ri PDIallSF_reg_ti_temp ROI_mask_temp PDI_ri_masked_temp
 toc
 
-% % Make any row timecourses into column vectors (don't normally need this)
-% for ri = 1:num_regions
-%     PDI_ROI_timecourses{ri} = squeeze(PDI_ROI_timecourses{ri}');
-% 
-%     PDI_ROI_hemis_timecourses{ri, 1} = squeeze(PDI_ROI_hemis_timecourses{ri, 1}');
-%     PDI_ROI_hemis_timecourses{ri, 2} = squeeze(PDI_ROI_hemis_timecourses{ri, 2}');
-% 
-% end
+% Make any row timecourses into column vectors
+for ri = 1:num_regions
+    PDI_ROI_timecourses{ri} = squeeze(PDI_ROI_timecourses{ri}');
+
+    PDI_ROI_hemis_timecourses{ri, 1} = squeeze(PDI_ROI_hemis_timecourses{ri, 1}');
+    PDI_ROI_hemis_timecourses{ri, 2} = squeeze(PDI_ROI_hemis_timecourses{ri, 2}');
+
+end
 
 %% Add global mean subtracted versions
 PDI_ROI_GMS_timecourses = cell(num_regions, 1);
@@ -325,6 +355,7 @@ for ri = 1:num_regions
     PDI_ROI_hemis_GMS_timecourses{ri, 1} = PDI_ROI_hemis_timecourses{ri, 1} - PDI_reg_global_mean;
     PDI_ROI_hemis_GMS_timecourses{ri, 2} = PDI_ROI_hemis_timecourses{ri, 2} - PDI_reg_global_mean;
 end
+
 %% Store the ROI timecourses in matrix form
 PDI_ROI_timecourses_mat = zeros(length(t), num_regions); % Still ROI-averaged PDI timecourses, but in matrix form (each column is a separate ROI timecourse). Dimensions: [# time points, # ROIs]
 for ri = 1:num_regions % region/ROI index -- loop through each region
@@ -444,8 +475,8 @@ end
 % % fontsize(14, 'points')
 
 %% FC correlation matrix (full timecourse)
-corr_PDI = corrcoef(PDI_ROI_timecourses_mat);
-corr_PDI_hemis = corrcoef(PDI_ROI_hemis_timecourses_mat);
+% corr_PDI = corrcoef(PDI_ROI_timecourses_mat);
+% corr_PDI_hemis = corrcoef(PDI_ROI_hemis_timecourses_mat);
 
 corr_PDI_GMS = corrcoef(PDI_ROI_GMS_timecourses_mat);
 corr_PDI_hemis_GMS = corrcoef(PDI_ROI_hemis_GMS_timecourses_mat);
