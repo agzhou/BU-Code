@@ -107,9 +107,9 @@ save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_uppe
 % Add band pass filter params later............
 
 %% Main loop: go through each block
-% for bn = 1:numBlocks
+for bn = 1:numBlocks
 % for bn = 237:numBlocks
-for bn = 5
+% for bn = [1:4, 6:numBlocks]
     tic
     % Define which frame numbers (relative to the experiment start) should be used
     if bn == 1
