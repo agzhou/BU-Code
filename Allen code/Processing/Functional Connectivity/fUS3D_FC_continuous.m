@@ -230,46 +230,34 @@ end
 save([savepath, 'blocking_info.mat'], 'bn', 'bo', 'bs', 'startFile', 'endFile', 'nf', 'nfpbo', 'numBlocks', 'numFiles')
 
 
-%% Store all the updated CBVi and CBFsi across the experiment into one matrix
-load([savepath, 'tlfUSdata-', num2str(1), '.mat'], 'CBFsi', 'CBVi')
-CBViallSF = zeros([size(CBVi), endFile - startFile + 1]); % Matrix with the CBVi for every superframe
-CBViallSF(:, :, :, 1) = CBVi;
-
-CBFsiallSF = zeros([size(CBFsi), endFile - startFile + 1]); % Matrix with the CBFsi for every superframe
-CBFsiallSF(:, :, :, 1) = CBFsi;
-
-for bn = startFile + 1:endFile
-    load([savepath, 'tlfUSdata-', num2str(bn), '.mat'], 'CBFsi', 'CBVi')
-    CBViallSF(:, :, :, bn) = CBVi;
-    CBFsiallSF(:, :, :, bn) = CBFsi;
-end
-
 %% Store all the PDI across the experiment into one matrix
 load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI', 'noise')
-PDIallSF = zeros([size(PDI), endFile - startFile + 1]); % Matrix with the CBVi for every superframe
-PDIallSF(:, :, :, 1) = PDI ./ noise;
+PDIallBlocks = zeros([size(PDI), numBlocks]); % Matrix with the CBVi for every superframe
+PDIallBlocks(:, :, :, 1) = PDI ./ noise;
 
-for bn = startFile:endFile
-% for filenum = 100:500
+for bn = 1:numBlocks
 %     load([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI')
     load([savepath, 'fUSdata-', num2str(bn), '.mat'], 'PDI')
 
-    PDIallSF(:, :, :, bn) = PDI ./ noise;
+    PDIallBlocks(:, :, :, bn) = PDI ./ noise;
 end
+
+%% Save the PDIallBlocks
+save([savepath, 'PDIallBlocks.mat'], "PDIallBlocks")
 
 %% Visualize the PDI and CDI across the experiment
 % generateTiffStack_acrossframes(PDIallSF{3} .^ 0.7, [8.8, 8.8, 8], 'hot', 1:80)
-generateTiffStack_acrossframes(PDIallSF .^ 0.5, [8.8, 8.8, 8], 'hot', 1:80)
+generateTiffStack_acrossframes(PDIallBlocks .^ 0.5, [8.8, 8.8, 8], 'hot', 1:80)
 
 %% Check different MIPs across superframes
 % yr = 20:40;
 yr = 1:80;
-generateTiffStack_acrossframes(PDIallSF .^ 0.5, [8.8, 8.8, 8], 'hot', yr)
+generateTiffStack_acrossframes(PDIallBlocks .^ 0.5, [8.8, 8.8, 8], 'hot', yr)
 % generateTiffStack_acrossframes(CBViallSF .^ 1, [8.8, 8.8, 8], 'hot', yr)
 
 %% Prepare template(s) for atlas registration
 % Create templates for each hemodynamic parameter, averaging across superframes
-PDI_allSF_avg = mean(PDIallSF, 4);
+PDI_allSF_avg = mean(PDIallBlocks, 4);
 
 voxel_size = PData.PDelta .* P.wl; % Voxel size (y, x, z) in meters
 fUS_volume_dimensions_m = [P.Trans.numelements/2 * P.Trans.spacingMm / 1e3, P.Trans.numelements/2 * P.Trans.spacingMm / 1e3, (P.endDepthMM - P.startDepthMM)/1e3]; % Volume size in meters
@@ -305,9 +293,11 @@ prereg_params.target_voxel_size = target_voxel_size;
 prereg_params.prereg_interp_factor = prereg_interp_factor;
 % prereg_params. = 
 
+save([savepath, 'prereg_PDI_params_50um.mat'], "PDI_allSF_avg_rs", "prereg_params")
+
 %% Prepare template(s) for atlas registration (using the preloaded prereg_params struct)
 % Create templates for each hemodynamic parameter, averaging across superframes
-PDI_allSF_avg = mean(PDIallSF, 4);
+PDI_allSF_avg = mean(PDIallBlocks, 4);
 
 % voxel_size = PData.PDelta .* P.wl; % Voxel size (y, x, z) in meters
 % fUS_volume_dimensions_m = [P.Trans.numelements/2 * P.Trans.spacingMm / 1e3, P.Trans.numelements/2 * P.Trans.spacingMm / 1e3, (P.endDepthMM - P.startDepthMM)/1e3]; % Volume size in meters
