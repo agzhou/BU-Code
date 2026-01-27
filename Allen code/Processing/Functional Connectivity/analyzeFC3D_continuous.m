@@ -283,9 +283,22 @@ PDIallBlocks(:, :, :, 1) = PDI ./ noise;
 
 for bn = 1:numBlocks
 %     load([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI')
-    load([savepath, 'fUSdata-', num2str(bn), '.mat'], 'PDI')
+    load([savepath, 'fUSdata-', num2str(bn), '.mat'], 'PDI', 'noise')
 
     PDIallBlocks(:, :, :, bn) = PDI ./ noise;
+end
+
+%% (Optional) Load the SV across blocks data
+
+load([data_dirpath, 'fUSdata-', num2str(1), '.mat'], 'SVs')
+SVsallBlocks = zeros([length(SVs), numBlocks]); % Matrix with the CBVi for every superframe
+SVsallBlocks(:, 1) = SVs;
+
+for bn = 1:numBlocks
+%     load([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI')
+    load([savepath, 'fUSdata-', num2str(bn), '.mat'], 'SVs')
+
+    SVsallBlocks(:, bn) = SVs;
 end
 
 %% Apply the rigid registration/warping to the ultrasound data
@@ -443,6 +456,46 @@ legend("Accelerometer magnitude", "GVTD", "PDI global mean")
 %% MIP video of the PDI
 generateTiffStack_acrossframes(PDIallBlocks_reg .^ 0.5, [264, 160, 228] .* 50e-3, 'hot', 1:size(PDIallBlocks_reg, 1), t)
 
+%% Plot SV magnitude over blocks vs. the movement metrics
+
+vw = VideoWriter([data_dirpath, 'SV_magnitude.mp4'], 'MPEG-4');
+vw.Quality = 100;
+% Set the frame rate equal to the original video's
+vw.FrameRate = 10; 
+tl = tiledlayout(1, 2);
+tl.TileSpacing = 'loose';
+tl.Padding = 'loose';
+
+open(vw)
+fh = figure;
+% fh.Position = [0, 0, 1920, 1080];
+fh.Position = [0, 0, 2560, 1440];
+
+ylims = [min(SVsallBlocks, [], 'all'), max(SVsallBlocks, [], 'all')];
+for fi = 1:size(SVsallBlocks, 2)
+% for fi = 1
+    nexttile(1)
+    semilogy(SVsallBlocks(:, fi), 'LineWidth', 4)
+    ylim(ylims)
+    xlabel('SV number')
+    ylabel('SV magnitude')
+
+    nexttile(2)
+    plot(TD.daqTimeTags, accel_zm ./ max(accel_zm), '--') % Plot normalized, zero-meaned accelerometer magnitude
+    hold on
+    plot(t, GVTD ./ max(GVTD), 'LineWidth', 2); xlabel("Time [s]"); ylabel("GVTD")
+    plot(t, (PDI_reg_global_mean - mean(PDI_reg_global_mean)) ./ max(PDI_reg_global_mean))
+    xline(t(fi), 'g-', 'LineWidth', 3)
+    ylabel("Accelerometer amplitude")
+    legend("Accelerometer magnitude", "GVTD", "PDI global mean", "Current time")
+    hold off
+    
+    frame = getframe(fh);
+    im = frame2im(frame);
+    writeVideo(vw, im)
+end
+close(vw)
+clearvars fi ylims frame im
 %% Load behavioral camera video
 videoData = readMP4();
 
