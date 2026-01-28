@@ -111,7 +111,7 @@ for filenum = startFile:endFile
 % for filenum = [endFile - 1:-1:startFile]
 % for filenum = [4:endFile]
 % for filenum = 100:502
-% for filenum = 1
+% for filenum = 11:20
 
     % Load the IQ data
     tic
@@ -135,6 +135,12 @@ for filenum = startFile:endFile
     % Apply the HPF
 %     dim = length(size(IQm)); % Operate on the time dimension
 %     IQm = filter(HPF_b, HPF_a, IQm, [], dim);
+
+    % Calculate the cross correlation of raw IQ (masked) to look at motion
+    ixc = calcIXC(IQm);
+    % figure; plot((1:bs) ./ P.numFramesPerBuffer, abs(ixc)); xlabel('Micro time [s]'); ylabel('|Cross correlation of images|')
+    % figure; plot(abs(ixc)); xlabel('Frame'); ylabel('|Cross correlation of images|')
+    % title("Superframe " + num2str(filenum))
 
     % SVD decluttering
 %     [PP, EVs, V_sort] = getSVs2D(IQm);
@@ -172,7 +178,7 @@ for filenum = startFile:endFile
 
     % Use the IQf with separated negative and positive frequency components
 %     [IQf_separated, IQf_FT_separated] = separatePosNegFreqs(IQf);
-   
+
 %     [PDI] = calcPowerDoppler(IQf_separated);
     PDI = sum(abs(IQf) .^ 2, 4) ./ size(IQf, 4);
 %     [CDI] = calcColorDoppler(IQf_FT_separated, P);

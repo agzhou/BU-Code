@@ -109,7 +109,7 @@ save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_uppe
 %% Main loop: go through each block
 % for bn = 1:numBlocks
 % for bn = 237:numBlocks
-for bn = 1
+for bn = 31
     tic
 
     % shortFlag = false;
@@ -179,18 +179,20 @@ for bn = 1
 
     % Calculate the cross correlation of raw IQ (masked) to look at motion
     ixc = calcIXC(IQm);
-
+    % figure; plot((1:bs) ./ P.numFramesPerBuffer, abs(ixc)); xlabel('Micro time [s]'); ylabel('|Cross correlation of images|')
+    % figure; plot(abs(ixc)); xlabel('Frame'); ylabel('|Cross correlation of images|')
+    
+    testframe = 603;
+    figure; imagesc(squeeze(max(abs(IQ(:, :, :, testframe - 1)), [], 1))'); colormap gray
+    figure; imagesc(squeeze(max(abs(IQ(:, :, :, testframe)), [], 1))'); colormap gray
+    
     % SVD decluttering
 %     [PP, EVs, V_sort] = getSVs2D(IQm);
     [xp, yp, zp, nf] = size(IQm);
     PP = reshape(IQm, [xp*yp*zp, nf]);
-    % tic
-%     [U, S, V] = svd(PP); % Already sorted in decreasing order
     [U, S, V] = svd(PP, 'econ'); % Already sorted in decreasing order
     SVs = diag(S);
-%     disp('Full SVD done')
-    % toc
-    % disp('SVs decomposed')
+    % figure; semilogy(SVs, 'LineWidth', 2); xlabel('SV number'); ylabel('SV magnitude')
 
     % -- Some adaptive thresholding stuff -- %
     % Plot one SVD subspace as an image
