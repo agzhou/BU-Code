@@ -186,8 +186,13 @@ for bn = 1
     end
     toc
 
+    ut = (1:bs) ./ P.frameRate; % micro time [s]
+    figure; plot(ut, abs(vxc)); xlabel('Micro time [s]'); ylabel('|Cross correlation to start volume|')
 
-
+    figure; imagesc(squeeze(max(abs(IQm(:, :, :, 1)), [], 1))')
+    figure; imagesc(squeeze(max(abs(IQm(:, :, :, 313)), [], 1))')
+    figure; imagesc(squeeze(max(abs(IQm(:, :, :, 314)), [], 1))')
+    figure; imagesc(squeeze(max(abs(IQm(:, :, :, 328)), [], 1))')
 
 
 
