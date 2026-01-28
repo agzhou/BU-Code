@@ -107,136 +107,108 @@ save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_uppe
 % Add band pass filter params later............
 
 %% Main loop: go through each block
-% for bn = 1:numBlocks
-% for bn = 237:numBlocks
-for bn = 1
-    tic
 
-    % shortFlag = false;
-    % Define which frame numbers (relative to the experiment start) should be used
-    if bn == 1
-        frames_bn = 1:bs;
-    else
-        frames_bn = ( (bn - 1)*bs + 1 : (bn)*bs ) - nfpbo*(bn - 1);
-    end
+% This will only work if the block size evenly fits into the # of
+% frames per superframe !!
 
-    % Define which superframes (and which portions of each) to load and use
-    % for each block
-    sf_start_bn = ceil(frames_bn(1) ./ P.numFramesPerBuffer); % The superframe to start on for block bn (out of the whole experiment)
-    if bn == 1 & bs > P.numFramesPerBuffer
-        fracOfStartSFToUse = 1; % Special case for the first block
-    % % elseif bn == 1 & bs <= P.numFramesPerBuffer
-    % elseif (bs * (1 + bo)) <= P.numFramesPerBuffer % Another special case, if the block size + the next block's non-overlapping frames will not get past the superframe size
-    %     fracOfStartSFToUse = bs/P.numFramesPerBuffer; % starting from the frontish...
-    %     shortFlag = true; % Flag to use the start of the superframe........
-    else
-        fracOfStartSFToUse = ceil( (frames_bn(1) - 1)./ P.numFramesPerBuffer ) - (frames_bn(1) - 1)./ P.numFramesPerBuffer; % Fraction of the first superframe to use in block bn (starting from the end of the superframe)
-    end
-    numFramesOfStartSFToUse = fracOfStartSFToUse * P.numFramesPerBuffer; % # of frames in the first superframe to use in block bn (starting from the end of the superframe)
-    numFullSFToUseAfterStartSF = floor( (bs - numFramesOfStartSFToUse)/P.numFramesPerBuffer ); % # of full superframes to use after the first superframe
-    if floor(numFullSFToUseAfterStartSF) == (bs - numFramesOfStartSFToUse)/P.numFramesPerBuffer % If there is no need for a partial end superframe
-        numFramesPerSFToUse = [numFramesOfStartSFToUse, P.numFramesPerBuffer .* ones(1, numFullSFToUseAfterStartSF)]';
-    else
-        numFramesOfEndSFToUse = bs - numFramesOfStartSFToUse - numFullSFToUseAfterStartSF * P.numFramesPerBuffer;
-        numFramesPerSFToUse = [numFramesOfStartSFToUse, P.numFramesPerBuffer .* ones(1, numFullSFToUseAfterStartSF), numFramesOfEndSFToUse]';
-    end
+nbpsf = P.numFramesPerBuffer/bs; % # of blocks per superframe
 
-    % Sometimes there might be a zero at the beginning if the multiples are clean
-    if numFramesPerSFToUse(1) == 0
-        numFramesPerSFToUse = numFramesPerSFToUse(2:end);
-    end
-
-    IQ = [];
-    for sfi = sf_start_bn:sf_start_bn + length(numFramesPerSFToUse) - 1 % Go through and load each superframe, with slicing
-        % Load the IQ data
-        load([IQpath, IQfilenameStructure, num2str(sfi)])
-        
-        IQ_sfi = single(squeeze(IData + 1i .* QData));
-        clearvars IData QData
-        
-        if sfi == sf_start_bn % Special case if it's the starting superframe, where the ending chunk needs to be added
-            IQ = cat(4, IQ, IQ_sfi(:, :, :, P.numFramesPerBuffer - numFramesPerSFToUse(sfi - sf_start_bn + 1) + 1 : end));
-        else % Otherwise, start slicing from the start of the superframe
-            IQ = cat(4, IQ, IQ_sfi(:, :, :, 1:numFramesPerSFToUse(sfi - sf_start_bn + 1)));
-        end
-
-    end
-
-    % figure; imagesc(squeeze(max(abs(IQ(:, :, :, 2)), [], 1))')
+for fn = 1:numFiles
+% for fn = 3:numFiles
+% for fn = 2
     
-    % Crop the IQ first 
-    IQm = IQ(:, :, zstart:zend, :);
-
-%     figure; imagesc(squeeze(max(abs(IQm(:, :, :, 2)), [], 1))')
-
-    %%%%%%%%%%%%%% IF USING THE PREDEFINED MASK %%%%%%%%%%%%
-%     IQm = IQ;
-%     IQm(coronal_mask_rep) = 0; % Apply the brain mask to the IQ: set the non-brain voxels equal to 0
-
-    % Apply the HPF
-%     dim = length(size(IQm)); % Operate on the time dimension
-%     IQm = filter(HPF_b, HPF_a, IQm, [], dim);
-
-    % Calculate the cross correlation of raw IQ (masked) to look at motion
-    ixc = calcIXC(IQm);
-
-    % SVD decluttering
-%     [PP, EVs, V_sort] = getSVs2D(IQm);
-    [xp, yp, zp, nf] = size(IQm);
-    PP = reshape(IQm, [xp*yp*zp, nf]);
-    % tic
-%     [U, S, V] = svd(PP); % Already sorted in decreasing order
-    [U, S, V] = svd(PP, 'econ'); % Already sorted in decreasing order
-    SVs = diag(S);
-%     disp('Full SVD done')
-    % toc
-    % disp('SVs decomposed')
-
-    % -- Some adaptive thresholding stuff -- %
-    % Plot one SVD subspace as an image
-%     subspace = 20;
-%     subspace_img = reshape(U(:, subspace) * SVs(subspace) * V(:, subspace)', [xp, yp, zp, nf]);
-%     figure; imagesc(squeeze(max(abs(subspace_img(:, :, :, 2)), [], 1))')
-% %     volumeViewer(abs(subspace_img(:, :, :, 2)))
-% 
-%     SSM = plotSSM(U, false);
-% %     SSM = plotSSM(U, true);
-%     [~, a_opt, b_opt] = fitSSM(SSM, false); % Get the optimal singular value thresholds
-% %     [~, a_opt, b_opt] = fitSSM(SSM, true); % Get the optimal singular value thresholds
-%     
-
-    [IQf, noise] = applySVs2D(IQm, PP, SVs, V, sv_threshold_lower, sv_threshold_upper);
-%     [IQf, noise] = applySVs2D(IQm, PP, SVs, V, a_opt, b_opt);
-    % disp('SVD filtered images put together')
-
-%     volumeViewer(abs(IQf(:, :, :, 1)))
-%     figure; imagesc(squeeze(abs(max(IQf(:, :, :, 1), [], 1)))'); colorbar
-%     generateTiffStack_acrossframes(abs(IQf), [8.8, 8.8, 8], 'hot', 1:80)
-    % clearvars IQ
-
-    % Use the IQf with separated negative and positive frequency components
-%     [IQf_separated, IQf_FT_separated] = separatePosNegFreqs(IQf);
+    % Load the IQ data
+    load([IQpath, IQfilenameStructure, num2str(fn)])
+    IQ_fn = single(squeeze(IData + 1i .* QData));
+    clearvars IData QData
    
-%     [PDI] = calcPowerDoppler(IQf_separated);
-    PDI = sum(abs(IQf) .^ 2, 4) ./ size(IQf, 4);
-%     [CDI] = calcColorDoppler(IQf_FT_separated, P);
+    for bn = (fn - 1)*nbpsf + 1:fn*nbpsf
+        tic
+        % Define which frame numbers (relative to the experiment start) should be used
+        frames_bn = ( (bn - 1)*bs + 1 : (bn)*bs ) - P.numFramesPerBuffer * (fn - 1);
 
-%     figure; imagesc(squeeze(max(PDI, [], 1))' .^ 0.5); colormap hot; colorbar
-%     figure; imagesc(squeeze(max(PDI ./ noise, [], 1))' .^ 0.5); colormap hot; colorbar
-%     volumeViewer(PDI)
-%     volumeViewer(PDI ./ noise)
+        IQ = IQ_fn(:, :, :, frames_bn);
+        
+        % figure; imagesc(squeeze(max(abs(IQ(:, :, :, 2)), [], 1))')
+    
+        % Crop the IQ first 
+        IQm = IQ(:, :, zstart:zend, :);
+    
+    %     figure; imagesc(squeeze(max(abs(IQm(:, :, :, 2)), [], 1))')
+    
+        %%%%%%%%%%%%%% IF USING THE PREDEFINED MASK %%%%%%%%%%%%
+    %     IQm = IQ;
+    %     IQm(coronal_mask_rep) = 0; % Apply the brain mask to the IQ: set the non-brain voxels equal to 0
+    
+        % Apply the HPF
+    %     dim = length(size(IQm)); % Operate on the time dimension
+    %     IQm = filter(HPF_b, HPF_a, IQm, [], dim);
+    
+        % Calculate the cross correlation of raw IQ (masked) to look at motion
+        ixc = calcIXC(IQm);
+        % figure; plot(abs(ixc))
+    
+        % SVD decluttering
+    %     [PP, EVs, V_sort] = getSVs2D(IQm);
+        [xp, yp, zp, nf] = size(IQm);
+        PP = reshape(IQm, [xp*yp*zp, nf]);
+        % tic
+    %     [U, S, V] = svd(PP); % Already sorted in decreasing order
+        [U, S, V] = svd(PP, 'econ'); % Already sorted in decreasing order
+        SVs = diag(S);
+    %     disp('Full SVD done')
+        % toc
+        % disp('SVs decomposed')
+    
+        % -- Some adaptive thresholding stuff -- %
+        % Plot one SVD subspace as an image
+    %     subspace = 20;
+    %     subspace_img = reshape(U(:, subspace) * SVs(subspace) * V(:, subspace)', [xp, yp, zp, nf]);
+    %     figure; imagesc(squeeze(max(abs(subspace_img(:, :, :, 2)), [], 1))')
+    % %     volumeViewer(abs(subspace_img(:, :, :, 2)))
+    % 
+        SSM = plotSSM(U, false);
+    % %     SSM = plotSSM(U, true);
+    %     [~, a_opt, b_opt] = fitSSM(SSM, false); % Get the optimal singular value thresholds
+    % %     [~, a_opt, b_opt] = fitSSM(SSM, true); % Get the optimal singular value thresholds
+    %     
+    
+        [IQf, noise] = applySVs2D(IQm, PP, SVs, V, sv_threshold_lower, sv_threshold_upper);
+    %     [IQf, noise] = applySVs2D(IQm, PP, SVs, V, a_opt, b_opt);
+        % disp('SVD filtered images put together')
+    
+    %     volumeViewer(abs(IQf(:, :, :, 1)))
+    %     figure; imagesc(squeeze(abs(max(IQf(:, :, :, 1), [], 1)))'); colorbar
+    %     generateTiffStack_acrossframes(abs(IQf), [8.8, 8.8, 8], 'hot', 1:80)
+        % clearvars IQ
+    
+        % Use the IQf with separated negative and positive frequency components
+    %     [IQf_separated, IQf_FT_separated] = separatePosNegFreqs(IQf);
+       
+    %     [PDI] = calcPowerDoppler(IQf_separated);
+        PDI = sum(abs(IQf) .^ 2, 4) ./ size(IQf, 4);
+    %     [CDI] = calcColorDoppler(IQf_FT_separated, P);
+    
+    %     figure; imagesc(squeeze(max(PDI, [], 1))' .^ 0.5); colormap hot; colorbar
+    %     figure; imagesc(squeeze(max(PDI ./ noise, [], 1))' .^ 0.5); colormap hot; colorbar
+    %     volumeViewer(PDI)
+    %     volumeViewer(PDI ./ noise)
+    
+    %     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'noise', '-v7.3', '-nocompression');
+        % save([savepath, 'fUSdata-', num2str(bn), '.mat'], 'PDI', 'noise', 'SVs', 'ixc', 'numFramesPerSFToUse', '-v7.3')
+        save([savepath, 'fUSdata-', num2str(bn), '.mat'], 'PDI', 'SSM', 'noise', 'SVs', 'ixc', 'numFramesPerSFToUse', '-v7.3')
+    
+        disp("fUS result for block " + num2str(bn) + " saved" )
+    %     disp("g1 result for file " + num2str(filenum) + " saved" )
+    
+        toc
+    end
 
-%     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'noise', '-v7.3', '-nocompression');
-    save([savepath, 'fUSdata-', num2str(bn), '.mat'], 'PDI', 'noise', 'SVs', 'ixc', 'numFramesPerSFToUse', '-v7.3')
-
-    disp("fUS result for block " + num2str(bn) + " saved" )
-%     disp("g1 result for file " + num2str(filenum) + " saved" )
-
-    toc
+    
     
 end
 
-save([savepath, 'blocking_info.mat'], 'bn', 'bo', 'bs', 'startFile', 'endFile', 'nf', 'nfpbo', 'numBlocks', 'numFiles')
+save([savepath, 'blocking_info.mat'], 'fn', 'bo', 'bs', 'startFile', 'endFile', 'nf', 'nfpbo', 'numBlocks', 'numFiles')
 
 
 %% Store all the PDI across the experiment into one matrix
@@ -244,11 +216,11 @@ load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI', 'noise')
 PDIallBlocks = zeros([size(PDI), numBlocks]); % Matrix with the CBVi for every superframe
 PDIallBlocks(:, :, :, 1) = PDI ./ noise;
 
-for bn = 1:numBlocks
+for fn = 1:numBlocks
 %     load([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI')
-    load([savepath, 'fUSdata-', num2str(bn), '.mat'], 'PDI')
+    load([savepath, 'fUSdata-', num2str(fn), '.mat'], 'PDI')
 
-    PDIallBlocks(:, :, :, bn) = PDI ./ noise;
+    PDIallBlocks(:, :, :, fn) = PDI ./ noise;
 end
 
 %% Save the PDIallBlocks
