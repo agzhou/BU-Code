@@ -1,6 +1,5 @@
 %% Description:
-%       3D fUS and functional connectivity (FC) processing
-%       Timing data should be processed and saved with plotfUStiming_FC.m first
+%       IXC processing for multiple superframes (volumetric data)
 
 clearvars
 %% load params and stuff
@@ -48,9 +47,9 @@ clearvars parameterPrompt parameterDefaults parameterUserInput
 
 
 %% Main loop
-for filenum = startFile:endFile
+% for filenum = startFile:endFile
 % for filenum = [2:endFile]
-% for filenum = 3
+for filenum = 15
 
     % Load the IQ data
     tic
@@ -63,9 +62,54 @@ for filenum = startFile:endFile
 
     % Calculate the cross correlation of raw IQ (masked) to look at motion
     ixc = calcIXC(IQ);
-    figure; plot((1:size(IQ, 4)) ./ P.numFramesPerBuffer .* 1e3, abs(ixc)); xlabel('Micro time [ms]'); ylabel('|Cross correlation of images|')
-    % figure; plot(abs(ixc)); xlabel('Frame'); ylabel('|Cross correlation of images|')
+    ut_ms = (1:size(IQ, 4)) ./ P.numFramesPerBuffer .* 1e3; % micro time [ms]
+    % figure; plot(ut_ms, abs(ixc)); xlabel('Micro time [ms]'); ylabel('|Cross correlation of images|')
+    figure; plot(abs(ixc)); xlabel('Frame'); ylabel('|Cross correlation of images|')
     title("Superframe " + num2str(filenum))
+
+
+    % Choose 2 frames to evaluate
+    ref_fn = 1;     % Reference frame #
+    moving_fn = 10; % Moving frame #
+    ref_vol = squeeze(IQ(:, :, :, ref_fn));
+    moving_vol = squeeze(IQ(:, :, :, moving_fn));
+
+    % Upsample the images
+    us_factor = 4; % Upsampling factor
+    ref_vol_us = imresize3(ref_vol, us_factor, 'Method', 'cubic');
+    moving_vol_us = imresize3(moving_vol, us_factor, 'Method', 'cubic');
+    
+    % Test: look at MIPs of the upsampled IQ volumes
+    figure; imagesc(squeeze(max(abs(ref_vol_us), [], 1))'); colormap gray
+    figure; imagesc(squeeze(max(abs(moving_vol_us), [], 1))'); colormap gray
+
+    % Try a few shifts (THESE MUST BE INTEGERS)
+    shift.inc = [1, 1, 1]; % y, x, z shift increments in units of [upsampled voxels]
+    shift.max = [0, 0, 5]; % Maximum y, x, z |shift| in units of [upsampled voxels]
+    shift.yspan = -shift.max(1):shift.inc(1):shift.max(1);
+    shift.xspan = -shift.max(2):shift.inc(2):shift.max(2);
+    shift.zspan = -shift.max(3):shift.inc(3):shift.max(3);
+
+    [shift.ygrid, shift.xgrid, shift.zgrid] = meshgrid(shift.yspan,  shift.xspan,  shift.zspan);
+    % Squeeze in case the shift in any dimension is disabled, and vectorize
+    shift.ygrid = squeeze(shift.ygrid); shift.ygrid = shift.ygrid(:);
+    shift.xgrid = squeeze(shift.xgrid); shift.xgrid = shift.xgrid(:);
+    shift.zgrid = squeeze(shift.zgrid); shift.zgrid = shift.zgrid(:);
+
+    shift.numShifts = length(shift.ygrid); % Total # of shifts to try
+
+    % shift.ixc = zeros(P.numFramesPerBuffer, shift.numShifts); % Initialize the post-shift ixc matrix. Each column is the ixc timecourse for that shift.
+    shift.ixc = zeros(1, shift.numShifts); % Initialize the post-shift ixc matrix. Each column is the ixc timecourse for that shift.
+    for sn = 1:shift.numShifts % shift number
+    % for sn = 1
+        shift_sn = [shift.ygrid(sn), shift.xgrid(sn), shift.zgrid(sn)];
+        moving_vol_us_sn = imtranslate(moving_vol_us, shift_sn, 'OutputView','same'); % Shifted (upsampled) moving volume at shift number #sn
+        % figure; imagesc(squeeze(max(abs(moving_vol_us_sn), [], 1))'); colormap gray
+        shift.ixc(:, sn) = calcIXC_shift(ref_vol_us, moving_vol_us_sn);
+    end
+    
+    
+
 
     % SVD decluttering
     [xp, yp, zp, nf] = size(IQ);
@@ -122,3 +166,14 @@ for filenum = startFile:endFile
     
 end
 
+%% Make a plot of all the ixcs
+ixc_allfiles = [];
+SVs_allfiles = [];
+for filenum = startFile:endFile
+    load([savepath, 'metrics-', num2str(filenum), '.mat'])
+    ixc_allfiles = cat(2, ixc_allfiles, ixc);
+    SVs_allfiles = cat(2, SVs_allfiles, SVs);
+end
+
+figure; plot(ut_ms, abs(ixc_allfiles)); xlabel("Micro time [ms]"); ylabel('|Cross correlation of images|')
+figure; semilogy(SVs_allfiles); xlabel("Singular value number"); ylabel("Singular value magnitude")

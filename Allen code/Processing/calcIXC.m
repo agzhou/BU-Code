@@ -15,7 +15,8 @@ function [ixc] = calcIXC(IQ)
         ifi = squeeze(IQ(:, :, :, fi)); % image #fi
         rss_ifi = sqrt(sum(abs(ifi).^2, 'all')); % root sum? square of volume #fi
 
-        ixc(fi) = sum( (ifi - mean(ifi, "all")) .* conj(iref - mean(iref, "all")), "all") ./ (rss_iref * rss_ifi);  
+        % ixc(fi) = sum( (ifi - mean(ifi, "all")) .* conj(iref - mean(iref, "all")), "all") ./ (rss_iref * rss_ifi);  
+        ixc(fi) = sum( ifi .* conj(iref), "all") ./ (rss_iref * rss_ifi);  
 
         % vxc(fi) = normxcorr3(vref, vfi);
     end
