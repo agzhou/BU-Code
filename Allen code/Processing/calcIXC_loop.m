@@ -87,7 +87,7 @@ for filenum = 15
     shift.inc = [1, 1, 1]; % y, x, z shift increments in units of [upsampled voxels]
     % shift.max = [0, 0, 5]; % Maximum y, x, z |shift| in units of [upsampled voxels]
     % shift.max = [5, 0, 2]; % Maximum y, x, z |shift| in units of [upsampled voxels]
-    shift.max = [0, 3, 0]; % Maximum y, x, z |shift| in units of [upsampled voxels]
+    shift.max = [2, 1, 1]; % Maximum y, x, z |shift| in units of [upsampled voxels]
     shift.yspan = -shift.max(1):shift.inc(1):shift.max(1);
     shift.xspan = -shift.max(2):shift.inc(2):shift.max(2);
     shift.zspan = -shift.max(3):shift.inc(3):shift.max(3);
@@ -110,8 +110,6 @@ for filenum = 15
         shift_sn = [shift.ygrid(sn), shift.xgrid(sn), shift.zgrid(sn)];
         moving_vol_us_sn = imtranslate(moving_vol_us, shift_sn, 'OutputView','same'); % Shifted (upsampled) moving volume at shift number #sn
         % figure; imagesc(squeeze(max(abs(moving_vol_us_sn), [], 1))'); colormap gray
-
-        % valid_voxels_sn = [shift_sn(2) + 1 : , shift_sn] % I think imtranslate actually does x, y, z
         
         shift.ixc(:, sn) = calcIXC_shift(ref_vol_us, moving_vol_us_sn, true);
     end   
