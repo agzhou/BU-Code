@@ -189,3 +189,14 @@ end
 
 figure; plot(ut_ms, abs(ixc_allfiles)); xlabel("Micro time [ms]"); ylabel('|Cross correlation of images|')
 figure; semilogy(SVs_allfiles); xlabel("Singular value number"); ylabel("Singular value magnitude")
+
+%% Calculate metrics for how often or largely the XC drops for each "superframe"
+ixc_threshold = 0.9; % Threshold for XC dropping to be "significant"
+ixc_under_threshold_mat = ixc_allfiles < ixc_threshold;
+ixc_under_threshold = sum(ixc_under_threshold_mat, 1); % How many time points for each superframe is the XC under the threshold
+ixc_min = min(ixc_allfiles, [], 1); % The minimum ixc value for each superframe
+
+figure; plot(ixc_under_threshold); xlabel("Superframe #"); ylabel("Number of frames under threshold = " + num2str(ixc_threshold))
+
+%% Save the ixc and singular value data
+save([savepath, 'ixc_SV_data.mat'], "ixc_allfiles", "SVs_allfiles", "ixc_threshold", "ixc_under_threshold", "ixc_min")
