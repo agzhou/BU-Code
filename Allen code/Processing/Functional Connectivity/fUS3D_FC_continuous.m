@@ -179,7 +179,7 @@ for bn = 31
 
     % Calculate the cross correlation of raw IQ (masked) to look at motion
     ixc = calcIXC(IQm);
-    % figure; plot((1:bs) ./ P.numFramesPerBuffer, abs(ixc)); xlabel('Micro time [s]'); ylabel('|Cross correlation of images|')
+    % figure; plot((1:bs) ./ P.frameRate, abs(ixc)); xlabel('Micro time [s]'); ylabel('|Cross correlation of images|')
     % figure; plot(abs(ixc)); xlabel('Frame'); ylabel('|Cross correlation of images|')
     
     testframe = 603;
