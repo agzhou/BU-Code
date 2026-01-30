@@ -43,7 +43,7 @@ for filenum = startFile:endFile
 end
 clearvars timetag
 
-figure; plot(diff(sfTimeTags))
+figure; plot(diff(sfTimeTags)); xlabel('Timetag pair #'); ylabel('Timetag difference [s]')
 %% Move the superframe time tags back the width of each superframe (so the time corresponds to the start of each superframe acquisition)
 % ** actually, this is not necessary for sfTimeTags since we are using the
 % relative timing for those, but adjusting for the sfWidth would be
@@ -90,10 +90,10 @@ daqTimeTags = daqTimeTags_daqstart - VSXVsDAQDelay; % DAQ time stamps relative t
 
 %% Add relevant variables to a structure 'TD' (Timing Data)
 TD.sfStartTimetag = startTimetag;       % Timetag at the end of the first superframe acquired
-TD.inScanData = inScanData;             % Output data that the DAQ reads (e.g., accelerometer)
-TD.daqStartTimetag = daqStartTimetag;   % Timetag at the start of the DAQ run
 TD.sfTimeTags = sfTimeTags;             % Timestamps of each superframe relative to the first superframe acquisition time
 TD.sfWidth = sfWidth;                   % Width/duration of each superframe [s]
+TD.inScanData = inScanData;             % Output data that the DAQ reads (e.g., accelerometer)
+TD.daqStartTimetag = daqStartTimetag;   % Timetag at the start of the DAQ run
 TD.VSXVsDAQDelay = VSXVsDAQDelay;       % Delay between the DAQ start and the (start of the) first superframe acquisition
 TD.daqTimeTags_daqstart = daqTimeTags_daqstart; % DAQ time stamps relative to the DAQ start [s]
 TD.daqTimeTags = daqTimeTags;           % DAQ time stamps relative to the first superframe start [s]
