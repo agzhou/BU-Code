@@ -19,7 +19,8 @@
 %% Activate the Verasonics folder
 clearvars
 
-cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
+% cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
+cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.7-2505271400'
 % cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
 
 activate
@@ -312,6 +313,7 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
 
 %     disp("running VSX_auto")
     VSX_auto % this is in the Verasonics folder
+%     VSX
     VsClose  % close the GUI window. runAcq stops automatically after one loop.
 
     disp(strcat("IQ file ", num2str(Mcr_filenum), " reconstructed."))
