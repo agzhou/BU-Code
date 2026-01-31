@@ -17,7 +17,8 @@ AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_sp
 addpath(AllenVerasonicsCodePath)
 
 addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Accelerometer DAQ\')
-cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
+% cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
+cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.7-2505271400'
 activate
 
 %%
