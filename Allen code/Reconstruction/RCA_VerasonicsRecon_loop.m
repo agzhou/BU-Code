@@ -321,6 +321,7 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
     IData = IData{1};
     QData = QData{1};
 %     IQ = squeeze(IData + 1i .* QData);
+%     IQ = squeeze(complex(IData, QData));
 
     savefast([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData')
     disp(strcat("IQ file ", num2str(Mcr_filenum), " saved."))
