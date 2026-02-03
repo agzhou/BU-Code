@@ -323,15 +323,17 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
 %     IQ = squeeze(IData + 1i .* QData);
     IQ = squeeze(complex(IData, QData));
 
-%     savefast([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData')
+    savefast([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData')
 %     save([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IQ', '-v7.3', '-nocompression')
-    save([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IQ', '-v7.3')
+%     save([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IQ', '-v7.3')
     disp(strcat("IQ file ", num2str(Mcr_filenum), " saved."))
     
     toc
 
     clearvars IData QData RcvData ImgData ImgDataP
 %     clearvars RcvData ImgData ImgDataP
+    
+    pause(10) % Pause for 10 seconds
 end
 savefast([Mcr_savepath, 'PData'], 'PData') % Save the PData structure
 
