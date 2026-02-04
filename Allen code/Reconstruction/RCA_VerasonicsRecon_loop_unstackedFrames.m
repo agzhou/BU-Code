@@ -295,7 +295,7 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
     toc
 
     ixc = calcIXC(IQ);
-    save([Mcr_savepath, 'metrics-', num2str(Mcr_filenum)], 'ixc')
+    save([Mcr_savepath, 'ixc-', num2str(Mcr_filenum)], 'ixc')
 
     clearvars IData QData RcvData ImgData ImgDataP
 %     clearvars RcvData ImgData ImgDataP
