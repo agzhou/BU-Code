@@ -1,8 +1,7 @@
 % Calculate RF data cross correlation for a movement metric (see Jonghwan's
 % 2011 paper)
 
-% Input: IQ data (currently built for 4D data, but it could easily be
-% adapted)
+% Input: RF data [# samples x # channels x # frames] (note: if the RF is stacked for each superframe, unstack it first)
 
 function [rfxc] = calcRFXC(RcvData)
     nf = size(RcvData, length(size(RcvData))); % # of frames (assumed to be the last dimension)
@@ -14,7 +13,8 @@ function [rfxc] = calcRFXC(RcvData)
         rffi = squeeze(RcvData(:, :, fi)); % image #fi
         rss_rffi = sqrt(sum(abs(rffi).^2, 'all')); % root sum? square of volume #fi
 
-        rfxc(fi) = sum( (rffi - mean(rffi, "all")) .* conj(rfref - mean(rfref, "all")), "all") ./ (rss_rfref * rss_rffi);  
+        % rfxc(fi) = sum( (rffi - mean(rffi, "all")) .* conj(rfref - mean(rfref, "all")), "all") ./ (rss_rfref * rss_rffi);  
+        rfxc(fi) = sum( rffi .* conj(rfref), "all") ./ (rss_rfref * rss_rffi);  
 
     end
     % toc

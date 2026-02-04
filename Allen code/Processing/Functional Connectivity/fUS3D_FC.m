@@ -111,7 +111,7 @@ save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_uppe
 % for filenum = [2:endFile]
 % for filenum = [endFile - 1:-1:startFile]
 % for filenum = 11:20
-for filenum = 4:6
+for filenum = 4:5
 
     % Load the IQ data
     tic

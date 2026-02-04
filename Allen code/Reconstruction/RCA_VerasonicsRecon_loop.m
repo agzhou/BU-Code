@@ -19,9 +19,8 @@
 %% Activate the Verasonics folder
 clearvars
 
-% cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
-cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.7-2505271400'
-% cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
+% cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.7-2505271400' % Lab PC (bme-boas-19)
+cd 'C:\Users\agzhou\Vantage-4.9.7-2505271400' % Office PC (bme-boas-27)
 
 activate
 
@@ -332,7 +331,8 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
     
     toc
 
-    ixc = calcIXC(IQ);
+    ixc = calcIXC_simple(IQ);
+    %     figure; plot(abs(ixc)); xlabel('Frame'); ylabel('|Cross correlation of images|')
     save([Mcr_savepath, 'ixc-', num2str(Mcr_filenum)], 'ixc')
 
     clearvars IQ IData QData RcvData ImgData ImgDataP

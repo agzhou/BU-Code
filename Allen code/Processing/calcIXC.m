@@ -5,20 +5,62 @@
 % adapted)
 
 function [ixc] = calcIXC(IQ)
+    ixc_threshold = 0.99; % Threshold for re-calculating ixc with different reference frames until most of it is above this value
+
     nf = size(IQ, length(size(IQ))); % # of frames (assumed to be the last dimension)
     ixc = zeros(nf, 1); % Image cross correlation (to the first frame)
-    iref = squeeze(IQ(:, :, :, 1)); % reference volume
-    rss_iref = sqrt(sum(abs(iref).^2, 'all')); % root sum? square of the reference volume
-    % tic
-    for fi = 1:nf
-    % for fi = 1
-        ifi = squeeze(IQ(:, :, :, fi)); % image #fi
-        rss_ifi = sqrt(sum(abs(ifi).^2, 'all')); % root sum? square of volume #fi
 
-        % ixc(fi) = sum( (ifi - mean(ifi, "all")) .* conj(iref - mean(iref, "all")), "all") ./ (rss_iref * rss_ifi);  
-        ixc(fi) = sum( ifi .* conj(iref), "all") ./ (rss_iref * rss_ifi);  
+    ref_frame = 1; % Starting reference frame number
+    best_num_frames_above_threshold = 0; % Initialize a "flag"
 
-        % vxc(fi) = normxcorr3(vref, vfi);
+    while ref_frame <= nf & sum(ixc >= ixc_threshold) < round(nf/2) % Loop through possible reference frames
+        ixc = zeros(nf, 1); % Image cross correlation (to the first frame)
+
+        iref = squeeze(IQ(:, :, :, ref_frame)); % reference volume
+        rss_iref = sqrt(sum(abs(iref).^2, 'all')); % root sum? square of the reference volume
+        % tic
+        for fi = 1:nf
+        % for fi = 1
+            ifi = squeeze(IQ(:, :, :, fi)); % image #fi
+            rss_ifi = sqrt(sum(abs(ifi).^2, 'all')); % root sum? square of volume #fi
+    
+            % ixc(fi) = sum( (ifi - mean(ifi, "all")) .* conj(iref - mean(iref, "all")), "all") ./ (rss_iref * rss_ifi);  
+            ixc(fi) = sum( ifi .* conj(iref), "all") ./ (rss_iref * rss_ifi);  
+    
+            % vxc(fi) = normxcorr3(vref, vfi);
+        end
+        % toc
+
+        % Keep track of which reference frame indices have the best ixc, if none of them
+        % hit the threshold requirement
+        if sum(ixc >= ixc_threshold) > best_num_frames_above_threshold
+            best_num_frames_above_threshold = sum(ixc >= ixc_threshold);
+            best_frame_num = ref_frame;
+        end
+
+        ref_frame = ref_frame + 1;
+
+        
     end
-    % toc
+
+    % Use the best frame number if none of them meet the threshold
+    % requirement
+    if best_frame_num == nf
+        ixc = zeros(nf, 1); % Image cross correlation (to the first frame)
+
+        iref = squeeze(IQ(:, :, :, best_frame_num)); % reference volume
+        rss_iref = sqrt(sum(abs(iref).^2, 'all')); % root sum? square of the reference volume
+        % tic
+        for fi = 1:nf
+        % for fi = 1
+            ifi = squeeze(IQ(:, :, :, fi)); % image #fi
+            rss_ifi = sqrt(sum(abs(ifi).^2, 'all')); % root sum? square of volume #fi
+    
+            % ixc(fi) = sum( (ifi - mean(ifi, "all")) .* conj(iref - mean(iref, "all")), "all") ./ (rss_iref * rss_ifi);  
+            ixc(fi) = sum( ifi .* conj(iref), "all") ./ (rss_iref * rss_ifi);  
+    
+            % vxc(fi) = normxcorr3(vref, vfi);
+        end
+    end
+
 end
