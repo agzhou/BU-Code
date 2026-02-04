@@ -184,11 +184,12 @@ SVs_allfiles = [];
 for filenum = startFile:endFile
     load([savepath, 'metrics-', num2str(filenum), '.mat'])
     ixc_allfiles = cat(2, ixc_allfiles, ixc);
-    SVs_allfiles = cat(2, SVs_allfiles, SVs);
+%     SVs_allfiles = cat(2, SVs_allfiles, SVs);
 end
 
-figure; plot(ut_ms, abs(ixc_allfiles)); xlabel("Micro time [ms]"); ylabel('|Cross correlation of images|')
-figure; semilogy(SVs_allfiles); xlabel("Singular value number"); ylabel("Singular value magnitude")
+figure; plot(abs(ixc_allfiles)); xlabel("Frame"); ylabel('|Cross correlation of images|')
+% figure; plot(ut_ms, abs(ixc_allfiles)); xlabel("Micro time [ms]"); ylabel('|Cross correlation of images|')
+% figure; semilogy(SVs_allfiles); xlabel("Singular value number"); ylabel("Singular value magnitude")
 
 %% Calculate metrics for how often or largely the XC drops for each "superframe"
 ixc_threshold = 0.9; % Threshold for XC dropping to be "significant"

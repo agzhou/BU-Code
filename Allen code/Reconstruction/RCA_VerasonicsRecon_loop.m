@@ -330,10 +330,13 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
     
     toc
 
+    ixc = calcIXC(IQ);
+    save([Mcr_savepath, 'ixc-', num2str(Mcr_filenum)], 'ixc')
+
     clearvars IData QData RcvData ImgData ImgDataP
 %     clearvars RcvData ImgData ImgDataP
     
-    pause(10) % Pause for 10 seconds
+    pause(5) % Pause for safety of inter-superframe memory issues
 end
 savefast([Mcr_savepath, 'PData'], 'PData') % Save the PData structure
 

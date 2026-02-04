@@ -286,6 +286,7 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
     IData = IData{1};
     QData = QData{1};
 %     IQ = squeeze(IData + 1i .* QData); 
+    IQ = squeeze(complex(IData, QData));
 
     savefast([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData')
 %     save([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData', '-v7.3')
@@ -293,7 +294,14 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
     
     toc
 
-    clear IData QData RcvData
+    ixc = calcIXC(IQ);
+    save([Mcr_savepath, 'metrics-', num2str(Mcr_filenum)], 'ixc')
+
+    clearvars IData QData RcvData ImgData ImgDataP
+%     clearvars RcvData ImgData ImgDataP
+    
+    pause(5) % Pause for safety of inter-superframe memory issues
+
 end
 
 %% saving speed test
