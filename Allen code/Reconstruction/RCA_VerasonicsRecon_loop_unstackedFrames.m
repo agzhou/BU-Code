@@ -282,7 +282,7 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
     VsClose  % close the GUI window. runAcq stops automatically after one loop.
 
     pause(10)
-    
+
     disp(strcat("IQ file ", num2str(Mcr_filenum), " reconstructed."))
 %     IQ = IData{1} + 1i .* QData{1};                                         % Merge the I and Q into one variable
     IData = IData{1};
@@ -298,9 +298,10 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
     toc
 
     ixc = calcIXC(IQ);
-    save([Mcr_savepath, 'ixc-', num2str(Mcr_filenum)], 'ixc')
+    %     figure; plot(abs(ixc)); xlabel('Frame'); ylabel('|Cross correlation of images|')
+    save([Mcr_savepath, 'ixc-', num2str(Mcr_filenum)], 'ixc', '-v7.3', '-nocompression')
 
-    clearvars IData QData RcvData ImgData ImgDataP
+    clearvars IQ IData QData RcvData ImgData ImgDataP
 %     clearvars RcvData ImgData ImgDataP
     
     pause(10) % Pause for safety of inter-superframe memory issues
