@@ -297,7 +297,7 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
     
     toc
 
-    ixc = calcIXC(IQ);
+    ixc = calcIXC_simple(IQ);
     %     figure; plot(abs(ixc)); xlabel('Frame'); ylabel('|Cross correlation of images|')
     save([Mcr_savepath, 'ixc-', num2str(Mcr_filenum)], 'ixc', '-v7.3', '-nocompression')
 
