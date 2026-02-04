@@ -281,6 +281,8 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
     VSX_auto % this is in the Verasonics folder
     VsClose  % close the GUI window. runAcq stops automatically after one loop.
 
+    pause(10)
+    
     disp(strcat("IQ file ", num2str(Mcr_filenum), " reconstructed."))
 %     IQ = IData{1} + 1i .* QData{1};                                         % Merge the I and Q into one variable
     IData = IData{1};
@@ -301,7 +303,7 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
     clearvars IData QData RcvData ImgData ImgDataP
 %     clearvars RcvData ImgData ImgDataP
     
-    pause(5) % Pause for safety of inter-superframe memory issues
+    pause(10) % Pause for safety of inter-superframe memory issues
 
 end
 
