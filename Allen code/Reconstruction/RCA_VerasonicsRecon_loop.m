@@ -316,6 +316,8 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
 %     VSX
     VsClose  % close the GUI window. runAcq stops automatically after one loop.
 
+    pause(10)
+
     disp(strcat("IQ file ", num2str(Mcr_filenum), " reconstructed."))
 %     IQ = squeeze(IData{1} + 1i .* QData{1});                                         % Merge the I and Q into one variable
     IData = IData{1};
@@ -323,8 +325,8 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
 %     IQ = squeeze(IData + 1i .* QData);
     IQ = squeeze(complex(IData, QData));
 
-    savefast([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData')
-%     save([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IQ', '-v7.3', '-nocompression')
+    % savefast([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData')
+    save([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IQ', '-v7.3', '-nocompression')
 %     save([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IQ', '-v7.3')
     disp(strcat("IQ file ", num2str(Mcr_filenum), " saved."))
     
@@ -333,12 +335,13 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
     ixc = calcIXC(IQ);
     save([Mcr_savepath, 'ixc-', num2str(Mcr_filenum)], 'ixc')
 
-    clearvars IData QData RcvData ImgData ImgDataP
+    clearvars IQ IData QData RcvData ImgData ImgDataP
 %     clearvars RcvData ImgData ImgDataP
     
     pause(5) % Pause for safety of inter-superframe memory issues
 end
-savefast([Mcr_savepath, 'PData'], 'PData') % Save the PData structure
+
+save([Mcr_savepath, 'PData'], 'PData') % Save the PData structure
 
 %% saving speed test
 % tic

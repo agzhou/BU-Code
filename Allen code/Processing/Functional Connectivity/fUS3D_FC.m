@@ -111,13 +111,13 @@ save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_uppe
 % for filenum = [2:endFile]
 % for filenum = [endFile - 1:-1:startFile]
 % for filenum = 11:20
-for filenum = 1
+for filenum = 4:6
 
     % Load the IQ data
     tic
     load([IQpath, IQfilenameStructure, num2str(filenum)])
     
-    IQ = single(squeeze(complex(IData, QData)));
+    % IQ = single(squeeze(complex(IData, QData)));
 %     clearvars IData QData
 
     % figure; imagesc(squeeze(max(abs(IQ(:, :, :, 2)), [], 1))')
@@ -161,7 +161,7 @@ for filenum = 1
 %     figure; imagesc(squeeze(max(abs(subspace_img(:, :, :, 2)), [], 1))')
 % %     volumeViewer(abs(subspace_img(:, :, :, 2)))
 % 
-%     SSM = plotSSM(U, false);
+    SSM = plotSSM(U, false);
 % %     SSM = plotSSM(U, true);
 %     [~, a_opt, b_opt] = fitSSM(SSM, false); % Get the optimal singular value thresholds
 % %     [~, a_opt, b_opt] = fitSSM(SSM, true); % Get the optimal singular value thresholds
@@ -189,7 +189,8 @@ for filenum = 1
 %     volumeViewer(PDI ./ noise)
 
 %     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'noise', '-v7.3', '-nocompression');
-    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'noise', '-v7.3')
+    % save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'noise', '-v7.3')
+    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'noise', 'SSM', 'SVs', '-v7.3')
 
     disp("fUS result for file " + num2str(filenum) + " saved" )
 %     disp("g1 result for file " + num2str(filenum) + " saved" )
