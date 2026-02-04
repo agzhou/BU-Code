@@ -36,6 +36,7 @@ addpath([cd, '\..\']) % Add the main "Processing" path
 timingFilePath = [timingFilePath, timingFilePathFN];
 load(timingFilePath)
 % load(timingFilePath, 'acqStart', 'airPuffOutput', 'daqStartTimetag', 'sfTimeTags', 'sfTimeTagsDAQStart', 'sfTimeTagsDAQStart_adj', 'sfWidth', 'sfWidth_adj', 'timeStamp')
+
 %% Define some parameters
 
 parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Tau 1 index for CBFspeed', 'Tau 2 index for CBFspeed', 'Tau 1 index for CBV'};
@@ -83,7 +84,7 @@ tau_ms = tau .* 1000; % Assuming even time spacing between frames
 tic
 load([IQpath, IQfilenameStructure, num2str(1)])
 
-IQ = single(squeeze(IData + 1i .* QData));
+IQ = single(squeeze(complex(IData, QData)));
 clearvars IData QData
 
 figure; imagesc(squeeze(max(abs(IQ(:, :, :, 2)), [], 1))')
@@ -106,18 +107,17 @@ save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_uppe
 % Add band pass filter params later............
 
 %% Main loop
-for filenum = startFile:endFile
+% for filenum = startFile:endFile
 % for filenum = [2:endFile]
 % for filenum = [endFile - 1:-1:startFile]
-% for filenum = [4:endFile]
-% for filenum = 100:502
 % for filenum = 11:20
+for filenum = 1
 
     % Load the IQ data
     tic
     load([IQpath, IQfilenameStructure, num2str(filenum)])
     
-    IQ = single(squeeze(IData + 1i .* QData));
+    IQ = single(squeeze(complex(IData, QData)));
 %     clearvars IData QData
 
     % figure; imagesc(squeeze(max(abs(IQ(:, :, :, 2)), [], 1))')
