@@ -63,10 +63,13 @@ clearvars parameterPrompt parameterDefaults parameterUserInput
 
 % Load the first IQ data file
 tic
-load([IQpath, IQfilenameStructure, num2str(1)])
+% load([IQpath, IQfilenameStructure, num2str(1)])
+% 
+% IQ = single(squeeze(IData + 1i .* QData));
+% clearvars IData QData
 
-IQ = single(squeeze(IData + 1i .* QData));
-clearvars IData QData
+% Change 02/04/2026
+IQ = load([IQpath, IQfilenameStructure, num2str(1)], 'IQ').('IQ');
 
 figure; imagesc(squeeze(max(abs(IQ(:, :, :, 2)), [], 1))')
 % volumeViewer(squeeze(abs(IQ(:, :, :, 2))))
@@ -108,8 +111,8 @@ save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_uppe
 
 %% Main loop: go through each block
 % for bn = 1:numBlocks
-% for bn = 237:numBlocks
-for bn = 31
+for bn = 2:numBlocks
+% for bn = 1
     tic
 
     % shortFlag = false;
@@ -149,10 +152,11 @@ for bn = 31
     IQ = [];
     for sfi = sf_start_bn:sf_start_bn + length(numFramesPerSFToUse) - 1 % Go through and load each superframe, with slicing
         % Load the IQ data
-        load([IQpath, IQfilenameStructure, num2str(sfi)])
+        % load([IQpath, IQfilenameStructure, num2str(sfi)])
         
-        IQ_sfi = single(squeeze(IData + 1i .* QData));
-        clearvars IData QData
+        % IQ_sfi = single(squeeze(IData + 1i .* QData));
+        % clearvars IData QData
+        IQ_sfi = single(load([IQpath, IQfilenameStructure, num2str(sfi)], 'IQ').('IQ'));
         
         if sfi == sf_start_bn % Special case if it's the starting superframe, where the ending chunk needs to be added
             IQ = cat(4, IQ, IQ_sfi(:, :, :, P.numFramesPerBuffer - numFramesPerSFToUse(sfi - sf_start_bn + 1) + 1 : end));
@@ -178,13 +182,13 @@ for bn = 31
 %     IQm = filter(HPF_b, HPF_a, IQm, [], dim);
 
     % Calculate the cross correlation of raw IQ (masked) to look at motion
-    ixc = calcIXC(IQm);
+    ixc = calcIXC_simple(IQm);
     % figure; plot((1:bs) ./ P.frameRate, abs(ixc)); xlabel('Micro time [s]'); ylabel('|Cross correlation of images|')
     % figure; plot(abs(ixc)); xlabel('Frame'); ylabel('|Cross correlation of images|')
     
-    testframe = 603;
-    figure; imagesc(squeeze(max(abs(IQ(:, :, :, testframe - 1)), [], 1))'); colormap gray
-    figure; imagesc(squeeze(max(abs(IQ(:, :, :, testframe)), [], 1))'); colormap gray
+    % testframe = 603;
+    % figure; imagesc(squeeze(max(abs(IQ(:, :, :, testframe - 1)), [], 1))'); colormap gray
+    % figure; imagesc(squeeze(max(abs(IQ(:, :, :, testframe)), [], 1))'); colormap gray
     
     % SVD decluttering
 %     [PP, EVs, V_sort] = getSVs2D(IQm);
