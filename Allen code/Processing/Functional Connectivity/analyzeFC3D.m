@@ -247,8 +247,9 @@ save([roi_savepath, 'roi_info.mat'], 'roi')
 %% (Optional) Overlay the ROI masks onto a PDI template
 % compareUStoAtlasROIs(PDI_template_reg_50um, region_masks_50um)
 % compareUStoAtlasROIs(fUSmap_50um_rigid_reg.regVol.Voxels, region_masks_50um)
+
 compareUStoAtlasROIs(fUSmap_50um_rigid_reg.regVol.Voxels, roi.masks_50um) % Non-hemisphere separated ROIs
-compareUStoAtlasROIs(fUSmap_50um_rigid_reg.regVol.Voxels, roi.masks_50um_hemis(:)) % Hemisphere separated ROIs
+% compareUStoAtlasROIs(fUSmap_50um_rigid_reg.regVol.Voxels, roi.masks_50um_hemis(:)) % Hemisphere separated ROIs
 
 %% Load the timing data (output of plotfUStiming_FC.m) and convert to actual time
 [timingFilePathFN, timingFilePath] = uigetfile([data_dirpath, '..\..\Timing data\TD.mat'], 'Select the timing data');

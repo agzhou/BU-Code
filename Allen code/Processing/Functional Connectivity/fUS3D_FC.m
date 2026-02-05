@@ -190,7 +190,7 @@ for filenum = startFile:endFile
 
 %     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'noise', '-v7.3', '-nocompression');
     % save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'noise', '-v7.3')
-    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'noise', 'SSM', 'SVs', '-v7.3')
+    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'noise', 'SSM', 'SVs', 'ixc', '-v7.3')
 
     disp("fUS result for file " + num2str(filenum) + " saved" )
 %     disp("g1 result for file " + num2str(filenum) + " saved" )
@@ -198,6 +198,20 @@ for filenum = startFile:endFile
     toc
     
 end
+
+%% Make a plot of all the ixcs
+ixc_allfiles = [];
+SVs_allfiles = [];
+for filenum = startFile:endFile
+    load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'ixc', 'SVs')
+    % ixc_allfiles = cat(2, ixc_allfiles, ixc);
+    SVs_allfiles = cat(2, SVs_allfiles, SVs);
+end
+
+% figure; plot(abs(ixc_allfiles)); xlabel("Frame"); ylabel('|Cross correlation of images|')
+% figure; plot(ut_ms, abs(ixc_allfiles)); xlabel("Micro time [ms]"); ylabel('|Cross correlation of images|')
+figure; semilogy(SVs_allfiles); xlabel("Singular value number"); ylabel("Singular value magnitude")
+
 
 %% Convert g1 into CBV, CBFspeed, etc.
 
@@ -258,7 +272,7 @@ for filenum = startFile + 1:endFile
 end
 
 %% Store all the PDI across the experiment into one matrix
-load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI', 'noise')
+load([savepath, 'fUSdata-', num2str(startFile), '.mat'], 'PDI', 'noise')
 PDIallSF = zeros([size(PDI), endFile - startFile + 1]); % Matrix with the CBVi for every superframe
 PDIallSF(:, :, :, 1) = PDI ./ noise;
 
@@ -320,6 +334,7 @@ prereg_params.prereg_interp_factor = prereg_interp_factor;
 % prereg_params. = 
 
 save([savepath, 'prereg_PDI_params_50um.mat'], 'PDI_allSF_avg_rs', 'prereg_params')
+
 %% Prepare template(s) for atlas registration (using the preloaded prereg_params struct)
 % Create templates for each hemodynamic parameter, averaging across superframes
 PDI_allSF_avg = mean(PDIallSF, 4);
