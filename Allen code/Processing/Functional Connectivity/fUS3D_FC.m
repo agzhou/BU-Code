@@ -107,11 +107,11 @@ save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_uppe
 % Add band pass filter params later............
 
 %% Main loop
-% for filenum = startFile:endFile
+for filenum = startFile:endFile
 % for filenum = [2:endFile]
 % for filenum = [endFile - 1:-1:startFile]
 % for filenum = 11:20
-for filenum = 4:5
+% for filenum = startFile + 1
 
     % Load the IQ data
     tic
@@ -137,7 +137,7 @@ for filenum = 4:5
 %     IQm = filter(HPF_b, HPF_a, IQm, [], dim);
 
     % Calculate the cross correlation of raw IQ (masked) to look at motion
-    ixc = calcIXC(IQm);
+    ixc = calcIXC_simple(IQm);
     % figure; plot((1:bs) ./ P.frameRate, abs(ixc)); xlabel('Micro time [s]'); ylabel('|Cross correlation of images|')
     % figure; plot(abs(ixc)); xlabel('Frame'); ylabel('|Cross correlation of images|')
     % title("Superframe " + num2str(filenum))
@@ -146,13 +146,13 @@ for filenum = 4:5
 %     [PP, EVs, V_sort] = getSVs2D(IQm);
     [xp, yp, zp, nf] = size(IQm);
     PP = reshape(IQm, [xp*yp*zp, nf]);
-    tic
+    % tic
 %     [U, S, V] = svd(PP); % Already sorted in decreasing order
     [U, S, V] = svd(PP, 'econ'); % Already sorted in decreasing order
     SVs = diag(S);
 %     disp('Full SVD done')
-    toc
-    disp('SVs decomposed')
+    % toc
+    % disp('SVs decomposed')
 
     % -- Some adaptive thresholding stuff -- %
     % Plot one SVD subspace as an image
@@ -169,7 +169,7 @@ for filenum = 4:5
 
     [IQf, noise] = applySVs2D(IQm, PP, SVs, V, sv_threshold_lower, sv_threshold_upper);
 %     [IQf, noise] = applySVs2D(IQm, PP, SVs, V, a_opt, b_opt);
-    disp('SVD filtered images put together')
+    % disp('SVD filtered images put together')
 
 %     volumeViewer(abs(IQf(:, :, :, 1)))
 %     figure; imagesc(squeeze(abs(max(IQf(:, :, :, 1), [], 1)))'); colorbar
