@@ -98,8 +98,8 @@ rigid_tform_50um = fUSmap_50um_rigid_reg.tform;
 % 
 % Rtest = imref3d(size(PDI_allSF_avg_rs))
 
-% test = single(imwarp(PDI_allSF_avg_rs, rigid_tform_50um, 'cubic', 'OutputView', Rout));
-% volumeViewer(test)
+PDI_template_rigid_reg = single(imwarp(PDI_allSF_avg_rs, rigid_tform_50um, 'cubic', 'OutputView', Rout));
+% volumeViewer(PDI_template_rigid_reg)
 
 % Not sure if we need this: redefine the tform for 10 um voxel size
 % rigid_tform_10um = fUSmap_50um_rigid_reg.tform;

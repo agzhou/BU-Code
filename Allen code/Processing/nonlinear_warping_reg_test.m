@@ -25,10 +25,25 @@ for ind = 1:cpts.numControlPoints
 end
 clearvars ind dir datapts_split_temp atlaspts_split_temp
 
-%% Calculate the displacements between control point pairs and create the scatteredInterpolant
-cpts.init_disp = cpts.atlas - cpts.data;
-% cpts.F = cell(3, 1); % Separate the interpolants in each dimension. 3D
 
+%% Calculate the displacements between control point pairs 
+
+cpts.init_disp = cpts.atlas - cpts.data;
+% cpts.F = cell(3, 1); % Separate the interpolants in each dimension (here, in 3D)
+
+%% Plot the control points and displacements
+figure
+scatter3(cpts.data(:, 1), cpts.data(:, 2), cpts.data(:, 3))
+hold on
+scatter3(cpts.atlas(:, 1), cpts.atlas(:, 2), cpts.atlas(:, 3))
+
+for ind = 1:cpts.numControlPoints
+    % line([cpts.data(:, 1), cpts.atlas(:, 1)], [cpts.data(:, 2), cpts.atlas(:, 2)], [cpts.data(:, 3), cpts.atlas(:, 3)])
+    line([cpts.data(ind, 1), cpts.atlas(ind, 1)], [cpts.data(ind, 2), cpts.atlas(ind, 2)], [cpts.data(ind, 3), cpts.atlas(ind, 3)])
+end
+hold off
+
+%% Create the scatteredInterpolant
 % Interpolate between the displacements needed at each data point
 % to get a function for the estimated displacement field needed 
 % for warping the data to the atlas
