@@ -256,7 +256,7 @@ if ~exist('Mcr_P', 'var')
     Mcr_P = P; % VSX_auto will clear the P, so set it to not be cleared because unstackFrames needs it
 end
 
-savefast([Mcr_savepath, 'PData'], 'PData') % Save the PData structure
+save([Mcr_savepath, 'PData'], 'PData') % Save the PData structure
 
 for Mcr_filenum = Mcr_startFile:Mcr_endFile
 % for Mcr_filenum = Mcr_endFile:-1:Mcr_startFile
