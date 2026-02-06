@@ -343,6 +343,16 @@ end
 
 save([Mcr_savepath, 'PData'], 'PData') % Save the PData structure
 
+%% Make a plot of all the ixcs
+ixc_allfiles = [];
+for test_fn = Mcr_startFile:Mcr_endFile
+% for test_fn = 146:346
+    load([Mcr_savepath, 'ixc-', num2str(test_fn), '.mat'])
+    ixc_allfiles = cat(2, ixc_allfiles, ixc);
+end
+
+figure; plot(abs(ixc_allfiles)); xlabel("Frame"); ylabel('|Cross correlation of images|')
+
 %% saving speed test
 % tic
 % test = IData{1};
