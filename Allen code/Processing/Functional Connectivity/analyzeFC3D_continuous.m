@@ -304,6 +304,7 @@ end
 %% Apply the rigid registration/warping to the ultrasound data
 
 % temp_US_template = imwarp(PDI_allSF_avg_rs, rigid_tform_50um, 'cubic', 'OutputView', Rout);
+Rout = imref3d(size(AA_template_50um)); % Reference for the output of the transformation
 
 tic
 % Go through every superframe and 1) resize to the 50 um voxel size, and 2) apply the registration
@@ -389,6 +390,7 @@ for ri = 1:roi.num_regions
     PDI_ROI_hemis_timecourses{ri, 2} = squeeze(PDI_ROI_hemis_timecourses{ri, 2}');
 
 end
+clearvars ri ROI_mask_temp PDI_ri_masked_temp ROI_mask_temp_left ROI_mask_temp_right PDI_ri_masked_temp_left PDI_ri_masked_temp_right
 
 %% Add global mean subtracted versions
 PDI_ROI_GMS_timecourses = cell(roi.num_regions, 1);
@@ -437,18 +439,17 @@ GVTD(end + 1) = NaN; % pad the end with a NaN, since there is no forward point p
 
 % figure; plot(t, GVTD); title("Global Variance of the Temporal Derivative (GVTD) - PDIallSF"); xlabel("Time [s]"); ylabel("GVTD")
 
-figure
-% yyaxis left
-
 % Add accelerometer
-% yyaxis right
 accel = sqrt(sum(TD.inScanData.^2, 2)); % Acceleration magnitude
 accel_zm = accel - mean(accel);
+GVTD_zm = GVTD - mean(GVTD);
+PDI_reg_global_mean_zm = PDI_reg_global_mean - mean(PDI_reg_global_mean);
 
+figure
 plot(TD.daqTimeTags, accel_zm ./ max(accel_zm), '--') % Plot normalized, zero-meaned accelerometer magnitude
 hold on
-plot(t, GVTD ./ max(GVTD), 'LineWidth', 2); title("Global Variance of the Temporal Derivative (GVTD) of PDIallSF vs. Accelerometer"); xlabel("Time [s]"); ylabel("GVTD")
-plot(t, (PDI_reg_global_mean - mean(PDI_reg_global_mean)) ./ max(PDI_reg_global_mean))
+plot(t, GVTD_zm ./ max(GVTD_zm), 'LineWidth', 2); title("Global Variance of the Temporal Derivative (GVTD) of PDIallSF vs. Accelerometer"); xlabel("Time [s]"); ylabel("GVTD")
+plot(t, PDI_reg_global_mean_zm ./ max(PDI_reg_global_mean_zm))
 ylabel("Accelerometer amplitude")
 % legend("GVTD", "Accelerometer component 1", "Accelerometer component 2", "Accelerometer component 3")
 legend("Accelerometer magnitude", "GVTD", "PDI global mean")
@@ -638,6 +639,9 @@ corr_PDI_hemis_GMS = corrcoef(PDI_ROI_hemis_GMS_timecourses_mat);
 
 plotCM(corr_PDI_GMS, roi)
 plotCM(corr_PDI_hemis_GMS, roi, true)
+
+%% Save the processed data
+save([data_dirpath, 'dataproc_no_PDIallBlocks.mat'], 'corr_PDI_GMS', 'corr_PDI_hemis_GMS', 'accel', 'accel_zm', 'GVTD', 'GVTD_zm', 'PDI_reg_global_mean', 'PDI_reg_global_mean_zm', 'PDI_ROI_GMS_timecourses', 'PDI_ROI_GMS_timecourses_mat', 'PDI_ROI_hemis_GMS_timecourses', 'PDI_ROI_hemis_GMS_timecourses_mat', 'PDI_ROI_timecourses', 'PDI_ROI_timecourses_mat', 'PDI_ROI_hemis_timecourses', 'PDI_ROI_hemis_timecourses', 'Rout', 't')
 
 %% -- Calculate changes in FC (seed correlation matrices) over time with sliding windows -- %
 
