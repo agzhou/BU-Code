@@ -312,8 +312,8 @@ figure; plot(t, PDI_reg_global_mean); title("Global mean (voxelwise)"); xlabel("
 num_sf = size(PDIallSF_reg, 4); % # of superframes
 
 % PDI_ROI_timecourses = cell(num_regions, num_sf); % Store average ROI PDI timecourses in a cell array (each cell is an average timecourse)
-PDI_ROI_timecourses = cell(num_regions, 1); % Store average ROI PDI timecourses in a cell array (each cell is an average timecourse)
-PDI_ROI_hemis_timecourses = cell(num_regions, 2); % Store average ROI PDI (hemisphere-separated) timecourses in a cell array (each cell is an average timecourse)
+PDI_ROI_timecourses = cell(roi.num_regions, 1); % Store average ROI PDI timecourses in a cell array (each cell is an average timecourse)
+PDI_ROI_hemis_timecourses = cell(roi.num_regions, 2); % Store average ROI PDI (hemisphere-separated) timecourses in a cell array (each cell is an average timecourse)
 
 % -- Calculate PDI [ROI average] timecourses -- %
 tic
@@ -322,16 +322,16 @@ for ti = 1:num_sf % "time" index -- go through each superframe
     disp(ti)
     PDIallSF_reg_ti_temp = squeeze(PDIallSF_reg(:, :, :, ti)); % Registered volume at "time" index ti
 
-    for ri = 1:num_regions % region/ROI index -- loop through each region
+    for ri = 1:roi.num_regions % region/ROI index -- loop through each region
 
         % Normal
-        ROI_mask_temp = region_masks_50um{ri}; % ROI #ri mask
+        ROI_mask_temp = roi.masks_50um{ri}; % ROI #ri mask
         PDI_ri_masked_temp = PDIallSF_reg_ti_temp(ROI_mask_temp); % Vectorized voxels of the registered PDI at "time" index ti
         PDI_ROI_timecourses{ri}(ti) = mean(PDI_ri_masked_temp);
         
         % Hemisphere-separated
-        ROI_mask_temp_left = region_masks_50um_hemis{ri, 1}; % ROI #ri mask (left)
-        ROI_mask_temp_right = region_masks_50um_hemis{ri, 2}; % ROI #ri mask (right)
+        ROI_mask_temp_left = roi.masks_50um_hemis{ri, 1}; % ROI #ri mask (left)
+        ROI_mask_temp_right = roi.masks_50um_hemis{ri, 2}; % ROI #ri mask (right)
         PDI_ri_masked_temp_left = PDIallSF_reg_ti_temp(ROI_mask_temp_left); % Vectorized voxels of the registered PDI at "time" index ti
         PDI_ri_masked_temp_right = PDIallSF_reg_ti_temp(ROI_mask_temp_right); % Vectorized voxels of the registered PDI at "time" index ti
         PDI_ROI_hemis_timecourses{ri, 1}(ti) = mean(PDI_ri_masked_temp_left);
@@ -343,7 +343,7 @@ end
 toc
 
 % Make any row timecourses into column vectors
-for ri = 1:num_regions
+for ri = 1:roi.num_regions
     PDI_ROI_timecourses{ri} = squeeze(PDI_ROI_timecourses{ri}');
 
     PDI_ROI_hemis_timecourses{ri, 1} = squeeze(PDI_ROI_hemis_timecourses{ri, 1}');
@@ -352,38 +352,38 @@ for ri = 1:num_regions
 end
 
 %% Add global mean subtracted versions
-PDI_ROI_GMS_timecourses = cell(num_regions, 1);
-PDI_ROI_hemis_GMS_timecourses = cell(num_regions, 2);
-for ri = 1:num_regions
+PDI_ROI_GMS_timecourses = cell(roi.num_regions, 1);
+PDI_ROI_hemis_GMS_timecourses = cell(roi.num_regions, 2);
+for ri = 1:roi.num_regions
     PDI_ROI_GMS_timecourses{ri} = PDI_ROI_timecourses{ri} - PDI_reg_global_mean;
     PDI_ROI_hemis_GMS_timecourses{ri, 1} = PDI_ROI_hemis_timecourses{ri, 1} - PDI_reg_global_mean;
     PDI_ROI_hemis_GMS_timecourses{ri, 2} = PDI_ROI_hemis_timecourses{ri, 2} - PDI_reg_global_mean;
 end
 
 %% Store the ROI timecourses in matrix form
-PDI_ROI_timecourses_mat = zeros(length(t), num_regions); % Still ROI-averaged PDI timecourses, but in matrix form (each column is a separate ROI timecourse). Dimensions: [# time points, # ROIs]
-for ri = 1:num_regions % region/ROI index -- loop through each region
+PDI_ROI_timecourses_mat = zeros(length(t), roi.num_regions); % Still ROI-averaged PDI timecourses, but in matrix form (each column is a separate ROI timecourse). Dimensions: [# time points, # ROIs]
+for ri = 1:roi.num_regions % region/ROI index -- loop through each region
     PDI_ROI_timecourses_mat(:, ri) = PDI_ROI_timecourses{ri};
 end
 % figure; plot(PDI_ROI_timecourses{1})
 
 % Hemisphere-separated version
-PDI_ROI_hemis_timecourses_mat = zeros(length(t), num_regions*2); % Still ROI-averaged PDI timecourses, but in matrix form (each column is a separate ROI timecourse). Dimensions: [# time points, # ROIs]
-for ri = 1:num_regions % region/ROI index -- loop through each region
+PDI_ROI_hemis_timecourses_mat = zeros(length(t), roi.num_regions*2); % Still ROI-averaged PDI timecourses, but in matrix form (each column is a separate ROI timecourse). Dimensions: [# time points, # ROIs]
+for ri = 1:roi.num_regions % region/ROI index -- loop through each region
     PDI_ROI_hemis_timecourses_mat(:, (ri - 1)*2 + 1) = PDI_ROI_hemis_timecourses{ri, 1};
     PDI_ROI_hemis_timecourses_mat(:, ri*2) = PDI_ROI_hemis_timecourses{ri, 2};
 end
 % figure; plot(PDI_ROI_timecourses{1})
 
 %% Store the ROI timecourses in matrix form (GMS version)
-PDI_ROI_GMS_timecourses_mat = zeros(length(t), num_regions); % Still ROI-averaged PDI timecourses, but in matrix form (each column is a separate ROI timecourse). Dimensions: [# time points, # ROIs]
-for ri = 1:num_regions % region/ROI index -- loop through each region
+PDI_ROI_GMS_timecourses_mat = zeros(length(t), roi.num_regions); % Still ROI-averaged PDI timecourses, but in matrix form (each column is a separate ROI timecourse). Dimensions: [# time points, # ROIs]
+for ri = 1:roi.num_regions % region/ROI index -- loop through each region
     PDI_ROI_GMS_timecourses_mat(:, ri) = PDI_ROI_GMS_timecourses{ri};
 end
 
 % Hemisphere-separated version
-PDI_ROI_hemis_GMS_timecourses_mat = zeros(length(t), num_regions*2); % Still ROI-averaged PDI timecourses, but in matrix form (each column is a separate ROI timecourse). Dimensions: [# time points, # ROIs]
-for ri = 1:num_regions % region/ROI index -- loop through each region
+PDI_ROI_hemis_GMS_timecourses_mat = zeros(length(t), roi.num_regions*2); % Still ROI-averaged PDI timecourses, but in matrix form (each column is a separate ROI timecourse). Dimensions: [# time points, # ROIs]
+for ri = 1:roi.num_regions % region/ROI index -- loop through each region
     PDI_ROI_hemis_GMS_timecourses_mat(:, (ri - 1)*2 + 1) = PDI_ROI_hemis_GMS_timecourses{ri, 1};
     PDI_ROI_hemis_GMS_timecourses_mat(:, ri*2) = PDI_ROI_hemis_GMS_timecourses{ri, 2};
 end
@@ -406,10 +406,14 @@ figure
 accel = sqrt(sum(TD.inScanData.^2, 2));
 accel_zm = accel - mean(accel);
 
+% Zero mean everything
+GVTD_zm = GVTD - mean(GVTD, 'omitnan');
+PDI_reg_global_mean_zm = PDI_reg_global_mean - mean(PDI_reg_global_mean);
+
 plot(TD.daqTimeTags, accel_zm ./ max(accel_zm), '--')
 hold on
-plot(t, GVTD ./ max(GVTD), 'LineWidth', 2); title("Global Variance of the Temporal Derivative (GVTD) of PDIallSF vs. Accelerometer"); xlabel("Time [s]"); ylabel("GVTD")
-plot(t, PDI_reg_global_mean ./ max(PDI_reg_global_mean))
+plot(t, GVTD_zm ./ max(GVTD_zm), 'LineWidth', 2); title("Global Variance of the Temporal Derivative (GVTD) of PDIallSF vs. Accelerometer"); xlabel("Time [s]"); ylabel("GVTD")
+plot(t, PDI_reg_global_mean_zm ./ max(PDI_reg_global_mean_zm), '-.')
 ylabel("Accelerometer amplitude")
 % legend("GVTD", "Accelerometer component 1", "Accelerometer component 2", "Accelerometer component 3")
 legend("Accelerometer component 1", "GVTD", "PDI global mean")
@@ -487,8 +491,8 @@ corr_PDI_hemis_GMS = corrcoef(PDI_ROI_hemis_GMS_timecourses_mat);
 
 %% Plot the FC correlation matrices (full timecourse)
 
-plotCM(corr_PDI, roi)
-plotCM(corr_PDI_hemis, roi, true)
+% plotCM(corr_PDI, roi)
+% plotCM(corr_PDI_hemis, roi, true)
 
 plotCM(corr_PDI_GMS, roi)
 plotCM(corr_PDI_hemis_GMS, roi, true)
