@@ -204,7 +204,7 @@ ixc_allfiles = [];
 SVs_allfiles = [];
 for filenum = startFile:endFile
     load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'ixc', 'SVs')
-    % ixc_allfiles = cat(2, ixc_allfiles, ixc);
+    ixc_allfiles = cat(2, ixc_allfiles, ixc);
     SVs_allfiles = cat(2, SVs_allfiles, SVs);
 end
 
