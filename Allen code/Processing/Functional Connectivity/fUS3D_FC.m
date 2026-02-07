@@ -199,7 +199,7 @@ for filenum = startFile:endFile
     
 end
 
-%% Make a plot of all the ixcs
+%% Make a plot of all the ixcs and SVs
 ixc_allfiles = [];
 SVs_allfiles = [];
 for filenum = startFile:endFile
@@ -208,12 +208,25 @@ for filenum = startFile:endFile
     SVs_allfiles = cat(2, SVs_allfiles, SVs);
 end
 
-% figure; plot(abs(ixc_allfiles)); xlabel("Frame"); ylabel('|Cross correlation of images|')
+figure; plot(abs(ixc_allfiles)); xlabel("Frame"); ylabel('|Cross correlation of images|')
 % figure; plot(ut_ms, abs(ixc_allfiles)); xlabel("Micro time [ms]"); ylabel('|Cross correlation of images|')
 figure; semilogy(SVs_allfiles); xlabel("Singular value number"); ylabel("Singular value magnitude")
 
+%% Make a plot of all the ixcs
+ixc_allfiles = [];
+% SVs_allfiles = [];
+for filenum = startFile:endFile
+% for filenum = 146:endFile
+    load([IQpath, 'ixc-', num2str(filenum), '.mat'], 'ixc')
+%     load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'ixc', 'SVs')
+    ixc_allfiles = cat(2, ixc_allfiles, ixc);
+%     SVs_allfiles = cat(2, SVs_allfiles, SVs);
+end
 
-% %% Convert g1 into CBV, CBFspeed, etc.
+figure; plot(abs(ixc_allfiles)); xlabel("Frame"); ylabel('|Cross correlation of images|')
+% figure; plot(ut_ms, abs(ixc_allfiles)); xlabel("Micro time [ms]"); ylabel('|Cross correlation of images|')
+
+%% Convert g1 into CBV, CBFspeed, etc.
 % 
 % n_CBV = 2; % n for the new CBV index derivation
 % 
