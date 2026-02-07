@@ -431,7 +431,7 @@ legend("Accelerometer component 1", "GVTD", "PDI global mean")
 
 % Plot multiple stackedplots to visualize ROI PDI timecourses
 num_cols_per_sp = 16;
-num_sps = ceil(num_regions/num_cols_per_sp); % # of stackedplot to use since they only allow 25 columns max
+num_sps = ceil(roi.num_regions/num_cols_per_sp); % # of stackedplot to use since they only allow 25 columns max
 
 for spi = 1:num_sps
     % - NOTE: stackedplot only allows for 25 columns max - % 
