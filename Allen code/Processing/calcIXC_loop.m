@@ -62,7 +62,7 @@ for filenum = startFile:endFile
     % figure; imagesc(squeeze(max(abs(IQ(:, :, :, 2)), [], 1))')
 
     % Calculate the cross correlation of raw IQ (masked) to look at motion
-    ixc = calcIXC(IQ);
+    ixc = calcIXC_simple(IQ);
     ut_ms = (1:size(IQ, 4)) ./ P.frameRate .* 1e3; % micro time [ms]
 %     % figure; plot(ut_ms, abs(ixc)); xlabel('Micro time [ms]'); ylabel('|Cross correlation of images|')
 %     figure; plot(abs(ixc)); xlabel('Frame'); ylabel('|Cross correlation of images|')
