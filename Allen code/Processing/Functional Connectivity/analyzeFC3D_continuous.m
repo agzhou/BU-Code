@@ -562,6 +562,12 @@ end
 close(vw)
 
 %% Plot each ROI's PDI timecourse
+% pmax = max(PDI_ROI_GMS_timecourses_mat(:, 1));
+% pmin = min(PDI_ROI_GMS_timecourses_mat(:, 1));
+
+pmax = prctile(PDI_ROI_GMS_timecourses_mat, 80, 'all');
+pmin = prctile(PDI_ROI_GMS_timecourses_mat, 40, 'all');
+
 % subplot(num_regions, 1, 1)
 % figure;
 % ROI_PDI_timecourse_tl = tiledlayout("vertical"); % Vertical tile layout
@@ -591,7 +597,10 @@ for spi = 1:num_sps
     title("ROI average PDI timecourses")
     xlabel("Time [s]")
     % fontsize(14, 'points')
-
+    % ylim([pmin, pmax])
+    % for ai = 1:size(ROI_PDI_timecourse_sp.AxesProperties, 1) % Go through the index for each axes object
+    %     ROI_PDI_timecourse_sp.AxesProperties(ai).YLimits = [pmin, pmax];
+    % end
 end
 
 for spi = 1:num_sps*2

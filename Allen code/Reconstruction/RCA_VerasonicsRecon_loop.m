@@ -19,6 +19,7 @@
 %% Activate the Verasonics folder
 clearvars
 
+addpath(fullfile(cd))
 % cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.7-2505271400' % Lab PC (bme-boas-19)
 cd 'C:\Users\agzhou\Vantage-4.9.7-2505271400' % Office PC (bme-boas-27)
 
