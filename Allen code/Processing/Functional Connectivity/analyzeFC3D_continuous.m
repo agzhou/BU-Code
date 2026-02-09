@@ -324,12 +324,12 @@ toc
 
 clearvars PDI_bi bi PDI_bi_rs
 
-PDIallSF_reg_avg = squeeze(mean(PDIallBlocks_reg, 4));
+PDIallBlocks_reg_avg = squeeze(mean(PDIallBlocks_reg, 4));
 
 %% (Optional) Overlay the ROI masks onto the registered PDI, for verification
 
 % compareUStoAtlasROIs(squeeze(PDIallBlocks_reg(:, :, :, 1)), roi.masks_50um) % Non-hemisphere separated ROIs
-compareUStoAtlasROIs(PDIallSF_reg_avg .^ 0.5, roi.masks_50um) % Non-hemisphere separated ROIs
+compareUStoAtlasROIs(PDIallBlocks_reg_avg .^ 0.5, roi.masks_50um) % Non-hemisphere separated ROIs
 % compareUStoAtlasROIs(squeeze(PDIallBlocks_reg(:, :, :, 1)), roi.masks_50um_hemis(:)) % Hemisphere separated ROIs
 
 %% (Optional) Save the registered PDI across superframes data, along with the ROI masks
@@ -442,7 +442,7 @@ GVTD(end + 1) = NaN; % pad the end with a NaN, since there is no forward point p
 % Add accelerometer
 accel = sqrt(sum(TD.inScanData.^2, 2)); % Acceleration magnitude
 accel_zm = accel - mean(accel);
-GVTD_zm = GVTD - mean(GVTD);
+GVTD_zm = GVTD - mean(GVTD, 'omitnan');
 PDI_reg_global_mean_zm = PDI_reg_global_mean - mean(PDI_reg_global_mean);
 
 figure
@@ -450,7 +450,7 @@ plot(TD.daqTimeTags, accel_zm ./ max(accel_zm), '--') % Plot normalized, zero-me
 hold on
 plot(t, GVTD_zm ./ max(GVTD_zm), 'LineWidth', 2); title("Global Variance of the Temporal Derivative (GVTD) of PDIallSF vs. Accelerometer"); xlabel("Time [s]"); ylabel("GVTD")
 plot(t, PDI_reg_global_mean_zm ./ max(PDI_reg_global_mean_zm))
-ylabel("Accelerometer amplitude")
+ylabel("Amplitude")
 % legend("GVTD", "Accelerometer component 1", "Accelerometer component 2", "Accelerometer component 3")
 legend("Accelerometer magnitude", "GVTD", "PDI global mean")
 
@@ -578,7 +578,7 @@ close(vw)
 
 % Plot multiple stackedplots to visualize ROI PDI timecourses
 num_cols_per_sp = 16;
-num_sps = ceil(num_regions/num_cols_per_sp); % # of stackedplot to use since they only allow 25 columns max
+num_sps = ceil(roi.num_regions/num_cols_per_sp); % # of stackedplot to use since they only allow 25 columns max
 
 for spi = 1:num_sps
     % - NOTE: stackedplot only allows for 25 columns max - % 
