@@ -70,8 +70,31 @@ US_Atlas_Reg
 saved_reg_data_FilePath = [saved_reg_data_FilePath, saved_reg_data_FilePathFN];
 load(saved_reg_data_FilePath)
 
+%% (Optional) Load the PDI across superframes data
+% [PDIallBlocks_FilePathFN, PDIallBlocks_FilePath] = uigetfile([data_dirpath, 'PDIallBlocks.mat'], 'Select the PDI across blocks data');
+% PDIallBlocks_FilePath = [PDIallBlocks_FilePath, PDIallBlocks_FilePathFN];
+% load(PDIallBlocks_FilePath)
+filenumberPrompt = {'Start file number', 'End file number'};
+filenumberDefaults = {'1', ''};
+filenumberUserInput = inputdlg(filenumberPrompt, 'Input Parameters', 1, filenumberDefaults);
+startFile = str2double(filenumberUserInput{1});
+endFile = str2double(filenumberUserInput{2});
+numFiles = endFile - startFile + 1;
+
+load([data_dirpath, 'fUSdata-', num2str(1), '.mat'], 'PDI', 'noise')
+PDIallSF = zeros([size(PDI), numFiles]); % Matrix with the CBVi for every superframe
+PDIallSF(:, :, :, 1) = PDI ./ noise;
+
+for bn = 1:numFiles
+%     load([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI')
+    load([data_dirpath, 'fUSdata-', num2str(bn), '.mat'], 'PDI', 'noise')
+
+    PDIallSF(:, :, :, bn) = PDI ./ noise;
+end
+
 %% Store the manual registration transformation info and 
 rigid_tform_50um = fUSmap_50um_rigid_reg.tform;
+Rout = imref3d(size(AA_template_50um)); % Reference for the output of the transformation
 
 % % **** manually define the rigid tform ****
 % rigidRegParameterPrompt = {'x angle [deg]', 'y angle [deg]', 'z angle [deg]', 'x translation [voxels]', 'y translation [voxels]', 'z translation [voxels]'};
@@ -263,7 +286,7 @@ t = TD.sfTimeTags;
 % %% Upsample/interpolate over time to match the timing data...
 % pupil_fr = 10; % Pupil data (behavioral camera) frame rate
 
-%% Load the PDI across superframes data
+%% (Optional) Load the PDI across superframes data
 [PDIallSF_FilePathFN, PDIallSF_FilePath] = uigetfile([data_dirpath, 'PDIallSF.mat'], 'Select the PDI across superframes data');
 PDIallSF_FilePath = [PDIallSF_FilePath, PDIallSF_FilePathFN];
 load(PDIallSF_FilePath)
@@ -535,6 +558,10 @@ corr_PDI_hemis_GMS = corrcoef(PDI_ROI_hemis_GMS_timecourses_mat);
 
 plotCM(corr_PDI_GMS, roi)
 plotCM(corr_PDI_hemis_GMS, roi, true)
+
+%% Save the processed data
+save([data_dirpath, 'dataproc_no_PDIallSF.mat'], 'corr_PDI_GMS', 'corr_PDI_hemis_GMS', 'accel', 'accel_zm', 'GVTD', 'GVTD_zm', 'PDI_reg_global_mean', 'PDI_reg_global_mean_zm', 'PDI_ROI_GMS_timecourses', 'PDI_ROI_GMS_timecourses_mat', 'PDI_ROI_hemis_GMS_timecourses', 'PDI_ROI_hemis_GMS_timecourses_mat', 'PDI_ROI_timecourses', 'PDI_ROI_timecourses_mat', 'PDI_ROI_hemis_timecourses', 'PDI_ROI_hemis_timecourses', 'Rout', 't')
+
 
 %% -- Calculate changes in FC (seed correlation matrices) over time with sliding windows -- %
 
