@@ -111,7 +111,7 @@ for filenum = startFile:endFile
 % for filenum = [2:endFile]
 % for filenum = [endFile - 1:-1:startFile]
 % for filenum = 11:20
-% for filenum = startFile + 1
+% for filenum = startFile
 
     % Load the IQ data
     tic
