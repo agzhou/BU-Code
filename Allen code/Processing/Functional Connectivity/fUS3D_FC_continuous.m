@@ -112,7 +112,8 @@ save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_uppe
 %% Main loop: go through each block
 for bn = 1:numBlocks
 % for bn = 2:numBlocks
-% for bn = 368:numBlocks
+% for bn = 3:numBlocks
+% for bn = 1
     tic
 
     % shortFlag = false;
