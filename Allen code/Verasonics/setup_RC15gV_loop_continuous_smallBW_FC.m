@@ -28,6 +28,7 @@ savepath = [savepath, '\'];
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Number of buffers', 'Use accelerometer (0-no, 1-yes)'}; % 'Save RF data (0-no, 1-yes)', 
 % parameterDefaults = {'20', '2', '10', '30000', '400', '11', '5', '13.6', '1540', '0', '1', '400', '2'};
 parameterDefaults = {'20', '2', '8', '30000', '400', '11', '5', '13.6', '1540', '0', '1', '400', '2', '1'};
+% parameterDefaults = {'20', '2', '8', '30000', '350', '11', '5', '13.6', '1540', '0', '1', '350', '2', '1'};
 
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
@@ -802,7 +803,7 @@ end
 % saveRcvData(RcvData{1})
 clearvars RcvData
 
-save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
+% save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
 
 
 %% **** Callback routines used by UIControls (UI) ****
