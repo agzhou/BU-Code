@@ -54,10 +54,12 @@ for filenum = startFile:endFile
 
     % Load the IQ data
     tic
-    load([IQpath, IQfilenameStructure, num2str(filenum)])
+    % load([IQpath, IQfilenameStructure, num2str(filenum)])
     
-    IQ = single(squeeze(IData + 1i .* QData));
+    % IQ = single(squeeze(IData + 1i .* QData));
 %     clearvars IData QData
+
+    load([IQpath, IQfilenameStructure, num2str(filenum)])
 
     % figure; imagesc(squeeze(max(abs(IQ(:, :, :, 2)), [], 1))')
 
@@ -69,54 +71,54 @@ for filenum = startFile:endFile
 %     title("Superframe " + num2str(filenum))
 
 
-%     % Choose 2 frames to evaluate
-%     ref_fn = 1;     % Reference frame #
-%     moving_fn = 21; % Moving frame #
-%     ref_vol = squeeze(IQ(:, :, :, ref_fn));
-%     moving_vol = squeeze(IQ(:, :, :, moving_fn));
-% 
-%     % Upsample the images
-%     us_factor = 4; % Upsampling factor
-%     ref_vol_us = imresize3(ref_vol, us_factor, 'Method', 'cubic');
-%     moving_vol_us = imresize3(moving_vol, us_factor, 'Method', 'cubic');
-%     
-%     % Test: look at MIPs of the upsampled IQ volumes
-%     figure; imagesc(squeeze(max(abs(ref_vol_us), [], 1))'); colormap gray
-%     figure; imagesc(squeeze(max(abs(moving_vol_us), [], 1))'); colormap gray
-% 
-%     % Try a few shifts (THESE MUST BE INTEGERS)
-%     shift.inc = [1, 1, 1]; % y, x, z shift increments in units of [upsampled voxels]
-%     % shift.max = [0, 0, 5]; % Maximum y, x, z |shift| in units of [upsampled voxels]
-%     % shift.max = [5, 0, 2]; % Maximum y, x, z |shift| in units of [upsampled voxels]
-%     shift.max = [2, 1, 1]; % Maximum y, x, z |shift| in units of [upsampled voxels]
-%     shift.yspan = -shift.max(1):shift.inc(1):shift.max(1);
-%     shift.xspan = -shift.max(2):shift.inc(2):shift.max(2);
-%     shift.zspan = -shift.max(3):shift.inc(3):shift.max(3);
-% 
-%     [shift.ygrid, shift.xgrid, shift.zgrid] = meshgrid(shift.yspan,  shift.xspan,  shift.zspan);
-%     % Squeeze in case the shift in any dimension is disabled, and vectorize
-%     shift.ygrid = squeeze(shift.ygrid); shift.ygrid = shift.ygrid(:);
-%     shift.xgrid = squeeze(shift.xgrid); shift.xgrid = shift.xgrid(:);
-%     shift.zgrid = squeeze(shift.zgrid); shift.zgrid = shift.zgrid(:);
-%     shift.shifts = [shift.ygrid, shift.xgrid, shift.zgrid];
-% 
-%     shift.numShifts = length(shift.ygrid); % Total # of shifts to try
-% 
-%     % shift.ixc = zeros(P.numFramesPerBuffer, shift.numShifts); % Initialize the post-shift ixc matrix. Each column is the ixc timecourse for that shift.
-%     shift.ixc = zeros(1, shift.numShifts); % Initialize the post-shift ixc matrix. Each column is the ixc timecourse for that shift.
-%     vs_us = size(ref_vol_us); % Upsampled volume's size
-%     for sn = 1:shift.numShifts % shift number
-%     % for sn = 1
-%         disp(sn)
-%         shift_sn = [shift.ygrid(sn), shift.xgrid(sn), shift.zgrid(sn)];
-%         moving_vol_us_sn = imtranslate(moving_vol_us, shift_sn, 'OutputView','same'); % Shifted (upsampled) moving volume at shift number #sn
-%         % figure; imagesc(squeeze(max(abs(moving_vol_us_sn), [], 1))'); colormap gray
-%         
-%         shift.ixc(:, sn) = calcIXC_shift(ref_vol_us, moving_vol_us_sn, true);
-%     end   
-%     shift.abs_ixc = abs(shift.ixc);
+    % Choose 2 frames to evaluate
+    ref_fn = 1;     % Reference frame #
+    moving_fn = 251; % Moving frame #
+    ref_vol = squeeze(IQ(:, :, :, ref_fn));
+    moving_vol = squeeze(IQ(:, :, :, moving_fn));
 
+    % Upsample the images
+    us_factor = 8; % Upsampling factor
+    ref_vol_us = imresize3(ref_vol, us_factor, 'Method', 'cubic');
+    moving_vol_us = imresize3(moving_vol, us_factor, 'Method', 'cubic');
 
+    % Test: look at MIPs of the upsampled IQ volumes
+    figure; imagesc(squeeze(max(abs(ref_vol_us), [], 1))'); colormap gray
+    figure; imagesc(squeeze(max(abs(moving_vol_us), [], 1))'); colormap gray
+% 
+    % Try a few shifts (THESE MUST BE INTEGERS)
+    shift.inc = [1, 1, 1]; % y, x, z shift increments in units of [upsampled voxels]
+    shift.max = [0, 0, 5]; % Maximum y, x, z |shift| in units of [upsampled voxels]
+    % shift.max = [5, 0, 2]; % Maximum y, x, z |shift| in units of [upsampled voxels]
+    % shift.max = [2, 1, 1]; % Maximum y, x, z |shift| in units of [upsampled voxels]
+    shift.yspan = -shift.max(1):shift.inc(1):shift.max(1);
+    shift.xspan = -shift.max(2):shift.inc(2):shift.max(2);
+    shift.zspan = -shift.max(3):shift.inc(3):shift.max(3);
+
+    [shift.ygrid, shift.xgrid, shift.zgrid] = meshgrid(shift.yspan,  shift.xspan,  shift.zspan);
+    % Squeeze in case the shift in any dimension is disabled, and vectorize
+    shift.ygrid = squeeze(shift.ygrid); shift.ygrid = shift.ygrid(:);
+    shift.xgrid = squeeze(shift.xgrid); shift.xgrid = shift.xgrid(:);
+    shift.zgrid = squeeze(shift.zgrid); shift.zgrid = shift.zgrid(:);
+    shift.shifts = [shift.ygrid, shift.xgrid, shift.zgrid];
+
+    shift.numShifts = length(shift.ygrid); % Total # of shifts to try
+
+    % shift.ixc = zeros(P.numFramesPerBuffer, shift.numShifts); % Initialize the post-shift ixc matrix. Each column is the ixc timecourse for that shift.
+    shift.ixc = zeros(1, shift.numShifts); % Initialize the post-shift ixc matrix. Each column is the ixc timecourse for that shift.
+    vs_us = size(ref_vol_us); % Upsampled volume's size
+    for sn = 1:shift.numShifts % shift number
+    % for sn = 1
+        disp(sn)
+        shift_sn = [shift.ygrid(sn), shift.xgrid(sn), shift.zgrid(sn)];
+        moving_vol_us_sn = imtranslate(moving_vol_us, shift_sn, 'OutputView','same'); % Shifted (upsampled) moving volume at shift number #sn
+        % figure; imagesc(squeeze(max(abs(moving_vol_us_sn), [], 1))'); colormap gray
+
+        shift.ixc(:, sn) = calcIXC_shift(ref_vol_us, moving_vol_us_sn, true);
+    end   
+    shift.abs_ixc = abs(shift.ixc);
+    [shift.opt_shift_ixc, shift.opt_shift_ind] = max(shift.abs_ixc);
+    shift.opt_shift = shift.shifts(shift.opt_shift_ind, :);
 
 
 
