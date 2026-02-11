@@ -74,22 +74,25 @@ for filenum = startFile:endFile
     % Choose 2 frames to evaluate
     ref_fn = 1;     % Reference frame #
     moving_fn = 251; % Moving frame #
-    ref_vol = squeeze(IQ(:, :, :, ref_fn));
-    moving_vol = squeeze(IQ(:, :, :, moving_fn));
+    % ref_vol = squeeze(IQ(:, :, :, ref_fn));
+    % moving_vol = squeeze(IQ(:, :, :, moving_fn));
+    % Try using the phase
+    ref_vol = squeeze(angle(IQ(:, :, :, ref_fn)));
+    moving_vol = squeeze(angle(IQ(:, :, :, moving_fn)));
 
     % Upsample the images
-    us_factor = 8; % Upsampling factor
+    us_factor = 1; % Upsampling factor
     ref_vol_us = imresize3(ref_vol, us_factor, 'Method', 'cubic');
     moving_vol_us = imresize3(moving_vol, us_factor, 'Method', 'cubic');
 
     % Test: look at MIPs of the upsampled IQ volumes
     figure; imagesc(squeeze(max(abs(ref_vol_us), [], 1))'); colormap gray
     figure; imagesc(squeeze(max(abs(moving_vol_us), [], 1))'); colormap gray
-% 
+
     % Try a few shifts (THESE MUST BE INTEGERS)
     shift.inc = [1, 1, 1]; % y, x, z shift increments in units of [upsampled voxels]
-    shift.max = [0, 0, 5]; % Maximum y, x, z |shift| in units of [upsampled voxels]
-    % shift.max = [5, 0, 2]; % Maximum y, x, z |shift| in units of [upsampled voxels]
+    shift.max = [5, 5, 5]; % Maximum y, x, z |shift| in units of [upsampled voxels]
+    % shift.max = [0, 0, 5]; % Maximum y, x, z |shift| in units of [upsampled voxels]
     % shift.max = [2, 1, 1]; % Maximum y, x, z |shift| in units of [upsampled voxels]
     shift.yspan = -shift.max(1):shift.inc(1):shift.max(1);
     shift.xspan = -shift.max(2):shift.inc(2):shift.max(2);
@@ -116,15 +119,26 @@ for filenum = startFile:endFile
 
         shift.ixc(:, sn) = calcIXC_shift(ref_vol_us, moving_vol_us_sn, true);
     end   
+
     shift.abs_ixc = abs(shift.ixc);
     [shift.opt_shift_ixc, shift.opt_shift_ind] = max(shift.abs_ixc);
     shift.opt_shift = shift.shifts(shift.opt_shift_ind, :);
 
+    figure; plot(shift.abs_ixc)
+    figure; plot(shift.shifts(:, 3), shift.abs_ixc); xlabel('z shift [voxels]'); ylabel('Cross correlation') % z shift only
 
+    %% Compare phase of the moving and fixed frames
+    generateTiffStack_acrossframes(abs(IQ) .^ 0.3, [8.8, 8.8, 8], 'gray', 1:size(IQ, 1))
 
+    figure; imagesc(squeeze(angle(ref_vol(size(ref_vol, 1)/2, :, :)))'); colormap jet; xlabel('x'); ylabel('z'); colorbar; title('Phase [rad]')
+    figure; imagesc(squeeze(angle(moving_vol(size(ref_vol, 1)/2, :, :)))'); colormap jet; xlabel('x'); ylabel('z'); colorbar; title('Phase [rad]')
+    figure; imagesc(squeeze(angle(ref_vol_us(size(ref_vol, 1)/2, :, :)))'); colormap jet; xlabel('x'); ylabel('z'); colorbar; title('Phase [rad]')
+    figure; imagesc(squeeze(angle(moving_vol_us(size(ref_vol, 1)/2, :, :)))'); colormap jet; xlabel('x'); ylabel('z'); colorbar; title('Phase [rad]')
 
+    %% TEST: Translate the frame, downsample back, and then do SVD
+    
 
-
+    %%
     % SVD decluttering
     [xp, yp, zp, nf] = size(IQ);
     PP = reshape(IQ, [xp*yp*zp, nf]);
