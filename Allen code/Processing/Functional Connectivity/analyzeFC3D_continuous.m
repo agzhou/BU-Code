@@ -565,8 +565,8 @@ close(vw)
 % pmax = max(PDI_ROI_GMS_timecourses_mat(:, 1));
 % pmin = min(PDI_ROI_GMS_timecourses_mat(:, 1));
 
-pmax = prctile(PDI_ROI_GMS_timecourses_mat, 80, 'all');
-pmin = prctile(PDI_ROI_GMS_timecourses_mat, 40, 'all');
+% pmax = prctile(PDI_ROI_GMS_timecourses_mat, 80, 'all');
+% pmin = prctile(PDI_ROI_GMS_timecourses_mat, 40, 'all');
 
 % subplot(num_regions, 1, 1)
 % figure;
