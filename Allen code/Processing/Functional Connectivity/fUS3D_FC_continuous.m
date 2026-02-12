@@ -112,7 +112,7 @@ save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_uppe
 %% Main loop: go through each block
 for bn = 1:numBlocks
 % for bn = 2:numBlocks
-% for bn = 3:numBlocks
+% for bn = 2
 % for bn = 1
     tic
 
@@ -206,7 +206,7 @@ for bn = 1:numBlocks
 %     figure; imagesc(squeeze(max(abs(subspace_img(:, :, :, 2)), [], 1))')
 % %     volumeViewer(abs(subspace_img(:, :, :, 2)))
 % 
-%     SSM = plotSSM(U, false);
+    SSM = plotSSM(U, false);
 % %     SSM = plotSSM(U, true);
 %     [~, a_opt, b_opt] = fitSSM(SSM, false); % Get the optimal singular value thresholds
 % %     [~, a_opt, b_opt] = fitSSM(SSM, true); % Get the optimal singular value thresholds
@@ -234,17 +234,14 @@ for bn = 1:numBlocks
 %     volumeViewer(PDI ./ noise)
 
 %     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'noise', '-v7.3', '-nocompression');
-    save([savepath, 'fUSdata-', num2str(bn), '.mat'], 'PDI', 'noise', 'SVs', 'ixc', 'numFramesPerSFToUse', '-v7.3')
+    save([savepath, 'fUSdata-', num2str(bn), '.mat'], 'PDI', 'noise', 'SVs', 'SSM', 'ixc', 'numFramesPerSFToUse', '-v7.3')
 
     disp("fUS result for block " + num2str(bn) + " saved" )
 %     disp("g1 result for file " + num2str(filenum) + " saved" )
-
     toc
-    
 end
 
 save([savepath, 'blocking_info.mat'], 'bn', 'bo', 'bs', 'startFile', 'endFile', 'nf', 'nfpbo', 'numBlocks', 'numFiles')
-
 
 %% Store all the PDI across the experiment into one matrix
 load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI', 'noise')
