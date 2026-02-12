@@ -54,8 +54,8 @@ numBlocks = floor(numFiles / nfpb);
 
 %% Main loop
 % for bi = 1:numBlocks
-% for bi = [2:numBlocks]
-for bi = 2
+for bi = [2:numBlocks]
+% for bi = 1
     IQ = [];
     filenumsToUse = (bi - 1) * nfpb + 1 : bi * nfpb;
 
@@ -70,83 +70,83 @@ for bi = 2
     % figure; imagesc(squeeze(max(abs(IQ(:, :, :, 2)), [], 1))')
 
     % Calculate the cross correlation of raw IQ (masked) to look at motion
-    tic
+    % tic
     ixc = calcIXC_simple(IQ);
-    toc
+    % toc
     ut_ms = (1:size(IQ, 4)) ./ P.frameRate .* 1e3; % micro time [ms]
 %     % figure; plot(ut_ms, abs(ixc)); xlabel('Micro time [ms]'); ylabel('|Cross correlation of images|')
 %     figure; plot(abs(ixc)); xlabel('Frame'); ylabel('|Cross correlation of images|')
 %     title("Superframe " + num2str(filenum))
+    toc
 
+    % % Choose 2 frames to evaluate
+    % ref_fn = 1;     % Reference frame #
+    % moving_fn = 251; % Moving frame #
+    % ref_vol = squeeze(IQ(:, :, :, ref_fn));
+    % moving_vol = squeeze(IQ(:, :, :, moving_fn));
+    % % % Try using the phase
+    % % ref_vol = squeeze(angle(IQ(:, :, :, ref_fn)));
+    % % moving_vol = squeeze(angle(IQ(:, :, :, moving_fn)));
+    % 
+    % % Upsample the images
+    % us_factor = 1; % Upsampling factor
+    % ref_vol_us = imresize3(ref_vol, us_factor, 'Method', 'cubic');
+    % moving_vol_us = imresize3(moving_vol, us_factor, 'Method', 'cubic');
+    % 
+    % % Test: look at MIPs of the upsampled IQ volumes
+    % figure; imagesc(squeeze(max(abs(ref_vol_us), [], 1))'); colormap gray
+    % figure; imagesc(squeeze(max(abs(moving_vol_us), [], 1))'); colormap gray
+    % 
+    % % Try a few shifts (THESE MUST BE INTEGERS)
+    % shift.inc = [1, 1, 1]; % y, x, z shift increments in units of [upsampled voxels]
+    % shift.max = [5, 5, 5]; % Maximum y, x, z |shift| in units of [upsampled voxels]
+    % % shift.max = [0, 0, 5]; % Maximum y, x, z |shift| in units of [upsampled voxels]
+    % % shift.max = [2, 1, 1]; % Maximum y, x, z |shift| in units of [upsampled voxels]
+    % shift.yspan = -shift.max(1):shift.inc(1):shift.max(1);
+    % shift.xspan = -shift.max(2):shift.inc(2):shift.max(2);
+    % shift.zspan = -shift.max(3):shift.inc(3):shift.max(3);
+    % 
+    % [shift.ygrid, shift.xgrid, shift.zgrid] = meshgrid(shift.yspan,  shift.xspan,  shift.zspan);
+    % % Squeeze in case the shift in any dimension is disabled, and vectorize
+    % shift.ygrid = squeeze(shift.ygrid); shift.ygrid = shift.ygrid(:);
+    % shift.xgrid = squeeze(shift.xgrid); shift.xgrid = shift.xgrid(:);
+    % shift.zgrid = squeeze(shift.zgrid); shift.zgrid = shift.zgrid(:);
+    % shift.shifts = [shift.ygrid, shift.xgrid, shift.zgrid];
+    % 
+    % shift.numShifts = length(shift.ygrid); % Total # of shifts to try
+    % 
+    % % shift.ixc = zeros(P.numFramesPerBuffer, shift.numShifts); % Initialize the post-shift ixc matrix. Each column is the ixc timecourse for that shift.
+    % shift.ixc = zeros(1, shift.numShifts); % Initialize the post-shift ixc matrix. Each column is the ixc timecourse for that shift.
+    % vs_us = size(ref_vol_us); % Upsampled volume's size
+    % for sn = 1:shift.numShifts % shift number
+    % % for sn = 1
+    %     disp(sn)
+    %     shift_sn = [shift.ygrid(sn), shift.xgrid(sn), shift.zgrid(sn)];
+    %     moving_vol_us_sn = imtranslate(moving_vol_us, shift_sn, 'OutputView','same'); % Shifted (upsampled) moving volume at shift number #sn
+    %     % figure; imagesc(squeeze(max(abs(moving_vol_us_sn), [], 1))'); colormap gray
+    % 
+    %     shift.ixc(:, sn) = calcIXC_shift(ref_vol_us, moving_vol_us_sn, true);
+    % end   
+    % 
+    % shift.abs_ixc = abs(shift.ixc);
+    % [shift.opt_shift_ixc, shift.opt_shift_ind] = max(shift.abs_ixc);
+    % shift.opt_shift = shift.shifts(shift.opt_shift_ind, :);
+    % 
+    % figure; plot(shift.abs_ixc)
+    % figure; plot(shift.shifts(:, 3), shift.abs_ixc); xlabel('z shift [voxels]'); ylabel('Cross correlation') % z shift only
+    % 
+    % %% Compare phase of the moving and fixed frames
+    % generateTiffStack_acrossframes(abs(IQ) .^ 0.3, [8.8, 8.8, 8], 'gray', 1:size(IQ, 1))
+    % 
+    % figure; imagesc(squeeze(angle(ref_vol(size(ref_vol, 1)/2, :, :)))'); colormap jet; xlabel('x'); ylabel('z'); colorbar; title('Phase [rad]')
+    % figure; imagesc(squeeze(angle(moving_vol(size(ref_vol, 1)/2, :, :)))'); colormap jet; xlabel('x'); ylabel('z'); colorbar; title('Phase [rad]')
+    % figure; imagesc(squeeze(angle(ref_vol_us(size(ref_vol, 1)/2, :, :)))'); colormap jet; xlabel('x'); ylabel('z'); colorbar; title('Phase [rad]')
+    % figure; imagesc(squeeze(angle(moving_vol_us(size(ref_vol, 1)/2, :, :)))'); colormap jet; xlabel('x'); ylabel('z'); colorbar; title('Phase [rad]')
+    % 
+    % %% TEST: Translate the frame, downsample back, and then do SVD
+    % 
 
-    % Choose 2 frames to evaluate
-    ref_fn = 1;     % Reference frame #
-    moving_fn = 251; % Moving frame #
-    ref_vol = squeeze(IQ(:, :, :, ref_fn));
-    moving_vol = squeeze(IQ(:, :, :, moving_fn));
-    % % Try using the phase
-    % ref_vol = squeeze(angle(IQ(:, :, :, ref_fn)));
-    % moving_vol = squeeze(angle(IQ(:, :, :, moving_fn)));
-
-    % Upsample the images
-    us_factor = 1; % Upsampling factor
-    ref_vol_us = imresize3(ref_vol, us_factor, 'Method', 'cubic');
-    moving_vol_us = imresize3(moving_vol, us_factor, 'Method', 'cubic');
-
-    % Test: look at MIPs of the upsampled IQ volumes
-    figure; imagesc(squeeze(max(abs(ref_vol_us), [], 1))'); colormap gray
-    figure; imagesc(squeeze(max(abs(moving_vol_us), [], 1))'); colormap gray
-
-    % Try a few shifts (THESE MUST BE INTEGERS)
-    shift.inc = [1, 1, 1]; % y, x, z shift increments in units of [upsampled voxels]
-    shift.max = [5, 5, 5]; % Maximum y, x, z |shift| in units of [upsampled voxels]
-    % shift.max = [0, 0, 5]; % Maximum y, x, z |shift| in units of [upsampled voxels]
-    % shift.max = [2, 1, 1]; % Maximum y, x, z |shift| in units of [upsampled voxels]
-    shift.yspan = -shift.max(1):shift.inc(1):shift.max(1);
-    shift.xspan = -shift.max(2):shift.inc(2):shift.max(2);
-    shift.zspan = -shift.max(3):shift.inc(3):shift.max(3);
-
-    [shift.ygrid, shift.xgrid, shift.zgrid] = meshgrid(shift.yspan,  shift.xspan,  shift.zspan);
-    % Squeeze in case the shift in any dimension is disabled, and vectorize
-    shift.ygrid = squeeze(shift.ygrid); shift.ygrid = shift.ygrid(:);
-    shift.xgrid = squeeze(shift.xgrid); shift.xgrid = shift.xgrid(:);
-    shift.zgrid = squeeze(shift.zgrid); shift.zgrid = shift.zgrid(:);
-    shift.shifts = [shift.ygrid, shift.xgrid, shift.zgrid];
-
-    shift.numShifts = length(shift.ygrid); % Total # of shifts to try
-
-    % shift.ixc = zeros(P.numFramesPerBuffer, shift.numShifts); % Initialize the post-shift ixc matrix. Each column is the ixc timecourse for that shift.
-    shift.ixc = zeros(1, shift.numShifts); % Initialize the post-shift ixc matrix. Each column is the ixc timecourse for that shift.
-    vs_us = size(ref_vol_us); % Upsampled volume's size
-    for sn = 1:shift.numShifts % shift number
-    % for sn = 1
-        disp(sn)
-        shift_sn = [shift.ygrid(sn), shift.xgrid(sn), shift.zgrid(sn)];
-        moving_vol_us_sn = imtranslate(moving_vol_us, shift_sn, 'OutputView','same'); % Shifted (upsampled) moving volume at shift number #sn
-        % figure; imagesc(squeeze(max(abs(moving_vol_us_sn), [], 1))'); colormap gray
-
-        shift.ixc(:, sn) = calcIXC_shift(ref_vol_us, moving_vol_us_sn, true);
-    end   
-
-    shift.abs_ixc = abs(shift.ixc);
-    [shift.opt_shift_ixc, shift.opt_shift_ind] = max(shift.abs_ixc);
-    shift.opt_shift = shift.shifts(shift.opt_shift_ind, :);
-
-    figure; plot(shift.abs_ixc)
-    figure; plot(shift.shifts(:, 3), shift.abs_ixc); xlabel('z shift [voxels]'); ylabel('Cross correlation') % z shift only
-
-    %% Compare phase of the moving and fixed frames
-    generateTiffStack_acrossframes(abs(IQ) .^ 0.3, [8.8, 8.8, 8], 'gray', 1:size(IQ, 1))
-
-    figure; imagesc(squeeze(angle(ref_vol(size(ref_vol, 1)/2, :, :)))'); colormap jet; xlabel('x'); ylabel('z'); colorbar; title('Phase [rad]')
-    figure; imagesc(squeeze(angle(moving_vol(size(ref_vol, 1)/2, :, :)))'); colormap jet; xlabel('x'); ylabel('z'); colorbar; title('Phase [rad]')
-    figure; imagesc(squeeze(angle(ref_vol_us(size(ref_vol, 1)/2, :, :)))'); colormap jet; xlabel('x'); ylabel('z'); colorbar; title('Phase [rad]')
-    figure; imagesc(squeeze(angle(moving_vol_us(size(ref_vol, 1)/2, :, :)))'); colormap jet; xlabel('x'); ylabel('z'); colorbar; title('Phase [rad]')
-
-    %% TEST: Translate the frame, downsample back, and then do SVD
     
-
-    %%
     % SVD decluttering
     [xp, yp, zp, nf] = size(IQ);
     PP = reshape(IQ, [xp*yp*zp, nf]);
