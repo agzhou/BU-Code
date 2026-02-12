@@ -1,5 +1,8 @@
 %% Description:
-%       IXC processing for multiple superframes (volumetric data)
+%       IXC = image cross correlation (framewise)
+%       IXC processing for multiple superframes (volumetric data). Stitch
+%       together multiple superframes to look at the IXC across longer
+%       periods of time.
 
 clearvars
 %% load params and stuff
@@ -31,8 +34,8 @@ addpath([cd, '\..\']) % Add the main "Processing" path
 
 %% Define some parameters
 
-parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound'};
-parameterDefaults = {'1', '', '20', ''};
+parameterPrompt = {'Start file number', 'End file number', 'Number of files to stitch together', 'SVD lower bound', 'SVD upper bound'};
+parameterDefaults = {'1', '', '', '20', ''};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % define # of files manually for now
@@ -40,31 +43,36 @@ parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterD
 startFile = str2double(parameterUserInput{1});
 endFile = str2double(parameterUserInput{2});
 numFiles = endFile - startFile + 1;
-sv_threshold_lower = str2double(parameterUserInput{3});
-sv_threshold_upper = str2double(parameterUserInput{4});
+nfpb = str2double(parameterUserInput{3}); % # files per "block"
+sv_threshold_lower = str2double(parameterUserInput{4});
+sv_threshold_upper = str2double(parameterUserInput{5});
 
 clearvars parameterPrompt parameterDefaults parameterUserInput
 
+%% Calculate the number of total "blocks" to use
+numBlocks = floor(numFiles / nfpb);
 
 %% Main loop
-for filenum = startFile:endFile
-% for filenum = [2:endFile]
-% for filenum = 18:endFile
-% for filenum = 1
+% for bi = 1:numBlocks
+% for bi = [2:numBlocks]
+for bi = 2
+    IQ = [];
+    filenumsToUse = (bi - 1) * nfpb + 1 : bi * nfpb;
 
     % Load the IQ data
     tic
-    % load([IQpath, IQfilenameStructure, num2str(filenum)])
-    
-    % IQ = single(squeeze(IData + 1i .* QData));
-%     clearvars IData QData
-
-    load([IQpath, IQfilenameStructure, num2str(filenum)])
+    for fn = filenumsToUse
+        IQtemp = load([IQpath, IQfilenameStructure, num2str(fn)], 'IQ').('IQ');
+        IQ = cat(4, IQ, IQtemp);
+    end
+    clearvars IQtemp
 
     % figure; imagesc(squeeze(max(abs(IQ(:, :, :, 2)), [], 1))')
 
     % Calculate the cross correlation of raw IQ (masked) to look at motion
+    tic
     ixc = calcIXC_simple(IQ);
+    toc
     ut_ms = (1:size(IQ, 4)) ./ P.frameRate .* 1e3; % micro time [ms]
 %     % figure; plot(ut_ms, abs(ixc)); xlabel('Micro time [ms]'); ylabel('|Cross correlation of images|')
 %     figure; plot(abs(ixc)); xlabel('Frame'); ylabel('|Cross correlation of images|')
