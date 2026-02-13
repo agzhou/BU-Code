@@ -51,6 +51,7 @@ clearvars parameterPrompt parameterDefaults parameterUserInput
 
 %% Calculate the number of total "blocks" to use
 numBlocks = floor(numFiles / nfpb);
+save([savepath, 'blocking_info.mat'], 'startFile', 'endFile', 'numFiles', 'nf', 'nfpb', 'numBlocks')
 
 %% Main loop
 for bi = 1:numBlocks
@@ -203,7 +204,7 @@ end
 %% Make a plot of all the ixcs
 ixc_allfiles = [];
 SVs_allfiles = [];
-for filenum = startFile:endFile
+for filenum = 1:numBlocks
     load([savepath, 'metrics-', num2str(filenum), '.mat'])
     ixc_allfiles = cat(2, ixc_allfiles, ixc);
     SVs_allfiles = cat(2, SVs_allfiles, SVs);
