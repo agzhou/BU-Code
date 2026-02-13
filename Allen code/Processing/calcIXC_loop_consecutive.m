@@ -53,8 +53,8 @@ clearvars parameterPrompt parameterDefaults parameterUserInput
 numBlocks = floor(numFiles / nfpb);
 
 %% Main loop
-% for bi = 1:numBlocks
-for bi = [3:numBlocks]
+for bi = 1:numBlocks
+% for bi = [3:numBlocks]
 % for bi = 1
     IQ = [];
     filenumsToUse = (bi - 1) * nfpb + 1 : bi * nfpb;
