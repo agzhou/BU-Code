@@ -54,7 +54,7 @@ numBlocks = floor(numFiles / nfpb);
 
 %% Main loop
 % for bi = 1:numBlocks
-for bi = [2:numBlocks]
+for bi = [3:numBlocks]
 % for bi = 1
     IQ = [];
     filenumsToUse = (bi - 1) * nfpb + 1 : bi * nfpb;
@@ -190,12 +190,10 @@ for bi = [2:numBlocks]
 % %     volumeViewer(PDI)
 % %     volumeViewer(PDI ./ noise)
 
-%     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'noise', '-v7.3', '-nocompression');
-%     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'noise', 'SVs', 'SSM', '-v7.3')
-    save([savepath, 'metrics-', num2str(filenum), '.mat'], 'ixc', 'SVs', 'SSM', '-v7.3')
+    save([savepath, 'metrics-', num2str(bi), '.mat'], 'ixc', 'SVs', 'SSM', '-v7.3')
 
 %     disp("fUS result for file " + num2str(filenum) + " saved" )
-    disp("info for file " + num2str(filenum) + " saved" )
+    disp("info for file " + num2str(bi) + " saved" )
 %     disp("g1 result for file " + num2str(filenum) + " saved" )
 
     toc
