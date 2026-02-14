@@ -685,7 +685,9 @@ for nbuf = 1:numBuffers
 %     Event(n).seqControl = [4, scInd - 1, scInd];
 
     % Don't worry about timeToNextAcq while saving the superframe
-    Event(n).seqControl = [scInd - 1, scInd];
+%     Event(n).seqControl = [scInd - 1, scInd];
+    Event(n).seqControl = [4, scInd - 1, scInd]; % Change 2/13/26
+
 %     Event(n).seqControl = [scInd];
 %     Event(n).seqControl = [6, scInd];
     
