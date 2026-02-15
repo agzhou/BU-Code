@@ -201,17 +201,25 @@ for bi = 1:numBlocks
     
 end
 
-%% Make a plot of all the ixcs
+%% Make a plot of all the ixcs: concatenate IXC in time
 ixc_allfiles = [];
 SVs_allfiles = [];
-for filenum = 1:numBlocks
-    load([savepath, 'metrics-', num2str(filenum), '.mat'])
-    ixc_allfiles = cat(2, ixc_allfiles, ixc);
+% for bi = 1:numBlocks
+for bi = 2:25
+    load([savepath, 'metrics-', num2str(bi), '.mat'])
+    ixc_allfiles = cat(1, ixc_allfiles, ixc);
     SVs_allfiles = cat(2, SVs_allfiles, SVs);
 end
 
+t_s = (0: 1/P.frameRate : numBlocks*nfpb*P.numFramesPerBuffer/P.frameRate)'; t_s = t_s(1:end-1);% Time at each frame [s]
 % figure; plot(abs(ixc_allfiles)); xlabel("Frame"); ylabel('|Cross correlation of images|')
-figure; plot(ut_ms, abs(ixc_allfiles)); xlabel("Micro time [ms]"); ylabel('|Cross correlation of images|')
+figure; plot(t_s, abs(ixc_allfiles)); xlabel("Time [s]"); ylabel('|Cross correlation of images|')
+hold on
+block_divider_times = (0:nfpb:numBlocks*nfpb) .* P.numFramesPerBuffer/P.frameRate; % Times at which a new block is concatenated [s]
+xline(block_divider_times, 'r-', 'LineWidth', 1)
+hold off
+legend('Cross-correlation', 'Ensemble divisions')
+
 figure; semilogy(SVs_allfiles); xlabel("Singular value number"); ylabel("Singular value magnitude")
 
 %% Calculate metrics for how often or largely the XC drops for each "superframe"
