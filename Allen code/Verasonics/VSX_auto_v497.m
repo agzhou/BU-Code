@@ -1170,16 +1170,16 @@ elseif VDAS
         % UTA and system configuration do not match script requirements;
         % script cannot be run on the HW system so either quit or proceed
         % in softwate-only mode
-        if Resource.Parameters.verbose
-            fprintf(2, 'VSX warning: System configuration and UTA module do not match script requirements.\n');
-            fprintf(2, 'Enter s to continue in simulation-only mode, or just enter return to exit:  ');
-            r = input(' ', 's');
-            if strcmpi(r, 's')
+        if Resource.Parameters.verbose % Commented this out on 2/14/26
+%             fprintf(2, 'VSX warning: System configuration and UTA module do not match script requirements.\n');
+%             fprintf(2, 'Enter s to continue in simulation-only mode, or just enter return to exit:  ');
+%             r = input(' ', 's');
+%             if strcmpi(r, 's')
                 switchToSim = 1; % switch to simulate mode & redefine SysConfig in code block below
-            else
-                % user wants to quit
-                return
-            end
+%             else
+%                 % user wants to quit
+%                 return
+%             end
         else
             % verbose is zero; don't query for user input- just exit
             % with an error message
