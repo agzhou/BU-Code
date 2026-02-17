@@ -258,7 +258,7 @@ save([roi_savepath, 'roi_info.mat'], 'roi')
 compareUStoAtlasROIs(fUSmap_50um_rigid_reg.regVol.Voxels, roi.masks_50um) % Non-hemisphere separated ROIs
 % compareUStoAtlasROIs(fUSmap_50um_rigid_reg.regVol.Voxels, roi.masks_50um_hemis(:)) % Hemisphere separated ROIs
 
-generateTiffStack_multi([{abs(PDI_allBlocks_avg_rs) .^ 0.5}], [8.8, 8.8, 8], 'gray', 1)
+% generateTiffStack_multi([{abs(PDI_allBlocks_avg_rs) .^ 0.5}], [8.8, 8.8, 8], 'gray', 1)
 
 %% Load the timing data (output of plotfUStiming_FC.m) and convert to actual time
 [timingFilePathFN, timingFilePath] = uigetfile([data_dirpath, '..\..\Timing data\TD.mat'], 'Select the timing data');
