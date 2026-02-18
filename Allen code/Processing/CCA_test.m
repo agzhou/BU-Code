@@ -19,6 +19,10 @@ figure; imagesc(abs(squeeze(max(refVol, [], 2))') .^ 0.5)
 sagittal_roi_out = images.roi.Freehand;
 sagittal_roi_out.draw;
 sagittal_out_mask = createMask(sagittal_roi_out);
-%% Mask the PDI outside of the 
-coronal_out_mask_rep = repmat(permute(~coronal_out_mask, [3, 2, 1]), ds(1), 1, 1, ds(4));
+%% Mask the PDI outside of the volume of interest
+% coronal_out_mask_rep = repmat(permute(~coronal_out_mask, [3, 2, 1]), ds(1), 1, 1, ds(4));
 sagittal_out_mask_rep = repmat(permute(~sagittal_out_mask, [2, 3, 1]), 1, ds(2), 1, ds(4));
+
+%% SVD on the voxels outside the volume of interest
+
+
