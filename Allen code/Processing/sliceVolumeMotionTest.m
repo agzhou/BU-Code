@@ -52,12 +52,12 @@ clearvars parameterPrompt parameterDefaults parameterUserInput
 
 %% Calculate the number of total "blocks" to use
 numBlocks = floor(numFiles / nfpb);
-save([savepath, 'blocking_info.mat'], 'startFile', 'endFile', 'numFiles', 'nf', 'nfpb', 'numBlocks')
+save([savepath, 'blocking_info.mat'], 'startFile', 'endFile', 'numFiles', 'nfpb', 'numBlocks')
 
 %% Calculate the spatial slicing (coronal slices)
 voxel_size = PData.PDelta .* P.wl; % Voxel size (y, x, z) in meters (from beamforming)
 nyp = PData.Size(1); % # of y pixels
-volSize = [P.numElements.*P.Trans.spacingMM, P.numElements.*P.Trans.spacingMM, P.endDepthMM - P.startDepthMM] ./ 1e3; % Volume extents [m]
+volSize = [P.numElements.*P.Trans.spacingMm, P.numElements.*P.Trans.spacingMm, P.endDepthMM - P.startDepthMM] ./ 1e3; % Volume extents [m]
 
 numSlices = floor(volSize(1) / sliceWidth);
 csm = cell(numSlices, 1); % Initialize coronal slice masks variable
@@ -68,8 +68,8 @@ for si = 1:numSlices
 end
 
 %% Main loop
-for bi = 1:numBlocks
-% for bi = [3:numBlocks]
+% for bi = 1:numBlocks
+for bi = [2:numBlocks]
 % for bi = 1
     IQ = [];
     filenumsToUse = (bi - 1) * nfpb + 1 : bi * nfpb;
@@ -84,22 +84,30 @@ for bi = 1:numBlocks
 
     % figure; imagesc(squeeze(max(abs(IQ(:, :, :, 2)), [], 1))')
 
+    ixc = zeros(size(IQ, 4), numSlices);
+    SVs = zeros(size(IQ, 4), numSlices);
     % Go through each slice for that IQ ensemble
     for si = 1:numSlices
         IQs = IQ(csm{si}, :, :, :);
-        ixc_si = calcIXC_simple(IQs);
-        %%%%%%%%%%%%%%
-    end
 
-    % Calculate the cross correlation of raw IQ (masked) to look at motion
-    % tic
-    ixc = calcIXC_simple(IQ);
-    % toc
-    ut_ms = (1:size(IQ, 4)) ./ P.frameRate .* 1e3; % micro time [ms]
-%     % figure; plot(ut_ms, abs(ixc)); xlabel('Micro time [ms]'); ylabel('|Cross correlation of images|')
-%     figure; plot(abs(ixc)); xlabel('Frame'); ylabel('|Cross correlation of images|')
-%     title("Superframe " + num2str(filenum))
-    toc
+        % Calculate the cross correlation of raw IQ (masked) to look at motion
+        ixc(:, si) = calcIXC_simple(IQs);
+
+        % SVD decluttering
+        [xp, yp, zp, nf] = size(IQs);
+        PP = reshape(IQs, [xp*yp*zp, nf]);
+        tic
+    %     [U, S, V] = svd(PP); % Already sorted in decreasing order
+        [U, S, V] = svd(PP, 'econ'); % Already sorted in decreasing order
+        SVs(:, si) = diag(S);
+
+    end
+    % save([savepath, 'ixc-sliced-block', num2str(bi)], 'ixc')
+    save([savepath, 'metrics-sliced-block', num2str(bi)], 'ixc', 'SVs')
+     % figure; plot(abs(ixc)); xlabel('Frame'); ylabel('|Cross correlation of images|')
+     % figure; plot(abs(ixc) - abs(ixc(2, :))); xlabel('Frame'); ylabel('|Cross correlation of images|')
+
+
 
     % % Choose 2 frames to evaluate
     % ref_fn = 1;     % Reference frame #
@@ -169,14 +177,6 @@ for bi = 1:numBlocks
     % 
 
     
-    % SVD decluttering
-    [xp, yp, zp, nf] = size(IQ);
-    PP = reshape(IQ, [xp*yp*zp, nf]);
-    tic
-%     [U, S, V] = svd(PP); % Already sorted in decreasing order
-    [U, S, V] = svd(PP, 'econ'); % Already sorted in decreasing order
-    SVs = diag(S);
-%     disp('Full SVD done')
 
     % -- Some adaptive thresholding stuff -- %
     % Plot one SVD subspace as an image
@@ -185,7 +185,7 @@ for bi = 1:numBlocks
 %     figure; imagesc(squeeze(max(abs(subspace_img(:, :, :, 2)), [], 1))')
 % %     volumeViewer(abs(subspace_img(:, :, :, 2)))
 % 
-    SSM = plotSSM(U, false);
+    % SSM = plotSSM(U, false);
 % %     SSM = plotSSM(U, true);
 %     [~, a_opt, b_opt] = fitSSM(SSM, false); % Get the optimal singular value thresholds
 % %     [~, a_opt, b_opt] = fitSSM(SSM, true); % Get the optimal singular value thresholds
@@ -212,7 +212,7 @@ for bi = 1:numBlocks
 % %     volumeViewer(PDI)
 % %     volumeViewer(PDI ./ noise)
 
-    save([savepath, 'metrics-', num2str(bi), '.mat'], 'ixc', 'SVs', 'SSM', '-v7.3')
+    % save([savepath, 'metrics-', num2str(bi), '.mat'], 'ixc', 'SVs', 'SSM', '-v7.3')
 
 %     disp("fUS result for file " + num2str(filenum) + " saved" )
     disp("info for file " + num2str(bi) + " saved" )
