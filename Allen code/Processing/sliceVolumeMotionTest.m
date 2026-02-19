@@ -67,9 +67,11 @@ for si = 1:numSlices
     csm{si} = (si - 1) * numVoxelsPerSlice + 1 : (si) * numVoxelsPerSlice;
 end
 
+save([savepath, 'slicing_info.mat'], 'csm', 'numSlices', 'numVoxelsPerSlice', 'volSize', 'voxel_size')
+
 %% Main loop
-% for bi = 1:numBlocks
-for bi = [2:numBlocks]
+for bi = 1:numBlocks
+% for bi = [81:numBlocks]
 % for bi = 1
     IQ = [];
     filenumsToUse = (bi - 1) * nfpb + 1 : bi * nfpb;
@@ -96,7 +98,6 @@ for bi = [2:numBlocks]
         % SVD decluttering
         [xp, yp, zp, nf] = size(IQs);
         PP = reshape(IQs, [xp*yp*zp, nf]);
-        tic
     %     [U, S, V] = svd(PP); % Already sorted in decreasing order
         [U, S, V] = svd(PP, 'econ'); % Already sorted in decreasing order
         SVs(:, si) = diag(S);
@@ -220,4 +221,24 @@ for bi = [2:numBlocks]
 
     toc
     
+end
+
+%% Store each block's metrics (THIS WORKS FOR NON-OVERLAPPING BLOCKS ONLY)
+ixc_allblocks = zeros(P.numFramesPerBuffer * numBlocks, numSlices); % Make an ixc matrix. Each column is the ixc of one slice over the whole experiment's timecourse.
+for bi = 1:numBlocks
+% for bi = [81:numBlocks]
+% for bi = 1
+
+
+    metrics_bi = load([savepath, 'metrics-sliced-block', num2str(bi)]);
+    ixc_allblocks((bi - 1)*P.numFramesPerBuffer + 1:bi*P.numFramesPerBuffer, :) = metrics_bi.ixc;
+end
+
+%% Plot the metrics
+ixcmin = min(abs(ixc_allblocks), [], 'all');
+ixcmax = max(abs(ixc_allblocks), [], 'all');
+figure
+sp = stackedplot(abs(ixc_allblocks));
+for ai = 1:size(sp.AxesProperties, 1) % Go through the index for each axes object
+    sp.AxesProperties(ai).YLimits = [ixcmin, ixcmax];
 end
