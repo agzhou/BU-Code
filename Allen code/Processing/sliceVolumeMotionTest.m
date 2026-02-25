@@ -67,7 +67,7 @@ for si = 1:numSlices
     csm{si} = (si - 1) * numVoxelsPerSlice + 1 : (si) * numVoxelsPerSlice;
 end
 
-save([savepath, 'slicing_info.mat'], 'csm', 'numSlices', 'numVoxelsPerSlice', 'volSize', 'voxel_size')
+save([savepath, 'slicing_info.mat'], 'csm', 'numSlices', 'numVoxelsPerSlice', 'volSize', 'voxel_size', 'sliceWidth', 'sliceWidthMM')
 
 %% Main loop
 for bi = 1:numBlocks
@@ -235,10 +235,20 @@ for bi = 1:numBlocks
 end
 
 %% Plot the metrics
+dt = 1/P.frameRate; % Time step calculated from the block size, overlap, and frame rate
+t = 0:dt:(numBlocks*P.numFramesPerBuffer - 1)*dt; % Time stamps of each block
+
 ixcmin = min(abs(ixc_allblocks), [], 'all');
 ixcmax = max(abs(ixc_allblocks), [], 'all');
 figure
-sp = stackedplot(abs(ixc_allblocks));
+sp = stackedplot(t, abs(ixc_allblocks));
 for ai = 1:size(sp.AxesProperties, 1) % Go through the index for each axes object
     sp.AxesProperties(ai).YLimits = [ixcmin, ixcmax];
 end
+title("Volume cross correlation over different coronal slices (width = " + num2str(sliceWidthMM) + "mm)")
+xlabel('Time [s]')
+
+%% Make a video of the mouse in some slices over one superframe
+testSliceInd = 4;
+testSlice = squeeze(abs(IQ(csm{testSliceInd}, :, :, :)));
+generateTiffStack_acrossframes(testSlice .^ 0.3, [sliceWidth, volSize(2), volSize(3)], 'gray', 1:size(testSlice, 1))
