@@ -28,9 +28,9 @@ figure; histogram(k_x); title('Delta k_x'); xlabel('Delta k_x [radians/m]'); yla
 %% Case 2: Use the shifted angles for RX
 naRX = 21;
 o = fix(-naRX/2):1:fix(naRX/2); % Truncate towards zero
-j = 0; % Shift parameter
-% anglesRX = (sign(o) .* daTX .* (2.*abs(o)./naRX + j))'; % Receive angles [deg]
-anglesRX = (sign(o) .* daTX .* (2.*abs(o) + j))'; % Receive angles [deg]
+j = 7; % Shift parameter
+anglesRX = (sign(o) .* daTX .* (2.*abs(o)./naRX + j))'; % Receive angles [deg]
+% anglesRX = (sign(o) .* daTX .* (2.*abs(o) + j))'; % Receive angles [deg]
 delta_theta = repmat(anglesRX, 1, naTX) - repmat(anglesTX', naRX, 1);
 k_x = f*2*pi .* sind(delta_theta) ./ c;
 % figure; imagesc(delta_theta); colorbar; axis image; xlabel('TX angle'); ylabel('RX angle'); title('Delta theta [deg]')
@@ -38,4 +38,4 @@ k_x = f*2*pi .* sind(delta_theta) ./ c;
 
 % Plot histograms
 figure; histogram(delta_theta, BinMethod="integers"); title("Delta theta counts, with j = " + num2str(j)); xlabel('Delta theta [deg]'); ylabel('Counts')
-figure; histogram(k_x); title("Delta k_x counts, with j = " + num2str(j)); xlabel('Delta k_x [radians/m]'); ylabel('Counts')
+% figure; histogram(k_x); title("Delta k_x counts, with j = " + num2str(j)); xlabel('Delta k_x [radians/m]'); ylabel('Counts')
