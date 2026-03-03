@@ -1,3 +1,4 @@
+addKWavePath
 % Simulating B-mode Ultrasound Images Example
 %
 % This example illustrates how k-Wave can be used for the simulation of
