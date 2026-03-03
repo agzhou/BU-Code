@@ -37,7 +37,7 @@ clearvars;
 
 % simulation settings
 DATA_CAST       = 'single';     % set to 'single' or 'gpuArray-single' to speed up computations
-RUN_SIMULATION  = true;         % set to false to reload previous results instead of running simulation
+RUN_SIMULATION  = false;         % set to false to reload previous results instead of running simulation
 
 % =========================================================================
 % DEFINE THE K-WAVE GRID
