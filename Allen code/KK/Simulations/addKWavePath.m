@@ -5,5 +5,5 @@ function addKWavePath()
     fp = fileparts(tmp.Filename);
     fp_cell = regexp(fp, filesep, 'split');
     
-    addpath(fullfile(fp_cell{1:find(contains(fp_cell, "GitHub"), 1)}) + "\k-wave");
+    addpath(genpath(fullfile(fp_cell{1:find(contains(fp_cell, "GitHub"), 1)}) + "\k-wave"));
 end
