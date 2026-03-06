@@ -46,8 +46,9 @@ end
 na = size(TXangle,1);
 
 % Transducer position parameters
-Trans.translation = [0, 0];
-Trans.rotation = 0;
+Trans.translation = [0, 0, 0]; % [m]
+% Trans.rotation = 0;
+Trans.rotation = [0, 0, 0]; % [Degrees]
 
 % Grid parameters
 % note: grid size = the span of the grid, not the spacing
@@ -86,33 +87,33 @@ medium.density = rho0 * ones([Nx, Ny, Nz]);      % density [kg/m3]
 
 %% SOURCE/SENSOR - KWaveArray
 
-[karray, ElemPos] = initArray(kgrid, element);
+[karray, ElemPos] = initArray(kgrid, element, Trans);
 
-% % Plot Array
-% chkMask = karray.getArrayBinaryMask(kgrid);
-% [X,Y,Z] = meshgrid(kgrid.x_vec,kgrid.y_vec,kgrid.z_vec);
-% x = X(chkMask); y = Y(chkMask); z = Z(chkMask);
-% % Plot
-% figure
-% scatter3(x, y, z, 'SizeData', 1);
-% xlim([kgrid.x_vec(1) kgrid.x_vec(end)]);
-% ylim([kgrid.y_vec(1) kgrid.y_vec(end)]);
-% zlim([kgrid.z_vec(1) kgrid.z_vec(end)]);
-% 
-% arrayLen = element.length*element.num;
-% arrayWidth = element.width*element.num;
-% for i = 1:element.num
-%     line([ElemPos(i)+element.width/2, ElemPos(i)+element.width/2], [-arrayLen/2, arrayLen/2], [mean(z), mean(z)], 'Color', 'red', 'LineWidth', 2);    % Horizontal lines
-%     line([-arrayWidth/2, arrayWidth/2], [ElemPos(i)+element_length/2, ElemPos(i)+element_length/2], [mean(z), mean(z)], 'Color', 'green', 'LineWidth', 2);    % Vertical lines
-% end
-% 
-% xlabel('X-axis');
-% ylabel('Y-axis');
-% zlabel('Z-axis');
-% title('3D Scatter Plot of Logical Array');
-% grid on;
-% axis image
-% view(2)
+% Plot Array
+chkMask = karray.getArrayBinaryMask(kgrid);
+[X,Y,Z] = meshgrid(kgrid.x_vec,kgrid.y_vec,kgrid.z_vec);
+x = X(chkMask); y = Y(chkMask); z = Z(chkMask);
+% Plot
+figure
+scatter3(x, y, z, 'SizeData', 1);
+xlim([kgrid.x_vec(1) kgrid.x_vec(end)]);
+ylim([kgrid.y_vec(1) kgrid.y_vec(end)]);
+zlim([kgrid.z_vec(1) kgrid.z_vec(end)]);
+
+arrayLen = element.length*element.num;
+arrayWidth = element.width*element.num;
+for i = 1:element.num
+    line([ElemPos(i)+element.width/2, ElemPos(i)+element.width/2], [-arrayLen/2, arrayLen/2], [mean(z), mean(z)], 'Color', 'red', 'LineWidth', 2);    % Horizontal lines
+    line([-arrayWidth/2, arrayWidth/2], [ElemPos(i)+element.length/2, ElemPos(i)+element.length/2], [mean(z), mean(z)], 'Color', 'green', 'LineWidth', 2);    % Vertical lines
+end
+
+xlabel('X-axis');
+ylabel('Y-axis');
+zlabel('Z-axis');
+title('3D Scatter Plot of Logical Array');
+grid on;
+axis image
+view(2)
 
 % Create source signal using a tone burst
 source_sig = source_amp .* toneBurst(1/kgrid.dt, source_f0, source_cycles);
@@ -280,10 +281,11 @@ function [source, time_delays] = genSource(kgrid, source_f0, source_cycles, sour
 
     % Calculate time delays for each element based on steering angle
     
-    [X,Y] = meshgrid(ElemPos,ElemPos);
+    [X, Y] = meshgrid(ElemPos, ElemPos);
     
-    time_delays0 = (X.*sin(theta(2))-Y.*sin(theta(1)))/c0;
-    time_delays0 = time_delays0(:) - min(time_delays0(:));
+    % Create the time delays for each element in the matrix array
+    time_delays0 = ( X.*sin(theta(2)) - Y.*sin(theta(1)) )/c0; % Plane wave
+    time_delays0 = time_delays0(:) - min(time_delays0(:)); % Shift so the lowest time delay is zero
     time_delays = time_delays0;
     
 %     rng(10,'twister');
