@@ -23,7 +23,7 @@ k_x = f*2*pi .* sind(delta_theta) ./ c;
 
 % Plot histograms
 figure; histogram(delta_theta, BinMethod="integers"); title('Delta theta counts'); xlabel('Delta theta [deg]'); ylabel('Counts')
-figure; histogram(k_x); title('Delta k_x'); xlabel('Delta k_x [radians/m]'); ylabel('Counts')
+% figure; histogram(k_x); title('Delta k_x'); xlabel('Delta k_x [radians/m]'); ylabel('Counts')
 
 %% Case 2: Use the shifted angles for RX
 naRX = 21;
