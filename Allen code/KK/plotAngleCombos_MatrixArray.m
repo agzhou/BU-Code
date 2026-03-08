@@ -7,9 +7,12 @@ clearvars
 %% Global parameters
 f = 13.6e6; % Plane wave temporal frequency [Hz]
 c = 1540; % Speed of sound (in tissue) [m/s]
+
+binlimits = [-19.5, 19.5]; % Test histogram bin limits
+binwidth = 1;
 %% Define TX angles ("in")
 
-naTX = 5; % # of angles for TX
+naTX = 25; % # of angles for TX
 maTX = 5; % Max angle for TX [deg]
 
 anglesTXList = linspace(-maTX, maTX, naTX)'; % Transmit angles [deg]
@@ -31,22 +34,23 @@ delta_theta = calcDeltaTheta(anglesTX, anglesRX);
 
 % Plot histograms
 % figure; histogram2(delta_theta(:, 1), delta_theta(:, 2), BinMethod="integers"); title('Delta theta counts'); xlabel('Delta theta [deg]'); ylabel('Counts')
-figure; histogram2(delta_theta(:, 1), delta_theta(:, 2), BinWidth=0.5); title('Delta theta counts'); xlabel('Delta theta [deg]'); ylabel('Counts')
+figure; histogram2(delta_theta(:, 1), delta_theta(:, 2), XBinLimits = binlimits, YBinLimits = binlimits, BinWidth = binwidth); title('Delta theta counts'); xlabel('Delta theta [deg]'); ylabel('Counts')
 % figure; histogram(k_x); title('Delta k_x'); xlabel('Delta k_x [radians/m]'); ylabel('Counts')
 
 %% Case 2: Use the shifted angles for RX
-naRX = 5;
+% naRX = 5;
+naRX = naTX; % Compare by using the same # of transmit angles
 o = fix(-naRX/2):1:fix(naRX/2); % Truncate towards zero
-j = 2; % Shift parameter
+j = 12; % Shift parameter
 anglesRXList = (sign(o) .* daTX .* (2.*abs(o)./naRX + j))'; % Receive angles [deg]
 anglesRX = listToAngles(anglesRXList);
 
 delta_theta = calcDeltaTheta(anglesTX, anglesRX);
-binlimits = [-19.5, 19.5];
-figure; histogram2(delta_theta(:, 1), delta_theta(:, 2), XBinLimits = binlimits, YBinLimits = binlimits, BinWidth=1); title('Delta theta counts'); xlabel('Delta theta [deg]'); ylabel('Counts')
 
-figure; histogram(delta_theta(:, 1), BinMethod="integers")
-figure; histogram(delta_theta(:, 2), BinMethod="integers")
+figure; histogram2(delta_theta(:, 1), delta_theta(:, 2), XBinLimits = binlimits, YBinLimits = binlimits, BinWidth = binwidth); title('Delta theta counts'); xlabel('Delta theta [deg]'); ylabel('Counts')
+
+% figure; histogram(delta_theta(:, 1), BinMethod="integers")
+% figure; histogram(delta_theta(:, 2), BinMethod="integers")
 
 % delta_theta = repmat(anglesRX, 1, naTX) - repmat(anglesTX', naRX, 1);
 % k_x = f*2*pi .* sind(delta_theta) ./ c;
