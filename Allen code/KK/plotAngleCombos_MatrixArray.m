@@ -34,7 +34,7 @@ delta_theta = calcDeltaTheta(anglesTX, anglesRX);
 
 % Plot histograms
 % figure; histogram2(delta_theta(:, 1), delta_theta(:, 2), BinMethod="integers"); title('Delta theta counts'); xlabel('Delta theta [deg]'); ylabel('Counts')
-figure; histogram2(delta_theta(:, 1), delta_theta(:, 2), XBinLimits = binlimits, YBinLimits = binlimits, BinWidth = binwidth); title('Delta theta counts'); xlabel('Delta theta [deg]'); ylabel('Counts')
+figure; histogram2(delta_theta(:, 1), delta_theta(:, 2), XBinLimits = binlimits, YBinLimits = binlimits, BinWidth = binwidth); title('Delta theta counts'); xlabel('Delta theta [deg]'); ylabel('Delta theta y [deg]'); zlabel('Counts')
 % figure; histogram(k_x); title('Delta k_x'); xlabel('Delta k_x [radians/m]'); ylabel('Counts')
 
 %% Case 2: Use the shifted angles for RX
@@ -47,7 +47,7 @@ anglesRX = listToAngles(anglesRXList);
 
 delta_theta = calcDeltaTheta(anglesTX, anglesRX);
 
-figure; histogram2(delta_theta(:, 1), delta_theta(:, 2), XBinLimits = binlimits, YBinLimits = binlimits, BinWidth = binwidth); title('Delta theta counts'); xlabel('Delta theta [deg]'); ylabel('Counts')
+figure; histogram2(delta_theta(:, 1), delta_theta(:, 2), XBinLimits = binlimits, YBinLimits = binlimits, BinWidth = binwidth); title('Delta theta counts'); xlabel('Delta theta x [deg]'); ylabel('Delta theta y [deg]'); zlabel('Counts')
 
 % figure; histogram(delta_theta(:, 1), BinMethod="integers")
 % figure; histogram(delta_theta(:, 2), BinMethod="integers")

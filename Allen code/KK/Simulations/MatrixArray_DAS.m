@@ -169,7 +169,8 @@ end
 % Rearrange RF data dimensions for further processing
 % RFData = downsample(flip(flip(reshape(permute(RFData, [2, 1, 3]), [kgrid.Nt, element.num, element.num, nta]), 2), 3), dsFactor);
 RFData_raw = RFData; % Non-downsampled RFData
-RFData = downsample(RFData, dsFactor);
+RFData = downsample(permute(RFData_raw, [2, 1, 3]), dsFactor);
+% RFData = downsample(flip(flip(reshape(permute(RFData_raw, [2, 1, 3]), [kgrid.Nt, element.num, element.num, nta]), 2), 3), dsFactor);
 
 % figure; colormap gray
 % imagesc(log10(abs(RFData)))
@@ -183,7 +184,7 @@ param.fs = RF_fs;                           % [Hz]   sampling frequency
 param.pitch = element.pitch;                % [m]
 param.fc = source_f0;                       % [Hz]   center frequency
 param.c = c0;                               % [m/s]  longitudinal sound speed
-param.fnumber = 0.6;                        % [ul]   receive f-number
+param.fnumber = [0.6, 0.6];                        % [ul]   receive f-number
 
 wavelength = param.c/param.fc;              % [m] convert from wavelength to meters
 % samplesPerWave = param.fs/param.fc;     % the number of samples per wavelength
@@ -210,17 +211,25 @@ zCoord = zbounds(1):0.25*wavelength:zbounds(2);   % [m]    Beamformed points z c
 
 %% Beamform
 Recon = zeros(size(X, 1), size(X, 2), size(X, 3), nta); % Initialize container for storing reconstructed data
-% for i = 1:nta % Go through every angle
-% for i = 1
-% for xai = 1:na
-for xai = 1  
-    % for yai = 1:na
-    for yai = 1
-        RFDataIQ = rf2iq(RFData(:, xai, yai, i), param);
-        % Recon(:,:,i) = ezdas(RFDataIQ,X,Z,vsource(i,:),param);
-        Recon(:, :, i) = das3(RFData,X,Z,time_delays,param);
-    end
+% % for i = 1:nta % Go through every angle
+% % for i = 1
+% % for xai = 1:na
+% for xai = 1  
+%     % for yai = 1:na
+%     for yai = 1
+%         % RFDataIQ = rf2iq(RFData(:, xai, yai, i), param);
+%         % Recon(:,:,i) = ezdas(RFDataIQ,X,Z,vsource(i,:),param);
+%         Recon(:, :, i) = das3(RFData,X,Z,time_delays,param);
+%     end
+% end
+
+% for ai = 1:nta % Go through every angle
+for ai = 1
+        RFDataIQ = rf2iq(RFData(:, :, ai), param);
+        % Recon(:,:,ai) = ezdas(RFDataIQ,X,Z,vsource(i,:),param);
+        Recon(:, :, :, ai) = das3(RFData(:, :, ai), X, Y, Z, time_delays, param);
 end
+
 %%
 ReconC = abs(sum(Recon,3));
 ReconC_log = 20*log10(ReconC/max(ReconC,[],'all'));
