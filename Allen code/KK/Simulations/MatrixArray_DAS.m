@@ -13,7 +13,7 @@ addMUSTPath
 %% DEFINE LITERALS - Setting up parameters for the simulation
 
 % Selection of K-Wave code execution model
-model = 1;  % Options: 1 - MATLAB CPU, 2 - MATLAB GPU, 3 - C++ code, 4 - CUDA code
+model = 3;  % Options: 1 - MATLAB CPU, 2 - MATLAB GPU, 3 - C++ code, 4 - CUDA code
 USE_STATISTICS = true;      % set to true to compute the rms or peak beam patterns, set to false to compute the harmonic beam patterns
 
 % Medium parameters
@@ -22,6 +22,7 @@ rho0 = 1020;      % Density of the medium [kg/m^3]
 
 % Source parameters
 source_f0 = (250/48)*1e6;  % Frequency of the ultrasound source [Hz]
+% source_f0 = (15)*1e6;  % Frequency of the ultrasound source [Hz]
 source_amp = 1e6;          % Amplitude of the ultrasound source [Pa]
 source_cycles = 3;         % Number of cycles in the tone burst signal
 % source_focus = 5e-3;     % Focal length of the source [m]
@@ -33,17 +34,19 @@ element.elevationlength = 3e-3;   % Elevation Length - length along 3rd dimensio
 RF_fs = source_f0*4;       % Sampling Frequency of final RFData
 
 % Define transmission angles for plane wave compounding
-na = 1;  % Number of angles for transmission
+na = 5;  % Number of angles for transmission (in one dimension)
+maxAngle = 5; % [deg]
 if (na > 1)
-    startAngle = -24*pi/180;
+    startAngle = -maxAngle*pi/180;
     thetaX = linspace(startAngle, -startAngle, na);
     thetaY = linspace(startAngle, -startAngle, na);
-    [tX,tY] = meshgrid(thetaX,thetaY);
-    TXangle = [tX(:),tY(:)];
+    [tX, tY] = meshgrid(thetaX,thetaY);
+    TXangle = [tX(:), tY(:)];
 else
-    TXangle = [0*pi/180,0*pi/180];
+    TXangle = [0*pi/180, 0*pi/180];
 end
-na = size(TXangle,1);
+% na = size(TXangle, 1);
+nta = length(TXangle(:)); % # of total transmit angles
 
 % Transducer position parameters
 Trans.translation = [0, 0, 0]; % [m]
@@ -84,7 +87,16 @@ dsFactor = (1/kgrid.dt)/RF_fs; % Downsampling factor to turn the RF data on the 
 medium.sound_speed = c0 * ones([Nx, Ny, Nz]);   % sound speed [m/s]
 medium.density = rho0 * ones([Nx, Ny, Nz]);      % density [kg/m3]
 
+% Add a ball target
+bc_mm = [0, 0, 2]; % Ball center coordinates in mm (x, y, z)
+bc = bc_mm ./ 1e3 ./ [dx, dy, dz]; % Ball center coordinates in grid points
+% br_mm = 40; % Ball radius in um
+br_mm = 400; % Ball radius in um
+br = br_mm ./ 1e6 ./ dx; % Assumes dx = dy = dz
+ball_mask = logical(makeBall(Nx, Ny, Nz, bc(1), bc(2), bc(3), br));
 
+medium.sound_speed(ball_mask) = c0 * 2;
+medium.density(ball_mask) = rho0 * 1;      % density [kg/m3]
 %% SOURCE/SENSOR - KWaveArray
 
 [karray, ElemPos] = initArray(kgrid, element, Trans);
@@ -146,9 +158,11 @@ RFData = zeros(element.num*element.num, kgrid.Nt, na);
 % Loop over each angle for plane wave compounding
 for i = 1:na
     % RFData based on kWaveArray
-    [source, time_delays(:,i)] = genSource(kgrid, source_f0, source_cycles, source_amp, TXangle(i,:), karray, ElemPos, c0);
+
+    % **** FIX THE BELOW TXangle(i, :)!!!!!!! ****
+    [source, time_delays(:,i)] = genSource(kgrid, source_f0, source_cycles, source_amp, TXangle(i, :), karray, ElemPos, c0);
     sensor_data = runSim(kgrid, medium, source, sensor, input_args, model, source_amp);
-    RFData(:, :, i) = karray.combineSensorData(kgrid, sensor_data.p);
+    RFData(:, :, i) = karray.combineSensorData(kgrid, sensor_data.p); % Data from each array element stored with dimensions [total # elements, kgrid.Nt]
 end
 
 
