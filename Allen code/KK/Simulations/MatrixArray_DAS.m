@@ -45,8 +45,8 @@ if (na > 1)
 else
     TXangle = [0*pi/180, 0*pi/180];
 end
-% na = size(TXangle, 1);
-nta = length(TXangle(:)); % # of total transmit angles
+nta = size(TXangle, 1);
+% nta = length(TXangle(:)); % # of total transmit angles
 
 % Transducer position parameters
 Trans.translation = [0, 0, 0]; % [m]
@@ -148,26 +148,26 @@ sensor.frequency_response = [source_f0, 100];
 %% SIMULATION - Running the simulation for different transmission angles
 
 % Preallocate arrays for time delays and RF data
-time_delays = zeros(element.num*element.num, na);
+time_delays = zeros(element.num*element.num, nta);
 
 % Simulation input options
 % input_args = {'PMLSize', 'auto', 'PMLInside', false, 'PlotPML', false, 'DisplayMask', 'off','DeleteData',false};
 input_args = {'PMLSize', 'auto', 'PMLInside', false, 'PlotPML', false, 'DisplayMask', 'off'};
-RFData = zeros(element.num*element.num, kgrid.Nt, na);
+RFData = zeros(element.num*element.num, kgrid.Nt, nta);
 
 % Loop over each angle for plane wave compounding
-for i = 1:na
+for ai = 1:nta
     % RFData based on kWaveArray
 
-    % **** FIX THE BELOW TXangle(i, :)!!!!!!! ****
-    [source, time_delays(:,i)] = genSource(kgrid, source_f0, source_cycles, source_amp, TXangle(i, :), karray, ElemPos, c0);
+    % **** FIX THE BELOW TXangle(ai, :)!!!!!!! ****
+    [source, time_delays(:, ai)] = genSource(kgrid, source_f0, source_cycles, source_amp, TXangle(ai, :), karray, ElemPos, c0);
     sensor_data = runSim(kgrid, medium, source, sensor, input_args, model, source_amp);
-    RFData(:, :, i) = karray.combineSensorData(kgrid, sensor_data.p); % Data from each array element stored with dimensions [total # elements, kgrid.Nt]
+    RFData(:, :, ai) = karray.combineSensorData(kgrid, sensor_data.p); % Data from each array element stored with dimensions [total # elements, kgrid.Nt]
 end
 
 
 % Rearrange RF data dimensions for further processing
-RFData = downsample(flip(flip(reshape(permute(RFData, [2, 1, 3]),[kgrid.Nt, element.num, element.num, na]), 2), 3), dsFactor);
+RFData = downsample(flip(flip(reshape(permute(RFData, [2, 1, 3]),[kgrid.Nt, element.num, element.num, nta]), 2), 3), dsFactor);
 
 % figure; colormap gray
 % imagesc(log10(abs(RFData)))
@@ -190,25 +190,36 @@ wavelength = param.c/param.fc;              % [m] convert from wavelength to met
 % practice that becomes 8 since you are also accounting for time to go to
 % and from the transducer.
 
-[~,I] = max(source_sig);
-param.t0 = (kgrid.t_array(I))/param.fc; % Sequence start time (time offset)
+[~,I] = max(source_sig); % Find the index where the source input signal is maximum (wrt kgrid.dt)
+param.t0 = (kgrid.t_array(I))/param.fc; % Sequence start time (time offset) [s] --> convert the index wrt kgrid.dt to time wrt the RF sampling frequency
 param.TXdelay = time_delays;
 param.DecimRate = 1;    % Decimation rate
 
-xCoord = ((-numEl/2):0.25:(numEl/2)-1)*param.pitch;  % [m]   Beamformed points x coordinates
-zCoord = (1:0.025:32)*wavelength;   % [m]    Beamformed points z coordinates
-[X,Z] = meshgrid(xCoord,zCoord);
+xCoord = ((-element.num/2):0.25:(element.num/2)-1)*param.pitch;  % [m]   Beamformed points x coordinates
+% xCoord = ((-element.num/2):0.5:(element.num/2)-1)*param.pitch;  % [m]   Beamformed points x coordinates
+yCoord = xCoord;
+zbounds_mm = [0, 5]; % Z bounds/extents [mm]
+zbounds = zbounds_mm ./ 1e3; % Z bounds/extents [m]
+zCoord = zbounds(1):0.25*wavelength:zbounds(2);   % [m]    Beamformed points z coordinates
+% zCoord = (1:0.025:32)*wavelength;   % [m]    Beamformed points z coordinates
+[X, Y, Z] = meshgrid(xCoord,yCoord, zCoord);
 
-vsource = 10000*[tan(TXangle).',-ones(na,1)];  
+% vsource = 10000*[tan(TXangle).',-ones(na,1)];  
 
 %% Beamform
-Recon = zeros(size(X,1),size(X,2),na);
-for i = 1:na
-    RFDataIQ = rf2iq(RFData(:,:,i),param);
-    Recon(:,:,i) = ezdas(RFDataIQ,X,Z,vsource(i,:),param);
-%     Recon(:,:,i) = das(RFData,X,Z,time_delays,param);
+Recon = zeros(size(X,1), size(X,2), size(X,3), nta); % Initialize container for storing reconstructed data
+% for i = 1:nta % Go through every angle
+% for i = 1
+% for xai = 1:na
+for xai = 1  
+    % for yai = 1:na
+    for yai = 1
+        RFDataIQ = rf2iq(RFData(:, xai, yai, i), param);
+        % Recon(:,:,i) = ezdas(RFDataIQ,X,Z,vsource(i,:),param);
+        Recon(:, :, i) = das3(RFData,X,Z,time_delays,param);
+    end
 end
-
+%%
 ReconC = abs(sum(Recon,3));
 ReconC_log = 20*log10(ReconC/max(ReconC,[],'all'));
 
