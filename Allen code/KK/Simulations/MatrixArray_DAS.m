@@ -167,7 +167,9 @@ end
 
 
 % Rearrange RF data dimensions for further processing
-RFData = downsample(flip(flip(reshape(permute(RFData, [2, 1, 3]),[kgrid.Nt, element.num, element.num, nta]), 2), 3), dsFactor);
+% RFData = downsample(flip(flip(reshape(permute(RFData, [2, 1, 3]), [kgrid.Nt, element.num, element.num, nta]), 2), 3), dsFactor);
+RFData_raw = RFData; % Non-downsampled RFData
+RFData = downsample(RFData, dsFactor);
 
 % figure; colormap gray
 % imagesc(log10(abs(RFData)))
@@ -202,12 +204,12 @@ zbounds_mm = [0, 5]; % Z bounds/extents [mm]
 zbounds = zbounds_mm ./ 1e3; % Z bounds/extents [m]
 zCoord = zbounds(1):0.25*wavelength:zbounds(2);   % [m]    Beamformed points z coordinates
 % zCoord = (1:0.025:32)*wavelength;   % [m]    Beamformed points z coordinates
-[X, Y, Z] = meshgrid(xCoord,yCoord, zCoord);
+[X, Y, Z] = meshgrid(xCoord, yCoord, zCoord);
 
 % vsource = 10000*[tan(TXangle).',-ones(na,1)];  
 
 %% Beamform
-Recon = zeros(size(X,1), size(X,2), size(X,3), nta); % Initialize container for storing reconstructed data
+Recon = zeros(size(X, 1), size(X, 2), size(X, 3), nta); % Initialize container for storing reconstructed data
 % for i = 1:nta % Go through every angle
 % for i = 1
 % for xai = 1:na
