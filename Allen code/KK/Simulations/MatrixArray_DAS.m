@@ -91,19 +91,19 @@ medium.density = rho0 * ones([Nx, Ny, Nz]);      % density [kg/m3]
 bc_mm = [0, 0, 2]; % Ball center coordinates in mm (x, y, z)
 bc = bc_mm ./ 1e3 ./ [dx, dy, dz]; % Ball center coordinates in grid points
 % br_mm = 40; % Ball radius in um
-br_mm = 400; % Ball radius in um
-br = br_mm ./ 1e6 ./ dx; % Assumes dx = dy = dz
+br_um = 400; % Ball radius in um
+br = br_um ./ 1e6 ./ dx; % Assumes dx = dy = dz
 ball_mask = logical(makeBall(Nx, Ny, Nz, bc(1), bc(2), bc(3), br));
 
 medium.sound_speed(ball_mask) = c0 * 2;
 medium.density(ball_mask) = rho0 * 1;      % density [kg/m3]
 %% SOURCE/SENSOR - KWaveArray
 
-[karray, ElemPos] = initArray(kgrid, element, Trans);
+[karray, ElemPos, element.coords] = initArray(kgrid, element, Trans);
 
 % Plot Array
 chkMask = karray.getArrayBinaryMask(kgrid);
-[X,Y,Z] = meshgrid(kgrid.x_vec,kgrid.y_vec,kgrid.z_vec);
+[X,Y,Z] = meshgrid(kgrid.x_vec, kgrid.y_vec, kgrid.z_vec);
 x = X(chkMask); y = Y(chkMask); z = Z(chkMask);
 % Plot
 figure
@@ -185,7 +185,7 @@ param.pitch = element.pitch;                % [m]
 param.fc = source_f0;                       % [Hz]   center frequency
 param.c = c0;                               % [m/s]  longitudinal sound speed
 param.fnumber = [0.6, 0.6];                        % [ul]   receive f-number
-
+param.elements = element.coords; % Element coordinates (x, y) [m]
 wavelength = param.c/param.fc;              % [m] convert from wavelength to meters
 % samplesPerWave = param.fs/param.fc;     % the number of samples per wavelength
 % note: this is off by a factor of two because you also account for
@@ -195,11 +195,11 @@ wavelength = param.c/param.fc;              % [m] convert from wavelength to met
 
 [~,I] = max(source_sig); % Find the index where the source input signal is maximum (wrt kgrid.dt)
 param.t0 = (kgrid.t_array(I))/param.fc; % Sequence start time (time offset) [s] --> convert the index wrt kgrid.dt to time wrt the RF sampling frequency
-param.TXdelay = time_delays;
+% param.TXdelay = time_delays;
 param.DecimRate = 1;    % Decimation rate
 
-xCoord = ((-element.num/2):0.25:(element.num/2)-1)*param.pitch;  % [m]   Beamformed points x coordinates
-% xCoord = ((-element.num/2):0.5:(element.num/2)-1)*param.pitch;  % [m]   Beamformed points x coordinates
+xCoord = ((-element.num/2):0.25:(element.num/2))*param.pitch;  % [m]   Beamformed points x coordinates
+% xCoord = ((-element.num/2):0.5:(element.num/2))*param.pitch;  % [m]   Beamformed points x coordinates
 yCoord = xCoord;
 zbounds_mm = [0, 5]; % Z bounds/extents [mm]
 zbounds = zbounds_mm ./ 1e3; % Z bounds/extents [m]
@@ -223,12 +223,23 @@ Recon = zeros(size(X, 1), size(X, 2), size(X, 3), nta); % Initialize container f
 %     end
 % end
 
-% for ai = 1:nta % Go through every angle
-for ai = 1
-        RFDataIQ = rf2iq(RFData(:, :, ai), param);
-        % Recon(:,:,ai) = ezdas(RFDataIQ,X,Z,vsource(i,:),param);
-        Recon(:, :, :, ai) = das3(RFData(:, :, ai), X, Y, Z, time_delays, param);
+tic
+for ai = 1:nta % Go through every angle
+% for ai = 1
+    disp("Reconstructing volume with angle # " + num2str(ai))
+    RFDataIQ = rf2iq(RFData(:, :, ai), param);
+    % Recon(:,:,ai) = ezdas(RFDataIQ,X,Z,vsource(i,:),param);
+    % Recon(:, :, :, ai) = das3(squeeze(RFData(:, :, ai)), X, Y, Z, time_delays, param);
+    Recon(:, :, :, ai) = das3(RFDataIQ, X, Y, Z, time_delays(:, ai), param);
+
 end
+toc
+
+%% Testing the recon result
+vol_CPWC = squeeze(sum(Recon, 4));
+figure; imagesc(squeeze(max(abs(vol_CPWC), [], 1))')
+
+volumeViewer(abs(vol_CPWC))
 
 %%
 ReconC = abs(sum(Recon,3));
@@ -254,7 +265,7 @@ end
 
 
 %% HELPER FUNCTIONS
-function [karray, ElemPos] = initArray(kgrid, element, Trans)
+function [karray, ElemPos, elementCoords] = initArray(kgrid, element, Trans)
     % Initializes the transducer array.
     % Args:
     %   kgrid: The k-Wave grid object.
@@ -276,7 +287,8 @@ function [karray, ElemPos] = initArray(kgrid, element, Trans)
     L = element.num * element.pitch / 2; % Half-length of the full array (at least, between the start and end element centers along one dimension)
     ElemPos = -(L - element.pitch / 2) + (0:element.num - 1) * element.pitch; % Element center positions in one dimension
     [X, Y] = meshgrid(ElemPos, ElemPos); % Meshgrid of array elements
-
+    elementCoords = [X(:), Y(:)]'; % Save the coordinates of each element as x, y pairs
+    
     % rotation = [0, 0, 0];
     rotation = Trans.rotation;
 
