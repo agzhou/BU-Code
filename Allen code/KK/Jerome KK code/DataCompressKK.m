@@ -1,6 +1,7 @@
 function RawDataKK=DataCompressKK(Data,RXangle,s)
 % Compresses RawData(t,x,TXangle) -> RawDataKK(t,TXangle,RXangle)  
-% s is....
+% s is "aspect ratio"
+% From TestKKadaptive.m: s=2*Pitch*SamplingFrequency/c;  %aspect ratio
 
 tSize=size(Data,1);
 xSize=size(Data,2);
