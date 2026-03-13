@@ -1,9 +1,10 @@
 % Description: Compresses data(samples, elements, TXangles) --> RawDataKK(samples, TXangles, RXangles)  
 % Inputs:
+%   - data: RFdata, with dimensions [# samples, # elements, # TX angles]
+%   - RXangles: receive angles in radians, with dimensions [# receive angles, 2 (x and y)]
 %   - s: "aspect ratio" (From TestKKadaptive.m: s=2*Pitch*SamplingFrequency/c;  %aspect ratio)
 %       - My interpretation is that s is a conversion factor between actual
 %         time and samples... though maybe with another factor?
-%   - data: RFdata, with dimensions [# samples, # elements, # TX angles]
 
 function RawDataKK = DataCompressKKMatrixArray(data, RXangles, s)
     
@@ -20,8 +21,10 @@ function RawDataKK = DataCompressKKMatrixArray(data, RXangles, s)
     dataTemp = zeros(numSamples, numElements);
     
     for rai = 1:numRXAngles % Receive angle index
-        
-        slope = s*sin(RXangles(rai))/2; % [slope_x, slope_y]
+        u = [cos(numRXAngles(rai, 2)), cos(numRXAngles(rai, 1))]; % Unit direction vector for theta_RX = [cos(theta_RX_y), cos(theta_RX_x)]
+
+        % slope = s*sin(RXangles(rai))/2; % [slope_x, slope_y]
+        slope = s .* u ./ 2;
     
         for tai = 1:numTXAngles % Transmit angle index
                
@@ -36,6 +39,7 @@ function RawDataKK = DataCompressKKMatrixArray(data, RXangles, s)
                        end
                    end
                    
+                   % **** BELOW IS STILL UNCHANGED **** %
                    dataTemp(:,ei)=circshift(data(:,ei,tai),round(nShift));
                end 
                

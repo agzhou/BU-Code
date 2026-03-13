@@ -34,18 +34,21 @@ element.elevationlength = 3e-3;   % Elevation Length - length along 3rd dimensio
 RF_fs = source_f0*4;       % Sampling Frequency of final RFData
 
 % Define transmission angles for plane wave compounding
-na = 5;  % Number of angles for transmission (in one dimension)
+naTX = 5;  % Number of angles for transmission (in one dimension)
 maxAngle = 5; % [deg]
-if (na > 1)
+if (naTX > 1)
     startAngle = -maxAngle*pi/180;
-    thetaX = linspace(startAngle, -startAngle, na);
-    thetaY = linspace(startAngle, -startAngle, na);
-    [tX, tY] = meshgrid(thetaX,thetaY);
+    thetaX = linspace(startAngle, -startAngle, naTX);
+    thetaY = linspace(startAngle, -startAngle, naTX);
+    [tX, tY] = meshgrid(thetaX, thetaY);
     TXangle = [tX(:), tY(:)];
+    daTX = mean(diff(thetaX)); % TX angle ingrement [rad]
 else
     TXangle = [0*pi/180, 0*pi/180];
+    daTX = 0;
 end
-nta = size(TXangle, 1);
+
+ntaTX = size(TXangle, 1);
 % nta = length(TXangle(:)); % # of total transmit angles
 
 % Transducer position parameters
@@ -148,15 +151,15 @@ sensor.frequency_response = [source_f0, 100];
 %% SIMULATION - Running the simulation for different transmission angles
 
 % Preallocate arrays for time delays and RF data
-time_delays = zeros(element.num*element.num, nta);
+time_delays = zeros(element.num*element.num, ntaTX);
 
 % Simulation input options
 % input_args = {'PMLSize', 'auto', 'PMLInside', false, 'PlotPML', false, 'DisplayMask', 'off','DeleteData',false};
 input_args = {'PMLSize', 'auto', 'PMLInside', false, 'PlotPML', false, 'DisplayMask', 'off'};
-RFData = zeros(element.num*element.num, kgrid.Nt, nta);
+RFData = zeros(element.num*element.num, kgrid.Nt, ntaTX);
 
 % Loop over each angle for plane wave compounding
-for ai = 1:nta
+for ai = 1:ntaTX
     % RFData based on kWaveArray
 
     % **** FIX THE BELOW TXangle(ai, :)!!!!!!! ****
@@ -177,6 +180,20 @@ RFData = downsample(permute(RFData_raw, [2, 1, 3]), dsFactor);
 % xlabel('Horizontal Position [mm]')
 % ylabel('Time [us]')
 % title('RF data')
+
+%% KK parameters
+
+naRX = 21; % # of RX angles in 1 dimension
+
+o = fix(-naRX/2):1:fix(naRX/2); % Truncate towards zero
+j = fix(naRX/2); % Shift parameter
+anglesRXList = (sign(o) .* daTX .* (2.*abs(o)./naRX + j))'; % Receive angles [deg]
+anglesRX = listToAngles(anglesRXList); % All the receive angles [theta_x, theta_y]
+ntaRX = size(anglesRX, 1); % Total number of RX angles
+
+%% KK compression
+s = 2 * element.pitch * RF_fs / c0; % aspect ratio...
+RawDataKK = DataCompressKKMatrixArray(RFData, anglesRX, s);
 
 %% Beamforming  Parameter definition
 % Define key parameter structure
@@ -210,21 +227,10 @@ zCoord = zbounds(1):0.25*wavelength:zbounds(2);   % [m]    Beamformed points z c
 % vsource = 10000*[tan(TXangle).',-ones(na,1)];  
 
 %% Beamform
-Recon = zeros(size(X, 1), size(X, 2), size(X, 3), nta); % Initialize container for storing reconstructed data
-% % for i = 1:nta % Go through every angle
-% % for i = 1
-% % for xai = 1:na
-% for xai = 1  
-%     % for yai = 1:na
-%     for yai = 1
-%         % RFDataIQ = rf2iq(RFData(:, xai, yai, i), param);
-%         % Recon(:,:,i) = ezdas(RFDataIQ,X,Z,vsource(i,:),param);
-%         Recon(:, :, i) = das3(RFData,X,Z,time_delays,param);
-%     end
-% end
+Recon = zeros(size(X, 1), size(X, 2), size(X, 3), ntaTX); % Initialize container for storing reconstructed data
 
 tic
-for ai = 1:nta % Go through every angle
+for ai = 1:ntaTX % Go through every angle
 % for ai = 1
     disp("Reconstructing volume with angle # " + num2str(ai))
     RFDataIQ = rf2iq(RFData(:, :, ai), param);
@@ -259,7 +265,7 @@ title('Beam formed image (linear)'); axis image
 xlabel('Horizontal Position [mm]');
 ylabel('Depth [mm]');
 
-if na > 1
+if naTX > 1
     genSliderV2(log10(abs(Recon)))
 end
 
