@@ -21,7 +21,7 @@ function RawDataKK = DataCompressKKMatrixArray(data, RXangles, s)
     dataTemp = zeros(numSamples, numElements);
     
     for rai = 1:numRXAngles % Receive angle index
-        u = [cos(numRXAngles(rai, 2)), cos(numRXAngles(rai, 1))]; % Unit direction vector for theta_RX = [cos(theta_RX_y), cos(theta_RX_x)]
+        u = [sin(numRXAngles(rai, 2)), -sin(numRXAngles(rai, 1))]; % Unit direction vector for theta_RX = [sin(theta_RX_y), -sin(theta_RX_x)]
 
         % slope = s*sin(RXangles(rai))/2; % [slope_x, slope_y]
         slope = s .* u ./ 2;
