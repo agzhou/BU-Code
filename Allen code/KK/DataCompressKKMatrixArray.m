@@ -16,18 +16,19 @@ function RawDataKK = DataCompressKKMatrixArray(data, RXangles, s)
     numTXAngles = size(data, 3);
     numRXAngles = size(RXangles, 1);
     
-    % Initialize outputs and temp variables
+    % Initialize output
     RawDataKK = zeros(numSamples, numTXAngles, numRXAngles);
-    dataTemp = zeros(numSamples, numElements);
     
+    % Go through and perform the shifting/basis transformation
+    dataTemp = zeros(numSamples, numElements); % Temp variable for shifting the RF Data for each TX/RX combo
     for rai = 1:numRXAngles % Receive angle index
-        u = [sin(numRXAngles(rai, 2)), -sin(numRXAngles(rai, 1))]; % Unit direction vector for theta_RX = [sin(theta_RX_y), -sin(theta_RX_x)]
+        u = [sin(RXangles(rai, 2)), -sin(RXangles(rai, 1))]; % Unit direction vector for theta_RX = [sin(theta_RX_y), -sin(theta_RX_x)]
 
         % slope = s*sin(RXangles(rai))/2; % [slope_x, slope_y]
         slope = s .* u ./ 2;
     
         for tai = 1:numTXAngles % Transmit angle index
-               
+
                for ei = 1:numElements % Element index
                    nShift = zeros(size(slope)); % How many samples to shift by for element ei
                    for dim = 1:2
@@ -40,10 +41,10 @@ function RawDataKK = DataCompressKKMatrixArray(data, RXangles, s)
                    end
                    
                    % **** BELOW IS STILL UNCHANGED **** %
-                   dataTemp(:,ei)=circshift(data(:,ei,tai),round(nShift));
+                   dataTemp(:, ei) = circshift( data(:, ei, tai), round(nShift) );
                end 
                
-               RawDataKK(:,tai,rai)=sum(dataTemp,2);
+               RawDataKK(:, tai, rai) = sum(dataTemp,2);
                 
         end
 

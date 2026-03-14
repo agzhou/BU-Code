@@ -183,7 +183,7 @@ RFData = downsample(permute(RFData_raw, [2, 1, 3]), dsFactor);
 
 %% KK parameters
 
-naRX = 21; % # of RX angles in 1 dimension
+naRX = 25; % # of RX angles in 1 dimension
 
 o = fix(-naRX/2):1:fix(naRX/2); % Truncate towards zero
 j = fix(naRX/2); % Shift parameter
