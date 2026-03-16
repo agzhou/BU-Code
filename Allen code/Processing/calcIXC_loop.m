@@ -129,6 +129,7 @@ for filenum = startFile:endFile
 
     %% Compare phase of the moving and fixed frames
     generateTiffStack_acrossframes(abs(IQ) .^ 0.3, [8.8, 8.8, 8], 'gray', 1:size(IQ, 1))
+    genSliderV2(squeeze(max(abs(IQ), [], 1)) .^ 0.3)
 
     figure; imagesc(squeeze(angle(ref_vol(size(ref_vol, 1)/2, :, :)))'); colormap jet; xlabel('x'); ylabel('z'); colorbar; title('Phase [rad]')
     figure; imagesc(squeeze(angle(moving_vol(size(ref_vol, 1)/2, :, :)))'); colormap jet; xlabel('x'); ylabel('z'); colorbar; title('Phase [rad]')
