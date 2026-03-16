@@ -22,7 +22,7 @@ function RawDataKK = DataCompressKKMatrixArray(data, RXangles, s)
     % Go through and perform the shifting/basis transformation
     dataTemp = zeros(numSamples, numElements); % Temp variable for shifting the RF Data for each TX/RX combo
     for rai = 1:numRXAngles % Receive angle index
-        u = [sin(RXangles(rai, 2)), -sin(RXangles(rai, 1))]; % Unit direction vector for theta_RX = [sin(theta_RX_y), -sin(theta_RX_x)]
+        u = [sin(RXangles(rai, 2)), -sin(RXangles(rai, 1))]; % Unit direction vector for the plane wave = [sin(theta_RX_y), -sin(theta_RX_x)]
 
         % slope = s*sin(RXangles(rai))/2; % [slope_x, slope_y]
         slope = s .* u ./ 2;

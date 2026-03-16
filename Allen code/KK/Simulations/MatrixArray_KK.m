@@ -41,14 +41,14 @@ if (naTX > 1)
     thetaX = linspace(startAngle, -startAngle, naTX);
     thetaY = linspace(startAngle, -startAngle, naTX);
     [tX, tY] = meshgrid(thetaX, thetaY);
-    TXangle = [tX(:), tY(:)];
+    anglesTX = [tX(:), tY(:)];
     daTX = mean(diff(thetaX)); % TX angle ingrement [rad]
 else
-    TXangle = [0*pi/180, 0*pi/180];
+    anglesTX = [0*pi/180, 0*pi/180];
     daTX = 0;
 end
 
-ntaTX = size(TXangle, 1);
+ntaTX = size(anglesTX, 1);
 % nta = length(TXangle(:)); % # of total transmit angles
 
 % Transducer position parameters
@@ -163,7 +163,7 @@ for ai = 1:ntaTX
     % RFData based on kWaveArray
 
     % **** FIX THE BELOW TXangle(ai, :)!!!!!!! ****
-    [source, time_delays(:, ai)] = genSource(kgrid, source_f0, source_cycles, source_amp, TXangle(ai, :), karray, ElemPos, c0);
+    [source, time_delays(:, ai)] = genSource(kgrid, source_f0, source_cycles, source_amp, anglesTX(ai, :), karray, ElemPos, c0);
     sensor_data = runSim(kgrid, medium, source, sensor, input_args, model, source_amp);
     RFData(:, :, ai) = karray.combineSensorData(kgrid, sensor_data.p); % Data from each array element stored with dimensions [total # elements, kgrid.Nt]
 end
@@ -183,7 +183,7 @@ RFData = downsample(permute(RFData_raw, [2, 1, 3]), dsFactor);
 
 %% KK parameters
 
-naRX = 25; % # of RX angles in 1 dimension
+naRX = 5; % # of RX angles in 1 dimension
 
 o = fix(-naRX/2):1:fix(naRX/2); % Truncate towards zero
 j = fix(naRX/2); % Shift parameter
@@ -224,6 +224,7 @@ zCoord = zbounds(1):0.25*wavelength:zbounds(2);   % [m]    Beamformed points z c
 % zCoord = (1:0.025:32)*wavelength;   % [m]    Beamformed points z coordinates
 [X, Y, Z] = meshgrid(xCoord, yCoord, zCoord);
 
+BFgrid = struct('X', X, 'Y', Y, 'Z', Z); % Struct for the beamforming grid
 % vsource = 10000*[tan(TXangle).',-ones(na,1)];  
 
 %% Beamform
