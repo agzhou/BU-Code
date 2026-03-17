@@ -230,7 +230,8 @@ BFgrid = struct('X', X, 'Y', Y, 'Z', Z); % Struct for the beamforming grid
 
 %% KK beamforming
 tic;
-[BFData] = BeamformKK_MatrixArray(RawDataKK, anglesRX, anglesTX, BFgrid, param);
+RawDataKKHilb = hilbert(RawDataKK);
+[BFData] = BeamformKK_MatrixArray(RawDataKKHilb, anglesRX, anglesTX, BFgrid, param);
 toc
 %% Beamform
 Recon = zeros(size(X, 1), size(X, 2), size(X, 3), ntaTX); % Initialize container for storing reconstructed data
