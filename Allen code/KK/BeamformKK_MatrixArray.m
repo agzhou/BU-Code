@@ -9,9 +9,10 @@
 
 % test = BeamformKK_MatrixArray(RawDataKK, anglesRX, BFgrid, param);
 
-function [BFdata] = BeamformKK_MatrixArray(RawDataKK, anglesRX, anglesTX, BFgrid, param)
+function [BFData] = BeamformKK_MatrixArray(RawDataKK, anglesRX, anglesTX, BFgrid, param)
 
     % **** ADD IQ DEMODULATION STEP **** %
+    % more so for speedup
 
     ns = size(RawDataKK, 1); % # of samples
     naTX = size(RawDataKK, 2); % # of TX angles
@@ -37,8 +38,8 @@ function [BFdata] = BeamformKK_MatrixArray(RawDataKK, anglesRX, anglesTX, BFgrid
     % Go through each transmit angle and beamform with its constituent
     % receive angles
     BFData = zeros(nx, ny, nz); % Initialize final beamformed volume
-    % for tai = 1:naTX     % Transmit angle index
-    for tai = 1
+    for tai = 1:naTX     % Transmit angle index
+    % for tai = 1
         temp = zeros(nx, ny, nz); % Initialize a volume to keep adding to
         tempLUTTX = LUTTX{tai}; % Temporarily store the TX time delays for angle index tai
         for rai = 1:naRX
@@ -50,7 +51,10 @@ function [BFdata] = BeamformKK_MatrixArray(RawDataKK, anglesRX, anglesTX, BFgrid
                         % sampleDelay = ( tempLUTTX(xi, yi, zi) + tempLUTRX(xi, yi, zi) ).*param.fs;
                         sampleDelay = round( (tempLUTTX(xi, yi, zi) + tempLUTRX(xi, yi, zi)).*param.fs + 1);
                         % INTERPOLATE???????????????
-                        verytemp(xi, yi, zi) = RawDataKK(sampleDelay, tai, rai);
+                        % add if statement for out of bounds delays
+                        if (sampleDelay < ns - 1) && (sampleDelay >= 1)
+                            verytemp(xi, yi, zi) = RawDataKK(sampleDelay, tai, rai);
+                        end
                     end
                 end
             end

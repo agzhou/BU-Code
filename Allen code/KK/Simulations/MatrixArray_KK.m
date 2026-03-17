@@ -192,8 +192,9 @@ anglesRX = listToAngles(anglesRXList); % All the receive angles [theta_x, theta_
 ntaRX = size(anglesRX, 1); % Total number of RX angles
 
 %% KK compression
-s = 2 * element.pitch * RF_fs / c0; % aspect ratio...
-RawDataKK = DataCompressKKMatrixArray(RFData, anglesRX, s);
+% s = 2 * element.pitch * RF_fs / c0; % aspect ratio...
+ratio = RF_fs / c0;
+RawDataKK = DataCompressKKMatrixArray(RFData, anglesRX, ratio, element.coords);
 
 %% Beamforming  Parameter definition
 % Define key parameter structure
@@ -227,6 +228,10 @@ zCoord = zbounds(1):0.25*wavelength:zbounds(2);   % [m]    Beamformed points z c
 BFgrid = struct('X', X, 'Y', Y, 'Z', Z); % Struct for the beamforming grid
 % vsource = 10000*[tan(TXangle).',-ones(na,1)];  
 
+%% KK beamforming
+tic;
+[BFData] = BeamformKK_MatrixArray(RawDataKK, anglesRX, anglesTX, BFgrid, param);
+toc
 %% Beamform
 Recon = zeros(size(X, 1), size(X, 2), size(X, 3), ntaTX); % Initialize container for storing reconstructed data
 
