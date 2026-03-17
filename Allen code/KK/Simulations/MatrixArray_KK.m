@@ -15,6 +15,7 @@ addMUSTPath
 % Selection of K-Wave code execution model
 model = 3;  % Options: 1 - MATLAB CPU, 2 - MATLAB GPU, 3 - C++ code, 4 - CUDA code
 USE_STATISTICS = true;      % set to true to compute the rms or peak beam patterns, set to false to compute the harmonic beam patterns
+SUBTRACT_BASELINE = true; % Set this flag = true to run a simulation with a homogeneous medium, to see only the crosstalk effects from the probe elements/sources not having any directivity
 
 % Medium parameters
 c0 = 1540;        % Sound speed in the medium [m/s]
@@ -90,7 +91,13 @@ dsFactor = (1/kgrid.dt)/RF_fs; % Downsampling factor to turn the RF data on the 
 medium.sound_speed = c0 * ones([Nx, Ny, Nz]);   % sound speed [m/s]
 medium.density = rho0 * ones([Nx, Ny, Nz]);      % density [kg/m3]
 
-% Add a ball target
+if SUBTRACT_BASELINE
+    % Fully homogeneous medium for the baseline subtraction
+    medium_baseline.sound_speed = c0 * ones([Nx, Ny, Nz]);   % sound speed [m/s]
+    medium_baseline.density = rho0 * ones([Nx, Ny, Nz]);      % density [kg/m3]
+end
+
+% Add a ball target to the "real" medium
 bc_mm = [0, 0, 2]; % Ball center coordinates in mm (x, y, z)
 bc = bc_mm ./ 1e3 ./ [dx, dy, dz]; % Ball center coordinates in grid points
 % br_mm = 40; % Ball radius in um
@@ -98,8 +105,10 @@ br_um = 400; % Ball radius in um
 br = br_um ./ 1e6 ./ dx; % Assumes dx = dy = dz
 ball_mask = logical(makeBall(Nx, Ny, Nz, bc(1), bc(2), bc(3), br));
 
-medium.sound_speed(ball_mask) = c0 * 2;
-medium.density(ball_mask) = rho0 * 1;      % density [kg/m3]
+% Modify the properties at the locations of the ball target
+medium.sound_speed(ball_mask) = c0 * 1;
+medium.density(ball_mask) = rho0 * 2;      % density [kg/m3]
+
 %% SOURCE/SENSOR - KWaveArray
 
 [karray, ElemPos, element.coords] = initArray(kgrid, element, Trans);
@@ -156,6 +165,7 @@ time_delays = zeros(element.num*element.num, ntaTX);
 % Simulation input options
 % input_args = {'PMLSize', 'auto', 'PMLInside', false, 'PlotPML', false, 'DisplayMask', 'off','DeleteData',false};
 input_args = {'PMLSize', 'auto', 'PMLInside', false, 'PlotPML', false, 'DisplayMask', 'off'};
+
 RFData = zeros(element.num*element.num, kgrid.Nt, ntaTX);
 
 % Loop over each angle for plane wave compounding
@@ -164,8 +174,15 @@ for ai = 1:ntaTX
 
     % **** FIX THE BELOW TXangle(ai, :)!!!!!!! ****
     [source, time_delays(:, ai)] = genSource(kgrid, source_f0, source_cycles, source_amp, anglesTX(ai, :), karray, ElemPos, c0);
-    sensor_data = runSim(kgrid, medium, source, sensor, input_args, model, source_amp);
-    RFData(:, :, ai) = karray.combineSensorData(kgrid, sensor_data.p); % Data from each array element stored with dimensions [total # elements, kgrid.Nt]
+    sensor_data = runSim(kgrid, medium, source, sensor, input_args, model, source_amp); % run simulation
+    p = sensor_data.p;
+    % Additional simulation for baseline crosstalk subtraction
+    if SUBTRACT_BASELINE
+        sensor_data_baseline = runSim(kgrid, medium_baseline, source, sensor, input_args, model, source_amp); % run "baseline" simulation: crosstalk only
+        p = p - sensor_data_baseline.p; % Baseline subtraction
+    end
+
+    RFData(:, :, ai) = karray.combineSensorData(kgrid, p); % Data from each array element stored with dimensions [total # elements, kgrid.Nt]
 end
 
 
@@ -229,11 +246,20 @@ BFgrid = struct('X', X, 'Y', Y, 'Z', Z); % Struct for the beamforming grid
 % vsource = 10000*[tan(TXangle).',-ones(na,1)];  
 
 %% KK beamforming
+
+% NOTE: include t0...
 tic;
 RawDataKKHilb = hilbert(RawDataKK);
 [BFData] = BeamformKK_MatrixArray(RawDataKKHilb, anglesRX, anglesTX, BFgrid, param);
 toc
-%% Beamform
+
+%% Examine KK beamforming result
+% vol_CPWC = squeeze(sum(Recon, 4));
+figure; imagesc(squeeze(max(abs(BFData), [], 1))')
+
+volumeViewer(abs(BFData).^0.25)
+
+%% DAS beamforming
 Recon = zeros(size(X, 1), size(X, 2), size(X, 3), ntaTX); % Initialize container for storing reconstructed data
 
 tic
@@ -248,11 +274,11 @@ for ai = 1:ntaTX % Go through every angle
 end
 toc
 
-%% Testing the recon result
-vol_CPWC = squeeze(sum(Recon, 4));
-figure; imagesc(squeeze(max(abs(vol_CPWC), [], 1))')
+%% Testing the DAS result
+vol_CPWC_DAS = squeeze(sum(Recon, 4));
+figure; imagesc(squeeze(max(abs(vol_CPWC_DAS), [], 1))')
 
-volumeViewer(abs(vol_CPWC))
+volumeViewer(abs(vol_CPWC_DAS).^0.25)
 
 %%
 ReconC = abs(sum(Recon,3));
