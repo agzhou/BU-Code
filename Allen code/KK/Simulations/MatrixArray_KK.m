@@ -13,7 +13,7 @@ addMUSTPath
 %% DEFINE LITERALS - Setting up parameters for the simulation
 
 % Selection of K-Wave code execution model
-model = 3;  % Options: 1 - MATLAB CPU, 2 - MATLAB GPU, 3 - C++ code, 4 - CUDA code
+model = 1;  % Options: 1 - MATLAB CPU, 2 - MATLAB GPU, 3 - C++ code, 4 - CUDA code
 USE_STATISTICS = true;      % set to true to compute the rms or peak beam patterns, set to false to compute the harmonic beam patterns
 SUBTRACT_BASELINE = true; % Set this flag = true to run a simulation with a homogeneous medium, to see only the crosstalk effects from the probe elements/sources not having any directivity
 
@@ -31,6 +31,9 @@ element.num = 16;                % Number of elements in the transducer array (i
 element.length = 2.3e-4;   % Length of each transducer element [m]
 element.width = 2.3e-4;    % Width of each transducer element [m]
 element.pitch = 2.3e-4;    % Pitch - distance between the centers of adjacent elements [m]
+% element.length = 2.3e-4 / 2;   % Length of each transducer element [m]
+% element.width = 2.3e-4 / 2;    % Width of each transducer element [m]
+% element.pitch = 2.3e-4 / 2;    % Pitch - distance between the centers of adjacent elements [m]
 element.elevationlength = 3e-3;   % Elevation Length - length along 3rd dimension of elements [m]
 RF_fs = source_f0*4;       % Sampling Frequency of final RFData
 
@@ -100,14 +103,18 @@ end
 % Add a ball target to the "real" medium
 bc_mm = [0, 0, 2]; % Ball center coordinates in mm (x, y, z)
 bc = bc_mm ./ 1e3 ./ [dx, dy, dz]; % Ball center coordinates in grid points
-% br_mm = 40; % Ball radius in um
-br_um = 400; % Ball radius in um
+br_um = 50; % Ball radius in um
+% br_um = 400; % Ball radius in um
 br = br_um ./ 1e6 ./ dx; % Assumes dx = dy = dz
 ball_mask = logical(makeBall(Nx, Ny, Nz, bc(1), bc(2), bc(3), br));
 
 % Modify the properties at the locations of the ball target
-medium.sound_speed(ball_mask) = c0 * 1;
-medium.density(ball_mask) = rho0 * 2;      % density [kg/m3]
+% medium.sound_speed(ball_mask) = c0 * 1;
+% medium.density(ball_mask) = rho0 * 1.05;      % density [kg/m3]
+% medium.sound_speed(ball_mask) = c0 * 2;
+% medium.density(ball_mask) = rho0 * 1;      % density [kg/m3]
+medium.sound_speed(ball_mask) = 2600;
+medium.density(ball_mask) = 1120;      % density [kg/m3]
 
 %% SOURCE/SENSOR - KWaveArray
 
@@ -117,7 +124,7 @@ medium.density(ball_mask) = rho0 * 2;      % density [kg/m3]
 chkMask = karray.getArrayBinaryMask(kgrid);
 [X,Y,Z] = meshgrid(kgrid.x_vec, kgrid.y_vec, kgrid.z_vec);
 x = X(chkMask); y = Y(chkMask); z = Z(chkMask);
-% Plot
+%% Plot
 figure
 scatter3(x, y, z, 'SizeData', 1);
 xlim([kgrid.x_vec(1) kgrid.x_vec(end)]);
@@ -167,19 +174,23 @@ time_delays = zeros(element.num*element.num, ntaTX);
 input_args = {'PMLSize', 'auto', 'PMLInside', false, 'PlotPML', false, 'DisplayMask', 'off'};
 
 RFData = zeros(element.num*element.num, kgrid.Nt, ntaTX);
+RFDataBL = zeros(element.num*element.num, kgrid.Nt, ntaTX);
+RFDataTarget = zeros(element.num*element.num, kgrid.Nt, ntaTX);
 
 % Loop over each angle for plane wave compounding
 for ai = 1:ntaTX
     % RFData based on kWaveArray
-
+    disp("******** "+ num2str(ai) + " ********")
     % **** FIX THE BELOW TXangle(ai, :)!!!!!!! ****
     [source, time_delays(:, ai)] = genSource(kgrid, source_f0, source_cycles, source_amp, anglesTX(ai, :), karray, ElemPos, c0);
     sensor_data = runSim(kgrid, medium, source, sensor, input_args, model, source_amp); % run simulation
     p = sensor_data.p;
+    RFDataTarget(:, :, ai) = karray.combineSensorData(kgrid, p);
     % Additional simulation for baseline crosstalk subtraction
     if SUBTRACT_BASELINE
         sensor_data_baseline = runSim(kgrid, medium_baseline, source, sensor, input_args, model, source_amp); % run "baseline" simulation: crosstalk only
         p = p - sensor_data_baseline.p; % Baseline subtraction
+        RFDataBL(:, :, ai) = karray.combineSensorData(kgrid, sensor_data_baseline.p);
     end
 
     RFData(:, :, ai) = karray.combineSensorData(kgrid, p); % Data from each array element stored with dimensions [total # elements, kgrid.Nt]
@@ -359,7 +370,7 @@ function [source, time_delays] = genSource(kgrid, source_f0, source_cycles, sour
     %   source_amp: Amplitude of the source.
     %   theta: Steering angle of the plane wave.
     %   karray: The k-Wave array object.
-    %   ElemPos: The positions of the elements in the array.
+    %   ElemPos: The positions of the elements in the array (1 dimension).
     %   c0: Speed of sound.
     % Returns:
     %   source: The source object containing the mask and signals.
