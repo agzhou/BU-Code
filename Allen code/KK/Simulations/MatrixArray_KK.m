@@ -13,7 +13,7 @@ addMUSTPath
 %% DEFINE LITERALS - Setting up parameters for the simulation
 
 % Selection of K-Wave code execution model
-model = 1;  % Options: 1 - MATLAB CPU, 2 - MATLAB GPU, 3 - C++ code, 4 - CUDA code
+model = 3;  % Options: 1 - MATLAB CPU, 2 - MATLAB GPU, 3 - C++ code, 4 - CUDA code
 USE_STATISTICS = true;      % set to true to compute the rms or peak beam patterns, set to false to compute the harmonic beam patterns
 SUBTRACT_BASELINE = true; % Set this flag = true to run a simulation with a homogeneous medium, to see only the crosstalk effects from the probe elements/sources not having any directivity
 
@@ -116,6 +116,9 @@ ball_mask = logical(makeBall(Nx, Ny, Nz, bc(1), bc(2), bc(3), br));
 medium.sound_speed(ball_mask) = 2600;
 medium.density(ball_mask) = 1120;      % density [kg/m3]
 
+% Plot the ball
+figure; imagesc(kgrid.y_vec * 1e3, kgrid.z_vec*1e3, squeeze(max(ball_mask, [], 1))'); xlabel('y [mm]'); ylabel('z [mm]'); colorbar; axis image
+
 %% SOURCE/SENSOR - KWaveArray
 
 [karray, ElemPos, element.coords] = initArray(kgrid, element, Trans);
@@ -177,6 +180,7 @@ RFData = zeros(element.num*element.num, kgrid.Nt, ntaTX);
 RFDataBL = zeros(element.num*element.num, kgrid.Nt, ntaTX);
 RFDataTarget = zeros(element.num*element.num, kgrid.Nt, ntaTX);
 
+tic
 % Loop over each angle for plane wave compounding
 for ai = 1:ntaTX
     % RFData based on kWaveArray
@@ -195,7 +199,7 @@ for ai = 1:ntaTX
 
     RFData(:, :, ai) = karray.combineSensorData(kgrid, p); % Data from each array element stored with dimensions [total # elements, kgrid.Nt]
 end
-
+toc
 
 % Rearrange RF data dimensions for further processing
 % RFData = downsample(flip(flip(reshape(permute(RFData, [2, 1, 3]), [kgrid.Nt, element.num, element.num, nta]), 2), 3), dsFactor);
@@ -266,9 +270,9 @@ toc
 
 %% Examine KK beamforming result
 % vol_CPWC = squeeze(sum(Recon, 4));
-figure; imagesc(squeeze(max(abs(BFData), [], 1))')
+figure; imagesc(zCoord * 1e3, xCoord*1e3, squeeze(max(abs(BFData), [], 1))'); xlabel('y [mm]'); ylabel('z [mm]'); colorbar; axis image
 
-volumeViewer(abs(BFData).^0.25)
+% volumeViewer(abs(BFData).^0.25)
 
 %% DAS beamforming
 Recon = zeros(size(X, 1), size(X, 2), size(X, 3), ntaTX); % Initialize container for storing reconstructed data
@@ -287,9 +291,9 @@ toc
 
 %% Testing the DAS result
 vol_CPWC_DAS = squeeze(sum(Recon, 4));
-figure; imagesc(squeeze(max(abs(vol_CPWC_DAS), [], 1))')
+figure; imagesc(zCoord * 1e3, xCoord*1e3, squeeze(max(abs(vol_CPWC_DAS), [], 1))'); xlabel('y [mm]'); ylabel('z [mm]'); colorbar; axis image
 
-volumeViewer(abs(vol_CPWC_DAS).^0.25)
+% volumeViewer(abs(vol_CPWC_DAS).^0.25)
 
 %%
 ReconC = abs(sum(Recon,3));
