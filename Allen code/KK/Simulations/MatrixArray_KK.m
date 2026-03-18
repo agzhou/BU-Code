@@ -124,7 +124,7 @@ medium.density(ball_mask) = 1120;      % density [kg/m3]
 chkMask = karray.getArrayBinaryMask(kgrid);
 [X,Y,Z] = meshgrid(kgrid.x_vec, kgrid.y_vec, kgrid.z_vec);
 x = X(chkMask); y = Y(chkMask); z = Z(chkMask);
-%% Plot
+% Plot
 figure
 scatter3(x, y, z, 'SizeData', 1);
 xlim([kgrid.x_vec(1) kgrid.x_vec(end)]);
