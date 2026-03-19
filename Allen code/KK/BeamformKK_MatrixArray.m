@@ -24,26 +24,33 @@ function [BFData, varargout] = BeamformKK_MatrixArray(RawDataKK, anglesRX, angle
     end
 
     % Make look-up tables for each receive angle and transmit angle
-    LUTRX = cell(naRX, 1);
-    LUTTX = cell(naTX, 1);
+    % LUTRX = cell(naRX, 1);
+    % LUTTX = cell(naTX, 1);
+    LUTRX = zeros(nx, ny, nz, naRX);
+    LUTTX = zeros(nx, ny, nz, naTX);
+
     for tai = 1:naTX     % Transmit angle index
     % for tai = 1
-        LUTTX{tai} = genLUT(anglesTX(tai, :), BFgrid, param.c);
+        % LUTTX{tai} = genLUT(anglesTX(tai, :), BFgrid, param.c);
+        LUTTX(:, :, :, tai) = genLUT(anglesTX(tai, :), BFgrid, param.c);
     end
     for rai = 1:naRX % Receive angle index
     % for rai = 1
-        LUTRX{rai} = genLUT(anglesRX(rai, :), BFgrid, param.c);
+        % LUTRX{rai} = genLUT(anglesRX(rai, :), BFgrid, param.c);
+        LUTRX(:, :, :, rai) = genLUT(anglesRX(rai, :), BFgrid, param.c);
     end
 
     % Go through each transmit angle and beamform with its constituent
     % receive angles
-    BFData = zeros(nx, ny, nz); % Initialize final beamformed volume
+    % BFData = zeros(nx, ny, nz); % Initialize final beamformed volume
+    BFData = zeros(nx, ny, nz, naTX, naRX); % Initialize final beamformed volume
     for tai = 1:naTX     % Transmit angle index
     % for tai = 1
         temp = zeros(nx, ny, nz); % Initialize a volume to keep adding to
-        tempLUTTX = LUTTX{tai}; % Temporarily store the TX time delays for angle index tai
+        % tempLUTTX = LUTTX{tai}; % Temporarily store the TX time delays for angle index tai
+        tempLUTTX = squeeze(LUTTX(:, :, :, tai)); % Temporarily store the TX time delays for angle index tai
         for rai = 1:naRX
-            tempLUTRX = LUTRX{rai}; % Temporarily store the RX time delays for angle index rai
+            tempLUTRX = squeeze(LUTRX(:, :, :, rai)); % Temporarily store the RX time delays for angle index rai
             verytemp = zeros(nx, ny, nz); % Initialize a volume to keep adding to
             for xi = 1:nx
                 for yi = 1:ny
@@ -58,9 +65,10 @@ function [BFData, varargout] = BeamformKK_MatrixArray(RawDataKK, anglesRX, angle
                     end
                 end
             end
-            temp = temp + verytemp;
+            % temp = temp + verytemp;
+            BFData(:, :, :, tai, rai) = verytemp;
         end
-        BFData = BFData + temp;
+        % BFData = BFData + temp;
     end
 
     % Return the LUTs as optional outputs

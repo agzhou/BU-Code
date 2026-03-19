@@ -20,6 +20,8 @@ function RawDataKK = DataCompressKKMatrixArray(data, RXangles, ratio, Elem)
     % Initialize output
     RawDataKK = zeros(numSamples, numTXAngles, numRXAngles);
 
+    nShiftAll = zeros(numElements,numRXAngles);
+
     % Go through and perform the shifting/basis transformation
     dataTemp = zeros(numSamples, numElements); % Temp variable for shifting the RF Data for each TX/RX combo
     for rai = 1:numRXAngles % Receive angle index
@@ -30,6 +32,7 @@ function RawDataKK = DataCompressKKMatrixArray(data, RXangles, ratio, Elem)
         % Create the time delays for each element in the matrix array
         nShift = ( Elem(1, :).*sin(RXangles(rai, 2)) - Elem(2, :).*sin(RXangles(rai, 1)) ) * ratio; % Plane wave
         nShift = round(nShift(:) - min(nShift(:))); % Shift so the lowest time delay is zero
+        nShiftAll(:,rai) = nShift;
         disp(nShift)
         for tai = 1:numTXAngles % Transmit angle index
                 
@@ -58,5 +61,10 @@ function RawDataKK = DataCompressKKMatrixArray(data, RXangles, ratio, Elem)
         end
 
     end
+
+
+    % nShiftAll = reshape(nShiftAll,[16,16,numRXAngles]);
+    % genSliderV2(nShiftAll)
+
 end
 

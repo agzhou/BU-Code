@@ -215,7 +215,7 @@ RFData = downsample(permute(RFData_raw, [2, 1, 3]), dsFactor);
 
 %% KK parameters
 
-naRX = 65; % # of RX angles in 1 dimension
+naRX = 1; % # of RX angles in 1 dimension
 
 o = fix(-naRX/2):1:fix(naRX/2); % Truncate towards zero
 j = fix(naRX/2); % Shift parameter
@@ -227,9 +227,12 @@ ntaRX = size(anglesRX, 1); % Total number of RX angles
 % s = 2 * element.pitch * RF_fs / c0; % aspect ratio...
 ratio = RF_fs / c0;
 RawDataKK = DataCompressKKMatrixArray(RFData, anglesRX, ratio, element.coords);
-
+nSamples = size(RawDataKK,1)
 % figure; imagesc(squeeze(RawDataKK(:, :, round(ntaRX/2))))
-figure; imagesc(squeeze(RawDataKK(:, round(ntaTX/2), :)))
+% figure; imagesc(squeeze(RawDataKK(:, round(ntaTX/2), :)))
+
+figure; imagesc(reshape(RawDataKK,[nSamples,ntaTX*ntaRX]))
+
 %% Beamforming  Parameter definition
 % Define key parameter structure
 param.fs = RF_fs;                           % [Hz]   sampling frequency
@@ -267,14 +270,18 @@ BFgrid = struct('X', X, 'Y', Y, 'Z', Z); % Struct for the beamforming grid
 % NOTE: include t0...
 tic;
 RawDataKKHilb = hilbert(RawDataKK);
-[BFData] = BeamformKK_MatrixArray(RawDataKKHilb, anglesRX, anglesTX, BFgrid, param);
+[BFData, LUTTX, LUTRX] = BeamformKK_MatrixArray(RawDataKKHilb, anglesRX, anglesTX, BFgrid, param);
 toc
 
 %% Examine KK beamforming result
 % vol_CPWC = squeeze(sum(Recon, 4));
-figure; imagesc(zCoord * 1e3, xCoord*1e3, squeeze(max(abs(BFData), [], 1))'); xlabel('y [mm]'); ylabel('z [mm]'); colorbar; axis image
+% figure; imagesc(xCoord * 1e3, zCoord*1e3, squeeze(max(abs(BFData), [], 1))'); xlabel('y [mm]'); ylabel('z [mm]'); colorbar; axis image
+% figure; imagesc(xCoord * 1e3, zCoord*1e3, squeeze(max(abs(sum(BFData,[4,5])), [], 1))'); xlabel('y [mm]'); ylabel('z [mm]'); colorbar; axis image
 
 % volumeViewer(abs(BFData).^ 0.5)
+% volumeViewer(abs(sum(BFData,[4,5])).^ 0.5)
+
+volumeViewer(abs(BFData(:,:,:,13,1)).^ 0.5)
 
 %% DAS beamforming
 Recon = zeros(size(X, 1), size(X, 2), size(X, 3), ntaTX); % Initialize container for storing reconstructed data
@@ -293,7 +300,7 @@ toc
 
 %% Testing the DAS result
 vol_CPWC_DAS = squeeze(sum(Recon, 4));
-figure; imagesc(zCoord * 1e3, xCoord*1e3, squeeze(max(abs(vol_CPWC_DAS), [], 1))'); xlabel('y [mm]'); ylabel('z [mm]'); colorbar; axis image
+figure; imagesc(xCoord * 1e3, zCoord*1e3, squeeze(max(abs(vol_CPWC_DAS), [], 1))'); xlabel('y [mm]'); ylabel('z [mm]'); colorbar; axis image
 
 % volumeViewer(abs(vol_CPWC_DAS).^ 0.5)
 
