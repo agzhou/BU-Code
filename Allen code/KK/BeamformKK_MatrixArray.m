@@ -9,7 +9,7 @@
 
 % test = BeamformKK_MatrixArray(RawDataKK, anglesRX, BFgrid, param);
 
-function [BFData] = BeamformKK_MatrixArray(RawDataKK, anglesRX, anglesTX, BFgrid, param)
+function [BFData, varargout] = BeamformKK_MatrixArray(RawDataKK, anglesRX, anglesTX, BFgrid, param)
 
     % **** ADD IQ DEMODULATION STEP **** %
     % more so for speedup
@@ -61,6 +61,14 @@ function [BFData] = BeamformKK_MatrixArray(RawDataKK, anglesRX, anglesTX, BFgrid
             temp = temp + verytemp;
         end
         BFData = BFData + temp;
+    end
+
+    % Return the LUTs as optional outputs
+    if nargout > 1
+        varargout{1} = LUTTX;
+        if nargout > 2
+            varargout{2} = LUTRX;
+        end
     end
 end
 

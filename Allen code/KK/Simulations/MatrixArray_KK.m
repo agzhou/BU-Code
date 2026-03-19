@@ -215,7 +215,7 @@ RFData = downsample(permute(RFData_raw, [2, 1, 3]), dsFactor);
 
 %% KK parameters
 
-naRX = 5; % # of RX angles in 1 dimension
+naRX = 65; % # of RX angles in 1 dimension
 
 o = fix(-naRX/2):1:fix(naRX/2); % Truncate towards zero
 j = fix(naRX/2); % Shift parameter
@@ -228,6 +228,8 @@ ntaRX = size(anglesRX, 1); % Total number of RX angles
 ratio = RF_fs / c0;
 RawDataKK = DataCompressKKMatrixArray(RFData, anglesRX, ratio, element.coords);
 
+% figure; imagesc(squeeze(RawDataKK(:, :, round(ntaRX/2))))
+figure; imagesc(squeeze(RawDataKK(:, round(ntaTX/2), :)))
 %% Beamforming  Parameter definition
 % Define key parameter structure
 param.fs = RF_fs;                           % [Hz]   sampling frequency
@@ -272,7 +274,7 @@ toc
 % vol_CPWC = squeeze(sum(Recon, 4));
 figure; imagesc(zCoord * 1e3, xCoord*1e3, squeeze(max(abs(BFData), [], 1))'); xlabel('y [mm]'); ylabel('z [mm]'); colorbar; axis image
 
-% volumeViewer(abs(BFData).^0.25)
+% volumeViewer(abs(BFData).^ 0.5)
 
 %% DAS beamforming
 Recon = zeros(size(X, 1), size(X, 2), size(X, 3), ntaTX); % Initialize container for storing reconstructed data
@@ -293,7 +295,7 @@ toc
 vol_CPWC_DAS = squeeze(sum(Recon, 4));
 figure; imagesc(zCoord * 1e3, xCoord*1e3, squeeze(max(abs(vol_CPWC_DAS), [], 1))'); xlabel('y [mm]'); ylabel('z [mm]'); colorbar; axis image
 
-% volumeViewer(abs(vol_CPWC_DAS).^0.25)
+% volumeViewer(abs(vol_CPWC_DAS).^ 0.5)
 
 %%
 ReconC = abs(sum(Recon,3));

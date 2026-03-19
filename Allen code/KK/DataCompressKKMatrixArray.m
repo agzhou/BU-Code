@@ -30,7 +30,7 @@ function RawDataKK = DataCompressKKMatrixArray(data, RXangles, ratio, Elem)
         % Create the time delays for each element in the matrix array
         nShift = ( Elem(1, :).*sin(RXangles(rai, 2)) - Elem(2, :).*sin(RXangles(rai, 1)) ) * ratio; % Plane wave
         nShift = round(nShift(:) - min(nShift(:))); % Shift so the lowest time delay is zero
-
+        disp(nShift)
         for tai = 1:numTXAngles % Transmit angle index
                 
                for ei = 1:numElements % Element index
