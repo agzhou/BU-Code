@@ -65,10 +65,10 @@ function [BFData, varargout] = BeamformKK_MatrixArray(RawDataKK, anglesRX, angle
                     end
                 end
             end
-            % temp = temp + verytemp;
-            BFData(:, :, :, tai, rai) = verytemp;
+            temp = temp + verytemp;
+            % BFData(:, :, :, tai, rai) = verytemp; % Save each TX and RX angle's BF data separately
         end
-        % BFData = BFData + temp;
+        BFData = BFData + temp;
     end
 
     % Return the LUTs as optional outputs
@@ -93,8 +93,9 @@ function [LUT] = genLUT(theta, BFgrid, c)
 
     [nx, ny, nz] = size(BFgrid.X); % Get the size of the grid
     LUT = zeros(nx, ny, nz); % Initialize the LUT
-    u = [sin(theta(2)), -sin(theta(1)), cos(theta(1))*cos(theta(2))]; % Unit direction vector for the plane wave = [sin(theta_y), -sin(theta_x), cos(theta_x) * cos(theta_y)]
-    
+    % u = [sin(theta(2)), -sin(theta(1)), cos(theta(1))*cos(theta(2))]; % Unit direction vector for the plane wave = [sin(theta_y), -sin(theta_x), cos(theta_x) * cos(theta_y)]
+    u = [sin(theta(2)), -sin(theta(1))*cos(theta(2)), cos(theta(1))*cos(theta(2))];
+
     % Get the distance version of the time delays
     for xi = 1:nx
         for yi = 1:ny

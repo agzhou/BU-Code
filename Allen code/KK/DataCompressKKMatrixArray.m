@@ -30,7 +30,7 @@ function RawDataKK = DataCompressKKMatrixArray(data, RXangles, ratio, Elem)
         % slope = s*sin(RXangles(rai))/2; % [slope_x, slope_y]
         % slope = s .* u ./ 2;
         % Create the time delays for each element in the matrix array
-        nShift = ( Elem(1, :).*sin(RXangles(rai, 2)) - Elem(2, :).*sin(RXangles(rai, 1)) ) * ratio; % Plane wave
+        nShift = ( Elem(1, :).*sin(RXangles(rai, 2)) - Elem(2, :).*sin(RXangles(rai, 1)) .*cos(RXangles(rai, 2)) )* ratio; % Plane wave
         nShift = round(nShift(:) - min(nShift(:))); % Shift so the lowest time delay is zero
         nShiftAll(:,rai) = nShift;
         disp(nShift)

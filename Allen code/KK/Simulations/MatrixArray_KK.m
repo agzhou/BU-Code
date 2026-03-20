@@ -113,7 +113,8 @@ ball_mask = logical(makeBall(Nx, Ny, Nz, bc(1), bc(2), bc(3), br));
 % medium.density(ball_mask) = rho0 * 1.05;      % density [kg/m3]
 % medium.sound_speed(ball_mask) = c0 * 2;
 % medium.density(ball_mask) = rho0 * 1;      % density [kg/m3]
-medium.sound_speed(ball_mask) = 2600;
+% medium.sound_speed(ball_mask) = 2600;
+medium.sound_speed(ball_mask) = c0;
 medium.density(ball_mask) = 1120;      % density [kg/m3]
 
 % Plot the ball
@@ -123,40 +124,40 @@ figure; imagesc(kgrid.y_vec * 1e3, kgrid.z_vec*1e3, squeeze(max(ball_mask, [], 1
 
 [karray, ElemPos, element.coords] = initArray(kgrid, element, Trans);
 
-% Plot Array
-chkMask = karray.getArrayBinaryMask(kgrid);
-[X,Y,Z] = meshgrid(kgrid.x_vec, kgrid.y_vec, kgrid.z_vec);
-x = X(chkMask); y = Y(chkMask); z = Z(chkMask);
-% Plot
-figure
-scatter3(x, y, z, 'SizeData', 1);
-xlim([kgrid.x_vec(1) kgrid.x_vec(end)]);
-ylim([kgrid.y_vec(1) kgrid.y_vec(end)]);
-zlim([kgrid.z_vec(1) kgrid.z_vec(end)]);
-
-arrayLen = element.length*element.num;
-arrayWidth = element.width*element.num;
-for i = 1:element.num
-    line([ElemPos(i)+element.width/2, ElemPos(i)+element.width/2], [-arrayLen/2, arrayLen/2], [mean(z), mean(z)], 'Color', 'red', 'LineWidth', 2);    % Horizontal lines
-    line([-arrayWidth/2, arrayWidth/2], [ElemPos(i)+element.length/2, ElemPos(i)+element.length/2], [mean(z), mean(z)], 'Color', 'green', 'LineWidth', 2);    % Vertical lines
-end
-
-xlabel('X-axis');
-ylabel('Y-axis');
-zlabel('Z-axis');
-title('3D Scatter Plot of Logical Array');
-grid on;
-axis image
-view(2)
+% % Plot Array
+% chkMask = karray.getArrayBinaryMask(kgrid);
+% [X,Y,Z] = meshgrid(kgrid.x_vec, kgrid.y_vec, kgrid.z_vec);
+% x = X(chkMask); y = Y(chkMask); z = Z(chkMask);
+% % Plot
+% figure
+% scatter3(x, y, z, 'SizeData', 1);
+% xlim([kgrid.x_vec(1) kgrid.x_vec(end)]);
+% ylim([kgrid.y_vec(1) kgrid.y_vec(end)]);
+% zlim([kgrid.z_vec(1) kgrid.z_vec(end)]);
+% 
+% arrayLen = element.length*element.num;
+% arrayWidth = element.width*element.num;
+% for i = 1:element.num
+%     line([ElemPos(i)+element.width/2, ElemPos(i)+element.width/2], [-arrayLen/2, arrayLen/2], [mean(z), mean(z)], 'Color', 'red', 'LineWidth', 2);    % Horizontal lines
+%     line([-arrayWidth/2, arrayWidth/2], [ElemPos(i)+element.length/2, ElemPos(i)+element.length/2], [mean(z), mean(z)], 'Color', 'green', 'LineWidth', 2);    % Vertical lines
+% end
+% 
+% xlabel('X-axis');
+% ylabel('Y-axis');
+% zlabel('Z-axis');
+% title('3D Scatter Plot of Logical Array');
+% grid on;
+% axis image
+% view(2)
 
 % Create source signal using a tone burst
 source_sig = source_amp .* toneBurst(1/kgrid.dt, source_f0, source_cycles);
 
-% % Plotting the source signal
-figure;
-plot(kgrid.t_array(1:length(source_sig)) * 1e6, source_sig);
-xlabel('Microseconds (us)')
-title('Source Signal');
+% % % Plotting the source signal
+% figure;
+% plot(kgrid.t_array(1:length(source_sig)) * 1e6, source_sig);
+% xlabel('Microseconds (us)')
+% title('Source Signal');
 
 % Assign binary mask from karray to the sensor mask
 sensor.mask = karray.getArrayBinaryMask(kgrid);
@@ -215,7 +216,7 @@ RFData = downsample(permute(RFData_raw, [2, 1, 3]), dsFactor);
 
 %% KK parameters
 
-naRX = 1; % # of RX angles in 1 dimension
+naRX = 5; % # of RX angles in 1 dimension
 
 o = fix(-naRX/2):1:fix(naRX/2); % Truncate towards zero
 j = fix(naRX/2); % Shift parameter
@@ -227,7 +228,7 @@ ntaRX = size(anglesRX, 1); % Total number of RX angles
 % s = 2 * element.pitch * RF_fs / c0; % aspect ratio...
 ratio = RF_fs / c0;
 RawDataKK = DataCompressKKMatrixArray(RFData, anglesRX, ratio, element.coords);
-nSamples = size(RawDataKK,1)
+nSamples = size(RawDataKK,1);
 % figure; imagesc(squeeze(RawDataKK(:, :, round(ntaRX/2))))
 % figure; imagesc(squeeze(RawDataKK(:, round(ntaTX/2), :)))
 
@@ -274,14 +275,13 @@ RawDataKKHilb = hilbert(RawDataKK);
 toc
 
 %% Examine KK beamforming result
-% vol_CPWC = squeeze(sum(Recon, 4));
 % figure; imagesc(xCoord * 1e3, zCoord*1e3, squeeze(max(abs(BFData), [], 1))'); xlabel('y [mm]'); ylabel('z [mm]'); colorbar; axis image
-% figure; imagesc(xCoord * 1e3, zCoord*1e3, squeeze(max(abs(sum(BFData,[4,5])), [], 1))'); xlabel('y [mm]'); ylabel('z [mm]'); colorbar; axis image
+figure; imagesc(xCoord * 1e3, zCoord*1e3, squeeze(max(abs(sum(BFData,[4, 5])), [], 1))'); xlabel('y [mm]'); ylabel('z [mm]'); colorbar; axis image
 
 % volumeViewer(abs(BFData).^ 0.5)
 % volumeViewer(abs(sum(BFData,[4,5])).^ 0.5)
 
-volumeViewer(abs(BFData(:,:,:,13,1)).^ 0.5)
+% volumeViewer(abs(BFData(:,:,:,13,1)).^ 0.5)
 
 %% DAS beamforming
 Recon = zeros(size(X, 1), size(X, 2), size(X, 3), ntaTX); % Initialize container for storing reconstructed data
@@ -394,7 +394,8 @@ function [source, time_delays] = genSource(kgrid, source_f0, source_cycles, sour
     [X, Y] = meshgrid(ElemPos, ElemPos);
     
     % Create the time delays for each element in the matrix array
-    time_delays0 = ( X.*sin(theta(2)) - Y.*sin(theta(1)) )/c0; % Plane wave
+    % time_delays0 = ( X.*sin(theta(2)) - Y.*sin(theta(1)) )/c0; % Plane wave (old version from Nikunj)
+    time_delays0 = ( X.*sin(theta(2)) - Y.*sin(theta(1)).*cos(theta(2)) )/c0; % Plane wave (new Allen version)
     time_delays0 = time_delays0(:) - min(time_delays0(:)); % Shift so the lowest time delay is zero
     time_delays = time_delays0;
     
