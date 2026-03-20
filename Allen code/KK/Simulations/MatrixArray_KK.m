@@ -392,7 +392,7 @@ function [source, time_delays] = genSource(kgrid, source_f0, source_cycles, sour
     % Calculate time delays for each element based on steering angle
     
     [X, Y] = meshgrid(ElemPos, ElemPos);
-    
+
     % Create the time delays for each element in the matrix array
     % time_delays0 = ( X.*sin(theta(2)) - Y.*sin(theta(1)) )/c0; % Plane wave (old version from Nikunj)
     time_delays0 = ( X.*sin(theta(2)) - Y.*sin(theta(1)).*cos(theta(2)) )/c0; % Plane wave (new Allen version)

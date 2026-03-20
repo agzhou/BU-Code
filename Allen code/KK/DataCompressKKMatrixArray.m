@@ -33,7 +33,7 @@ function RawDataKK = DataCompressKKMatrixArray(data, RXangles, ratio, Elem)
         nShift = ( Elem(1, :).*sin(RXangles(rai, 2)) - Elem(2, :).*sin(RXangles(rai, 1)) .*cos(RXangles(rai, 2)) )* ratio; % Plane wave
         nShift = round(nShift(:) - min(nShift(:))); % Shift so the lowest time delay is zero
         nShiftAll(:,rai) = nShift;
-        disp(nShift)
+        % disp(nShift)
         for tai = 1:numTXAngles % Transmit angle index
                 
                for ei = 1:numElements % Element index

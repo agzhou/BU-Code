@@ -32,12 +32,14 @@ function [BFData, varargout] = BeamformKK_MatrixArray(RawDataKK, anglesRX, angle
     for tai = 1:naTX     % Transmit angle index
     % for tai = 1
         % LUTTX{tai} = genLUT(anglesTX(tai, :), BFgrid, param.c);
-        LUTTX(:, :, :, tai) = genLUT(anglesTX(tai, :), BFgrid, param.c);
+        % LUTTX(:, :, :, tai) = genLUT(anglesTX(tai, :), BFgrid, param.c);
+        LUTTX(:, :, :, tai) = genLUT(anglesTX(tai, :), BFgrid, param.c, param.t0);
     end
     for rai = 1:naRX % Receive angle index
     % for rai = 1
         % LUTRX{rai} = genLUT(anglesRX(rai, :), BFgrid, param.c);
-        LUTRX(:, :, :, rai) = genLUT(anglesRX(rai, :), BFgrid, param.c);
+        % LUTRX(:, :, :, rai) = genLUT(anglesRX(rai, :), BFgrid, param.c);
+        LUTRX(:, :, :, rai) = genLUT(anglesRX(rai, :), BFgrid, param.c, param.t0);
     end
 
     % Go through each transmit angle and beamform with its constituent
@@ -89,22 +91,25 @@ end
 %   - c: speed of sound [m/s]
 % Outputs:
 %   - LUT: a matrix of time delays. Dimensions are the same as the grid.
-function [LUT] = genLUT(theta, BFgrid, c)
+% function [LUT] = genLUT(theta, BFgrid, c)
+function [LUT] = genLUT(theta, BFgrid, c, t0)
 
     [nx, ny, nz] = size(BFgrid.X); % Get the size of the grid
     LUT = zeros(nx, ny, nz); % Initialize the LUT
     % u = [sin(theta(2)), -sin(theta(1)), cos(theta(1))*cos(theta(2))]; % Unit direction vector for the plane wave = [sin(theta_y), -sin(theta_x), cos(theta_x) * cos(theta_y)]
-    u = [sin(theta(2)), -sin(theta(1))*cos(theta(2)), cos(theta(1))*cos(theta(2))];
+    u = [sin(theta(2)), -sin(theta(1))*cos(theta(2)), cos(theta(1))*cos(theta(2))]; % y rotation and then x rotation
 
     % Get the distance version of the time delays
     for xi = 1:nx
         for yi = 1:ny
             for zi = 1:nz
+                % LUT(xi, yi, zi) = dot([BFgrid.X(xi, yi, zi), BFgrid.Y(xi, yi, zi), BFgrid.Z(xi, yi, zi)], u);
                 LUT(xi, yi, zi) = dot([BFgrid.X(xi, yi, zi), BFgrid.Y(xi, yi, zi), BFgrid.Z(xi, yi, zi)], u);
             end
         end
     end
-    LUT = LUT ./ c; % Convert from distances to time delays
+    % LUT = LUT ./ c; % Convert from distances to time delays
+    LUT = LUT ./ c + t0; % Convert from distances to time delays
 
 
 end

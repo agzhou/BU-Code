@@ -31,4 +31,5 @@ function plotterfcn(vars)
     imagesc(vars.Axes,vars.Data(:,:,val));
     colormap(vars.Axes,'gray');
     set(vars.Label,'String',num2str(val));
+    axis equal; % added by Allen Zhou on 3/20/26
 end
