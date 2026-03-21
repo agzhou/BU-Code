@@ -20,10 +20,10 @@ function RawDataKK = DataCompressKKMatrixArray(data, RXangles, ratio, Elem)
     % Initialize output
     RawDataKK = zeros(numSamples, numTXAngles, numRXAngles);
 
-    nShiftAll = zeros(numElements,numRXAngles);
+    nShiftAll = zeros(numElements, numRXAngles);
 
     % Go through and perform the shifting/basis transformation
-    dataTemp = zeros(numSamples, numElements); % Temp variable for shifting the RF Data for each TX/RX combo
+    % dataTemp = zeros(numSamples, numElements); % Temp variable for shifting the RF Data for each TX/RX combo
     for rai = 1:numRXAngles % Receive angle index
         % u = [sin(RXangles(rai, 2)), -sin(RXangles(rai, 1))]; % Unit direction vector for the plane wave = [sin(theta_RX_y), -sin(theta_RX_x)]
 
@@ -31,11 +31,17 @@ function RawDataKK = DataCompressKKMatrixArray(data, RXangles, ratio, Elem)
         % slope = s .* u ./ 2;
         % Create the time delays for each element in the matrix array
         nShift = ( Elem(1, :).*sin(RXangles(rai, 2)) - Elem(2, :).*sin(RXangles(rai, 1)) .*cos(RXangles(rai, 2)) )* ratio; % Plane wave
-        nShift = round(nShift(:) - min(nShift(:))); % Shift so the lowest time delay is zero
-        nShiftAll(:,rai) = nShift;
-        % disp(nShift)
+        % disp(min(nShift(:)))
+        % nShift = round(nShift(:) - min(nShift(:))); % Shift so the lowest time delay is zero
+        nShift = round(nShift); % TESTING
+        nShiftAll(:, rai) = nShift;
+
+        
+
+
         for tai = 1:numTXAngles % Transmit angle index
-                
+                dataTemp = zeros(numSamples, numElements); % Temp variable for shifting the RF Data for each TX/RX combo
+
                for ei = 1:numElements % Element index
                    % nShift = zeros(size(slope)); % How many samples to shift by for element ei
                    % 
@@ -53,18 +59,27 @@ function RawDataKK = DataCompressKKMatrixArray(data, RXangles, ratio, Elem)
                    
                    
                    % **** BELOW IS STILL UNCHANGED **** %
-                   dataTemp(:, ei) = circshift( data(:, ei, tai), nShift(ei) ); 
+                   % dataTemp(:, ei) = circshift( data(:, ei, tai), nShift(ei) );
+
+                   if nShift(ei) < 0
+                       numShift = numSamples + nShift(ei);
+                   else
+                       numShift = nShift(ei);
+                   end
+                   % disp(numShift)
+                   dataTemp(:, ei) = circshift( data(:, ei, tai), numShift ); 
+
                end 
                
-               RawDataKK(:, tai, rai) = sum(dataTemp,2);
+               RawDataKK(:, tai, rai) = sum(dataTemp, 2);
                 
         end
 
     end
 
 
-    % nShiftAll = reshape(nShiftAll,[16,16,numRXAngles]);
-    % genSliderV2(nShiftAll)
+    nShiftAll = reshape(nShiftAll,[16,16,numRXAngles]);
+    genSliderV2(nShiftAll)
 
 end
 

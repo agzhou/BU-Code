@@ -216,7 +216,7 @@ RFData = downsample(permute(RFData_raw, [2, 1, 3]), dsFactor);
 
 %% KK parameters
 
-naRX = 5; % # of RX angles in 1 dimension
+naRX = 25; % # of RX angles in 1 dimension
 
 o = fix(-naRX/2):1:fix(naRX/2); % Truncate towards zero
 j = fix(naRX/2); % Shift parameter
@@ -268,11 +268,14 @@ BFgrid = struct('X', X, 'Y', Y, 'Z', Z); % Struct for the beamforming grid
 
 %% KK beamforming
 
-% NOTE: include t0...
 tic;
 RawDataKKHilb = hilbert(RawDataKK);
-[BFData, LUTTX, LUTRX] = BeamformKK_MatrixArray(RawDataKKHilb, anglesRX, anglesTX, BFgrid, param);
+% [BFData, LUTTX, LUTRX] = BeamformKK_MatrixArray(RawDataKKHilb, anglesRX, anglesTX, BFgrid, param);
+[BFData] = BeamformKK_MatrixArray(RawDataKKHilb, anglesRX, anglesTX, BFgrid, param);
 toc
+
+%% Look at LUTs
+% [testBFData, testLUTTX, testLUTRX] = BeamformKK_MatrixArray(RawDataKKHilb, [0, 0], [0, 0], BFgrid, param);
 
 %% Examine KK beamforming result
 % figure; imagesc(xCoord * 1e3, zCoord*1e3, squeeze(max(abs(BFData), [], 1))'); xlabel('y [mm]'); ylabel('z [mm]'); colorbar; axis image
