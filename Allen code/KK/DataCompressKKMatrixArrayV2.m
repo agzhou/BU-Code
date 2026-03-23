@@ -23,6 +23,7 @@ function RawDataKK = DataCompressKKMatrixArrayV2(data, RXangles, ratio, Elem, ti
     for tai = 1:numTXAngles
         data(:, :, tai) = circshift(data_nonshifted(:, :, tai), TX_shift_compensation(tai), 1);
     end
+    
 
     % Initialize output
     RawDataKK = zeros(numSamples, numTXAngles, numRXAngles);

@@ -216,13 +216,16 @@ RFData = downsample(permute(RFData_raw, [2, 1, 3]), dsFactor);
 
 %% KK parameters
 
-naRX = 15; % # of RX angles in 1 dimension
+naRX = 21; % # of RX angles in 1 dimension
 
 o = fix(-naRX/2):1:fix(naRX/2); % Truncate towards zero
 j = fix(naRX/2); % Shift parameter
 anglesRXList = (sign(o) .* daTX .* (2.*abs(o)./naRX + j))'; % Receive angles [deg]
 anglesRX = listToAngles(anglesRXList); % All the receive angles [theta_x, theta_y]
 ntaRX = size(anglesRX, 1); % Total number of RX angles
+
+%% Plot delta angles
+plotAngleCombos_MatrixArray_func(anglesTX, anglesRX)
 
 %% KK compression
 % s = 2 * element.pitch * RF_fs / c0; % aspect ratio...
@@ -281,6 +284,7 @@ toc
 %% Test
 txtd = reshape(time_delays, [16, 16, 25]);
 genSliderV2(txtd)
+
 %% Examine KK beamforming result
 % figure; imagesc(xCoord * 1e3, zCoord*1e3, squeeze(max(abs(BFData), [], 1))'); xlabel('y [mm]'); ylabel('z [mm]'); colorbar; axis image
 figure; imagesc(xCoord * 1e3, zCoord*1e3, squeeze(max(abs(sum(BFData,[4, 5])), [], 1))'); xlabel('y [mm]'); ylabel('z [mm]'); colorbar; axis image
