@@ -216,7 +216,7 @@ RFData = downsample(permute(RFData_raw, [2, 1, 3]), dsFactor);
 
 %% KK parameters
 
-naRX = 25; % # of RX angles in 1 dimension
+naRX = 15; % # of RX angles in 1 dimension
 
 o = fix(-naRX/2):1:fix(naRX/2); % Truncate towards zero
 j = fix(naRX/2); % Shift parameter
@@ -227,7 +227,8 @@ ntaRX = size(anglesRX, 1); % Total number of RX angles
 %% KK compression
 % s = 2 * element.pitch * RF_fs / c0; % aspect ratio...
 ratio = RF_fs / c0;
-RawDataKK = DataCompressKKMatrixArray(RFData, anglesRX, ratio, element.coords);
+% RawDataKK = DataCompressKKMatrixArray(RFData, anglesRX, ratio, element.coords);
+RawDataKK = DataCompressKKMatrixArrayV2(RFData, anglesRX, ratio, element.coords, time_delays, RF_fs);
 nSamples = size(RawDataKK,1);
 % figure; imagesc(squeeze(RawDataKK(:, :, round(ntaRX/2))))
 % figure; imagesc(squeeze(RawDataKK(:, round(ntaTX/2), :)))
@@ -277,12 +278,15 @@ toc
 %% Look at LUTs
 % [testBFData, testLUTTX, testLUTRX] = BeamformKK_MatrixArray(RawDataKKHilb, [0, 0], [0, 0], BFgrid, param);
 
+%% Test
+txtd = reshape(time_delays, [16, 16, 25]);
+genSliderV2(txtd)
 %% Examine KK beamforming result
 % figure; imagesc(xCoord * 1e3, zCoord*1e3, squeeze(max(abs(BFData), [], 1))'); xlabel('y [mm]'); ylabel('z [mm]'); colorbar; axis image
 figure; imagesc(xCoord * 1e3, zCoord*1e3, squeeze(max(abs(sum(BFData,[4, 5])), [], 1))'); xlabel('y [mm]'); ylabel('z [mm]'); colorbar; axis image
 
 % volumeViewer(abs(BFData).^ 0.5)
-% volumeViewer(abs(sum(BFData,[4,5])).^ 0.5)
+% volumeViewer(abs(sum(BFData,[4,5])).^ 1)
 
 % volumeViewer(abs(BFData(:,:,:,13,1)).^ 0.5)
 
