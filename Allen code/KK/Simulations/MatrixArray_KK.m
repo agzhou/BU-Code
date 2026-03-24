@@ -220,9 +220,9 @@ naRX = 15; % # of RX angles in 1 dimension
 
 o = fix(-naRX/2):1:fix(naRX/2); % Truncate towards zero
 % j = fix(naRX/2); % Shift parameter
-j = 2;
-% j = 5;
-% j = 10;
+% j = 2;
+% j = 3;
+j = 10;
 anglesRXList = (sign(o) .* daTX .* (2.*abs(o)./naRX + j))'; % Receive angles [deg]
 anglesRX = listToAngles(anglesRXList); % All the receive angles [theta_x, theta_y]
 ntaRX = size(anglesRX, 1); % Total number of RX angles
