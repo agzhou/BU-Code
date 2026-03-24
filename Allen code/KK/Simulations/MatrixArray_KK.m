@@ -216,15 +216,18 @@ RFData = downsample(permute(RFData_raw, [2, 1, 3]), dsFactor);
 
 %% KK parameters
 
-naRX = 21; % # of RX angles in 1 dimension
+naRX = 15; % # of RX angles in 1 dimension
 
 o = fix(-naRX/2):1:fix(naRX/2); % Truncate towards zero
-j = fix(naRX/2); % Shift parameter
+% j = fix(naRX/2); % Shift parameter
+j = 2;
+% j = 5;
+% j = 10;
 anglesRXList = (sign(o) .* daTX .* (2.*abs(o)./naRX + j))'; % Receive angles [deg]
 anglesRX = listToAngles(anglesRXList); % All the receive angles [theta_x, theta_y]
 ntaRX = size(anglesRX, 1); % Total number of RX angles
 
-%% Plot delta angles
+%% Plot delta angles 
 plotAngleCombos_MatrixArray_func(anglesTX, anglesRX)
 
 %% KK compression
@@ -236,7 +239,7 @@ nSamples = size(RawDataKK,1);
 % figure; imagesc(squeeze(RawDataKK(:, :, round(ntaRX/2))))
 % figure; imagesc(squeeze(RawDataKK(:, round(ntaTX/2), :)))
 
-figure; imagesc(reshape(RawDataKK,[nSamples,ntaTX*ntaRX]))
+% figure; imagesc(reshape(RawDataKK,[nSamples,ntaTX*ntaRX]))
 
 %% Beamforming  Parameter definition
 % Define key parameter structure

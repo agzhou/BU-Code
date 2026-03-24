@@ -28,7 +28,7 @@ function RawDataKK = DataCompressKKMatrixArrayV2(data, RXangles, ratio, Elem, ti
     % Initialize output
     RawDataKK = zeros(numSamples, numTXAngles, numRXAngles);
 
-    nShiftAll = zeros(numElements, numRXAngles);
+    % nShiftAll = zeros(numElements, numRXAngles);
 
     % Go through and perform the shifting/basis transformation
     % dataTemp = zeros(numSamples, numElements); % Temp variable for shifting the RF Data for each TX/RX combo
@@ -84,8 +84,8 @@ function RawDataKK = DataCompressKKMatrixArrayV2(data, RXangles, ratio, Elem, ti
     end
 
 
-    nShiftAll = reshape(nShiftAll,[16,16,numRXAngles]);
-    genSliderV2(nShiftAll)
+    % nShiftAll = reshape(nShiftAll,[16,16,numRXAngles]);
+    % genSliderV2(nShiftAll)
 
 end
 

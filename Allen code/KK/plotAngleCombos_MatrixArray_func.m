@@ -28,9 +28,9 @@ function plotAngleCombos_MatrixArray_func(anglesTX, anglesRX)
     h.EdgeColor = [0.88, 0.88, 0.88];   % light gray grid
     
     title('Delta theta counts'); 
-    xlabel('Delta theta (x)'); 
+    xlabel('Delta theta (x) [deg]'); 
     xlim([-25, 25])
-    ylabel('Delta theta (y)')
+    ylabel('Delta theta (y) [deg]')
     ylim([-25, 25])
     zlabel('Counts')
     axis image
