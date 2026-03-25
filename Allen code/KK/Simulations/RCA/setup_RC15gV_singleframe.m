@@ -16,8 +16,8 @@ codeDir_split = split(string(codeDir), filesep);
 AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "Allen code"))), '\') + "\Verasonics");
 addpath(AllenVerasonicsCodePath)
 
-cd 'C:\Users\agzhou\Vantage-4.9.7-2505271400'
-% cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.7-2505271400'
+% cd 'C:\Users\agzhou\Vantage-4.9.7-2505271400'
+cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.7-2505271400'
 % cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 activate
 
@@ -46,7 +46,7 @@ savepath = uigetdir('F:\', 'Select the save path');
 savepath = [savepath, '\'];
 
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe'}; % 'Save RF data (0-no, 1-yes)', 
-parameterDefaults = {'20', '0', '8', '60000', '450', '11', '5', '13.6', '1540', '1', '1', '1'};
+parameterDefaults = {'20', '0', '8', '1000', '1', '11', '5', '13.6', '1540', '1', '1', '1'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % Store the user inputs for parameters into the corresponding variables
