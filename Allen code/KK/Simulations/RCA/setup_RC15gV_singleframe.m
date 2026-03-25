@@ -16,7 +16,8 @@ codeDir_split = split(string(codeDir), filesep);
 AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "Allen code"))), '\') + "\Verasonics");
 addpath(AllenVerasonicsCodePath)
 
-cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.7-2505271400'
+cd 'C:\Users\agzhou\Vantage-4.9.7-2505271400'
+% cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.7-2505271400'
 % cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 activate
 
