@@ -1,11 +1,12 @@
 % Description: Compresses data(samples, elements, TXangles) --> RawDataKK(samples, TXangles, RXangles)  
 % Inputs:
-%   - data: RFdata, with dimensions [# samples, # elements, # TX angles]
-%   - RXangles: receive angles in radians, with dimensions [# receive angles, 2 (x and y)]
+%   - data: RFdata, with dimensions [# samples, # elements, total # TX angles]
+%   - RXangles: receive angles in radians, with dimensions [total # receive angles, 1]
 %   - ratio = fs/c0 (sampling frequency / speed of sound in medium)
-%   - Elem: element coords with dimensions [2, total # elements] (x, y)
+%   - ElemPos: element coords with dimensions [2, total # elements] (x, y)
 %   - time_delays_TX: [# elements, # TX angles] matrix of time delays [s]
-function RawDataKK = DataCompressKK_RCA(data, RXangles, ratio, Elem, time_delays_TX, RF_fs)
+
+function RawDataKK = DataCompressKK_RCA(data, anglesRX, ratio, ElemPos, time_delays_TX, RF_fs)
     
     % Assign parameters
     numSamples = size(data, 1);
@@ -13,7 +14,7 @@ function RawDataKK = DataCompressKK_RCA(data, RXangles, ratio, Elem, time_delays
     % numEl1dim = sqrt(numElements);
     disp('Note: the code accounts for only a full square matrix array')
     numTXAngles = size(data, 3);
-    numRXAngles = size(RXangles, 1);
+    numRXAngles = size(anglesRX, 1);
     data_nonshifted = data;
 
     % Shift the input RF data to correct for the unequal time delays bias terms
@@ -38,7 +39,7 @@ function RawDataKK = DataCompressKK_RCA(data, RXangles, ratio, Elem, time_delays
         % slope = s*sin(RXangles(rai))/2; % [slope_x, slope_y]
         % slope = s .* u ./ 2;
         % Create the time delays for each element in the matrix array
-        nShiftNoCompensation = ( Elem(1, :).*sin(RXangles(rai, 2)) - Elem(2, :).*sin(RXangles(rai, 1)) .*cos(RXangles(rai, 2)) )* ratio; % Plane wave
+        nShiftNoCompensation = ( ElemPos(1, :).*sin(anglesRX(rai, 2)) - ElemPos(2, :).*sin(anglesRX(rai, 1)) .*cos(anglesRX(rai, 2)) )* ratio; % Plane wave
         % disp(min(nShift(:)))
         % nShift = round(nShiftNoCompensation(:) - min(nShiftNoCompensation(:))); % Shift so the lowest time delay is zero (% Compensate for not being able to have negative shifts since the origin is at the center of the probe)
         % nShiftRX_compensation = round(nShiftNoCompensation(:) - nShift);
