@@ -36,7 +36,7 @@ end
 
 %% Get additional parameters
 c0 = P.Resource.Parameters.speedOfSound; % Speed of sound in medium [m/s]
-RF_fs = P.Receive(1).ADCRate; % Sampling frequency of RF data
+RF_fs = P.Receive(1).ADCRate * 1e6; % Sampling frequency of RF data [Hz]
 ElemPos = P.Trans.ElementPos(:, 1:2)' .* P.wl; % Element positions in [m]. Matrix of size [2 (x, y), # rows + # columns]
 ratio = RF_fs/c0;
 
@@ -49,8 +49,12 @@ end
 ntaRX = naRX*2; % Total # of receive angles
 
 % Configuration 1: the uniform square
-anglesRXList = linspace(-maTX, maTX, naRX - 1);
-anglesRXList = [anglesRXList(1:(naRX - 1)/2), 0, anglesRXList((naRX - 1)/2 + 1:end)];
+% anglesRXList = linspace(-maTX, maTX, naRX - 1);
+% anglesRXList = [anglesRXList(1:(naRX - 1)/2), 0, anglesRXList((naRX - 1)/2 + 1:end)];
+daRX = daTX;
+offset = 0.5;
+anglesRXList = [-((naRX-1)/2 - offset)*daRX:daRX: -offset*daRX, 0, offset*daRX:daRX:((naRX-1)/2 - offset)*daRX];
+
 anglesRXList = anglesRXList(:);
 anglesRX = listToAnglesRCA(anglesRXList, 'RX');
 
@@ -62,5 +66,37 @@ figure; plot(delta_angles(:, 1), delta_angles(:, 2), 'o'); axis image
 RFData_hilbert = hilbert(RFData);
 RawDataKK = DataCompressKK_RCA(RFData_hilbert, anglesRX, ratio, ElemPos, RF_fs);
 
+%% Beamforming and other key parameters' definitions
+numElements = P.numElements; % # of elements in one dimension (# rows = # columns)
+param.fs = RF_fs;                           % [Hz]   sampling frequency
+param.pitch = P.Trans.spacingMm/1e3; % Element pitch [m]
+param.fc = P.Trans.frequency*1e6;                       % [Hz]   center frequency
+param.c = c0;                               % [m/s]  longitudinal sound speed
+% param.fnumber = [0.6, 0.6];                        % [ul]   receive f-number
+param.elements = ElemPos; % Element coordinates (x, y) [m]
+wavelength = param.c/param.fc;              % [m] convert from wavelength to meters
+% samplesPerWave = param.fs/param.fc;     % the number of samples per wavelength
+% note: this is off by a factor of two because you also account for
+% roundtrip time. In otherwords, there are 4 samples per wavelength, but in
+% practice that becomes 8 since you are also accounting for time to go to
+% and from the transducer.
+param.t0 = 0; % not sure..................................................
 
+% [~,I] = max(source_sig); % Find the index where the source input signal is maximum (wrt kgrid.dt)
+% param.t0 = (kgrid.t_array(I))/param.fc; % Sequence start time (time offset) [s] --> convert the index wrt kgrid.dt to time wrt the RF sampling frequency
+% % param.TXdelay = time_delays;
+% param.DecimRate = 1;    % Decimation rateCreate beamforming grid
 
+xCoord = ((-numElements):0.25:(numElements))*param.pitch;  % [m]   Beamformed points x coordinates
+yCoord = xCoord;
+zbounds_mm = [0, 5]; % Z bounds/extents [mm]
+zbounds = zbounds_mm ./ 1e3; % Z bounds/extents [m]
+zCoord = zbounds(1):0.25*P.wl:zbounds(2);   % [m]    Beamformed points z coordinates
+% zCoord = (1:0.025:32)*wavelength;   % [m]    Beamformed points z coordinates
+[X, Y, Z] = meshgrid(xCoord, yCoord, zCoord);
+
+BFgrid = struct('X', X, 'Y', Y, 'Z', Z); % Struct for the beamforming grid
+
+%% KK Beamforming
+
+ReconKK = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param);
