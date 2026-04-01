@@ -4,11 +4,10 @@
 %   - RXangles: receive angles in radians, with dimensions [total # receive angles, 1]
 %   - ratio = fs/c0 (sampling frequency / speed of sound in medium)
 %   - ElemPos: element coords with dimensions [2, total # elements] (x, y)
-%   - time_delays_TX: [total # TX angles, total # elements] matrix of time delays. Units are [samples]
 
 % Use this with BeamformKK_RCA.m
 
-function RawDataKK = DataCompressKK_RCA(data, anglesRX, ratio, ElemPos, RF_fs, time_delays_TX)
+function RawDataKK = DataCompressKK_RCA_nocompensation(data, anglesRX, ratio, ElemPos)
     
     % Assign parameters
     numSamples = size(data, 1);
@@ -37,21 +36,12 @@ function RawDataKK = DataCompressKK_RCA(data, anglesRX, ratio, ElemPos, RF_fs, t
     ElemPos_CR = ElemPos(1, elem_inds_CR);
     ElemPos_RC = ElemPos(2, elem_inds_RC);
 
-    % Shift the input RF data to correct for the unequal time delays bias terms
-    % caused by not being able to do negative time delays
-    % TX_shift_compensation = numSamples - round(max(time_delays_TX, [], 1) * RF_fs / 2); % [samples] Note: subtracting the bias terms from the total numSamples allows us to shift backwards with circshift, which only takes in positive numbers for the shifts
-    data_nonshifted = data;
-    TX_shift_compensation = numSamples - round( (max(time_delays_TX, [], 2) - min(time_delays_TX, [], 2)) / 2); % [samples] Note: subtracting the bias terms from the total numSamples allows us to shift backwards with circshift, which only takes in positive numbers for the shifts. This version accounts for an additional delay past zero, e.g., a positive startDepth
-    for tai = 1:numTXAngles
-        data(:, :, tai) = circshift(data_nonshifted(:, :, tai), TX_shift_compensation(tai), 1);
-    end
-
     for rai = inds_CR % Receive angle index
     
         % Create the time delays for each element in the RCA
-        % nShift = ( ElemPos(1, :).*sin(RXangles(rai, 2)) - Elem(2, :).*sin(RXangles(rai, 1)) .*cos(RXangles(rai, 2)) )* ratio; % Plane wave
+        % nShift = round(( ElemPos(1, :).*sin(anglesRX(rai, 2)) - ElemPos(2, :).*sin(anglesRX(rai, 1)) .*cos(anglesRX(rai, 2)) )* ratio); % Plane wave
         nShift = round(ElemPos_CR .* sin(anglesRX_CR(rai)) * ratio);
-        % nShift = nShift - min(nShift);
+        nShift = nShift - min(nShift);
         nShiftAll(:, rai) = nShift;
 
         for tai = 1:numTXAngles % Transmit angle index
@@ -87,7 +77,7 @@ function RawDataKK = DataCompressKK_RCA(data, anglesRX, ratio, ElemPos, RF_fs, t
         % Create the time delays for each element in the RCA
         % nShift = round(( ElemPos(1, :).*sin(anglesRX(rai, 2)) - ElemPos(2, :).*sin(anglesRX(rai, 1)) .*cos(anglesRX(rai, 2)) )* ratio); % Plane wave
         nShift = round(ElemPos_RC .* sin(anglesRX_RC(rai - numRXAngles/2)) * ratio);
-        % nShift = nShift - min(nShift);
+        nShift = nShift - min(nShift);
         nShiftAll(:, rai) = nShift;
 
         for tai = 1:numTXAngles % Transmit angle index

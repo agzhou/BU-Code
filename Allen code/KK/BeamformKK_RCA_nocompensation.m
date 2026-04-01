@@ -43,7 +43,11 @@ function [BFData, varargout] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFg
     % for tai = 1
         % LUTTX{tai} = genLUT(anglesTX(tai, :), BFgrid, param.c);
         % LUTTX(:, :, :, tai) = genLUT(anglesTX(tai, :), BFgrid, param.c);
-        LUTTX(:, :, :, tai) = genLUT(anglesTX(tai, :), BFgrid, param.c, param.t0);
+        if tai <= naTX/2
+            LUTTX(:, :, :, tai) = genLUT(anglesTX_vec(tai), BFgrid, param.c, param.t0, 'column');
+        else
+            LUTTX(:, :, :, tai) = genLUT(anglesTX_vec(tai), BFgrid, param.c, param.t0, 'row');
+        end
     end
     disp('TX LUTs generated')
 
@@ -51,7 +55,11 @@ function [BFData, varargout] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFg
     % for rai = 1
         % LUTRX{rai} = genLUT(anglesRX(rai, :), BFgrid, param.c);
         % LUTRX(:, :, :, rai) = genLUT(anglesRX(rai, :), BFgrid, param.c);
-        LUTRX(:, :, :, rai) = genLUT(anglesRX(rai, :), BFgrid, param.c, param.t0);
+        if rai <= naRX/2
+            LUTRX(:, :, :, rai) = genLUT(anglesRX_vec(rai), BFgrid, param.c, param.t0, 'row');
+        else
+            LUTRX(:, :, :, rai) = genLUT(anglesRX_vec(rai), BFgrid, param.c, param.t0, 'column');
+        end
     end
     disp('RX LUTs generated')
 
@@ -117,18 +125,27 @@ end
 % Outputs:
 %   - LUT: a matrix of time delays. Dimensions are the same as the grid.
 % function [LUT] = genLUT(theta, BFgrid, c)
-function [LUT] = genLUT(theta, BFgrid, c, t0)
+function [LUT] = genLUT(theta, BFgrid, c, t0, type)
 
     [nx, ny, nz] = size(BFgrid.X); % Get the size of the grid
     LUT = zeros(nx, ny, nz); % Initialize the LUT
-    u = [sin(theta(2)), -sin(theta(1))*cos(theta(2)), cos(theta(1))*cos(theta(2))]; % y rotation and then x rotation
 
     % Get the distance version of the time delays
     for xi = 1:nx
         for yi = 1:ny
             for zi = 1:nz
+                switch type
+                    case 'row'
+                        temp = BFgrid.Y(xi, yi, zi) .* sin(theta) + BFgrid.Z(xi, yi, zi).*cos(theta);
+                        % temp = round(temp - min(temp));
+                        LUT(xi, yi, zi) = temp;
+                    case 'column'
+                        temp = BFgrid.X(xi, yi, zi) .* sin(theta) + BFgrid.Z(xi, yi, zi).*cos(theta);
+                        % temp = round(temp - min(temp));
+                        LUT(xi, yi, zi) = temp;
+                end
                         
-                LUT(xi, yi, zi) = abs(dot([BFgrid.X(xi, yi, zi), BFgrid.Y(xi, yi, zi), BFgrid.Z(xi, yi, zi)], u));
+                % LUT(xi, yi, zi) = abs(dot([BFgrid.X(xi, yi, zi), BFgrid.Y(xi, yi, zi), BFgrid.Z(xi, yi, zi)], u));
             end
         end
     end

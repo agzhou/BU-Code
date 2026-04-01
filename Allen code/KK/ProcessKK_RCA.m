@@ -12,6 +12,7 @@ datapath = 'U:\Projects\Ultrasound\Datasets\Allen Data\RCA Verasonics simulation
 % numFrames = P.numFramesPerBuffer;
 numChannels = P.Resource.Parameters.numRcvChannels;
 ntaTX = P.na*2; % R-C and C-R total # of transmit plane waves
+naTX = ntaTX/2;
 anglesTXList = P.angles; anglesTXList = anglesTXList(:); % Make into a column vector
 % anglesTX = [[anglesTXList; zeros(size(anglesTXList))], [zeros(size(anglesTXList)); anglesTXList]]; % List of transmit angles. Dimensions [ntaTX, 2 (x and y angle)]
 anglesTX = listToAnglesRCA(anglesTXList, 'TX');
@@ -20,8 +21,22 @@ daTX = mean(diff(anglesTXList));
 % if all(diff(anglesTXList) == daTX)
 %     error('TX angle increment is not uniform')
 % end
-numSamples = P.Resource.RcvBuffer.rowsPerFrame/ntaTX; % # samples per element per acquisition (plane wave)
-RFData_scrambled = permute(reshape(RcvData', [numChannels, numSamples, ntaTX]), [2, 1, 3]);
+% numSamples = P.Resource.RcvBuffer.rowsPerFrame/ntaTX; % # samples per element per acquisition (plane wave)
+numSamples = P.Receive(1).endSample; % # samples per element per acquisition (plane wave)
+% RFData_scrambled = permute(reshape(RcvData', [numChannels, numSamples, ntaTX]), [2, 1, 3]);
+
+RFData_scrambled = zeros(numSamples, numChannels, ntaTX);
+% first half of rcvs
+for ai = 1:naTX
+    RFData_scrambled(:, :, ai)  = RcvData(P.Receive(ai).startSample:P.Receive(ai).endSample, :);
+end
+
+% second half of rcvs
+for ai = 1:naTX
+    RFData_scrambled(:, :, naTX + ai) = RcvData(P.Receive(naTX + ai).startSample:P.Receive(naTX + ai).endSample, :);
+end
+% RFData_scrambled = permute(reshape(RcvData', [numChannels, numSamples, ntaTX]), [2, 1, 3]);
+
 % figure; imagesc(squeeze(RFData(:, :, 1)))
 RFData_allElem = RFData_scrambled(:, P.Trans.Connector, :); % Unscramble the RF data by using the channel to element map
 % figure; imagesc(squeeze(RFData(:, :, 1)))
@@ -41,7 +56,7 @@ ElemPos = P.Trans.ElementPos(:, 1:2)' .* P.wl; % Element positions in [m]. Matri
 ratio = RF_fs/c0;
 
 %% Define the receive angle configurations
-naRX = 11; % # of receive angles in one direction
+naRX = 21; % # of receive angles in one direction
 
 if mod(naRX, 2) ~= 1
     error('# of receive angles (naRX) must be odd')
@@ -61,10 +76,21 @@ anglesRX = listToAnglesRCA(anglesRXList, 'RX');
 delta_angles = plotAngleCombos_RCA_func(anglesTX, anglesRX);
 figure; plot(delta_angles(:, 1), delta_angles(:, 2), 'o'); axis image
 
+%% Get TX time delays
+spw = P.Receive(1).samplesPerWave; % # samples per wavelength
+time_delays_TX = zeros(P.na * 2, numElements * 2); % In units of [samples]. Dimensions are [total # TX angles, total # elements]
+for tai = 1:length(P.TX)
+    time_delays_TX(tai, :) = P.TX(tai).Delay .* spw;
+    % time_delays_TX(tai, :) = P.TX(tai).Delay .* 1;
+end
+
 %% Compress the RF Data
 % RawDataKK = zeros(numSamples, ntaTX, ntaRX); % Initialize KK-compressed RF data
 RFData_hilbert = hilbert(RFData);
-RawDataKK = DataCompressKK_RCA(RFData_hilbert, anglesRX, ratio, ElemPos, RF_fs);
+
+RawDataKK = DataCompressKK_RCA(RFData_hilbert, anglesRX, ratio, ElemPos, RF_fs, time_delays_TX);
+% RawDataKK = DataCompressKK_RCA_nocompensation(RFData_hilbert, anglesRX, ratio, ElemPos);
+% figure; imagesc(squeeze(abs(RawDataKK(:, 6, :))))
 
 %% Beamforming and other key parameters' definitions
 numElements = P.numElements; % # of elements in one dimension (# rows = # columns)
@@ -87,11 +113,11 @@ param.t0 = 0; % not sure..................................................
 % % param.TXdelay = time_delays;
 % param.DecimRate = 1;    % Decimation rateCreate beamforming grid
 
-xCoord = ((-numElements):0.25:(numElements))*param.pitch;  % [m]   Beamformed points x coordinates
+xCoord = ((-numElements/2):1:(numElements/2))*param.pitch;  % [m]   Beamformed points x coordinates
 yCoord = xCoord;
 zbounds_mm = [0, 5]; % Z bounds/extents [mm]
 zbounds = zbounds_mm ./ 1e3; % Z bounds/extents [m]
-zCoord = zbounds(1):0.25*P.wl:zbounds(2);   % [m]    Beamformed points z coordinates
+zCoord = zbounds(1):0.5*P.wl:zbounds(2);   % [m]    Beamformed points z coordinates
 % zCoord = (1:0.025:32)*wavelength;   % [m]    Beamformed points z coordinates
 [X, Y, Z] = meshgrid(xCoord, yCoord, zCoord);
 
@@ -100,3 +126,5 @@ BFgrid = struct('X', X, 'Y', Y, 'Z', Z); % Struct for the beamforming grid
 %% KK Beamforming
 
 ReconKK = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param);
+
+figure; imagesc(squeeze(max(abs(ReconKK), [], 1))')
