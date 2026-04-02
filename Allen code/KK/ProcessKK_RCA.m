@@ -71,7 +71,10 @@ offset = 0.5;
 anglesRXList = [-((naRX-1)/2 - offset)*daRX:daRX: -offset*daRX, 0, offset*daRX:daRX:((naRX-1)/2 - offset)*daRX];
 
 anglesRXList = anglesRXList(:);
-anglesRX = listToAnglesRCA(anglesRXList, 'RX');
+% anglesRX = listToAnglesRCA(anglesRXList, 'RX');
+
+% Testing
+anglesRX = fliplr(anglesTX);
 
 delta_angles = plotAngleCombos_RCA_func(anglesTX, anglesRX);
 figure; plot(delta_angles(:, 1), delta_angles(:, 2), 'o'); axis image
