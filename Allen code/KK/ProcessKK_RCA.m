@@ -143,5 +143,6 @@ figure; imagesc(squeeze(max(abs(test(:, :, :, 6)), [], 1))')
 fulltest = squeeze(sum(ReconKK, [4, 5]));
 figure; imagesc(squeeze(max(abs(fulltest), [], 1))')
 
+genSliderV2(squeeze(max(abs(ReconKK), [], [1, 5])))
 % temp = squeeze(max(abs(fulltest), [], 1))';
 % figure; imagesc([temp(:, 41:end), temp(:, 1:40)])
