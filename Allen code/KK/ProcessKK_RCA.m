@@ -91,11 +91,11 @@ end
 
 %% Compress the RF Data
 % RawDataKK = zeros(numSamples, ntaTX, ntaRX); % Initialize KK-compressed RF data
-% RFData_hilbert = hilbert(RFData);
-RFData_hilbert = RFData;
+RFData_hilbert = hilbert(RFData);
+% RFData_hilbert = RFData;
 
-% RawDataKK = DataCompressKK_RCA(RFData_hilbert, anglesRX, ratio, ElemPos, RF_fs, time_delays_TX);
-RawDataKK = DataCompressKK_RCA_nocompensation(RFData_hilbert, anglesRX, ratio, ElemPos);
+RawDataKK = DataCompressKK_RCA(RFData_hilbert, anglesRX, ratio, ElemPos, RF_fs, time_delays_TX);
+% RawDataKK = DataCompressKK_RCA_nocompensation(RFData_hilbert, anglesRX, ratio, ElemPos);
 % figure; imagesc(squeeze(abs(RawDataKK(:, 6, :))))
 
 %% Beamforming and other key parameters' definitions
@@ -137,11 +137,11 @@ BFgrid = struct('X', X, 'Y', Y, 'Z', Z); % Struct for the beamforming grid
 % figure; imagesc(squeeze(max(abs(ReconKK), [], 1))')
 
 % Testing: look at individual volumes for each plane wave
-% figure; imagesc(squeeze(max(abs(ReconKK(:, :, :, 6, 6)), [], 1))')
+figure; imagesc(squeeze(max(abs(ReconKK(:, :, :, 6, 6)), [], 1))')
 test = sum(ReconKK, 5);
 figure; imagesc(squeeze(max(abs(test(:, :, :, 6)), [], 1))')
 fulltest = squeeze(sum(ReconKK, [4, 5]));
 figure; imagesc(squeeze(max(abs(fulltest), [], 1))')
 
-temp = squeeze(max(abs(fulltest), [], 1))';
-figure; imagesc([temp(:, 41:end), temp(:, 1:40)])
+% temp = squeeze(max(abs(fulltest), [], 1))';
+% figure; imagesc([temp(:, 41:end), temp(:, 1:40)])
