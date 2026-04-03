@@ -57,8 +57,8 @@ function [BFData, varargout] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFg
 
     % Go through each transmit angle and beamform with its constituent
     % receive angles
-    BFData = zeros(nx, ny, nz); % Initialize final beamformed volume
-    % BFData = zeros(nx, ny, nz, naTX, naRX); % Initialize final beamformed volume
+    % BFData = zeros(nx, ny, nz); % Initialize final beamformed volume
+    BFData = zeros(nx, ny, nz, naTX, naRX); % Initialize final beamformed volume
 
     for tai = 1:naTX     % Transmit angle index
     % for tai = 1
@@ -92,9 +92,9 @@ function [BFData, varargout] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFg
                 end
             end
             temp = temp + verytemp;
-            % BFData(:, :, :, tai, rai) = verytemp; % Save each TX and RX angle's BF data separately
+            BFData(:, :, :, tai, rai) = verytemp; % Save each TX and RX angle's BF data separately
         end
-        BFData = BFData + temp;
+        % BFData = BFData + temp;
     end
 
     % Return the LUTs as optional outputs

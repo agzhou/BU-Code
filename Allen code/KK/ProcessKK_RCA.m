@@ -56,7 +56,8 @@ ElemPos = P.Trans.ElementPos(:, 1:2)' .* P.wl; % Element positions in [m]. Matri
 ratio = RF_fs/c0;
 
 %% Define the receive angle configurations
-naRX = 21; % # of receive angles in one direction
+% naRX = 11; % # of receive angles in one direction
+naRX = naTX
 
 if mod(naRX, 2) ~= 1
     error('# of receive angles (naRX) must be odd')
@@ -67,14 +68,15 @@ ntaRX = naRX*2; % Total # of receive angles
 % anglesRXList = linspace(-maTX, maTX, naRX - 1);
 % anglesRXList = [anglesRXList(1:(naRX - 1)/2), 0, anglesRXList((naRX - 1)/2 + 1:end)];
 daRX = daTX;
-offset = 0.5;
+offset = 0.5
+% offset = naRX/naTX/2
 anglesRXList = [-((naRX-1)/2 - offset)*daRX:daRX: -offset*daRX, 0, offset*daRX:daRX:((naRX-1)/2 - offset)*daRX];
 
 anglesRXList = anglesRXList(:);
-% anglesRX = listToAnglesRCA(anglesRXList, 'RX');
+anglesRX = listToAnglesRCA(anglesRXList, 'RX');
 
-% Testing
-anglesRX = fliplr(anglesTX);
+% % Testing
+% anglesRX = fliplr(anglesTX);
 
 delta_angles = plotAngleCombos_RCA_func(anglesTX, anglesRX);
 figure; plot(delta_angles(:, 1), delta_angles(:, 2), 'o'); axis image
@@ -89,10 +91,11 @@ end
 
 %% Compress the RF Data
 % RawDataKK = zeros(numSamples, ntaTX, ntaRX); % Initialize KK-compressed RF data
-RFData_hilbert = hilbert(RFData);
+% RFData_hilbert = hilbert(RFData);
+RFData_hilbert = RFData;
 
-RawDataKK = DataCompressKK_RCA(RFData_hilbert, anglesRX, ratio, ElemPos, RF_fs, time_delays_TX);
-% RawDataKK = DataCompressKK_RCA_nocompensation(RFData_hilbert, anglesRX, ratio, ElemPos);
+% RawDataKK = DataCompressKK_RCA(RFData_hilbert, anglesRX, ratio, ElemPos, RF_fs, time_delays_TX);
+RawDataKK = DataCompressKK_RCA_nocompensation(RFData_hilbert, anglesRX, ratio, ElemPos);
 % figure; imagesc(squeeze(abs(RawDataKK(:, 6, :))))
 
 %% Beamforming and other key parameters' definitions
@@ -128,6 +131,17 @@ BFgrid = struct('X', X, 'Y', Y, 'Z', Z); % Struct for the beamforming grid
 
 %% KK Beamforming
 
-ReconKK = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param);
+% ReconKK = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param);
+[ReconKK, LUTTX, LUTRX] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param);
 
-figure; imagesc(squeeze(max(abs(ReconKK), [], 1))')
+% figure; imagesc(squeeze(max(abs(ReconKK), [], 1))')
+
+% Testing: look at individual volumes for each plane wave
+% figure; imagesc(squeeze(max(abs(ReconKK(:, :, :, 6, 6)), [], 1))')
+test = sum(ReconKK, 5);
+figure; imagesc(squeeze(max(abs(test(:, :, :, 6)), [], 1))')
+fulltest = squeeze(sum(ReconKK, [4, 5]));
+figure; imagesc(squeeze(max(abs(fulltest), [], 1))')
+
+temp = squeeze(max(abs(fulltest), [], 1))';
+figure; imagesc([temp(:, 41:end), temp(:, 1:40)])
