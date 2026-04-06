@@ -114,7 +114,8 @@ function [IQ] = RCA_DAS(RcvData, P, ypix_spacing, xpix_spacing, zpix_spacing)
     
     % Don't need the full 3D space yet, since value of rcv voltage at each
     % element is same along the length
-    nzs_nopad = s(1) / na / 2;
+    % nzs_nopad = s(1) / na / 2;
+    nzs_nopad = Receive(1).endSample; % Change 4/3/26
     nxs_nopad = numElements;
     nys_nopad = nxs_nopad;
     d = zeros(nzs_nopad, numElements, na * 2, nf, 'single'); % reorganize RcvData into (# z samples, # x or y samples, # acquisitions (2 * # angles), # frames)
