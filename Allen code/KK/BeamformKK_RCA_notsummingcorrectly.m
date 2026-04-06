@@ -57,44 +57,45 @@ function [BFData, varargout] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFg
 
     % Go through each transmit angle and beamform with its constituent
     % receive angles
-    BFData = zeros(nx, ny, nz); % Initialize final beamformed volume
-    % BFData = zeros(nx, ny, nz, naTX, naRX); % Initialize final beamformed volume
+    % BFData = zeros(nx, ny, nz); % Initialize final beamformed volume
+    BFData = zeros(nx, ny, nz, naTX, naRX); % Initialize final beamformed volume
 
-    for tai = 1:naTX/2     % Transmit angle index
+    for tai = 1:naTX     % Transmit angle index
+    % for tai = 1
         disp(tai)
         temp = zeros(nx, ny, nz); % Initialize a volume to keep adding to
         % tempLUTTX = LUTTX{tai}; % Temporarily store the TX time delays for angle index tai
         tempLUTTX = squeeze(LUTTX(:, :, :, tai)); % Temporarily store the TX time delays for angle index tai
         % tempLUTTX = genLUT(anglesTX(tai, :), BFgrid, param.c, param.t0);
-        for rai = 1:naRX/2
+        for rai = 1:naRX
             tempLUTRX = squeeze(LUTRX(:, :, :, rai)); % Temporarily store the RX time delays for angle index rai
             % tempLUTRX = genLUT(anglesRX(rai, :), BFgrid, param.c, param.t0);
-            
-            [verytemp] = idk(nx, ny, nz, tempLUTTX, tempLUTRX, param, RawDataKK)';
-            temp = temp + verytemp;
-            % BFData(:, :, :, tai, rai) = verytemp; % Save each TX and RX angle's BF data separately
-        end
-        
-    end
-    BFData = BFData + temp;
 
-    for tai = naTX + 1:naTX*2     % Transmit angle index
-        disp(tai)
-        temp = zeros(nx, ny, nz); % Initialize a volume to keep adding to
-        % tempLUTTX = LUTTX{tai}; % Temporarily store the TX time delays for angle index tai
-        tempLUTTX = squeeze(LUTTX(:, :, :, tai)); % Temporarily store the TX time delays for angle index tai
-        % tempLUTTX = genLUT(anglesTX(tai, :), BFgrid, param.c, param.t0);
-        for rai = naRX + 1:naRX*2
-            tempLUTRX = squeeze(LUTRX(:, :, :, rai)); % Temporarily store the RX time delays for angle index rai
-            % tempLUTRX = genLUT(anglesRX(rai, :), BFgrid, param.c, param.t0);
-            
-            [verytemp] = idk(nx, ny, nz, tempLUTTX, tempLUTRX, param, RawDataKK)';
+            verytemp = zeros(nx, ny, nz); % Initialize a volume to keep adding to
+            for xi = 1:nx
+                for yi = 1:ny
+                    for zi = 1:nz
+                        % sampleDelay = ( tempLUTTX(xi, yi, zi) + tempLUTRX(xi, yi, zi) ).*param.fs;
+                        % sampleDelay = round( (tempLUTTX(xi, yi, zi) + tempLUTRX(xi, yi, zi)).*param.fs + 1);
+                        sampleDelay = round( (tempLUTTX(xi, yi, zi) + tempLUTRX(xi, yi, zi)).*param.fs) + 1;
+                        % INTERPOLATE???????????????
+                        
+                        if (sampleDelay < ns - 1) && (sampleDelay >= 1) % if statement for out of bounds delays
+                            % disp('flag')
+                            verytemp(xi, yi, zi) = RawDataKK(sampleDelay, tai, rai);
+                        end
+
+                        % sampleDelay = (tempLUTTX(xi, yi, zi) + tempLUTRX(xi, yi, zi)).*param.fs + 1; % delay in [samples]
+                        % disp(sampleDelay)
+                        % verytemp(xi, yi, zi) = interpLinear(squeeze(RawDataKK(:, tai, rai)), sampleDelay);
+                    end
+                end
+            end
             temp = temp + verytemp;
-            % BFData(:, :, :, tai, rai) = verytemp; % Save each TX and RX angle's BF data separately
+            BFData(:, :, :, tai, rai) = verytemp; % Save each TX and RX angle's BF data separately
         end
-        
+        % BFData = BFData + temp;
     end
-    BFData = BFData + temp;
 
     % Return the LUTs as optional outputs
     if nargout > 1
@@ -135,29 +136,6 @@ function [LUT] = genLUT(theta, BFgrid, c, t0)
     LUT = LUT ./ c + t0; % Convert from distances to time delays
 
 
-end
-
-function [verytemp] = idk(nx, ny, nz, tempLUTTX, tempLUTRX, param, RawDataKK)    
-    verytemp = zeros(nx, ny, nz); % Initialize a volume to keep adding to
-    for xi = 1:nx
-        for yi = 1:ny
-            for zi = 1:nz
-                % sampleDelay = ( tempLUTTX(xi, yi, zi) + tempLUTRX(xi, yi, zi) ).*param.fs;
-                % sampleDelay = round( (tempLUTTX(xi, yi, zi) + tempLUTRX(xi, yi, zi)).*param.fs + 1);
-                sampleDelay = round( (tempLUTTX(xi, yi, zi) + tempLUTRX(xi, yi, zi)).*param.fs) + 1;
-                % INTERPOLATE???????????????
-                
-                if (sampleDelay < ns - 1) && (sampleDelay >= 1) % if statement for out of bounds delays
-                    % disp('flag')
-                    verytemp(xi, yi, zi) = RawDataKK(sampleDelay, tai, rai);
-                end
-
-                % sampleDelay = (tempLUTTX(xi, yi, zi) + tempLUTRX(xi, yi, zi)).*param.fs + 1; % delay in [samples]
-                % disp(sampleDelay)
-                % verytemp(xi, yi, zi) = interpLinear(squeeze(RawDataKK(:, tai, rai)), sampleDelay);
-            end
-        end
-    end
 end
 
 % Linear interpolation

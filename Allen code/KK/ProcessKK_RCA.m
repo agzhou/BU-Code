@@ -131,18 +131,33 @@ BFgrid = struct('X', X, 'Y', Y, 'Z', Z); % Struct for the beamforming grid
 
 %% KK Beamforming
 
-% ReconKK = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param);
+% % ReconKK = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param);
+% [ReconKK, LUTTX, LUTRX] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param);
+% 
+% % figure; imagesc(squeeze(max(abs(ReconKK), [], 1))')
+% 
+% % Testing: look at individual volumes for each plane wave
+% figure; imagesc(squeeze(max(abs(ReconKK(:, :, :, 6, 6)), [], 1))')
+% test = sum(ReconKK, 5);
+% figure; imagesc(squeeze(max(abs(test(:, :, :, 6)), [], 1))')
+% fulltest = squeeze(sum(ReconKK, [4, 5]));
+% figure; imagesc(squeeze(max(abs(fulltest), [], 1))')
+% 
+% genSliderV2(squeeze(max(abs(ReconKK), [], [1, 5])))
+% % temp = squeeze(max(abs(fulltest), [], 1))';
+% % figure; imagesc([temp(:, 41:end), temp(:, 1:40)])
+% 
+% % Plot images from the CR and RC sums individually
+% figure; imagesc(abs(squeeze(sum(ReconKK(:, :, :, 12:22, 12:22), [1, 4, 5]))))
+% figure; imagesc(abs(squeeze(sum(ReconKK(:, :, :, 1:11, 1:11), [1, 4, 5])))')
+% 
+% ReconKKCR = sum(ReconKK(:, :, :, 1:naTX, 1:naRX), [4, 5]);
+% ReconKKRC = sum(ReconKK(:, :, :, naTX + 1:2*naTX, naRX + 1:2*naRX), [4, 5]);
+% properCPWC = ReconKKCR + ReconKKRC;
+% figure; imagesc(squeeze(max(abs(properCPWC), [], 1))')
+
 [ReconKK, LUTTX, LUTRX] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param);
 
-% figure; imagesc(squeeze(max(abs(ReconKK), [], 1))')
 
-% Testing: look at individual volumes for each plane wave
-figure; imagesc(squeeze(max(abs(ReconKK(:, :, :, 6, 6)), [], 1))')
-test = sum(ReconKK, 5);
-figure; imagesc(squeeze(max(abs(test(:, :, :, 6)), [], 1))')
-fulltest = squeeze(sum(ReconKK, [4, 5]));
-figure; imagesc(squeeze(max(abs(fulltest), [], 1))')
-
-genSliderV2(squeeze(max(abs(ReconKK), [], [1, 5])))
-% temp = squeeze(max(abs(fulltest), [], 1))';
-% figure; imagesc([temp(:, 41:end), temp(:, 1:40)])
+%% Plot Verasonics DAS
+figure; imagesc(squeeze(max(abs(IQ(:, :, 1:length(zCoord))), [], 1))')
