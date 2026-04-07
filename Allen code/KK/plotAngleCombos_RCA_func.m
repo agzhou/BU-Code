@@ -53,17 +53,3 @@ function [varargout] = plotAngleCombos_RCA_func(anglesTX, anglesRX)
     % % figure; histogram(k_x); title("Delta k_x counts, with j = " + num2str(j)); xlabel('Delta k_x [radians/m]'); ylabel('Counts')
 end
 
-%% Helper functions
-function delta_theta = calcDeltaThetaRCA(anglesTX, anglesRX)
-    naTX = size(anglesTX, 1)/2; % # of transmit angles in one dimension
-    naRX = size(anglesRX, 1)/2; % # of receive angles in one dimension
-    delta_theta = [];
-    % CR
-    for tai = 1:naTX
-        delta_theta = [delta_theta; anglesRX(1:naRX, :) - anglesTX(tai, :)];
-    end
-    % RC
-    for tai = naTX + 1:naTX*2
-        delta_theta = [delta_theta; anglesRX(naRX + 1:naRX*2, :) - anglesTX(tai, :)];
-    end
-end

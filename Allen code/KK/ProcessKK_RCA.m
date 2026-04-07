@@ -80,7 +80,8 @@ anglesRX = listToAnglesRCA(anglesRXList, 'RX');
 % anglesRX = fliplr(anglesTX);
 
 delta_angles = plotAngleCombos_RCA_func(anglesTX, anglesRX);
-figure; plot(delta_angles(:, 1), delta_angles(:, 2), 'o'); axis image; title('Delta angles'); xlabel('y angle [deg]'); xlabel('y angle [deg]'); fontsize(20, 'points')
+% figure; plot(delta_angles(:, 1), delta_angles(:, 2), 'o'); axis image; title('Delta angles'); xlabel('y angle [deg]'); xlabel('y angle [deg]'); fontsize(20, 'points')
+plotDeltaAngles_RCA(anglesTX, anglesRX)
 
 %% Get TX time delays
 spw = P.Receive(1).samplesPerWave; % # samples per wavelength
@@ -120,7 +121,7 @@ param.t0 = 0; % not sure..................................................
 % % param.TXdelay = time_delays;
 % param.DecimRate = 1;    % Decimation rateCreate beamforming grid
 
-xCoord = ((-numElements/2):1:(numElements/2))*param.pitch;  % [m]   Beamformed points x coordinates
+xCoord = ((-numElements/2):0.5:(numElements/2))*param.pitch;  % [m]   Beamformed points x coordinates
 yCoord = xCoord;
 zbounds_mm = [0, 5]; % Z bounds/extents [mm]
 zbounds = zbounds_mm ./ 1e3; % Z bounds/extents [m]
@@ -159,7 +160,8 @@ BFgrid = struct('X', X, 'Y', Y, 'Z', Z); % Struct for the beamforming grid
 % figure; imagesc(squeeze(max(abs(properCPWC), [], 1))')
 
 
-[ReconKK, LUTTX, LUTRX] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param);
+% [ReconKK, LUTTX, LUTRX] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param);
+[ReconKK] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param);
 
 %% Plot KK MIP
 ylims = [0, 5];
@@ -179,7 +181,7 @@ vs_zCoord = ((1:vs_numGridPts(3)).*PData.PDelta(3) - 0 + PData.Origin(3) ).*P.wl
 
 DASMIP_fh = figure;
 % imagesc(vs_xCoord, vs_zCoord, squeeze(max(abs(IQ(:, :, 1:length(zCoord))), [], 1))')
-imagesc(vs_xCoord*1e3, vs_zCoord*1e3, squeeze(max(abs(IQ(:, :, :)), [], 1))'); colormap gray
+imagesc(vs_xCoord*1e3, vs_zCoord*1e3, squeeze(max(abs(IQ(:, :, :)), [], 1))' .^ 0.5); colormap gray
 title('DAS')
 xlabel('x [mm]')
 ylabel('z [mm]')
