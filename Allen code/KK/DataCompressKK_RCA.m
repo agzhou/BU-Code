@@ -8,7 +8,7 @@
 
 % Use this with BeamformKK_RCA.m
 
-function RawDataKK = DataCompressKK_RCA(data, anglesRX, ratio, ElemPos, RF_fs, time_delays_TX)
+function RawDataKK = DataCompressKK_RCA(data, anglesRX, ratio, ElemPos, time_delays_TX)
     
     % Assign parameters
     numSamples = size(data, 1);

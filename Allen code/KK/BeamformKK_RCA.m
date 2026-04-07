@@ -60,9 +60,10 @@ function [BFData, varargout] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFg
     BFData = zeros(nx, ny, nz); % Initialize final beamformed volume
     % BFData = zeros(nx, ny, nz, naTX, naRX); % Initialize final beamformed volume
 
+    temp = zeros(nx, ny, nz); % Initialize a volume to keep adding to
     for tai = 1:naTX/2     % Transmit angle index
         disp(tai)
-        temp = zeros(nx, ny, nz); % Initialize a volume to keep adding to
+        
         % tempLUTTX = LUTTX{tai}; % Temporarily store the TX time delays for angle index tai
         tempLUTTX = squeeze(LUTTX(:, :, :, tai)); % Temporarily store the TX time delays for angle index tai
         % tempLUTTX = genLUT(anglesTX(tai, :), BFgrid, param.c, param.t0);
@@ -70,25 +71,26 @@ function [BFData, varargout] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFg
             tempLUTRX = squeeze(LUTRX(:, :, :, rai)); % Temporarily store the RX time delays for angle index rai
             % tempLUTRX = genLUT(anglesRX(rai, :), BFgrid, param.c, param.t0);
             
-            [verytemp] = idk(nx, ny, nz, tempLUTTX, tempLUTRX, param, RawDataKK)';
+            [verytemp] = idk(nx, ny, nz, ns, tempLUTTX, tempLUTRX, param, squeeze(RawDataKK(:, tai, rai)));
             temp = temp + verytemp;
             % BFData(:, :, :, tai, rai) = verytemp; % Save each TX and RX angle's BF data separately
         end
         
     end
     BFData = BFData + temp;
-
-    for tai = naTX + 1:naTX*2     % Transmit angle index
+    
+    temp = zeros(nx, ny, nz); % Initialize a volume to keep adding to
+    for tai = naTX/2 + 1:naTX     % Transmit angle index
         disp(tai)
-        temp = zeros(nx, ny, nz); % Initialize a volume to keep adding to
+        % temp = zeros(nx, ny, nz); % Initialize a volume to keep adding to
         % tempLUTTX = LUTTX{tai}; % Temporarily store the TX time delays for angle index tai
         tempLUTTX = squeeze(LUTTX(:, :, :, tai)); % Temporarily store the TX time delays for angle index tai
         % tempLUTTX = genLUT(anglesTX(tai, :), BFgrid, param.c, param.t0);
-        for rai = naRX + 1:naRX*2
+        for rai = naRX/2 + 1:naRX
             tempLUTRX = squeeze(LUTRX(:, :, :, rai)); % Temporarily store the RX time delays for angle index rai
             % tempLUTRX = genLUT(anglesRX(rai, :), BFgrid, param.c, param.t0);
             
-            [verytemp] = idk(nx, ny, nz, tempLUTTX, tempLUTRX, param, RawDataKK)';
+            [verytemp] = idk(nx, ny, nz, ns, tempLUTTX, tempLUTRX, param, squeeze(RawDataKK(:, tai, rai)));
             temp = temp + verytemp;
             % BFData(:, :, :, tai, rai) = verytemp; % Save each TX and RX angle's BF data separately
         end
@@ -137,7 +139,7 @@ function [LUT] = genLUT(theta, BFgrid, c, t0)
 
 end
 
-function [verytemp] = idk(nx, ny, nz, tempLUTTX, tempLUTRX, param, RawDataKK)    
+function [verytemp] = idk(nx, ny, nz, ns, tempLUTTX, tempLUTRX, param, RawDataKK_vec)    
     verytemp = zeros(nx, ny, nz); % Initialize a volume to keep adding to
     for xi = 1:nx
         for yi = 1:ny
@@ -149,7 +151,7 @@ function [verytemp] = idk(nx, ny, nz, tempLUTTX, tempLUTRX, param, RawDataKK)
                 
                 if (sampleDelay < ns - 1) && (sampleDelay >= 1) % if statement for out of bounds delays
                     % disp('flag')
-                    verytemp(xi, yi, zi) = RawDataKK(sampleDelay, tai, rai);
+                    verytemp(xi, yi, zi) = RawDataKK_vec(sampleDelay);
                 end
 
                 % sampleDelay = (tempLUTTX(xi, yi, zi) + tempLUTRX(xi, yi, zi)).*param.fs + 1; % delay in [samples]

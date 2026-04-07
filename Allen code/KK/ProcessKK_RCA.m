@@ -3,7 +3,7 @@
 %% Add paths
 
 %% Load data
-datapath = 'U:\Projects\Ultrasound\Datasets\Allen Data\RCA Verasonics simulations';
+% datapath = 'U:\Projects\Ultrasound\Datasets\Allen Data\RCA Verasonics simulations';
 % ...
 
 %% Reshape Verasonics RF data (CODE DOES NOT ACCOUNT FOR MULTIPLE FRAMES YET)
@@ -51,6 +51,7 @@ end
 
 %% Get additional parameters
 c0 = P.Resource.Parameters.speedOfSound; % Speed of sound in medium [m/s]
+numElements = P.numElements;
 RF_fs = P.Receive(1).ADCRate * 1e6; % Sampling frequency of RF data [Hz]
 ElemPos = P.Trans.ElementPos(:, 1:2)' .* P.wl; % Element positions in [m]. Matrix of size [2 (x, y), # rows + # columns]
 ratio = RF_fs/c0;
@@ -79,7 +80,7 @@ anglesRX = listToAnglesRCA(anglesRXList, 'RX');
 % anglesRX = fliplr(anglesTX);
 
 delta_angles = plotAngleCombos_RCA_func(anglesTX, anglesRX);
-figure; plot(delta_angles(:, 1), delta_angles(:, 2), 'o'); axis image
+figure; plot(delta_angles(:, 1), delta_angles(:, 2), 'o'); axis image; title('Delta angles'); xlabel('y angle [deg]'); xlabel('y angle [deg]'); fontsize(20, 'points')
 
 %% Get TX time delays
 spw = P.Receive(1).samplesPerWave; % # samples per wavelength
@@ -94,7 +95,7 @@ end
 RFData_hilbert = hilbert(RFData);
 % RFData_hilbert = RFData;
 
-RawDataKK = DataCompressKK_RCA(RFData_hilbert, anglesRX, ratio, ElemPos, RF_fs, time_delays_TX);
+RawDataKK = DataCompressKK_RCA(RFData_hilbert, anglesRX, ratio, ElemPos, time_delays_TX);
 % RawDataKK = DataCompressKK_RCA_nocompensation(RFData_hilbert, anglesRX, ratio, ElemPos);
 % figure; imagesc(squeeze(abs(RawDataKK(:, 6, :))))
 
@@ -151,13 +152,37 @@ BFgrid = struct('X', X, 'Y', Y, 'Z', Z); % Struct for the beamforming grid
 % figure; imagesc(abs(squeeze(sum(ReconKK(:, :, :, 12:22, 12:22), [1, 4, 5]))))
 % figure; imagesc(abs(squeeze(sum(ReconKK(:, :, :, 1:11, 1:11), [1, 4, 5])))')
 % 
+% [ReconKK] = BeamformKK_RCA_notsummingcorrectly(RawDataKK, anglesRX, anglesTX, BFgrid, param);
 % ReconKKCR = sum(ReconKK(:, :, :, 1:naTX, 1:naRX), [4, 5]);
 % ReconKKRC = sum(ReconKK(:, :, :, naTX + 1:2*naTX, naRX + 1:2*naRX), [4, 5]);
 % properCPWC = ReconKKCR + ReconKKRC;
 % figure; imagesc(squeeze(max(abs(properCPWC), [], 1))')
 
+
 [ReconKK, LUTTX, LUTRX] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param);
 
+%% Plot KK MIP
+ylims = [0, 5];
+KKMIP_fh = figure;
+imagesc(xCoord*1e3, zCoord*1e3, squeeze(max(abs(ReconKK), [], 1))'); colormap gray
+title('KK')
+xlabel('x [mm]')
+ylabel('z [mm]')
+% KKMIP_fh.Position(4) = KKMIP_fh.Position(3)*( max(zCoord) - min(zCoord) )/( max(xCoord) - min(xCoord) );
+fontsize(20, 'points')
+ylim(ylims)
 
 %% Plot Verasonics DAS
-figure; imagesc(squeeze(max(abs(IQ(:, :, 1:length(zCoord))), [], 1))')
+vs_numGridPts = PData.Size;
+vs_xCoord = ((1:vs_numGridPts(1)).*PData.PDelta(1) - 1 + PData.Origin(1) ).*P.wl;
+vs_zCoord = ((1:vs_numGridPts(3)).*PData.PDelta(3) - 0 + PData.Origin(3) ).*P.wl;
+
+DASMIP_fh = figure;
+% imagesc(vs_xCoord, vs_zCoord, squeeze(max(abs(IQ(:, :, 1:length(zCoord))), [], 1))')
+imagesc(vs_xCoord*1e3, vs_zCoord*1e3, squeeze(max(abs(IQ(:, :, :)), [], 1))'); colormap gray
+title('DAS')
+xlabel('x [mm]')
+ylabel('z [mm]')
+% DASMIP_fh.Position(4) = DASMIP_fh.Position(3)*( max(vs_zCoord) - min(vs_zCoord) )/( max(vs_xCoord) - min(vs_xCoord) );
+fontsize(20, 'points')
+ylim(ylims)

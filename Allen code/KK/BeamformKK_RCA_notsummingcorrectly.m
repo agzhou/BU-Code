@@ -8,7 +8,7 @@
 
 % test = BeamformKK_MatrixArray(RawDataKK, anglesRX, BFgrid, param);
 
-function [BFData, varargout] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param)
+function [BFData, varargout] = BeamformKK_RCA_notsummingcorrectly(RawDataKK, anglesRX, anglesTX, BFgrid, param)
 
     ns = size(RawDataKK, 1); % # of samples
     naTX = size(RawDataKK, 2); % # of TX angles
