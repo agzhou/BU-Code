@@ -25,21 +25,23 @@ daTX = mean(diff(anglesTXList));
 numSamples = P.Receive(1).endSample; % # samples per element per acquisition (plane wave)
 % RFData_scrambled = permute(reshape(RcvData', [numChannels, numSamples, ntaTX]), [2, 1, 3]);
 
+% Reshape the RcvData so the TX angles are a new dimension
 RFData_scrambled = zeros(numSamples, numChannels, ntaTX);
 % first half of rcvs
 for ai = 1:naTX
     RFData_scrambled(:, :, ai)  = RcvData(P.Receive(ai).startSample:P.Receive(ai).endSample, :);
 end
-
 % second half of rcvs
 for ai = 1:naTX
     RFData_scrambled(:, :, naTX + ai) = RcvData(P.Receive(naTX + ai).startSample:P.Receive(naTX + ai).endSample, :);
 end
 % RFData_scrambled = permute(reshape(RcvData', [numChannels, numSamples, ntaTX]), [2, 1, 3]);
+% figure; imagesc(squeeze(RFData(:, :, 1)))
+% figure; imagesc(squeeze(RFData_scrambled(:, :, 1)))
 
-% figure; imagesc(squeeze(RFData(:, :, 1)))
-RFData_allElem = RFData_scrambled(:, P.Trans.Connector, :); % Unscramble the RF data by using the channel to element map
-% figure; imagesc(squeeze(RFData(:, :, 1)))
+% Unscramble the RF data by using the channel to element map
+RFData_allElem = RFData_scrambled(:, P.Trans.Connector, :);
+figure; imagesc(squeeze(RFData_allElem(:, :, 1)))
 
 % Isolate RF for row-column and column-row TX/RX pairs
 RFData = zeros(numSamples, P.numElements, ntaTX);
@@ -121,7 +123,8 @@ param.t0 = 0; % not sure..................................................
 % % param.TXdelay = time_delays;
 % param.DecimRate = 1;    % Decimation rateCreate beamforming grid
 
-xCoord = ((-numElements/2):1:(numElements/2))*param.pitch;  % [m]   Beamformed points x coordinates
+xCoord = (-numElements/2*param.pitch):0.5*P.wl:(numElements/2*param.pitch);  % [m]   Beamformed points x coordinates
+% xCoord = ((-numElements/2):1:(numElements/2))*param.pitch;  % [m]   Beamformed points x coordinates
 % xCoord = ((-numElements/2):0.5:(numElements/2))*param.pitch;  % [m]   Beamformed points x coordinates
 yCoord = xCoord;
 zbounds_mm = [0, 5]; % Z bounds/extents [mm]
@@ -231,7 +234,8 @@ hold off
 % Plot MIP
 ylims = [0, 5];
 KKMaskedMIP_fh = figure;
-imagesc(xCoord*1e3, zCoord*1e3, squeeze(max(abs(ReconKKMasked), [], 1))'); colormap gray
+% imagesc(xCoord*1e3, zCoord*1e3, squeeze(max(abs(ReconKKMasked), [], 1))'); colormap gray
+imagesc(xCoord*1e3, zCoord*1e3, squeeze(max(abs(ReconKKMasked), [], 2))'); colormap gray
 title('KK')
 xlabel('x [mm]')
 ylabel('z [mm]')
@@ -242,7 +246,8 @@ ylim(ylims)
 %% Plot KK MIP
 ylims = [0, 5];
 KKMIP_fh = figure;
-imagesc(xCoord*1e3, zCoord*1e3, squeeze(max(abs(ReconKK), [], 1))'); colormap gray
+% imagesc(xCoord*1e3, zCoord*1e3, squeeze(max(abs(ReconKK), [], 1))'); colormap gray
+imagesc(xCoord*1e3, zCoord*1e3, squeeze(max(abs(ReconKK), [], 2))'); colormap gray
 title('KK')
 xlabel('x [mm]')
 ylabel('z [mm]')
