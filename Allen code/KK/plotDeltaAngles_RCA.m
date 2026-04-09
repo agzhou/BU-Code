@@ -11,8 +11,8 @@ function plotDeltaAngles_RCA(anglesTX, anglesRX)
 
     figure; hold on
     % plot(delta_angles_deg(:, 1), delta_angles_deg(:, 2), 'o')
-    plot(delta_angles_deg_CR(:, 1), delta_angles_deg_CR(:, 2), 'o')
-    plot(delta_angles_deg_RC(:, 1), delta_angles_deg_RC(:, 2), 'x')
+    plot(delta_angles_deg_CR(:, 1), delta_angles_deg_CR(:, 2), 'o', 'MarkerSize', 8, 'LineWidth', 2)
+    plot(delta_angles_deg_RC(:, 1), delta_angles_deg_RC(:, 2), 'x', 'MarkerSize', 8, 'LineWidth', 2)
 
     axis image; title('Delta angles'); xlabel('x angle [deg]'); ylabel('y angle [deg]'); fontsize(20, 'points')
     hold off

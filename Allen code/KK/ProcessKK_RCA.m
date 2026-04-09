@@ -121,7 +121,8 @@ param.t0 = 0; % not sure..................................................
 % % param.TXdelay = time_delays;
 % param.DecimRate = 1;    % Decimation rateCreate beamforming grid
 
-xCoord = ((-numElements/2):0.5:(numElements/2))*param.pitch;  % [m]   Beamformed points x coordinates
+xCoord = ((-numElements/2):1:(numElements/2))*param.pitch;  % [m]   Beamformed points x coordinates
+% xCoord = ((-numElements/2):0.5:(numElements/2))*param.pitch;  % [m]   Beamformed points x coordinates
 yCoord = xCoord;
 zbounds_mm = [0, 5]; % Z bounds/extents [mm]
 zbounds = zbounds_mm ./ 1e3; % Z bounds/extents [m]
@@ -161,7 +162,82 @@ BFgrid = struct('X', X, 'Y', Y, 'Z', Z); % Struct for the beamforming grid
 
 
 % [ReconKK, LUTTX, LUTRX] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param);
-[ReconKK] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param);
+[ReconKK] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param, 'compounded');
+[ReconKKAllAngles, angles] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param, 'allAngles');
+
+%% Testing with access to the individual TX-RX pairs' volumes
+
+inds_CR = 1:naTX;
+inds_RC = naTX + 1:2*naTX;
+anglesTX_CR = anglesTX(inds_CR, :);
+anglesTX_RC = anglesTX(inds_RC, :);
+anglesRX_CR = anglesRX(inds_CR, :);
+anglesRX_RC = anglesRX(inds_RC, :);
+
+delta_angles_CR = zeros(naTX^2, 2);
+delta_angles_RC = zeros(naTX^2, 2);
+pair_inds_CR = zeros(naTX^2, 2);
+pair_inds_RC = zeros(naTX^2, 2);
+for ind = 1:naTX
+    angleTX = anglesTX_CR(ind, :);
+    delta_angles_CR((ind - 1)*naTX + 1:ind*naTX, :) = anglesRX_CR - angleTX;
+    pair_inds_CR((ind - 1)*naTX + 1:ind*naTX, :) = [ones(naTX, 1).*ind, (1:naRX)'];
+end
+for ind = 1:naTX
+    angleTX = anglesTX_RC(ind, :);
+    % delta_angles_RC(naTX^2 + (ind - 1)*naTX + 1:naTX^2 + ind*naTX, :) = anglesRX_RC - angleTX;
+    delta_angles_RC((ind - 1)*naTX + 1:ind*naTX, :) = anglesRX_RC - angleTX;
+    pair_inds_RC((ind - 1)*naTX + 1:ind*naTX, :) = [naTX + ones(naTX, 1).*ind, naTX + (1:naRX)'];
+end
+
+% ==== Choose which points on the delta angle plot to remove from the final compounded beamformed image ==== %
+% Scheme 1:
+% mask_remove_CR = xor(delta_angles_CR(:, 1) == 0, delta_angles_CR(:, 2) == 0);
+% mask_remove_RC = xor(delta_angles_RC(:, 1) == 0, delta_angles_RC(:, 2) == 0);
+mask_remove_CR = delta_angles_CR(:, 2) == 0 & delta_angles_CR(:, 1) ~= 0;
+mask_remove_RC = delta_angles_RC(:, 1) == 0 & delta_angles_RC(:, 2) ~= 0;
+
+% ==== Compound with the masked angles ==== %
+ReconKKMasked = zeros(size(BFgrid.X));
+% CR
+for tai = 1:naTX
+    for rai = 1:naRX
+        ind = (tai - 1)*naTX + rai;
+        if ~mask_remove_CR(ind)
+            ReconKKMasked = ReconKKMasked + ReconKKAllAngles(:, :, :, tai, rai);
+        end
+    end
+end
+% RC
+for tai = 1:naTX
+    for rai = 1:naRX
+% for tai = naTX + 1:2*naTX
+%     for rai = naRX + 1:2*naRX
+        ind = (tai - 1)*naTX + rai;
+        if ~mask_remove_RC(ind)
+            ReconKKMasked = ReconKKMasked + ReconKKAllAngles(:, :, :, naTX + tai, naRX + rai);
+        end
+    end
+end
+
+
+% Plot the masked delta angles
+figure; hold on
+plot(rad2deg(delta_angles_CR(~mask_remove_CR, 1)), rad2deg(delta_angles_CR(~mask_remove_CR, 2)), 'o', 'MarkerSize', 8, 'LineWidth', 2)
+plot(rad2deg(delta_angles_RC(~mask_remove_RC, 1)), rad2deg(delta_angles_RC(~mask_remove_RC, 2)), 'x', 'MarkerSize', 8, 'LineWidth', 2)
+axis image; title('Delta angles'); xlabel('x angle [deg]'); ylabel('y angle [deg]'); fontsize(20, 'points')
+hold off
+
+% Plot MIP
+ylims = [0, 5];
+KKMaskedMIP_fh = figure;
+imagesc(xCoord*1e3, zCoord*1e3, squeeze(max(abs(ReconKKMasked), [], 1))'); colormap gray
+title('KK')
+xlabel('x [mm]')
+ylabel('z [mm]')
+% KKMIP_fh.Position(4) = KKMIP_fh.Position(3)*( max(zCoord) - min(zCoord) )/( max(xCoord) - min(xCoord) );
+fontsize(20, 'points')
+ylim(ylims)
 
 %% Plot KK MIP
 ylims = [0, 5];
