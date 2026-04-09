@@ -166,7 +166,7 @@ BFgrid = struct('X', X, 'Y', Y, 'Z', Z); % Struct for the beamforming grid
 
 % [ReconKK, LUTTX, LUTRX] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param);
 [ReconKK] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param, 'compounded');
-[ReconKKAllAngles, angles] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param, 'allAngles');
+[ReconKKAllAngles] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param, 'allAngles');
 
 %% Testing with access to the individual TX-RX pairs' volumes
 
