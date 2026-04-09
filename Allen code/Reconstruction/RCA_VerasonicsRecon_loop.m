@@ -168,15 +168,23 @@ TX = rmfield(TX_acq, TX_fn(6:14));
 % fixed location in the transducer coord system
 
 numElements = Trans.numelements./2; % the structure gives # row elements + # column elements
-
-PData.PDelta = [Trans.spacing, Trans.spacing, 0.5]; % Spacing between pixels in x, y, z, in wavelengths
-
 PData.Coord = 'rectangular'; % rectangular coords, could change to polar or spherical
-% Set PData array dimensions --> # of rows, columns, sections (planes
-% parallel to the xy plane)
-% For a 3D scan, rows - y axis, columns - x axis, sections - z axis
-PData.Size(1) = ceil(numElements.*Trans.spacing./PData.PDelta(2)); % # rows
-PData.Size(2) = ceil(numElements.*Trans.spacing./PData.PDelta(1)); % # cols
+
+% PData.PDelta = [Trans.spacing, Trans.spacing, 0.5]; % Spacing between pixels in x, y, z, in wavelengths
+% % Set PData array dimensions --> # of rows, columns, sections (planes
+% % parallel to the xy plane)
+% % For a 3D scan, rows - y axis, columns - x axis, sections - z axis
+% PData.Size(1) = ceil(numElements.*Trans.spacing./PData.PDelta(2)); % # rows
+% PData.Size(2) = ceil(numElements.*Trans.spacing./PData.PDelta(1)); % # cols
+% % PData.Size(1) = ceil(numElements.*Trans.spacing./PData.PDelta(2)) + 1; % # rows
+% % PData.Size(2) = ceil(numElements.*Trans.spacing./PData.PDelta(1)) + 1; % # cols
+% PData.Size(3) = ceil((endDepth - startDepth)./PData.PDelta(3)); % sections
+
+% Testing
+PData.PDelta = [0.5, 0.5, 0.5]; % Spacing between pixels in x, y, z, in wavelengths
+L = Trans.spacingMm/1e3*numElements/wl; % Probe width in wavelengths
+PData.Size(1) = ceil(L/PData.PDelta(2));
+PData.Size(2) = ceil(L/PData.PDelta(1));
 PData.Size(3) = ceil((endDepth - startDepth)./PData.PDelta(3)); % sections
 
 % Define the location (x, y, z) of the upper left corner of the array
@@ -187,14 +195,14 @@ PData.Origin = [-half_probe_dist, half_probe_dist, startDepth];
 % Upper left corner if you look aligned with positive z
 
 % Set a local region to view/use for processing
-PData.Region(1) = struct('Shape',struct('Name','PData'));
+PData.Region = struct('Shape',struct('Name','PData'));
 
-PData.Region(2).Shape = struct('Name', 'Slice', 'Orientation', 'xz', ...
-                            'oPAIntersect', PData.Origin(2) - (numElements-1).*Trans.spacing./2); % out of Plane Axis Intersection
-PData.Region(3).Shape = struct('Name', 'Slice', 'Orientation', 'yz', ...
-                            'oPAIntersect', PData.Origin(1) + (numElements-1).*Trans.spacing./2);
-PData.Region(4).Shape = struct('Name', 'Slice', 'Orientation', 'xy', ...
-                            'oPAIntersect', Media.MP(3)); % currently set to the plane intersecting the only scatter point
+% PData.Region(2).Shape = struct('Name', 'Slice', 'Orientation', 'xz', ...
+%                             'oPAIntersect', PData.Origin(2) - (numElements-1).*Trans.spacing./2); % out of Plane Axis Intersection
+% PData.Region(3).Shape = struct('Name', 'Slice', 'Orientation', 'yz', ...
+%                             'oPAIntersect', PData.Origin(1) + (numElements-1).*Trans.spacing./2);
+% PData.Region(4).Shape = struct('Name', 'Slice', 'Orientation', 'xy', ...
+%                             'oPAIntersect', Media.MP(3)); % currently set to the plane intersecting the only scatter point
 
 PData.Region = computeRegions(PData);
 

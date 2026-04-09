@@ -124,7 +124,27 @@ zd = zd_mm/wl/1e3; % z position of point scatterer, in [wavelengths]
 % Set up Media model for the simulation, which generates the scattering points with 3D location
 % and reflectivity. For 1D transducer arrays, they are aligned on the
 % x-axis with the center at x = 0, and scan depth is in z.
-Media.MP(1, :) = [0, 0, zd, 1.0]; % [x, y, z, reflectivity]. x, y, z are defined as # of wavelengths.
+
+% Single point target
+% Media.MP(1, :) = [0, 0, zd, 1.0]; % [x, y, z, reflectivity]. x, y, z are defined as # of wavelengths.
+
+% Vertical point targets
+Media.MP(1, :) = [0, 0, 2/wl/1e3, 1.0];
+Media.MP(2, :) = [0, 0, 3/wl/1e3, 1.0];
+Media.MP(3, :) = [0, 0, 4/wl/1e3, 1.0];
+
+% Horizontal point targets
+Media.MP(4, :) = [0.5/wl/1e3, 0, 2/wl/1e3, 1.0];
+Media.MP(5, :) = [1.5/wl/1e3, 0, 2/wl/1e3, 1.0];
+Media.MP(6, :) = [1.75/wl/1e3, 0, 2/wl/1e3, 1.0];
+Media.MP(7, :) = [2.5/wl/1e3, 0, 2/wl/1e3, 1.0];
+Media.MP(8, :) = [2.65/wl/1e3, 0, 2/wl/1e3, 1.0];
+Media.MP(9, :) = [-0.5/wl/1e3, 0, 4/wl/1e3, 1.0];
+Media.MP(10, :) = [-1.5/wl/1e3, 0, 4/wl/1e3, 1.0];
+Media.MP(11, :) = [-1.75/wl/1e3, 0, 4/wl/1e3, 1.0];
+Media.MP(12, :) = [-2.5/wl/1e3, 0, 4/wl/1e3, 1.0];
+Media.MP(13, :) = [-2.65/wl/1e3, 0, 4/wl/1e3, 1.0];
+
 % Media.MP(2, :) = [30, 30, 70, 1.0]; % [x, y, z, reflectivity]. x, y, z are defined as # of wavelengths.
 % Media.MP(3, :) = [20, -20, 100, 1.0]; % [x, y, z, reflectivity]. x, y, z are defined as # of wavelengths.
 % Media.MP(1, :) = [30, 30, 70, 1.0]; % [x, y, z, reflectivity]. x, y, z are defined as # of wavelengths.

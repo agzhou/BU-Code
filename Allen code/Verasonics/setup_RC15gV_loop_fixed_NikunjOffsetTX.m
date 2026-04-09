@@ -244,11 +244,12 @@ for n = 1:na
     TX(n).Delay = computeTXDelays(TX(n));
 end
 
-% offset = 
+offset = mean(diff(angles));
 
 for n = 1:na
     TX(na + n).Apod(Trans.numelements/2 + 1 : end) = ones(1, Trans.numelements/2); % Turn on rows (x)
-    TX(na + n).Steer = [0, angles(n)];
+    TX(na + n).Steer = [0, angles(n) + offset];
+%     TX(na + n).Steer = [0, angles(n)];
     TX(na + n).Delay = computeTXDelays(TX(na + n));
 end
 
