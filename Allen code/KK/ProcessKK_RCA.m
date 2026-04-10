@@ -194,11 +194,16 @@ for ind = 1:naTX
 end
 
 % ==== Choose which points on the delta angle plot to remove from the final compounded beamformed image ==== %
-% Scheme 1:
-% mask_remove_CR = xor(delta_angles_CR(:, 1) == 0, delta_angles_CR(:, 2) == 0);
-% mask_remove_RC = xor(delta_angles_RC(:, 1) == 0, delta_angles_RC(:, 2) == 0);
-mask_remove_CR = delta_angles_CR(:, 2) == 0 & delta_angles_CR(:, 1) ~= 0;
-mask_remove_RC = delta_angles_RC(:, 1) == 0 & delta_angles_RC(:, 2) ~= 0;
+% Scheme 1: remove the "extra" ks along the axes
+% % mask_remove_CR = xor(delta_angles_CR(:, 1) == 0, delta_angles_CR(:, 2) == 0);
+% % mask_remove_RC = xor(delta_angles_RC(:, 1) == 0, delta_angles_RC(:, 2) == 0);
+% mask_remove_CR = delta_angles_CR(:, 2) == 0 & delta_angles_CR(:, 1) ~= 0;
+% mask_remove_RC = delta_angles_RC(:, 1) == 0 & delta_angles_RC(:, 2) ~= 0;
+
+% Scheme 2: Remove quadrants 2-4
+mask_remove_CR = ~(delta_angles_CR(:, 2) >= 0 & delta_angles_CR(:, 1) >= 0);
+mask_remove_RC = ~(delta_angles_RC(:, 1) >= 0 & delta_angles_RC(:, 2) >= 0);
+
 
 % ==== Compound with the masked angles ==== %
 ReconKKMasked = zeros(size(BFgrid.X));
