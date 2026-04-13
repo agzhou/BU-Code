@@ -164,10 +164,10 @@ BFgrid = struct('X', X, 'Y', Y, 'Z', Z); % Struct for the beamforming grid
 % properCPWC = ReconKKCR + ReconKKRC;
 % figure; imagesc(squeeze(max(abs(properCPWC), [], 1))')
 
-
+interp_method = 'linear';
 % [ReconKK, LUTTX, LUTRX] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param);
-[ReconKK] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param, 'compounded');
-% [ReconKKAllAngles] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param, 'allAngles');
+[ReconKK] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param, interp_method, 'compounded');
+% [ReconKKAllAngles] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param, interp_method, 'allAngles');
 
 %% Testing with access to the individual TX-RX pairs' volumes
 

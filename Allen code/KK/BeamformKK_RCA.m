@@ -12,7 +12,7 @@
 
 % test = BeamformKK_MatrixArray(RawDataKK, anglesRX, BFgrid, param);
 
-function [BFData, varargout] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param, varargin)
+function [BFData, varargout] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param, interp_method, varargin)
     
     % Determine if all angles will be returned, or just the compounded result
     whatToReturn = 'compounded'; % Default is to return only the compounded result
@@ -82,7 +82,7 @@ function [BFData, varargout] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFg
                 for rai = 1:naRX/2
                     tempLUTRX = squeeze(LUTRX(:, :, :, rai)); % Temporarily store the RX time delays for angle index rai
                     % tempLUTRX = genLUT(anglesRX(rai, :), BFgrid, param.c, param.t0);
-                    [verytemp] = idk(nx, ny, nz, ns, tempLUTTX, tempLUTRX, param, squeeze(RawDataKK(:, tai, rai)));
+                    [verytemp] = idk(nx, ny, nz, ns, tempLUTTX, tempLUTRX, param, squeeze(RawDataKK(:, tai, rai)), interp_method);
                     temp = temp + verytemp;
                 end
                 
@@ -99,7 +99,7 @@ function [BFData, varargout] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFg
                 for rai = naRX/2 + 1:naRX
                     tempLUTRX = squeeze(LUTRX(:, :, :, rai)); % Temporarily store the RX time delays for angle index rai
                     % tempLUTRX = genLUT(anglesRX(rai, :), BFgrid, param.c, param.t0);
-                    [verytemp] = idk(nx, ny, nz, ns, tempLUTTX, tempLUTRX, param, squeeze(RawDataKK(:, tai, rai)));
+                    [verytemp] = idk(nx, ny, nz, ns, tempLUTTX, tempLUTRX, param, squeeze(RawDataKK(:, tai, rai)), interp_method);
                     temp = temp + verytemp;
                 end
                 
@@ -200,7 +200,11 @@ function [LUT] = genLUT(theta, BFgrid, c)
 
 end
 
-function [verytemp] = idk(nx, ny, nz, ns, tempLUTTX, tempLUTRX, param, RawDataKK_vec)    
+% Get the volume given some beaforming grid, KK-transformed RF Data, and
+% time delays for each voxel in the volume
+%   - interp_method: 'round' or 'linear' as how to get the time-delayed
+%                    value for each voxel
+function [verytemp] = idk(nx, ny, nz, ns, tempLUTTX, tempLUTRX, param, RawDataKK_vec, interp_method)    
     verytemp = zeros(nx, ny, nz); % Initialize a volume to keep adding to
     for xi = 1:nx
         for yi = 1:ny
@@ -208,13 +212,20 @@ function [verytemp] = idk(nx, ny, nz, ns, tempLUTTX, tempLUTRX, param, RawDataKK
                 % sampleDelay = ( tempLUTTX(xi, yi, zi) + tempLUTRX(xi, yi, zi) ).*param.fs;
                 % sampleDelay = round( (tempLUTTX(xi, yi, zi) + tempLUTRX(xi, yi, zi)).*param.fs + 1);
                 % sampleDelay = round( (tempLUTTX(xi, yi, zi) + tempLUTRX(xi, yi, zi)).*param.fs) + 1;
-                sampleDelay = round( (tempLUTTX(xi, yi, zi) + tempLUTRX(xi, yi, zi) + param.t0).*param.fs) + 1;
 
-                % INTERPOLATE???????????????
-                
-                if (sampleDelay < ns - 1) && (sampleDelay >= 1) % if statement for out of bounds delays
-                    % disp('flag')
-                    verytemp(xi, yi, zi) = RawDataKK_vec(sampleDelay);
+                sampleDelay = (tempLUTTX(xi, yi, zi) + tempLUTRX(xi, yi, zi) + param.t0).*param.fs + 1;
+                switch interp_method
+                    case 'round'
+                        sampleDelay = round(sampleDelay);
+                        if (sampleDelay < ns - 1) && (sampleDelay >= 1) % if statement for out of bounds delays
+                            % disp('flag')
+                            verytemp(xi, yi, zi) = RawDataKK_vec(sampleDelay);
+                        end
+                    case 'linear'
+                        if (sampleDelay < ns - 1) && (sampleDelay >= 1) % if statement for out of bounds delays
+                            % disp('flag')
+                            verytemp(xi, yi, zi) = interpLinear(RawDataKK_vec, sampleDelay);
+                        end
                 end
 
                 % sampleDelay = (tempLUTTX(xi, yi, zi) + tempLUTRX(xi, yi, zi)).*param.fs + 1; % delay in [samples]
@@ -236,6 +247,8 @@ function [value] = interpLinear(data, delay)
     lowerSample = floor(delay);
     % disp(lowerSample)
     upperSample = ceil(delay);
+
+    % I guess I added some "circshifting" for if the delay is out of range
     if lowerSample > ns
         % disp(lowerSample)
         lowerSample = lowerSample - ns;
@@ -244,8 +257,6 @@ function [value] = interpLinear(data, delay)
     if upperSample > ns
         upperSample = upperSample - ns;
     end
-
-    
 
     lower = data(lowerSample);
     upper = data(upperSample);
