@@ -116,7 +116,8 @@ wavelength = param.c/param.fc;              % [m] convert from wavelength to met
 % roundtrip time. In otherwords, there are 4 samples per wavelength, but in
 % practice that becomes 8 since you are also accounting for time to go to
 % and from the transducer.
-param.t0 = 0; % not sure..................................................
+% param.t0 = 0;
+param.t0 = (P.startDepth + P.Trans.lensCorrection + P.TW.peak)*P.wl/c0; % Time offset [s]
 
 % [~,I] = max(source_sig); % Find the index where the source input signal is maximum (wrt kgrid.dt)
 % param.t0 = (kgrid.t_array(I))/param.fc; % Sequence start time (time offset) [s] --> convert the index wrt kgrid.dt to time wrt the RF sampling frequency
@@ -166,7 +167,7 @@ BFgrid = struct('X', X, 'Y', Y, 'Z', Z); % Struct for the beamforming grid
 
 % [ReconKK, LUTTX, LUTRX] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param);
 [ReconKK] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param, 'compounded');
-[ReconKKAllAngles] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param, 'allAngles');
+% [ReconKKAllAngles] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param, 'allAngles');
 
 %% Testing with access to the individual TX-RX pairs' volumes
 
@@ -252,7 +253,7 @@ ylim(ylims)
 ylims = [0, 5];
 KKMIP_fh = figure;
 % imagesc(xCoord*1e3, zCoord*1e3, squeeze(max(abs(ReconKK), [], 1))'); colormap gray
-imagesc(xCoord*1e3, zCoord*1e3, squeeze(max(abs(ReconKK), [], 2))'); colormap gray
+imagesc(xCoord*1e3, zCoord*1e3, squeeze(max(abs(ReconKK), [], 2))' .^ 1); colormap gray
 title('KK')
 xlabel('x [mm]')
 ylabel('z [mm]')
@@ -267,7 +268,7 @@ vs_zCoord = ((1:vs_numGridPts(3)).*PData.PDelta(3) - 0 + PData.Origin(3) ).*P.wl
 
 DASMIP_fh = figure;
 % imagesc(vs_xCoord, vs_zCoord, squeeze(max(abs(IQ(:, :, 1:length(zCoord))), [], 1))')
-imagesc(vs_xCoord*1e3, vs_zCoord*1e3, squeeze(max(abs(IQ(:, :, :)), [], 1))' .^ 0.5); colormap gray
+imagesc(vs_xCoord*1e3, vs_zCoord*1e3, squeeze(max(abs(IQ(:, :, :)), [], 1))' .^ 1); colormap gray
 title('DAS')
 xlabel('x [mm]')
 ylabel('z [mm]')

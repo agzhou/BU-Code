@@ -53,7 +53,7 @@ function [BFData, varargout] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFg
     % for tai = 1
         % LUTTX{tai} = genLUT(anglesTX(tai, :), BFgrid, param.c);
         % LUTTX(:, :, :, tai) = genLUT(anglesTX(tai, :), BFgrid, param.c);
-        LUTTX(:, :, :, tai) = genLUT(anglesTX(tai, :), BFgrid, param.c, param.t0);
+        LUTTX(:, :, :, tai) = genLUT(anglesTX(tai, :), BFgrid, param.c);
     end
     disp('TX LUTs generated')
 
@@ -61,7 +61,7 @@ function [BFData, varargout] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFg
     % for rai = 1
         % LUTRX{rai} = genLUT(anglesRX(rai, :), BFgrid, param.c);
         % LUTRX(:, :, :, rai) = genLUT(anglesRX(rai, :), BFgrid, param.c);
-        LUTRX(:, :, :, rai) = genLUT(anglesRX(rai, :), BFgrid, param.c, param.t0);
+        LUTRX(:, :, :, rai) = genLUT(anglesRX(rai, :), BFgrid, param.c);
     end
     disp('RX LUTs generated')
 
@@ -179,7 +179,7 @@ end
 % Outputs:
 %   - LUT: a matrix of time delays. Dimensions are the same as the grid.
 % function [LUT] = genLUT(theta, BFgrid, c)
-function [LUT] = genLUT(theta, BFgrid, c, t0)
+function [LUT] = genLUT(theta, BFgrid, c)
 
     [nx, ny, nz] = size(BFgrid.X); % Get the size of the grid
     LUT = zeros(nx, ny, nz); % Initialize the LUT
@@ -194,8 +194,8 @@ function [LUT] = genLUT(theta, BFgrid, c, t0)
             end
         end
     end
-    % LUT = LUT ./ c; % Convert from distances to time delays
-    LUT = LUT ./ c + t0; % Convert from distances to time delays
+    LUT = LUT ./ c; % Convert from distances to time delays
+    % LUT = LUT ./ c + t0; % Convert from distances to time delays
 
 
 end
@@ -207,7 +207,9 @@ function [verytemp] = idk(nx, ny, nz, ns, tempLUTTX, tempLUTRX, param, RawDataKK
             for zi = 1:nz
                 % sampleDelay = ( tempLUTTX(xi, yi, zi) + tempLUTRX(xi, yi, zi) ).*param.fs;
                 % sampleDelay = round( (tempLUTTX(xi, yi, zi) + tempLUTRX(xi, yi, zi)).*param.fs + 1);
-                sampleDelay = round( (tempLUTTX(xi, yi, zi) + tempLUTRX(xi, yi, zi)).*param.fs) + 1;
+                % sampleDelay = round( (tempLUTTX(xi, yi, zi) + tempLUTRX(xi, yi, zi)).*param.fs) + 1;
+                sampleDelay = round( (tempLUTTX(xi, yi, zi) + tempLUTRX(xi, yi, zi) + param.t0).*param.fs) + 1;
+
                 % INTERPOLATE???????????????
                 
                 if (sampleDelay < ns - 1) && (sampleDelay >= 1) % if statement for out of bounds delays
