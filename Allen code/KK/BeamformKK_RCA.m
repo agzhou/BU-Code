@@ -118,7 +118,7 @@ function [BFData, varargout] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFg
                     tempLUTRX = squeeze(LUTRX(:, :, :, rai)); % Temporarily store the RX time delays for angle index rai
                     % tempLUTRX = genLUT(anglesRX(rai, :), BFgrid, param.c, param.t0);
                     
-                    [verytemp] = applyTimeDelays(nx, ny, nz, ns, tempLUTTX, tempLUTRX, param, squeeze(RawDataKK(:, tai, rai)));
+                    [verytemp] = applyTimeDelays(nx, ny, nz, ns, tempLUTTX, tempLUTRX, param, squeeze(RawDataKK(:, tai, rai)), interp_method);
                     % temp = temp + verytemp;
                     BFData(:, :, :, tai, rai) = verytemp; % Save each TX and RX angle's BF data separately
                 end
@@ -136,7 +136,7 @@ function [BFData, varargout] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFg
                     tempLUTRX = squeeze(LUTRX(:, :, :, rai)); % Temporarily store the RX time delays for angle index rai
                     % tempLUTRX = genLUT(anglesRX(rai, :), BFgrid, param.c, param.t0);
                     
-                    [verytemp] = applyTimeDelays(nx, ny, nz, ns, tempLUTTX, tempLUTRX, param, squeeze(RawDataKK(:, tai, rai)));
+                    [verytemp] = applyTimeDelays(nx, ny, nz, ns, tempLUTTX, tempLUTRX, param, squeeze(RawDataKK(:, tai, rai)), interp_method);
                     % temp = temp + verytemp;
                     BFData(:, :, :, tai, rai) = verytemp; % Save each TX and RX angle's BF data separately
                 end

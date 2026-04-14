@@ -166,8 +166,8 @@ BFgrid = struct('X', X, 'Y', Y, 'Z', Z); % Struct for the beamforming grid
 
 interp_method = 'linear';
 % [ReconKK, LUTTX, LUTRX] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param);
-[ReconKK] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param, interp_method, 'compounded');
-% [ReconKKAllAngles] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param, interp_method, 'allAngles');
+% [ReconKK] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param, interp_method, 'compounded');
+[ReconKKAllAngles] = BeamformKK_RCA(RawDataKK, anglesRX, anglesTX, BFgrid, param, interp_method, 'allAngles');
 
 %% Testing with access to the individual TX-RX pairs' volumes
 
@@ -196,14 +196,18 @@ end
 
 % ==== Choose which points on the delta angle plot to remove from the final compounded beamformed image ==== %
 % Scheme 1: remove the "extra" ks along the axes
-% % mask_remove_CR = xor(delta_angles_CR(:, 1) == 0, delta_angles_CR(:, 2) == 0);
-% % mask_remove_RC = xor(delta_angles_RC(:, 1) == 0, delta_angles_RC(:, 2) == 0);
+% mask_remove_CR = xor(delta_angles_CR(:, 1) == 0, delta_angles_CR(:, 2) == 0);
+% mask_remove_RC = xor(delta_angles_RC(:, 1) == 0, delta_angles_RC(:, 2) == 0);
 % mask_remove_CR = delta_angles_CR(:, 2) == 0 & delta_angles_CR(:, 1) ~= 0;
 % mask_remove_RC = delta_angles_RC(:, 1) == 0 & delta_angles_RC(:, 2) ~= 0;
+% mask_remove_CR = delta_angles_CR(:, 2) == 0;
+% mask_remove_RC = delta_angles_RC(:, 1) == 0;
 
 % Scheme 2: Remove quadrants 2-4
-mask_remove_CR = ~(delta_angles_CR(:, 2) >= 0 & delta_angles_CR(:, 1) >= 0);
-mask_remove_RC = ~(delta_angles_RC(:, 1) >= 0 & delta_angles_RC(:, 2) >= 0);
+% mask_remove_CR = ~(delta_angles_CR(:, 2) >= 0 & delta_angles_CR(:, 1) >= 0);
+% mask_remove_RC = ~(delta_angles_RC(:, 1) >= 0 & delta_angles_RC(:, 2) >= 0);
+mask_remove_CR = ~(delta_angles_CR(:, 2) > 0 & delta_angles_CR(:, 1) >= 0);
+mask_remove_RC = ~(delta_angles_RC(:, 1) > 0 & delta_angles_RC(:, 2) >= 0);
 
 
 % ==== Compound with the masked angles ==== %
