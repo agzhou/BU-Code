@@ -209,6 +209,9 @@ end
 mask_remove_CR = ~(delta_angles_CR(:, 2) > 0 & delta_angles_CR(:, 1) >= 0);
 mask_remove_RC = ~(delta_angles_RC(:, 1) > 0 & delta_angles_RC(:, 2) >= 0);
 
+% Scheme 3: Remove quadrants 1, 2, 4
+mask_remove_CR = ~(delta_angles_CR(:, 2) < 0 & delta_angles_CR(:, 1) <= 0);
+mask_remove_RC = ~(delta_angles_RC(:, 1) < 0 & delta_angles_RC(:, 2) <= 0);
 
 % ==== Compound with the masked angles ==== %
 ReconKKMasked = zeros(size(BFgrid.X));
@@ -238,7 +241,11 @@ end
 figure; hold on
 plot(rad2deg(delta_angles_CR(~mask_remove_CR, 1)), rad2deg(delta_angles_CR(~mask_remove_CR, 2)), 'o', 'MarkerSize', 8, 'LineWidth', 2)
 plot(rad2deg(delta_angles_RC(~mask_remove_RC, 1)), rad2deg(delta_angles_RC(~mask_remove_RC, 2)), 'x', 'MarkerSize', 8, 'LineWidth', 2)
-axis image; title('Delta angles'); xlabel('x angle [deg]'); ylabel('y angle [deg]'); fontsize(20, 'points')
+xlim([-max(abs(delta_angles), [], 'all'), max(delta_angles, [], 'all')])
+ylim([-max(abs(delta_angles), [], 'all'), max(delta_angles, [], 'all')])
+% axis image
+axis square
+title('Delta angles'); xlabel('x angle [deg]'); ylabel('y angle [deg]'); fontsize(20, 'points')
 hold off
 
 % Plot MIP
@@ -253,6 +260,19 @@ ylabel('z [mm]')
 fontsize(20, 'points')
 ylim(ylims)
 
+% % Plot MIP
+% ylims = [0, 5];
+% KKMaskedMIP_fh = figure;
+% % imagesc(xCoord*1e3, zCoord*1e3, squeeze(max(abs(ReconKKMasked), [], 1))'); colormap gray
+% imagesc(xCoord*1e3, zCoord*1e3, squeeze(max(abs(conj(ReconKKMasked)), [], 2))'); colormap gray
+% title('KK')
+% xlabel('x [mm]')
+% ylabel('z [mm]')
+% % KKMIP_fh.Position(4) = KKMIP_fh.Position(3)*( max(zCoord) - min(zCoord) )/( max(xCoord) - min(xCoord) );
+% fontsize(20, 'points')
+% ylim(ylims)
+
+volumeViewer(abs(ReconKKMasked))
 %% Plot KK MIP
 ylims = [0, 5];
 KKMIP_fh = figure;
