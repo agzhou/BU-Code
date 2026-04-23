@@ -215,11 +215,15 @@ mask_remove_RC = ~(delta_angles_RC(:, 1) < 0 & delta_angles_RC(:, 2) <= 0);
 
 % ==== Compound with the masked angles ==== %
 ReconKKMasked = zeros(size(BFgrid.X));
+anglesTXKept = [];
+anglesRXKept = [];
 % CR
 for tai = 1:naTX
     for rai = 1:naRX
         ind = (tai - 1)*naTX + rai;
         if ~mask_remove_CR(ind)
+            anglesTXKept = [anglesTXKept; anglesTX_CR(tai, :)];
+            anglesRXKept = [anglesRXKept; anglesRX_CR(rai, :)];
             ReconKKMasked = ReconKKMasked + ReconKKAllAngles(:, :, :, tai, rai);
         end
     end
@@ -231,6 +235,8 @@ for tai = 1:naTX
 %     for rai = naRX + 1:2*naRX
         ind = (tai - 1)*naTX + rai;
         if ~mask_remove_RC(ind)
+            anglesTXKept = [anglesTXKept; anglesTX_RC(tai, :)];
+            anglesRXKept = [anglesRXKept; anglesRX_RC(rai, :)];
             ReconKKMasked = ReconKKMasked + ReconKKAllAngles(:, :, :, naTX + tai, naRX + rai);
         end
     end
@@ -272,7 +278,23 @@ ylim(ylims)
 % fontsize(20, 'points')
 % ylim(ylims)
 
-volumeViewer(abs(ReconKKMasked))
+% volumeViewer(abs(ReconKKMasked))
+
+%%
+% ReconKKTest = BeamformKK_RCA_test(RawDataKK, anglesTX, anglesRX, anglesTXKept, anglesRXKept, BFgrid, param, interp_method, 'allAngles');
+ReconKKTest = BeamformKK_RCA_test(RawDataKK, anglesTX, anglesRX, anglesTXKept, anglesRXKept, BFgrid, param, interp_method, 'compounded');
+
+ylims = [0, 5];
+KKTestMIP_fh = figure;
+% imagesc(xCoord*1e3, zCoord*1e3, squeeze(max(abs(ReconKK), [], 1))'); colormap gray
+imagesc(xCoord*1e3, zCoord*1e3, squeeze(max(abs(ReconKKTest), [], 2))' .^ 1); colormap gray
+title('KK')
+xlabel('x [mm]')
+ylabel('z [mm]')
+% KKMIP_fh.Position(4) = KKMIP_fh.Position(3)*( max(zCoord) - min(zCoord) )/( max(xCoord) - min(xCoord) );
+fontsize(20, 'points')
+ylim(ylims)
+
 %% Plot KK MIP
 ylims = [0, 5];
 KKMIP_fh = figure;
