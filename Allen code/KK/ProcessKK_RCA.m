@@ -280,14 +280,23 @@ ylim(ylims)
 
 % volumeViewer(abs(ReconKKMasked))
 
-%%
+%% Look at KK signal matrices
+xi = 79
+yi = 80
+zi = 54
+figure; imagesc(abs(squeeze(ReconKK(xi, yi, zi, :, :))))
+figure; imagesc(angle(squeeze(ReconKK(xi, yi, zi, :, :))))
+
+%% Quadrant testing
 % ReconKKTest = BeamformKK_RCA_test(RawDataKK, anglesTX, anglesRX, anglesTXKept, anglesRXKept, BFgrid, param, interp_method, 'allAngles');
 ReconKKTest = BeamformKK_RCA_test(RawDataKK, anglesTX, anglesRX, anglesTXKept, anglesRXKept, BFgrid, param, interp_method, 'compounded');
+ReconKKFlipTest = BeamformKK_RCA_fliptest(RawDataKK, anglesTX, anglesRX, anglesTXKept, anglesRXKept, BFgrid, param, interp_method, 'compounded');
 
 ylims = [0, 5];
 KKTestMIP_fh = figure;
 % imagesc(xCoord*1e3, zCoord*1e3, squeeze(max(abs(ReconKK), [], 1))'); colormap gray
-imagesc(xCoord*1e3, zCoord*1e3, squeeze(max(abs(ReconKKTest), [], 2))' .^ 1); colormap gray
+% imagesc(xCoord*1e3, zCoord*1e3, squeeze(max(abs(ReconKKTest), [], 2))' .^ 1); colormap gray
+imagesc(xCoord*1e3, zCoord*1e3, squeeze(max(abs(ReconKKFlipTest), [], 1))' .^ 1); colormap gray
 title('KK')
 xlabel('x [mm]')
 ylabel('z [mm]')
