@@ -70,7 +70,7 @@ data_denoised = reshape(X_denoised, ds);
 % Mean out-of-brain voxel timecourse subtraction
 data_denoised2 = data - repmat(permute(mean(data_out, 2), [2, 3, 4, 1]), ds(1), ds(2), ds(3), 1);
 %% Look at data_denoised
-coord = [94, 136, 44];
+coord = [94, 136, 44]; % Vessel in the brain
 figure
 yyaxis left
 plot(squeeze(data(coord(1), coord(2), coord(3), :)))
