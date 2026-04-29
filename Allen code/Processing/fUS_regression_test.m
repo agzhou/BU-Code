@@ -69,7 +69,8 @@ W = (A'*A)\(A'*X);
 
 X_denoised = X - A*W;
 
-data_denoised = reshape(X_denoised, ds);
+data_denoised = single(reshape(X_denoised, ds));
+clearvars X W X_denoised
 
 % Mean out-of-brain voxel timecourse subtraction
 % data_denoised2 = data - repmat(permute(mean(data_out, 1), [2, 3, 4, 1]), ds(1), ds(2), ds(3), 1);
@@ -97,19 +98,43 @@ BPF_order = 3; % Butterworth filter order
 dim = length(size(data_denoised)); % Operate on the time dimension
 data_denoised_BPF = filter(BPF_b, BPF_a, data_denoised, [], dim);
 
-coord = [94, 114, 44]; % Vessel in the brain
-
-test1D = filter(BPF_b, BPF_a, squeeze(data_denoised(coord(1), coord(2), coord(3), :)), [], 1);
+%% Plot bandpass filtered results/example timecourses
+coord = [94, 136, 44]; % Vessel in the brain
+% coord = [94, 114, 44]; % Vessel in the brain
 figure
 hold on
 yyaxis left
-plot(test1D, 'b-', 'LineWidth', 2)
+plot(squeeze(data_denoised_BPF(coord(1), coord(2), coord(3), :)), 'b-', 'LineWidth', 2)
 plot(squeeze(data_denoised(coord(1), coord(2), coord(3), :)), '-', 'LineWidth', 1)
 hold off
 yyaxis right
 plot(squeeze(data(coord(1), coord(2), coord(3), :)), 'r:', 'LineWidth', 1)
-
 legend('0.01 - 0.1 Hz bandpass filtered', 'Original denoised with PCR', 'Original')
+
+
+% test1D = filter(BPF_b, BPF_a, squeeze(data_denoised(coord(1), coord(2), coord(3), :)), [], 1);
+% figure
+% hold on
+% yyaxis left
+% plot(test1D, 'b-', 'LineWidth', 2)
+% plot(squeeze(data_denoised(coord(1), coord(2), coord(3), :)), '-', 'LineWidth', 1)
+% hold off
+% yyaxis right
+% plot(squeeze(data(coord(1), coord(2), coord(3), :)), 'r:', 'LineWidth', 1)
+% legend('0.01 - 0.1 Hz bandpass filtered', 'Original denoised with PCR', 'Original')
+
+%% Get ROI averaged timecourses after the processing
+[data_ROI_timecourses, data_ROI_hemis_timecourses] = getROIAvgTimecourses(data_denoised_BPF, roi);
+[data_ROI_timecourses_mat, data_ROI_hemis_timecourses_mat] = ROIAvgTimecourses2mat(data_ROI_timecourses, data_ROI_hemis_timecourses, roi);
+
+%% Correlation matrices after the processing
+CM = corrcoef(data_ROI_timecourses_mat);
+CM_hemis = corrcoef(data_ROI_hemis_timecourses_mat);
+
+%% Plot the FC correlation matrices (full timecourse)
+
+plotCM(CM, roi)
+plotCM(CM_hemis, roi, true)
 
 %% Compare data_denoised to the first OOB PC
 % coord = [94, 136, 44]; % Vessel in the brain
