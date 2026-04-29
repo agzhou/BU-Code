@@ -39,11 +39,15 @@ sagittal_out_mask_rep = repmat(permute(sagittal_out_mask, [2, 3, 1]), 1, ds(2), 
 % sagittal_in_mask_rep = repmat(permute(sagittal_in_mask, [2, 3, 1]), 1, ds(2), 1, ds(4));
 
 %% PCA on the voxels outside the volume of interest
-data_out = reshape(data(sagittal_out_mask_rep), [numVoxelsOut_sagittal, ds(4)])'; % Should be in the dimensions [time (observations), space (random variables)]
-data_out_zm = data_out - mean(data_out, 1); % Zero mean
 % Note: we want the features to be time
-S_out = data_out*data_out'; % Covariance matrix of out-of-brain voxel timecourses
-% S_out = data_out_zm*data_out_zm'; % Covariance matrix of out-of-brain voxel timecourses
+% data_out = reshape(data(sagittal_out_mask_rep), [numVoxelsOut_sagittal, ds(4)])'; % Should be in the dimensions [time (observations), space (random variables)]
+
+% Convert to double to prevent numerical issues when taking the mean of
+% large numbers
+data_out = double(reshape(data(sagittal_out_mask_rep), [numVoxelsOut_sagittal, ds(4)])); % Should be in the dimensions [# OOB voxels (samples), # time points (features)]
+data_out_zm = data_out - mean(data_out); % Zero mean
+% S_out = data_out'*data_out; % Covariance matrix of out-of-brain voxel timecourses
+S_out = data_out_zm'*data_out_zm; % Covariance matrix of out-of-brain voxel timecourses
 
 [U, S, V] = svd(S_out);
 figure; plot(U(:, 1:5))
@@ -68,18 +72,55 @@ X_denoised = X - A*W;
 data_denoised = reshape(X_denoised, ds);
 
 % Mean out-of-brain voxel timecourse subtraction
-data_denoised2 = data - repmat(permute(mean(data_out, 2), [2, 3, 4, 1]), ds(1), ds(2), ds(3), 1);
+% data_denoised2 = data - repmat(permute(mean(data_out, 1), [2, 3, 4, 1]), ds(1), ds(2), ds(3), 1);
 %% Look at data_denoised
-coord = [94, 136, 44]; % Vessel in the brain
+% coord = [94, 136, 44]; % Vessel in the brain
+coord = [94, 114, 44]; % Vessel in the brain
 figure
 yyaxis left
 plot(squeeze(data(coord(1), coord(2), coord(3), :)))
 yyaxis right
 plot(squeeze(data_denoised(coord(1), coord(2), coord(3), :)))
 hold on
-plot(squeeze(data_denoised2(coord(1), coord(2), coord(3), :)))
+% plot(squeeze(data_denoised2(coord(1), coord(2), coord(3), :)))
 hold off
 legend('Original', 'Denoised with PCR', 'Subtract mean out-of-brain voxel timecourse')
+
+%% Set up the Band Pass Filter
+fc = [0.01, 0.1]; % Cutoff frequencies [Hz]
+fs = mean(diff(TD.sfTimeTags))/(1-bo); % Sampling frequency [Hz]
+BPF_order = 3; % Butterworth filter order
+
+[BPF_b, BPF_a] = butter(BPF_order, fc./(fs/2), 'bandpass');
+
+%% Try Band-Pass filtering
+dim = length(size(data_denoised)); % Operate on the time dimension
+data_denoised_BPF = filter(BPF_b, BPF_a, data_denoised, [], dim);
+
+coord = [94, 114, 44]; % Vessel in the brain
+
+test1D = filter(BPF_b, BPF_a, squeeze(data_denoised(coord(1), coord(2), coord(3), :)), [], 1);
+figure
+hold on
+yyaxis left
+plot(test1D, 'b-', 'LineWidth', 2)
+plot(squeeze(data_denoised(coord(1), coord(2), coord(3), :)), '-', 'LineWidth', 1)
+hold off
+yyaxis right
+plot(squeeze(data(coord(1), coord(2), coord(3), :)), 'r:', 'LineWidth', 1)
+
+legend('0.01 - 0.1 Hz bandpass filtered', 'Original denoised with PCR', 'Original')
+
+%% Compare data_denoised to the first OOB PC
+% coord = [94, 136, 44]; % Vessel in the brain
+coord = [94, 186, 44]; % Vessel in the brain
+figure
+yyaxis left
+plot(squeeze(data_denoised(coord(1), coord(2), coord(3), :)))
+yyaxis right
+plot(U(:, 1))
+legend('Denoised with PCR', 'PC 1')
+
 %% Other test
 % tempdata = squeeze(data(48, 180, 44, :)); % tempdata = tempdata - mean(tempdata);
 % noise_to_subtract = mean(data_out, 2);
