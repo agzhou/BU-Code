@@ -51,6 +51,7 @@ S_out = data_out_zm'*data_out_zm; % Covariance matrix of out-of-brain voxel time
 
 [U, S, V] = svd(S_out);
 figure; plot(U(:, 1:5))
+legend
 % [evecs_out, evals_out, W] = eig(S_out); % Eigendecomposition of the covariance matrix of out-of-brain voxel timecourses
 % % figure; plot(evecs_out(:, 1:1))
 % figure; plot(W(:, 1:1))
@@ -79,11 +80,11 @@ clearvars X W X_denoised
 coord = [94, 114, 44]; % Vessel in the brain
 figure
 yyaxis left
-plot(squeeze(data(coord(1), coord(2), coord(3), :)))
+plot(squeeze(data(coord(1), coord(2), coord(3), :)), '-', 'LineWidth', 1)
 yyaxis right
-plot(squeeze(data_denoised(coord(1), coord(2), coord(3), :)))
+plot(squeeze(data_denoised(coord(1), coord(2), coord(3), :)), '-', 'LineWidth', 1)
 hold on
-% plot(squeeze(data_denoised2(coord(1), coord(2), coord(3), :)))
+% plot(squeeze(data_denoised2(coord(1), coord(2), coord(3), :)), 'LineWidth', 1)
 hold off
 legend('Original', 'Denoised with PCR', 'Subtract mean out-of-brain voxel timecourse')
 
@@ -96,11 +97,17 @@ BPF_order = 3; % Butterworth filter order
 
 %% Try Band-Pass filtering
 dim = length(size(data_denoised)); % Operate on the time dimension
+
+% BPF on the original data
+data_BPF = filter(BPF_b, BPF_a, data, [], dim);
+% BPF on the "denoised" data
 data_denoised_BPF = filter(BPF_b, BPF_a, data_denoised, [], dim);
 
 %% Plot bandpass filtered results/example timecourses
-coord = [94, 136, 44]; % Vessel in the brain
+% coord = [94, 136, 44]; % Vessel in the brain
 % coord = [94, 114, 44]; % Vessel in the brain
+coord = [90, 84, 44]; % Vessel in the brain
+
 figure
 hold on
 yyaxis left
@@ -108,8 +115,10 @@ plot(squeeze(data_denoised_BPF(coord(1), coord(2), coord(3), :)), 'b-', 'LineWid
 plot(squeeze(data_denoised(coord(1), coord(2), coord(3), :)), '-', 'LineWidth', 1)
 hold off
 yyaxis right
-plot(squeeze(data(coord(1), coord(2), coord(3), :)), 'r:', 'LineWidth', 1)
-legend('0.01 - 0.1 Hz bandpass filtered', 'Original denoised with PCR', 'Original')
+hold on
+plot(squeeze(data(coord(1), coord(2), coord(3), :)) - mean(squeeze(data(coord(1), coord(2), coord(3), :))), 'r:', 'LineWidth', 1)
+plot(squeeze(data_BPF(coord(1), coord(2), coord(3), :)), 'r-', 'LineWidth', 1)
+legend('Regressed and 0.01 - 0.1 Hz bandpass filtered', 'Original denoised with PCR', 'Original data (zero-meaned)', 'Original data bandpass filtered')
 
 
 % test1D = filter(BPF_b, BPF_a, squeeze(data_denoised(coord(1), coord(2), coord(3), :)), [], 1);
@@ -124,21 +133,34 @@ legend('0.01 - 0.1 Hz bandpass filtered', 'Original denoised with PCR', 'Origina
 % legend('0.01 - 0.1 Hz bandpass filtered', 'Original denoised with PCR', 'Original')
 
 %% Get ROI averaged timecourses after the processing
-[data_ROI_timecourses, data_ROI_hemis_timecourses] = getROIAvgTimecourses(data_denoised_BPF, roi);
+% Original data but BPF
+[data_ROI_timecourses, data_ROI_hemis_timecourses] = getROIAvgTimecourses(data_BPF, roi);
 [data_ROI_timecourses_mat, data_ROI_hemis_timecourses_mat] = ROIAvgTimecourses2mat(data_ROI_timecourses, data_ROI_hemis_timecourses, roi);
 
+% OOB PC regressed data with BPF
+[data_OOBPC_ROI_timecourses, data_OOBPC_ROI_hemis_timecourses] = getROIAvgTimecourses(data_denoised_BPF, roi);
+[data_OOBPC_ROI_timecourses_mat, data_OOBPC_ROI_hemis_timecourses_mat] = ROIAvgTimecourses2mat(data_OOBPC_ROI_timecourses, data_OOBPC_ROI_hemis_timecourses, roi);
+
 %% Correlation matrices after the processing
-CM = corrcoef(data_ROI_timecourses_mat);
-CM_hemis = corrcoef(data_ROI_hemis_timecourses_mat);
+trange = 200:numBlocks; % TESTING: set a range of which times to consider
+CM = corrcoef(data_ROI_timecourses_mat(trange, :));
+CM_hemis = corrcoef(data_ROI_hemis_timecourses_mat(trange, :));
+
+CM_OOBPC = corrcoef(data_OOBPC_ROI_timecourses_mat(trange, :));
+CM_OOBPC_hemis = corrcoef(data_OOBPC_ROI_hemis_timecourses_mat(trange, :));
 
 %% Plot the FC correlation matrices (full timecourse)
 
 plotCM(CM, roi)
 plotCM(CM_hemis, roi, true)
 
+plotCM(CM_OOBPC, roi)
+plotCM(CM_OOBPC_hemis, roi, true)
+
 %% Compare data_denoised to the first OOB PC
 % coord = [94, 136, 44]; % Vessel in the brain
-coord = [94, 186, 44]; % Vessel in the brain
+% coord = [94, 186, 44]; % Vessel in the brain
+coord = [90, 84, 44]; % Vessel in the brain
 figure
 yyaxis left
 plot(squeeze(data_denoised(coord(1), coord(2), coord(3), :)))
