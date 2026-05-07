@@ -12,6 +12,11 @@
 
 %%
 function [r, z] = corrCoef3D(volumeData, stim)
+    % Make sure the input is of the right size
+    stim = squeeze(stim);
+    if size(stim, 2) ~= 1 || length(size(stim)) > 2
+        error('stim must be a 1D vector')
+    end
     vs = size(volumeData); % volume data's size
     stim_4D = repmat( permute(stim, [4, 3, 2, 1]), [vs(1), vs(2), vs(3), 1] ); % Replicate the stim pattern for each voxel
 
