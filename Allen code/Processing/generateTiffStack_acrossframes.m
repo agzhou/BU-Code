@@ -85,10 +85,10 @@ function generateTiffStack_acrossframes(volumeData, varargin)
                 xz_tagstruct.ImageWidth = size(rgb, 2);
                 setTag(xz_stack, xz_tagstruct) % set the tags
                 
-                % tf.Position(4) = ceil(tf.Position(3) * hwRatio_xz);
+                tf.Position(4) = ceil(tf.Position(3) * hwRatio_xz);
                 
             else
-                % tf.Position(4) = ceil(tf.Position(3) * hwRatio_xz);
+                tf.Position(4) = ceil(tf.Position(3) * hwRatio_xz);
                 writeDirectory(xz_stack)
                 setTag(xz_stack, xz_tagstruct)
             end

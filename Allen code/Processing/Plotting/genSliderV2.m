@@ -12,8 +12,14 @@ slider1_handle=uicontrol(fig,'Style','slider','Max',len,'Min',1,...
 label = uicontrol(fig,'Style','text','Units','normalized','Position',[.02 .07 .14 .04],...
     'String','Choose frame');
 % Set up callbacks
-% climVals = [mean(min(Data,[],[1,2])),mean(max(Data,[],[1,2]))];
-vars=struct('slider1_handle',slider1_handle,'Data',Data,'Axes',ax,'Label',label);%,'CLIMS',climVals);
+% % climVals = [mean(min(Data,[],[1,2])),mean(max(Data,[],[1,2]))];
+% vars=struct('slider1_handle',slider1_handle,'Data',Data,'Axes',ax,'Label',label);%,'CLIMS',climVals);
+
+%%%%%%%% ALLEN TESTING %%%%%%%%
+climVals = [min(Data,[],'all'), max(Data,[],'all')];
+vars=struct('slider1_handle',slider1_handle,'Data',Data,'Axes',ax,'Label',label,'CLIMS',climVals);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 set(slider1_handle,'Callback',{@slider1_callback,vars});
 plotterfcn(vars)
 % End of main file

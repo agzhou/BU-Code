@@ -247,12 +247,21 @@ save([savepath, 'blocking_info.mat'], 'bn', 'bo', 'bs', 'startFile', 'endFile', 
 load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI', 'noise')
 PDIallBlocks = zeros([size(PDI), numBlocks]); % Matrix with the CBVi for every superframe
 PDIallBlocks(:, :, :, 1) = PDI ./ noise;
+PDIallBlocks_orig(:, :, :, 1) = PDI;
 
 for bn = 1:numBlocks
 %     load([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI')
     load([savepath, 'fUSdata-', num2str(bn), '.mat'], 'PDI')
 
     PDIallBlocks(:, :, :, bn) = PDI ./ noise;
+    PDIallBlocks_orig(:, :, :, bn) = PDI;
+end
+
+%% For testing: look at the SVD's "noise" across all blocks
+for bn = 1:numBlocks
+    load([savepath, 'fUSdata-', num2str(bn), '.mat'], 'PDI')
+
+    
 end
 
 %% Save the PDIallBlocks
