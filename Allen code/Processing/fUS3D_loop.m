@@ -96,16 +96,17 @@ HPF.order = 4; % Butterworth filter order
     zend = 130;
 
 %% Save proc params
-numg1pts = 20; % Only calculate the first N points
-save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'HPF', 'startFile', 'endFile', 'tau', 'tau_ms', 'numg1pts', 'zstart', 'zend');
+numg1pts = 50; % Only calculate the first N points
+% save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'HPF', 'startFile', 'endFile', 'tau', 'tau_ms', 'numg1pts', 'zstart', 'zend');
+save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'startFile', 'endFile', 'tau', 'tau_ms', 'numg1pts', 'zstart', 'zend');
 
 %% Main loop
 % for filenum = startFile:endFile
-for filenum = [2:endFile]
+% for filenum = [2:endFile]
 % for filenum = 111:endFile
 % for filenum = [endFile - 1:-1:startFile]
 % for filenum = [116:endFile]
-% for filenum = 1
+for filenum = 1
 
     % Load the IQ data
     tic
@@ -143,10 +144,10 @@ for filenum = [2:endFile]
     disp('SVs decomposed')
 
 %     % Plot one SVD subspace as an image
-%     subspace = 20;
-%     subspace_img = reshape(U(:, subspace) * SVs(subspace) * V(:, subspace)', [xp, yp, zp, nf]);
-%     figure; imagesc(squeeze(max(abs(subspace_img(:, :, :, 2)), [], 1))')
-%     volumeViewer(abs(subspace_img(:, :, :, 2)))
+    % subspace = 5;
+    % subspace_img = reshape(U(:, subspace) * SVs(subspace) * V(:, subspace)', [xp, yp, zp, nf]);
+    % figure; imagesc(squeeze(max(abs(subspace_img(:, :, :, 2)), [], 1))')
+    % % volumeViewer(abs(subspace_img(:, :, :, 2)))
 % 
 %     SSM = plotSSM(U, false);
 % %     SSM = plotSSM(U, true);
@@ -163,8 +164,8 @@ for filenum = [2:endFile]
     % clearvars IQ
 
     % Apply the HPF to the post-SVD clutter filtered data
-    HPF.dim = length(size(IQf)); % Operate on the time dimension
-    IQf_HPF = filter(HPF.b, HPF.a, IQf, [], HPF.dim);
+    % HPF.dim = length(size(IQf)); % Operate on the time dimension
+    % IQf_HPF = filter(HPF.b, HPF.a, IQf, [], HPF.dim);
 
     % Use the IQf with separated negative and positive frequency components
 %     [IQf_separated, IQf_FT_separated] = separatePosNegFreqs(IQf);
@@ -178,7 +179,8 @@ for filenum = [2:endFile]
 %     [CBFsi_p, CBVi_p] = g1_to_CBi(g1_p, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
 % 
     tic
-    g1 = g1T(IQf_HPF, numg1pts);
+    % g1 = g1T(IQf_HPF, numg1pts);
+    g1 = g1T(IQf, numg1pts);
     toc
 %     g1 = g1T(IQf);
 %     [CBFsi, CBVi] = g1_to_CBi(g1, tau_ms, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV); % (g1, tau, tau1_index_CBF, tau2_index_CBF, tau1_index_CBV)
@@ -186,7 +188,8 @@ for filenum = [2:endFile]
 % %     savefast([savepath, 'fUSdata-', num2str(filenum), '.mat'], g1, CBFi, CBVi);
 
 %     [PDI] = calcPowerDoppler(IQf_HPF_separated);
-    PDI = sum(abs(IQf_HPF) .^ 2, 4) ./ size(IQf_HPF, 4);
+    % PDI = sum(abs(IQf_HPF) .^ 2, 4) ./ size(IQf_HPF, 4);
+    PDI = sum(abs(IQf) .^ 2, 4) ./ size(IQf, 4);
 %     [CDI] = calcColorDoppler(IQf_HPF_FT_separated, P);
 %     figure; imagesc(squeeze(max(CDI{3}, [], 1))' .^ 1); colormap jet
 
@@ -236,10 +239,10 @@ g1_tau1_cutoff = 0.2;
 % g1_tau1_cutoff = 0.0;
 % tau_difference_cutoff = 0.2;
 
-for filenum = startFile:endFile
+% for filenum = startFile:endFile
 % for filenum = 4:endFile
 % for filenum = [endFile]
-% for filenum = 1
+for filenum = 1
 %     load([savepath, 'g1-', num2str(filenum)], 'g1') % Load the saved g1 mat files
     load([savepath, 'fUSdata-', num2str(filenum)], 'g1') % Load the saved g1 mat files
 
@@ -267,6 +270,11 @@ vcmap = colormap_ULM;
 figure; imagesc(squeeze(mean(CBFsi(:, :, :), 1))'); colormap(vcmap)
 
 % generateTiffStack_multi({CBVi .^ 0.7}, [8.8, 8.8, 8], 'hot', 5)
+
+%% Test g1 stuff
+xt = 40; yt = 56; zt = 10;
+o = 3; % offset
+figure; plot(squeeze(abs(mean(g1(xt - o:xt + o, yt - o:yt + o, zt - o:zt + o, :), [1, 2, 3]))))
 %% Get and save PDI, CDI only
 for filenum = startFile:endFile
 % for filenum = 1
