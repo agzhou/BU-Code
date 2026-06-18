@@ -273,8 +273,9 @@ figure; imagesc(squeeze(mean(CBFsi(:, :, :), 1))'); colormap(vcmap)
 
 %% Test g1 stuff
 xt = 40; yt = 56; zt = 10;
-o = 3; % offset
+o = 1; % offset
 figure; plot(squeeze(abs(mean(g1(xt - o:xt + o, yt - o:yt + o, zt - o:zt + o, :), [1, 2, 3]))))
+
 %% Get and save PDI, CDI only
 for filenum = startFile:endFile
 % for filenum = 1
@@ -503,6 +504,7 @@ ti.stimAmps = stimAmps; % Stim amplitudes
 ti.tOnsets = tOnsets;
 
 save([savepath, 'timingInfo.mat'], 'ti') % Save the timing info
+
 %% Remove outliers
 % Use the "median" method of the filloutliers function
 ro_fillmethod = "linear"; %

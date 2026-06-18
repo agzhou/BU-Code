@@ -275,7 +275,8 @@ for iBlk = 1:length(data_y) % This is a snirf thing, remove it (it was originall
     % Construct the basis functions
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    % tbasis = "temporal" basis, probably
+    % ******** tbasis = "temporal" basis, probably ********
+    
     if idxBasis==1
         % Gaussians
         gms = paramsBasis(1);
