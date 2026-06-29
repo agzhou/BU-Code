@@ -113,3 +113,8 @@ volumeViewer(g1pos_tau1_mask)
 % ...
 
 %% ========= 5. Fit vUS ========= %%
+% Initial guesses for parameters; separate fitting for negative and positive frequencies (down and up flows)
+p_neg = struct();
+P_neg.F0 = abs(squeeze(g1neg(:, :, :, 2)));
+P_neg.tau_V = % Time lag at which g1 reaches its first minimum
+P_neg.v_zgp0 = P.wl/(4*P_neg.tau_V); % (Eq. 16)
