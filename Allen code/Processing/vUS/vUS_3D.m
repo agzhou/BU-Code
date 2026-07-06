@@ -40,7 +40,7 @@ IQf_HPF = filter(HPF.b, HPF.a, IQf, [], HPF.dim);
 
 % Testing
 % tp = [40, 40, 71]; % Test point
-tp = [40, 43, 87]; % Test point
+tp = [40, 43, 71]; % Test point
 figure; plot(squeeze(abs(IQf(tp(1), tp(2), tp(3), :))))
 figure; plot(squeeze(real(IQf(tp(1), tp(2), tp(3), :))))
 figure; plot(squeeze(real(IQf_HPF(tp(1), tp(2), tp(3), :))))
@@ -116,5 +116,5 @@ volumeViewer(g1pos_tau1_mask)
 % Initial guesses for parameters; separate fitting for negative and positive frequencies (down and up flows)
 p_neg = struct();
 P_neg.F0 = abs(squeeze(g1neg(:, :, :, 2)));
-P_neg.tau_V = % Time lag at which g1 reaches its first minimum
+P_neg.tau_V = reshape( findFirstLocalMin(reshape(g1, size(g1, 1)*size(g1, 2)*size(g1, 3), size(g1, 4)), numg1pts) , size(g1, 1), size(g1, 2), size(g1, 3), 1); % Time lag at which g1 reaches its first minimum, per voxel
 P_neg.v_zgp0 = P.wl/(4*P_neg.tau_V); % (Eq. 16)
