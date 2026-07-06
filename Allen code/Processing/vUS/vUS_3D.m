@@ -40,7 +40,7 @@ IQf_HPF = filter(HPF.b, HPF.a, IQf, [], HPF.dim);
 
 % Testing
 % tp = [40, 40, 71]; % Test point
-tp = [40, 43, 71]; % Test point
+tp = [40, 43, 87]; % Test point
 figure; plot(squeeze(abs(IQf(tp(1), tp(2), tp(3), :))))
 figure; plot(squeeze(real(IQf(tp(1), tp(2), tp(3), :))))
 figure; plot(squeeze(real(IQf_HPF(tp(1), tp(2), tp(3), :))))
@@ -114,7 +114,53 @@ volumeViewer(g1pos_tau1_mask)
 
 %% ========= 5. Fit vUS ========= %%
 % Initial guesses for parameters; separate fitting for negative and positive frequencies (down and up flows)
+
+% CHANGE THIS LATER, WHEN I ACTUALLY IMPLEMENT VOXEL SCREENING!!!!!!!!!!!!!!!!!!
+% num_voxels = size(g1neg, 1)*size(g1neg, 2)*size(g1neg, 3);
+num_voxels = size(IQf, 1)*size(IQf, 2)*size(IQf, 3);
+g1neg_exp = reshape(g1neg, num_voxels, nTau);
+
+% TESTING
+sigma = [300, 300, 150].*1e-6; % [m]
+
+% Create structs that store parameters (including initial guesses) for the vUS fitting
+
+% General stuff
+p_all = struct();
+p_all.k0 = 2*pi/P.wl; % Angular wavenumber [rad/m]
+p_all.v_xgp_range = [1, 30]./1e3; % Min and max values [m/s] for v_xgp to use in the mesh initial guessing
+p_all.v_xgp_step = 1/1e3; % Increment for the v_xgp grid
+p_all.v_xgp_grid = p_all.v_xgp_range(1):p_all.v_xgp_step:p_all.v_xgp_range(2);
+
+p_all.v_ygp_range = [1, 30]./1e3; % Min and max values [m/s] for v_ygp to use in the mesh initial guessing
+p_all.v_ygp_step = 1/1e3; % Increment for the v_ygp grid
+p_all.v_ygp_grid = p_all.v_ygp_range(1):p_all.v_ygp_step:p_all.v_ygp_range(2);
+
+p_all.p_range = [0, 1]; % Min and max values [unitless] for p to use in the mesh initial guessing
+p_all.p_step = 0.1; % Increment for the p grid
+p_all.p_grid = p_all.p_range(1):p_all.p_step:p_all.p_range(2);
+
+p_all.meshgrid = meshgrid(p_all.v_xgp_grid, p_all.v_ygp_grid, p_all.p_grid); % Create mesh for the guessing of initial values for v_xgp0, v_ygp0, and p0
+
+
+% Negative frequency flow
 p_neg = struct();
-P_neg.F0 = abs(squeeze(g1neg(:, :, :, 2)));
-P_neg.tau_V = reshape( findFirstLocalMin(reshape(g1, size(g1, 1)*size(g1, 2)*size(g1, 3), size(g1, 4)), numg1pts) , size(g1, 1), size(g1, 2), size(g1, 3), 1); % Time lag at which g1 reaches its first minimum, per voxel
-P_neg.v_zgp0 = P.wl/(4*P_neg.tau_V); % (Eq. 16)
+p_neg.F0 = reshape( abs(squeeze(g1neg(:, :, :, 2))), num_voxels, 1); % Initial guess for F
+% p_neg.tau_V = reshape( findFirstLocalMin(reshape(g1, size(g1, 1)*size(g1, 2)*size(g1, 3), size(g1, 4)), nTau, 'smooth') , size(g1, 1), size(g1, 2), size(g1, 3), 1); % Time lag at which g1 reaches its first minimum, per voxel. Here, I'm reshaping g1 to pass in a matrix where voxels are stacked, and then unstacking after minima are found.
+p_neg.tau_V = findFirstLocalMin(reshape(g1neg, num_voxels, nTau), nTau, 'smooth'); % Time lag at which g1 reaches its first minimum, per voxel. Here, I'm reshaping g1 to pass in a matrix where voxels are stacked.
+p_neg.v_zgp0 = squeeze(P.wl./(4.*p_neg.tau_V)); % Initial guess for v_zgp (Eq. 16)
+p_neg.mesh = p_all.meshgrid; % See comment for p_all.meshgrid
+
+% Rmesh = 
+%%
+for v_xgp = p_all.v_xgp_grid % Go through the mesh to get initial guesses (per voxel) for initial values for v_xgp0, v_ygp0, and p0
+    v_xgp_mat = v_xgp.*ones(num_voxels, nTau);
+    for v_ygp = p_all.v_ygp_grid
+        v_ygp_mat = v_ygp.*ones(num_voxels, nTau);
+        for p = p_all.p_grid
+            p_mat = p .* ones(num_voxels, nTau);
+            % Calculate R for all voxels at once, for one set of parameters
+            R_neg = calcR(g1neg_exp, tau(1:nTau), p_neg.F0, v_xgp_mat, v_ygp_mat, p_neg.v_zgp0, sigma, p_mat, p_all.k0);
+        end
+    end
+end

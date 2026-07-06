@@ -1,12 +1,17 @@
-% Find the index of the first local min of the |vectorized data g1v|
+% Description: Find the index of the first local min of the |vectorized
+% data g1v|. This is my equivalent of Jianbo's GG2Vz function.
+
+% Inputs:
 %   g1v: [# voxels, # time lags (tau)]
 %   tau: 1 x # time lags (tau) vector
+%   smoothOrNot: Smooth g1 before finding the min (True) or not (False)
 
+% Outputs:
 %   tau_first_min_index: time lag index at the first local min (starting
 %   with index 1, at tau = 0)
 
 % [tau_first_min_index, tau_first_min]
-function tau_first_min_index = findFirstLocalMin(g1v, numg1pts)
+function tau_first_min_index = findFirstLocalMin(g1v, numg1pts, smoothOrNot)
     
     if length(size(g1v)) <= 2 & size(g1v, 2) == 1
         error('findFirstLocalMin does not currently work with a single vector for the g1v input')
@@ -14,6 +19,9 @@ function tau_first_min_index = findFirstLocalMin(g1v, numg1pts)
     num_voxels = size(g1v, 1);
 
     ag1v = abs(g1v); % Find first local min of |g1|
+    if smoothOrNot
+        ag1v = movmean(ag1v, 3, 2); % Smooth in the tau direction
+    end
 %     ag1v_diff = diff(ag1v, 1, 2); % Find the local min by seeing when the diff changes sign
 %     [test, tau_index] = find(ag1v_diff > 0, size(ag1v_diff, 1), 'first');
 %     tau_matrix = repmat(tau, size(ag1v, 1), 1);
