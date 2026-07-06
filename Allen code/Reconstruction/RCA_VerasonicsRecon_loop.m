@@ -20,8 +20,10 @@
 clearvars
 
 addpath(fullfile(cd))
-cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.7-2505271400' % Lab PC (bme-boas-19)
-addpath 'C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Processing'
+cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
+% cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.7-2505271400' % Lab PC (bme-boas-19)
+% addpath 'C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Processing'
+addpath 'C:\Users\BOAS-US\Documents\GitHub\BU-Code\Allen code\Processing'
 % cd 'C:\Users\agzhou\Vantage-4.9.7-2505271400' % Office PC (bme-boas-27)
 
 activate
@@ -341,9 +343,9 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
     
     toc
 
-    ixc = calcIXC_simple(IQ);
+    % ixc = calcIXC_simple(IQ);
     %     figure; plot(abs(ixc)); xlabel('Frame'); ylabel('|Cross correlation of images|')
-    save([Mcr_savepath, 'ixc-', num2str(Mcr_filenum)], 'ixc')
+    % save([Mcr_savepath, 'ixc-', num2str(Mcr_filenum)], 'ixc')
 
     clearvars IQ IData QData RcvData ImgData ImgDataP
 %     clearvars RcvData ImgData ImgDataP
