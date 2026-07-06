@@ -17,7 +17,8 @@
 %% Activate the Verasonics folder
 clearvars
 
-cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
+cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
+% cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 % cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
 addpath 'C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Reconstruction'
 
