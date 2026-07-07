@@ -121,7 +121,7 @@ num_voxels = size(IQf, 1)*size(IQf, 2)*size(IQf, 3);
 g1neg_exp = reshape(g1neg, num_voxels, nTau);
 
 % TESTING
-sigma = [300, 300, 150].*1e-6; % [m]
+sigma = [379, 379, 111].*1e-6; % 1/e PSF values [m] for the RC15gV probe at 13.6 MHz and 11 x 2 angles from -5 to 5 deg (G:\My Drive\Data\RC15gV PSF sim - 11 angles from -5 to 5 deg)
 
 % Create structs that store parameters (including initial guesses) for the vUS fitting
 
