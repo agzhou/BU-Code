@@ -96,6 +96,9 @@ nTau = ceil(10e-3 *P.frameRate); % # of time lags to consider; empirically set b
 g1neg = g1T(IQf_separated{1}, nTau);
 g1pos = g1T(IQf_separated{2}, nTau);
 
+% Testing
+figure; plot(squeeze(abs(g1neg(tp(1), tp(2), tp(3), :))))
+
 %% ========= 4. Clean data ========= %%
 
 % 4.1 Screen voxels for noisiness, through |g1(tau1)|
@@ -128,16 +131,18 @@ sigma = [379, 379, 111].*1e-6; % 1/e PSF values [m] for the RC15gV probe at 13.6
 % General stuff
 p_all = struct();
 p_all.k0 = 2*pi/P.wl; % Angular wavenumber [rad/m]
-p_all.v_xgp_range = [1, 30]./1e3; % Min and max values [m/s] for v_xgp to use in the mesh initial guessing
-p_all.v_xgp_step = 1/1e3; % Increment for the v_xgp grid
+% p_all.v_xgp_range = [1, 30]./1e3; % Min and max values [m/s] for v_xgp to use in the mesh initial guessing
+p_all.v_xgp_range = [1, 10]./1e3; % Min and max values [m/s] for v_xgp to use in the mesh initial guessing
+p_all.v_xgp_step = 1e-3; % Increment for the v_xgp grid [m/s]
 p_all.v_xgp_grid = p_all.v_xgp_range(1):p_all.v_xgp_step:p_all.v_xgp_range(2);
 
-p_all.v_ygp_range = [1, 30]./1e3; % Min and max values [m/s] for v_ygp to use in the mesh initial guessing
-p_all.v_ygp_step = 1/1e3; % Increment for the v_ygp grid
+% p_all.v_ygp_range = [1, 30]./1e3; % Min and max values [m/s] for v_ygp to use in the mesh initial guessing
+p_all.v_ygp_range = [1, 10]./1e3; % Min and max values [m/s] for v_ygp to use in the mesh initial guessing
+p_all.v_ygp_step = 1e-3; % Increment for the v_ygp grid [m/s]
 p_all.v_ygp_grid = p_all.v_ygp_range(1):p_all.v_ygp_step:p_all.v_ygp_range(2);
 
-p_all.p_range = [0, 1]; % Min and max values [unitless] for p to use in the mesh initial guessing
-p_all.p_step = 0.1; % Increment for the p grid
+p_all.p_range = [1, 0]; % Min and max values [unitless] for p to use in the mesh initial guessing
+p_all.p_step = -0.1; % Increment for the p grid
 p_all.p_grid = p_all.p_range(1):p_all.p_step:p_all.p_range(2);
 
 p_all.meshgrid = meshgrid(p_all.v_xgp_grid, p_all.v_ygp_grid, p_all.p_grid); % Create mesh for the guessing of initial values for v_xgp0, v_ygp0, and p0
@@ -154,13 +159,34 @@ p_neg.mesh = p_all.meshgrid; % See comment for p_all.meshgrid
 % Rmesh = 
 %%
 for v_xgp = p_all.v_xgp_grid % Go through the mesh to get initial guesses (per voxel) for initial values for v_xgp0, v_ygp0, and p0
-    v_xgp_mat = v_xgp.*ones(num_voxels, nTau);
+    v_xgp_mat = v_xgp.*ones(num_voxels, 1);
     for v_ygp = p_all.v_ygp_grid
-        v_ygp_mat = v_ygp.*ones(num_voxels, nTau);
+        v_ygp_mat = v_ygp.*ones(num_voxels, 1);
         for p = p_all.p_grid
-            p_mat = p .* ones(num_voxels, nTau);
+            p_mat = p .* ones(num_voxels, 1);
             % Calculate R for all voxels at once, for one set of parameters
             R_neg = calcR(g1neg_exp, tau(1:nTau), p_neg.F0, v_xgp_mat, v_ygp_mat, p_neg.v_zgp0, sigma, p_mat, p_all.k0);
+            disp(max(R_neg))
+        end
+    end
+end
+
+%% testing
+% testmax = -100;
+num_voxels_test = 1;
+for v_xgp = p_all.v_xgp_grid % Go through the mesh to get initial guesses (per voxel) for initial values for v_xgp0, v_ygp0, and p0
+    v_xgp_mat = v_xgp.*ones(num_voxels_test, 1);
+    for v_ygp = p_all.v_ygp_grid
+        v_ygp_mat = v_ygp.*ones(num_voxels_test, 1);
+        for p = p_all.p_grid
+            p_mat = p .* ones(num_voxels_test, 1);
+            % Calculate R for all voxels at once, for one set of parameters
+            % R_neg = calcR(g1neg_exp, tau(1:nTau), p_neg.F0, v_xgp_mat, v_ygp_mat, p_neg.v_zgp0, sigma, p_mat, p_all.k0);
+            % disp(max(R_neg))
+            test = calcR(squeeze(g1neg(tp(1), tp(2), tp(3), :))', tau(1:nTau), abs(g1neg(tp(1), tp(2), tp(3), 2)), v_xgp_mat, v_ygp_mat, 5e-3, sigma, p_mat, p_all.k0);
+            if test > testmax
+                testmax = test;
+            end
         end
     end
 end
