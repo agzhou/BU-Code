@@ -45,7 +45,7 @@ function R = calcR(g1exp, tau, F, v_xgp, v_ygp, v_zgp, sigma, p, k0)
     g1model = g1vUS3D(F, p, v_xgp, v_ygp, v_zgp, sigma, k0, tau_mat);
     
     numer = sum(g1exp - g1model).^2; % SSres
-    denom = sum(g1exp - )
+    denom = sum(g1exp - mean(g1exp, tauDim)).^2;
     R = 1 - numer./denom;
 
     % Testing
