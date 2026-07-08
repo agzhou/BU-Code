@@ -4,24 +4,27 @@
 %   what fitting functions require
 
 % Inputs:
-%   x: v_xgp, v_ygp, v_zgp, p(all in SI units)
+%   x: v_xgp, v_ygp, v_zgp, p, F (all in SI units)
 %   tau: time lag vector [any units, probably seconds]
 %   sigma: 1/e values of the PSF shape in x, y, z [m]
 %   k0: Wavenumber [rad/m]
+%   useF: boolean value --> consider the F parameter or not
 
 % Outputs:
 %   g1_split: g1(tau) but split into its real and imaginary components: has shape [nTau, 2]
 
-function [g1_split] = g1vUS3D_vec_split(x, tau, sigma, k0)
+function [g1_split] = g1vUS3D_vec_split(x, tau, sigma, k0, useF)
 
     v_xgp = x(1);
     v_ygp = x(2);
     v_zgp = x(3);
     p = x(4);
-    % sigma = x(5);
-    % k0 = x(6);
-
-    F = 1; % No need for F if we start at tau = 0 --> |g1(0)| = 1
+    if useF
+        F = x(5);
+    else
+        F = 1; % No need for F if we start at tau = 0 --> |g1(0)| = 1
+    end
+    
     g1_real = F.*exp(-(v_xgp .* tau).^2 ./ (4 * sigma(1)^2) ...
         - (v_ygp .* tau).^2 ./ (4 * sigma(2)^2) ...
         - (v_zgp .* tau).^2 ./ (4 * sigma(3)^2)) ...
