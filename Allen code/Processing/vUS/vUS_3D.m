@@ -92,7 +92,12 @@ figure; imagesc(squeeze(max(Rpos, [], 1))'); colormap gray
 % figure; imagesc(squeeze(max(Rpos_mf, [], 1))'); colormap gray
 
 %% ========= 3. Calculate g1 ========= %%
+% startTau = 1; % Index for the first tau point (tau1) for subsequent analysis. Changed this from 2 to 1 on 7/8/26 because I changed the g1T.m function to output g1 starting from tau = tau1 instead of tau = 0.
+startTau = 2; % Index for the first tau point (tau1) for subsequent analysis.
+
 nTau = ceil(10e-3 *P.frameRate); % # of time lags to consider; empirically set by assuming all g1 for voxels containing actual flow decay within 10 ms
+% g1neg = g1T(IQf_separated{1}, nTau + startTau - 1); % Add the startTau-1 because the values start at startTau, but we still want nTau points total
+% g1pos = g1T(IQf_separated{2}, nTau + startTau - 1); % Add the startTau-1 because the values start at startTau, but we still want nTau points total
 g1neg = g1T(IQf_separated{1}, nTau);
 g1pos = g1T(IQf_separated{2}, nTau);
 
@@ -103,14 +108,15 @@ figure; plot(squeeze(abs(g1neg(tp(1), tp(2), tp(3), :))))
 
 % 4.1 Screen voxels for noisiness, through |g1(tau1)|
 g1_tau1_threshold = 0.2;
-g1neg_tau1_mask = abs(squeeze(g1neg(:, :, :, 2))) > g1_tau1_threshold; % Use index 2 because index 1 corresponds to tau = 0
-g1pos_tau1_mask = abs(squeeze(g1pos(:, :, :, 2))) > g1_tau1_threshold;
+
+g1neg_tau1_mask = abs(squeeze(g1neg(:, :, :, startTau))) > g1_tau1_threshold; % Use index 2 because index 1 corresponds to tau = 0
+g1pos_tau1_mask = abs(squeeze(g1pos(:, :, :, startTau))) > g1_tau1_threshold;
 
 % Testing/visualization
 figure; plot(squeeze(abs(g1neg(tp(1), tp(2), tp(3), :))), '-o'); title('Negative frequencies')
 figure; plot(squeeze(abs(g1pos(tp(1), tp(2), tp(3), :))), '-o'); title('Positive frequencies')
-volumeViewer(g1neg_tau1_mask)
-volumeViewer(g1pos_tau1_mask)
+% volumeViewer(g1neg_tau1_mask)
+% volumeViewer(g1pos_tau1_mask)
 
 % 4.2 Apply mask
 % ...
@@ -151,7 +157,7 @@ p_all.meshgrid = meshgrid(p_all.v_xgp_grid, p_all.v_ygp_grid, p_all.p_grid); % C
 
 % Negative frequency flow
 p_neg = struct();
-p_neg.F0 = reshape( abs(squeeze(g1neg(:, :, :, 2))), num_voxels, 1); % Initial guess for F
+p_neg.F0 = reshape( abs(squeeze(g1neg(:, :, :, startTau))), num_voxels, 1); % Initial guess for F
 % p_neg.tau_V = reshape( findFirstLocalMin(reshape(g1, size(g1, 1)*size(g1, 2)*size(g1, 3), size(g1, 4)), nTau, 'smooth') , size(g1, 1), size(g1, 2), size(g1, 3), 1); % Time lag at which g1 reaches its first minimum, per voxel. Here, I'm reshaping g1 to pass in a matrix where voxels are stacked, and then unstacking after minima are found.
 p_neg.tau_V = findFirstLocalMin(reshape(g1neg, num_voxels, nTau), nTau, 'smooth'); % Time lag at which g1 reaches its first minimum, per voxel. Here, I'm reshaping g1 to pass in a matrix where voxels are stacked.
 p_neg.v_zgp0 = squeeze(P.wl./(4.*p_neg.tau_V)); % Initial guess for v_zgp (Eq. 16)
