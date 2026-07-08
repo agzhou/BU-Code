@@ -7,8 +7,9 @@
 % tau = (0:0.1:100).*1e-3; [s]
 % test = g1vUS3D(0.7, 0.5, 0.001, 0.001, 0.020, sigma, k0, tau);
 
-function [g1] = g1vUS3D(F, p, v_xgp, v_ygp, v_zgp, sigma, k0, tau)
-
+% function [g1] = g1vUS3D(F, v_xgp, v_ygp, v_zgp, p, sigma, k0, tau)
+function [g1] = g1vUS3D(v_xgp, v_ygp, v_zgp, p, sigma, k0, tau)
+    F = 1; % No need for F if we start at tau = 0 --> |g1(0)| = 1
     g1 = ( F.*exp(-(v_xgp .* tau).^2 ./ (4 * sigma(1)^2) ...
         - (v_ygp .* tau).^2 ./ (4 * sigma(2)^2) ...
         - (v_zgp .* tau).^2 ./ (4 * sigma(3)^2)) ...

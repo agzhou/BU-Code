@@ -10,7 +10,7 @@
 
 function [g1] = g1T(data, varargin)
     tstart = clock;
-    startTau = 1;
+    startTau = 1; % Start index for calculating g1. Keep it at 1; the function doesn't work properly otherwise.
     frameDim = length(size(data)); % Usually the frame dimension is the last dimension. 3 for 2D data and 4 for 3D data.
     nf = size(data, frameDim); % # of frames
     

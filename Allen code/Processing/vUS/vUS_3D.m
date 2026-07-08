@@ -172,8 +172,10 @@ for v_xgp = p_all.v_xgp_grid % Go through the mesh to get initial guesses (per v
         for p = p_all.p_grid
             p_mat = p .* ones(num_voxels, 1);
             % Calculate R for all voxels at once, for one set of parameters
-            R_neg = calcR(g1neg_exp, tau(1:nTau), p_neg.F0, v_xgp_mat, v_ygp_mat, p_neg.v_zgp0, sigma, p_mat, p_all.k0);
+            % R_neg = calcR(g1neg_exp, tau(1:nTau), p_neg.F0, v_xgp_mat, v_ygp_mat, p_neg.v_zgp0, sigma, p_mat, p_all.k0);
+            R_neg = calcR(g1neg_exp, tau(1:nTau), v_xgp_mat, v_ygp_mat, p_neg.v_zgp0, p_mat, sigma, p_all.k0);
             disp(max(R_neg))
+
         end
     end
 end
@@ -190,7 +192,8 @@ for v_xgp = p_all.v_xgp_grid % Go through the mesh to get initial guesses (per v
             % Calculate R for all voxels at once, for one set of parameters
             % R_neg = calcR(g1neg_exp, tau(1:nTau), p_neg.F0, v_xgp_mat, v_ygp_mat, p_neg.v_zgp0, sigma, p_mat, p_all.k0);
             % disp(max(R_neg))
-            test = calcR(squeeze(g1neg(tp(1), tp(2), tp(3), :))', tau(1:nTau), abs(g1neg(tp(1), tp(2), tp(3), 2)), v_xgp_mat, v_ygp_mat, 5e-3, sigma, p_mat, p_all.k0);
+            % test = calcR(squeeze(g1neg(tp(1), tp(2), tp(3), :))', tau(1:nTau), abs(g1neg(tp(1), tp(2), tp(3), 2)), v_xgp_mat, v_ygp_mat, 5e-3, sigma, p_mat, p_all.k0);
+            test = calcR(squeeze(g1neg(tp(1), tp(2), tp(3), :))', tau(1:nTau), v_xgp_mat, v_ygp_mat, 5e-3, p_mat, sigma, p_all.k0);
             if test > testmax
                 testmax = test;
             end

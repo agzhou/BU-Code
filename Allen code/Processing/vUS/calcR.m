@@ -14,7 +14,8 @@
 % Outputs:
 %   R: [# voxels, 1] vector of R values
 
-function R = calcR(g1exp, tau, F, v_xgp, v_ygp, v_zgp, sigma, p, k0)
+% function R = calcR(g1exp, tau, F, v_xgp, v_ygp, v_zgp, p, sigma, k0)
+function R = calcR(g1exp, tau, v_xgp, v_ygp, v_zgp, p, sigma, k0)
 
     voxelDim = 1;
     tauDim = 2;
@@ -42,7 +43,8 @@ function R = calcR(g1exp, tau, F, v_xgp, v_ygp, v_zgp, sigma, p, k0)
     %                                     .* exp(-(p .* v_zgp .* k0 .* tau_mat).^2) ...
     %                                     .* exp(2.*1i.*k0.*tau_mat.*v_zgp) ) ).^2, tauDim );
     % denom = mean( abs(g1exp - mean(g1exp, tauDim)) , tauDim) .^ 2; % SStotal
-    g1model = g1vUS3D(F, p, v_xgp, v_ygp, v_zgp, sigma, k0, tau_mat);
+    % g1model = g1vUS3D(F, v_xgp, v_ygp, v_zgp, p, sigma, k0, tau_mat);
+    g1model = g1vUS3D(v_xgp, v_ygp, v_zgp, p, sigma, k0, tau_mat);
     
     numer = sum(g1exp - g1model).^2; % SSres
     denom = sum(g1exp - mean(g1exp, tauDim)).^2;
