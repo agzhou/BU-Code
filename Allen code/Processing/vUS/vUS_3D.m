@@ -100,9 +100,11 @@ nTau = ceil(10e-3 *P.frameRate); % # of time lags to consider; empirically set b
 % g1pos = g1T(IQf_separated{2}, nTau + startTau - 1); % Add the startTau-1 because the values start at startTau, but we still want nTau points total
 g1neg = g1T(IQf_separated{1}, nTau);
 g1pos = g1T(IQf_separated{2}, nTau);
+g1all = g1T(IQf_separated{3}, nTau);
 
 % Testing
 figure; plot(squeeze(abs(g1neg(tp(1), tp(2), tp(3), :))))
+figure; plot(squeeze(abs(g1all(tp(1), tp(2), tp(3), :))))
 
 %% ========= 4. Clean data ========= %%
 
@@ -129,6 +131,7 @@ figure; plot(squeeze(abs(g1pos(tp(1), tp(2), tp(3), :))), '-o'); title('Positive
 vs = size(IQf); vs = vs(1:end-1); % Volume size [voxels]
 num_voxels = size(IQf, 1)*size(IQf, 2)*size(IQf, 3);
 g1neg_exp = reshape(g1neg, num_voxels, nTau);
+g1all_exp = reshape(g1all, num_voxels, nTau);
 
 % TESTING
 sigma = [379, 379, 111].*1e-6; % 1/e PSF values [m] for the RC15gV probe at 13.6 MHz and 11 x 2 angles from -5 to 5 deg (G:\My Drive\Data\RC15gV PSF sim - 11 angles from -5 to 5 deg)
@@ -136,44 +139,50 @@ sigma = [379, 379, 111].*1e-6; % 1/e PSF values [m] for the RC15gV probe at 13.6
 % Create structs that store parameters (including initial guesses) for the vUS fitting
 
 % General stuff
-p_all = struct();
-p_all.k0 = 2*pi/P.wl; % Angular wavenumber [rad/m]
+vf_gen = struct(); % vUS fitting struct
+vf_gen.k0 = 2*pi/P.wl; % Angular wavenumber [rad/m]
 % p_all.v_xgp_range = [1, 30]./1e3; % Min and max values [m/s] for v_xgp to use in the mesh initial guessing
-p_all.v_xgp_range = [1, 10]./1e3; % Min and max values [m/s] for v_xgp to use in the mesh initial guessing
-p_all.v_xgp_step = 1e-3; % Increment for the v_xgp grid [m/s]
-p_all.v_xgp_grid = p_all.v_xgp_range(1):p_all.v_xgp_step:p_all.v_xgp_range(2);
+vf_gen.v_xgp_range = [1, 10]./1e3; % Min and max values [m/s] for v_xgp to use in the mesh initial guessing
+vf_gen.v_xgp_step = 1e-3; % Increment for the v_xgp grid [m/s]
+vf_gen.v_xgp_grid = vf_gen.v_xgp_range(1):vf_gen.v_xgp_step:vf_gen.v_xgp_range(2);
 
 % p_all.v_ygp_range = [1, 30]./1e3; % Min and max values [m/s] for v_ygp to use in the mesh initial guessing
-p_all.v_ygp_range = [1, 10]./1e3; % Min and max values [m/s] for v_ygp to use in the mesh initial guessing
-p_all.v_ygp_step = 1e-3; % Increment for the v_ygp grid [m/s]
-p_all.v_ygp_grid = p_all.v_ygp_range(1):p_all.v_ygp_step:p_all.v_ygp_range(2);
+vf_gen.v_ygp_range = [1, 10]./1e3; % Min and max values [m/s] for v_ygp to use in the mesh initial guessing
+vf_gen.v_ygp_step = 1e-3; % Increment for the v_ygp grid [m/s]
+vf_gen.v_ygp_grid = vf_gen.v_ygp_range(1):vf_gen.v_ygp_step:vf_gen.v_ygp_range(2);
 
-p_all.p_range = [1, 0]; % Min and max values [unitless] for p to use in the mesh initial guessing
-p_all.p_step = -0.1; % Increment for the p grid
-p_all.p_grid = p_all.p_range(1):p_all.p_step:p_all.p_range(2);
+vf_gen.p_range = [1, 0]; % Min and max values [unitless] for p to use in the mesh initial guessing
+vf_gen.p_step = -0.1; % Increment for the p grid
+vf_gen.p_grid = vf_gen.p_range(1):vf_gen.p_step:vf_gen.p_range(2);
 
-p_all.meshgrid = meshgrid(p_all.v_xgp_grid, p_all.v_ygp_grid, p_all.p_grid); % Create mesh for the guessing of initial values for v_xgp0, v_ygp0, and p0
+vf_gen.meshgrid = meshgrid(vf_gen.v_xgp_grid, vf_gen.v_ygp_grid, vf_gen.p_grid); % Create mesh for the guessing of initial values for v_xgp0, v_ygp0, and p0
 
 
 % Negative frequency flow
-p_neg = struct();
-p_neg.F0 = reshape( abs(squeeze(g1neg(:, :, :, startTau))), num_voxels, 1); % Initial guess for F
-% p_neg.tau_V = reshape( findFirstLocalMin(reshape(g1, size(g1, 1)*size(g1, 2)*size(g1, 3), size(g1, 4)), nTau, 'smooth') , size(g1, 1), size(g1, 2), size(g1, 3), 1); % Time lag at which g1 reaches its first minimum, per voxel. Here, I'm reshaping g1 to pass in a matrix where voxels are stacked, and then unstacking after minima are found.
-p_neg.tau_V = findFirstLocalMin(reshape(g1neg, num_voxels, nTau), nTau, 'smooth'); % Time lag at which g1 reaches its first minimum, per voxel. Here, I'm reshaping g1 to pass in a matrix where voxels are stacked.
-p_neg.v_zgp0 = squeeze(P.wl./(4.*p_neg.tau_V)); % Initial guess for v_zgp (Eq. 16)
-p_neg.mesh = p_all.meshgrid; % See comment for p_all.meshgrid
+vf_neg = struct();
+vf_neg.F0 = reshape( abs(squeeze(g1neg(:, :, :, startTau))), num_voxels, 1); % Initial guess for F
+vf_neg.tau_V = findFirstLocalMin(g1neg_exp, nTau, 'smooth') ./ P.frameRate; % Time lag [s] at which g1 reaches its first minimum, per voxel. Here, I'm reshaping g1 to pass in a matrix where voxels are stacked.
+vf_neg.v_zgp0 = squeeze(P.wl./(4.*vf_neg.tau_V)); % Initial guess for v_zgp (Eq. 16)
+vf_neg.mesh = vf_gen.meshgrid; % See comment for p_all.meshgrid
+
+% All frequencies flow
+vf_all = struct();
+vf_all.F0 = reshape( abs(squeeze(g1neg(:, :, :, startTau))), num_voxels, 1); % Initial guess for F
+vf_all.tau_V = findFirstLocalMin(g1all_exp, nTau, 'smooth') ./ P.frameRate; % Time lag [s] at which g1 reaches its first minimum, per voxel. Here, I'm reshaping g1 to pass in a matrix where voxels are stacked.
+vf_all.v_zgp0 = squeeze(P.wl./(4.*vf_all.tau_V)); % Initial guess for v_zgp (Eq. 16)
+vf_all.mesh = vf_gen.meshgrid; % See comment for p_all.meshgrid
 
 % Rmesh = 
 %%
-for v_xgp = p_all.v_xgp_grid % Go through the mesh to get initial guesses (per voxel) for initial values for v_xgp0, v_ygp0, and p0
+for v_xgp = vf_gen.v_xgp_grid % Go through the mesh to get initial guesses (per voxel) for initial values for v_xgp0, v_ygp0, and p0
     v_xgp_mat = v_xgp.*ones(num_voxels, 1);
-    for v_ygp = p_all.v_ygp_grid
+    for v_ygp = vf_gen.v_ygp_grid
         v_ygp_mat = v_ygp.*ones(num_voxels, 1);
-        for p = p_all.p_grid
+        for p = vf_gen.p_grid
             p_mat = p .* ones(num_voxels, 1);
             % Calculate R for all voxels at once, for one set of parameters
             % R_neg = calcR(g1neg_exp, tau(1:nTau), p_neg.F0, v_xgp_mat, v_ygp_mat, p_neg.v_zgp0, sigma, p_mat, p_all.k0);
-            R_neg = calcR(g1neg_exp, tau(1:nTau), v_xgp_mat, v_ygp_mat, p_neg.v_zgp0, p_mat, sigma, p_all.k0);
+            R_neg = calcR(g1neg_exp, tau(1:nTau), v_xgp_mat, v_ygp_mat, vf_all.v_zgp0, p_mat, sigma, vf_gen.k0);
             disp(max(R_neg))
 
         end
@@ -183,17 +192,17 @@ end
 %% testing
 % testmax = -100;
 num_voxels_test = 1;
-for v_xgp = p_all.v_xgp_grid % Go through the mesh to get initial guesses (per voxel) for initial values for v_xgp0, v_ygp0, and p0
+for v_xgp = vf_gen.v_xgp_grid % Go through the mesh to get initial guesses (per voxel) for initial values for v_xgp0, v_ygp0, and p0
     v_xgp_mat = v_xgp.*ones(num_voxels_test, 1);
-    for v_ygp = p_all.v_ygp_grid
+    for v_ygp = vf_gen.v_ygp_grid
         v_ygp_mat = v_ygp.*ones(num_voxels_test, 1);
-        for p = p_all.p_grid
+        for p = vf_gen.p_grid
             p_mat = p .* ones(num_voxels_test, 1);
             % Calculate R for all voxels at once, for one set of parameters
             % R_neg = calcR(g1neg_exp, tau(1:nTau), p_neg.F0, v_xgp_mat, v_ygp_mat, p_neg.v_zgp0, sigma, p_mat, p_all.k0);
             % disp(max(R_neg))
             % test = calcR(squeeze(g1neg(tp(1), tp(2), tp(3), :))', tau(1:nTau), abs(g1neg(tp(1), tp(2), tp(3), 2)), v_xgp_mat, v_ygp_mat, 5e-3, sigma, p_mat, p_all.k0);
-            test = calcR(squeeze(g1neg(tp(1), tp(2), tp(3), :))', tau(1:nTau), v_xgp_mat, v_ygp_mat, 5e-3, p_mat, sigma, p_all.k0);
+            test = calcR(squeeze(g1neg(tp(1), tp(2), tp(3), :))', tau(1:nTau), v_xgp_mat, v_ygp_mat, 5e-3, p_mat, sigma, vf_gen.k0);
             if test > testmax
                 testmax = test;
             end
@@ -202,18 +211,80 @@ for v_xgp = p_all.v_xgp_grid % Go through the mesh to get initial guesses (per v
 end
 
 %% Fit voxels individually
-fit_roi = {tp(1), tp(2), tp(3)}; % Define a spatial region to fit within
+tp = [40, 39, 87];
+% fit_roi = {tp(1), tp(2), tp(3)}; % Define a spatial region to fit within
+k = [2, 5, 10];
+fit_roi = {tp(1) - k(1) : tp(1) + k(1), tp(2) - k(2) : tp(2) + k(2), tp(3) - k(3):tp(3) + k(3)}; % Define a spatial region to fit within
+
+% Fitting options
+options = optimoptions('lsqcurvefit', 'Display', 'off');
+lb = [0, 0, 0, 0];             % Lower bounds for parameters [SI units]
+ub = [1, 50e-3, 50e-3, 50e-3]; % Upper bounds for parameters [SI units]
+                
+% Create variables to store vUS fitting results
+vUS_neg = zeros([vs, 3]);
+p_neg = zeros(vs);
+vUS_all = zeros([vs, 3]);
+p_all = zeros(vs);
+
+tic
 for xi = fit_roi{1}
     for yi = fit_roi{2}
         for zi = fit_roi{3}
             if 1 % Only fit if the voxel meets some criterion (after screening). For testing, don't do this.
                 ind = sub2ind(vs, xi, yi, zi);
-                x0_neg = [p_neg.F0, p_neg.p0, p_neg.v_xgp0, p_neg.v_ygp0, p_neg.v_zgp0]; % ICs: [F0, p0, v_xgp0, v_ygp0, v_zgp0]
-                % x_neg = lsqcurvefit(, x0_neg, tau)
 
+                % % Fitting the complex data all-in-one
+                % % x0_neg = [p_neg.F0, p_neg.p0, p_neg.v_xgp0, p_neg.v_ygp0, p_neg.v_zgp0]; % ICs: [F0, p0, v_xgp0, v_ygp0, v_zgp0]
+                % % x0_neg = [p_neg.p0(ind), p_neg.v_xgp0(ind), p_neg.v_ygp0(ind), p_neg.v_zgp0(ind)]; % ICs: [F0, p0, v_xgp0, v_ygp0, v_zgp0]
+                % x0_neg = [1, 10e-3, 10e-3, p_neg.v_zgp0(ind)]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0]
+                % lb = [0, 0, 0, 0];             % Lower bounds for parameters [SI units]
+                % ub = [1, 50e-3, 50e-3, 50e-3]; % Upper bounds for parameters [SI units]
+                % f_temp = @(x, tau) g1vUS3D_vec(x, tau, sigma, p_all.k0); % Use "anonymous function" to pass in the g1 vUS model function to the fitting
+                % x_neg = lsqcurvefit(f_temp, x0_neg, squeeze(tau(1:nTau)), squeeze(g1neg_exp(ind, :)));
+                % % x_neg = lsqcurvefit(f_temp, x0_neg, squeeze(tau(1:nTau)), squeeze(g1neg_exp(ind, :)), lb, ub);
+
+                % % Splitting the real and complex components
+                % ydata_neg = squeeze(g1neg_exp(ind, :)); ydata_neg = ydata_neg(:);
+                % ydata_neg_split = [real(ydata_neg), imag(ydata_neg)];
+                % 
+                % x0_neg = [1, 10e-3, 10e-3, vf_neg.v_zgp0(ind)]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0]
+                % f_temp = @(x, tau) g1vUS3D_vec_split(x, tau, sigma, vf_gen.k0); % Use "anonymous function" to pass in the g1 vUS model function to the fitting
+                % % Perform the fitting
+                % % x_neg = lsqcurvefit(f_temp, x0_neg, squeeze(tau(1:nTau)), ydata_split);
+                % x_neg = lsqcurvefit(f_temp, x0_neg, squeeze(tau(1:nTau)), ydata_neg_split, lb, ub, options);
+                % vUS_neg(xi, yi, zi, :) = x_neg(2:end);
+                % p_neg(xi, yi, zi) = x_neg(1);
+
+                % All frequencies flow
+                ydata_all = squeeze(g1all_exp(ind, :)); ydata_all = ydata_all(:);
+                ydata_all_split = [real(ydata_all), imag(ydata_all)];
+
+                x0_all = [1, 10e-3, 10e-3, vf_neg.v_zgp0(ind)]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0]
+                f_temp = @(x, tau) g1vUS3D_vec_split(x, tau, sigma, vf_gen.k0); % Use "anonymous function" to pass in the g1 vUS model function to the fitting
+                % Perform the fitting
+                % x_neg = lsqcurvefit(f_temp, x0_neg, squeeze(tau(1:nTau)), ydata_split);
+                x_all = lsqcurvefit(f_temp, x0_all, squeeze(tau(1:nTau)), ydata_all_split, lb, ub, options);
+                vUS_all(xi, yi, zi, :) = x_all(2:end);
+                p_all(xi, yi, zi) = x_all(1);
+                
+                % testg1 = g1vUS3D_vec(x_neg, tau, sigma, p_all.k0);
+                % figure; plot(ydata); hold on; plot(testg1); hold off
+                % figure; plot(abs(ydata)); hold on; plot(abs(testg1)); hold off
+                % testspeed = sqrt(sum(x_neg(2:end).^2))
             end
 
         end
     end
 end
+toc
+
+%% Testing: visualize vUS results
+volumeViewer(sqrt(sum(vUS_all(fit_roi{1}, fit_roi{2}, fit_roi{3}).^2, 4)) .^ 5) % vUS_neg speed
+volumeViewer(PDI(fit_roi{1}, fit_roi{2}, fit_roi{3}))
+
+
+figure; imagesc(squeeze(max(sqrt(sum(vUS_all(fit_roi{1}, fit_roi{2}, fit_roi{3}, :).^2, 4)), [], 1))')
+% figure; imagesc(squeeze(max(PDI, [], 1))')
+figure; imagesc(squeeze(max(PDI(fit_roi{1}, fit_roi{2}, fit_roi{3}), [], 1))')
 
