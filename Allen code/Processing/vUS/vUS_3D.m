@@ -120,6 +120,7 @@ volumeViewer(g1pos_tau1_mask)
 
 % CHANGE THIS LATER, WHEN I ACTUALLY IMPLEMENT VOXEL SCREENING!!!!!!!!!!!!!!!!!!
 % num_voxels = size(g1neg, 1)*size(g1neg, 2)*size(g1neg, 3);
+vs = size(IQf); vs = vs(1:end-1); % Volume size [voxels]
 num_voxels = size(IQf, 1)*size(IQf, 2)*size(IQf, 3);
 g1neg_exp = reshape(g1neg, num_voxels, nTau);
 
@@ -190,3 +191,20 @@ for v_xgp = p_all.v_xgp_grid % Go through the mesh to get initial guesses (per v
         end
     end
 end
+
+%% Fit voxels individually
+fit_roi = {tp(1), tp(2), tp(3)}; % Define a spatial region to fit within
+for xi = fit_roi{1}
+    for yi = fit_roi{2}
+        for zi = fit_roi{3}
+            if 1 % Only fit if the voxel meets some criterion (after screening). For testing, don't do this.
+                ind = sub2ind(vs, xi, yi, zi);
+                x0_neg = [p_neg.F0, p_neg.p0, p_neg.v_xgp0, p_neg.v_ygp0, p_neg.v_zgp0]; % ICs: [F0, p0, v_xgp0, v_ygp0, v_zgp0]
+                % x_neg = lsqcurvefit(, x0_neg, tau)
+
+            end
+
+        end
+    end
+end
+

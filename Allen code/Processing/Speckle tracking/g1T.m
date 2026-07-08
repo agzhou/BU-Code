@@ -10,6 +10,7 @@
 
 function [g1] = g1T(data, varargin)
     tstart = clock;
+    startTau = 2;
     frameDim = length(size(data)); % Usually the frame dimension is the last dimension. 3 for 2D data and 4 for 3D data.
     nf = size(data, frameDim); % # of frames
     
@@ -28,20 +29,20 @@ function [g1] = g1T(data, varargin)
     denom = mean((conj(data) .* data), frameDim); % temporal (frame) average
     switch frameDim
         case 2 % 1D
-            for f = 1:np % go through each frame to get the g1 at each tau step
+            for f = startTau:np % go through each frame to get the g1 at each tau step
                 % numer = mean(conj(data(:, 1:(nf - f + 1))) .* data(:, f:end), frameDim);
                 numer = sum(conj(data(:, 1:(nf - f + 1))) .* data(:, f:end), frameDim) / (nf - f + 1); % This is faster than the mean function
 
                 g1(:, f) = numer ./ denom;
             end
         case 3 % 2D
-            for f = 1:np % go through each frame to get the g1 at each tau step
+            for f = startTau:np % go through each frame to get the g1 at each tau step
                 % numer = mean(conj(data(:, :, 1:(nf - f + 1))) .* data(:, :, f:end), frameDim);
                 numer = sum(conj(data(:, :, 1:(nf - f + 1))) .* data(:, :, f:end), frameDim) / (nf - f + 1);
                 g1(:, :, f) = numer ./ denom;
             end
         case 4 % 3D
-            for f = 1:np % go through each frame to get the g1 at each tau step
+            for f = startTau:np % go through each frame to get the g1 at each tau step
                 % numer = mean(conj(data(:, :, :, 1:(nf - f + 1))) .* data(:, :, :, f:end), frameDim);
                 numer = sum(conj(data(:, :, :, 1:(nf - f + 1))) .* data(:, :, :, f:end), frameDim) / (nf - f + 1);
                 g1(:, :, :, f) = numer ./ denom;
