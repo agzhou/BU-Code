@@ -1,6 +1,6 @@
 
 % Trying to write my own air puff code
-% Requires Data Acquisition Toolbox and the NI package
+% Requires Data Acquisition Toolbox and the NI package (NI-DAQmx driver)
 % Connect the air puffer (PicoSpritzer III) to the NI DAQ
 function [Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts, daqrate, numTrials)
     %% Set up the hardware and channels
