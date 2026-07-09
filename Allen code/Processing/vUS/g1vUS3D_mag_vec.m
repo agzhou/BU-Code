@@ -3,6 +3,8 @@
 %   This is just a version where parameters are a vector input, which is
 %   what fitting functions require
 
+% This outputs the magnitude only -- |g1|
+
 % Inputs:
 %   x: v_xgp, v_ygp, v_zgp, p, F (all in SI units)
 %   tau: time lag vector [any units, probably seconds]
@@ -11,9 +13,9 @@
 %   useF: boolean value --> consider the F parameter or not
 
 % Outputs:
-%   g1(tau)
+%   |g1(tau)|
 
-function [g1] = g1vUS3D_vec(x, tau, sigma, k0, useF, useDC)
+function [g1] = g1vUS3D_mag_vec(x, tau, sigma, k0, useF, useDC)
 
     v_xgp = x(1);
     v_ygp = x(2);
@@ -34,6 +36,5 @@ function [g1] = g1vUS3D_vec(x, tau, sigma, k0, useF, useDC)
     g1 = ( DC + F.*exp(-(v_xgp .* tau).^2 ./ (4 * sigma(1)^2) ...
         - (v_ygp .* tau).^2 ./ (4 * sigma(2)^2) ...
         - (v_zgp .* tau).^2 ./ (4 * sigma(3)^2)) ...
-        .* exp(-(p .* v_zgp .* k0 .* tau).^2) ...
-        .* exp(2.*1i.*k0.*tau.*v_zgp) );
+        .* exp(-(p .* v_zgp .* k0 .* tau).^2) );
 end
