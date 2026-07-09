@@ -14,7 +14,11 @@
 % Outputs:
 %   R: [# voxels, 1] vector of R values
 
-function R = calcR(g1exp, tau, F, v_xgp, v_ygp, v_zgp, sigma, p, k0)
+% function R = calcR(g1exp, tau, F, v_xgp, v_ygp, v_zgp, p, sigma, k0)
+function R = calcR(g1exp, tau, v_xgp, v_ygp, v_zgp, p, sigma, k0)
+
+    voxelDim = 1;
+    tauDim = 2;
 
     % Could probably vectorize these expressions
     % so that it isn't voxel by voxel...........
@@ -24,7 +28,7 @@ function R = calcR(g1exp, tau, F, v_xgp, v_ygp, v_zgp, sigma, p, k0)
     % denom = mean( abs(g1exp - mean(g1exp)) ) .^ 2; % SStotal
     % R = 1 - numer./denom;
 
-    num_voxels = size(g1exp, 1); % # of voxels to consider
+    num_voxels = size(g1exp, voxelDim); % # of voxels to consider
     % Could add some input checking (e.g., if the # of voxels for v_xgp = num_voxels) here...
 
     % Expand the time lag vector so we can do multiplications across voxels
@@ -33,9 +37,22 @@ function R = calcR(g1exp, tau, F, v_xgp, v_ygp, v_zgp, sigma, p, k0)
     end
     tau_mat = repmat(tau, num_voxels, 1);
 
-    numer = mean( abs( g1exp - ( F.*exp(-(v_xgp .* tau_mat).^2 ./ (4 * sigma(1)^2) - (v_ygp .* tau_mat).^2 ./ (4 * sigma(2)^2) - (v_zgp .* tau_mat).^2 ./ (4 * sigma(3)^2)) .* exp(-(p .* v_zgp .* k0 .* tau_mat).^2) .* exp(2.*1i.*k0.*tau_mat.*v_zgp) ) ).^2 );
-    denom = mean( abs(g1exp - mean(g1exp)) ) .^ 2; % SStotal
+    % numer = mean( abs( g1exp - ( F.*exp( - (v_xgp .* tau_mat).^2 ./ (4 * sigma(1)^2) ...
+    %                                      - (v_ygp .* tau_mat).^2 ./ (4 * sigma(2)^2) ...
+    %                                      - (v_zgp .* tau_mat).^2 ./ (4 * sigma(3)^2) ) ...
+    %                                     .* exp(-(p .* v_zgp .* k0 .* tau_mat).^2) ...
+    %                                     .* exp(2.*1i.*k0.*tau_mat.*v_zgp) ) ).^2, tauDim );
+    % denom = mean( abs(g1exp - mean(g1exp, tauDim)) , tauDim) .^ 2; % SStotal
+    % g1model = g1vUS3D(F, v_xgp, v_ygp, v_zgp, p, sigma, k0, tau_mat);
+    g1model = g1vUS3D(v_xgp, v_ygp, v_zgp, p, sigma, k0, tau_mat);
+    
+    numer = sum(g1exp - g1model).^2; % SSres
+    denom = sum(g1exp - mean(g1exp, tauDim)).^2;
     R = 1 - numer./denom;
 
+    % Testing
 
+    % corrcoef(g1model, g1exp)
+    corrcoef(abs(g1model), abs(g1exp))
+    figure; plot(abs(g1exp)); hold on; plot(abs(g1model))
 end

@@ -2,7 +2,8 @@
 function [psf_gFit, psf_gFit_values, pixels_finer] = PSFGaussianFit(pixels, psf, gfit_pixel_spacing)
 
     gfit_type = 'gauss2';
-    [lb, ub] = findLocalMinsOfPSF(psf);
+%     [lb, ub] = findLocalMinsOfPSF(psf);
+    lb = 1; ub = length(psf); % Change 7/6/26
     psf_cut = psf(lb:ub);
     pixels_cut = pixels(lb:ub);
 
