@@ -32,4 +32,4 @@ for filenum = startFile:endFile
 end
 clearvars timetag
 
-figure; plot(diff(sfTimeTags)); xlabel('s'); title('Time per superframe')
+figure; plot(diff(sfTimeTags), '-o', 'LineWidth', 2); xlabel('s'); title('Time per superframe')

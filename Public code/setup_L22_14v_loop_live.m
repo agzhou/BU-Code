@@ -7,7 +7,7 @@
 
 %% Specify system parameters
 clear
-cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0'
+cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
 % cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.7-2505271400'
 % cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 % cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
