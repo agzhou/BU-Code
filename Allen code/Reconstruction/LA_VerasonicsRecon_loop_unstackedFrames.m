@@ -20,7 +20,7 @@ clearvars
 cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
 % cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 % cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
-addpath 'C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Reconstruction'
+addpath 'C:\Users\BOAS-US\Documents\GitHub\BU-Code\Allen code\Reconstruction'
 
 activate
 clearvars
@@ -248,7 +248,7 @@ if ~exist('Mcr_P', 'var')
     Mcr_P = P; % VSX_auto will clear the P, so set it to not be cleared because unstackFrames needs it
 end
 
-savefast([Mcr_savepath, 'PData'], 'PData') % Save the PData structure
+save([Mcr_savepath, 'PData'], 'PData') % Save the PData structure
 
 for Mcr_filenum = Mcr_startFile:Mcr_endFile
 % for Mcr_filenum = 142:Mcr_endFile
@@ -279,7 +279,8 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
     IData = IData{1};
     QData = QData{1};
 
-    savefast([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData')
+    % savefast([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData')
+    save([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData', '-v7.3')
     disp(strcat("IQ file ", num2str(Mcr_filenum), " saved."))
     
     toc
