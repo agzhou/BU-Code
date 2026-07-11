@@ -1,19 +1,18 @@
-
 %% Description
 % Verasonics reconstruction of RF data with the L22-14v probe that loops
 % over all the files in a folder
 
-% Output of IQ data for all subframes
+% Output: saved IQ data for all subframes
 
 % This version uses the same Recon structure (assumes the same Receive
 % parameters) for each subframe
 
-% Last updated on 06/16/2025 and working for an input of one superframe
+% Last updated on 07/11/2026 by Allen Zhou
 
 %% TO DO
-% make into a function
 % add adjustable pixel spacing
 % Add some regexp thing to automatically get the # of raw data files in the folder
+
 %% Activate the Verasonics folder
 clearvars
 
@@ -26,8 +25,8 @@ activate
 clearvars
 %% Load parameters, create save path, choose some options for recon
 
-% Mcr_datapath = 'G:\Allen\Data\03-17-2025 AZ02 ULM\RC15gV\run 2 right eye\';
-Mcr_datapath = uigetdir('G:\Allen\Data\', 'Select the raw data path');
+% Mcr_datapath = uigetdir('G:\Allen\Data\', 'Select the raw data path');
+Mcr_datapath = uigetdir('G:\', 'Select the raw data path');
 Mcr_datapath = [Mcr_datapath, '\'];
 if ~exist('P', 'var')
     load([Mcr_datapath, 'params.mat']) % load acquisition parameters
