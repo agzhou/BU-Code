@@ -16,6 +16,10 @@ else
     P.numFramesPerBuffer = numFramesPerSF;
 end
 
+if exist('sfRate', 'var')
+    P.sfRate = sfRate;
+end
+
 P.numElements = numElements;
 P.Receive = Receive;
 P.Resource = Resource;
