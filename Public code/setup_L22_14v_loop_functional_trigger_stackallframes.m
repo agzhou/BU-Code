@@ -25,7 +25,8 @@ savepath = uigetdir('G:\', 'Select the save path');
 savepath = [savepath, '\'];
 
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use air puff (0-no, 1-yes)'}; % 'Save RF data (0-no, 1-yes)', 
-parameterDefaults = {'20', '0', '10', '50000', '5000', '5', '5', '15.625', '1540', '0', '1', '500', '0'};
+% parameterDefaults = {'20', '0', '10', '50000', '5000', '5', '5', '15.625', '1540', '0', '1', '500', '0'};
+parameterDefaults = {'20', '0', '8', '50000', '2000', '17', '10', '15.625', '1540', '0', '1', '500', '0'};
 % parameterDefaults = {'20', '2', '10', '50000', '2000', '17', '16', '15.625', '1540', '0', '1', '200', '0'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
@@ -277,7 +278,7 @@ rcvElem = ones(1, Trans.numelements);
 maxAcqLength = ceil(sqrt(endDepth^2 + (numElements*Trans.spacing)^2)); % account for the longest distance an echo could travel
 Receive = repmat(struct('Apod', rcvElem, ... 
                         'startDepth', startDepth, ...
-                        'endDepth', maxAcqLength + startDepth, ...
+                        'endDepth', maxAcqLength, ... % 'endDepth', maxAcqLength + startDepth, ...
                         'TGC', 1, ...
                         'bufnum', 1, ...
                         'framenum', 1, ...
@@ -333,8 +334,8 @@ end
 
 % if statement included to match verasonics automatic extension to
 % multiples of 128 samples
-% nSmpls = 2*(maxAcqLength - startDepth) * samplesPerWave; % maxAcqLength is the Receive(1).endDepth
-nSmpls = 2*(maxAcqLength) * samplesPerWave; % maxAcqLength is the Receive(1).endDepth % CHANGED 6/9/25
+nSmpls = 2*(maxAcqLength - startDepth) * samplesPerWave; % maxAcqLength is the Receive(1).endDepth
+% nSmpls = 2*(maxAcqLength) * samplesPerWave; % maxAcqLength is the Receive(1).endDepth % CHANGED 6/9/25
 % nSmpls = 2*(Receive(1).endDepth - Receive(1).startDepth) * samplesPerWave;
 if abs(round(nSmpls/128) - nSmpls/128) < .01
     numRcvSamples = 128*round(nSmpls/128);
@@ -424,7 +425,7 @@ makeParameterStructureSmall_functional;
 
 Resource.VDAS.dmaTimeout = 100000; % [ms]
 
-% Set the shot-to-shot (each angle) timing according to the PRF
+% 1. Set the shot-to-shot (each angle) timing according to the PRF
 scInd = 1; % sequence control index
 SeqControl(scInd).command = 'timeToNextAcq'; % In us, allowed range is from 10 - 4190000
                                          % Very useful if you are switching
@@ -446,11 +447,11 @@ else
     SeqControl(scInd).argument = timePerAcq;
 end
 
-% Return to Matlab SeqControl
+% 2. Return to Matlab SeqControl
 scInd = scInd + 1;
 SeqControl(scInd).command = 'returnToMatlab';
 
-% Jump to some event to keep the acquisition looping
+% 3. Jump to some event to keep the acquisition looping
 scInd = scInd + 1;
 SeqControl(scInd).command = 'jump'; % jump to
 if useTriggers
@@ -460,7 +461,7 @@ else
 end
 SeqControl(scInd).condition = 'exitAfterJump'; % Normally, jumping auto returns to Matlab if it returns to the first event, but not for other events
 
-% Set the frame/volume rate
+% 4. Set the frame/volume rate
 timePerFrame = SeqControl(scInd-2).argument * na;     % Time to acquire all the acquisitions for one frame/volume based on the PRF [us]
 % frameTimeGap = 1 / frameRate * 1e6 - timePerFrame;      % Add delays to account for the frame/volume rate set above
 frameTimeGap = 1 / frameRate * 1e6 - timePerFrame + SeqControl(scInd-2).argument;      % Add delays to account for the frame/volume rate set above. Add the PRF time because this value replaces one of those delays too.
@@ -504,14 +505,14 @@ else
     SeqControl(scInd).argument = bufferTimeGap;
 end
 
-% buffer rate noop
+% 7. buffer rate noop
 scInd = scInd + 1;
 SeqControl(scInd).command = 'noop';
 buffer_noop_time_us = SeqControl(scInd - 1).argument;
 SeqControl(scInd).argument = buffer_noop_time_us / 200 * 1e3; % (value*200nsec; max. value is 2^25 - 1 for 6.7 sec)
 SeqControl(scInd).condition = 'Hw&Sw'; % need to enable the noop in hardware
 
-% Trigger input
+% 8. Trigger input
 scInd = scInd + 1;
 SeqControl(scInd).command = 'triggerIn';
 SeqControl(scInd).argument = 0; % 0-255. Each increment of 1 corresponds to 250 ms. The default is 0 and means to wait indefinitely.
@@ -542,10 +543,10 @@ else
     SeqControl(scInd).argument = 10000000; % 10 s
 end
 
-% Control superframe rate
+% 12. Control superframe rate
 scInd = scInd + 1;
 SeqControl(scInd).command = 'timeToNextAcq';
-SeqControl(scInd).argument = (1/sfRate - 1/frameRate*numFramesPerSF) * 1e6; % [us]
+SeqControl(scInd).argument = (1/sfRate - 1/frameRate*numFramesPerSF) * 1e6 + SeqControl(1).argument; % [us]
 
 if useTriggers
     n = 1;
@@ -713,7 +714,7 @@ if runVSX
     VSX
 end
 
-%% Read the air puff data - may need to put this in the saveRcvData Processing...
+%% Read the air puff data
 if useTriggers
     [inScanData, timeStamp, triggerTime] = read(Mcr_d, seconds(Mcr_d.NumScansAvailable / Mcr_d.Rate), "OutputFormat", "Matrix");
 end
