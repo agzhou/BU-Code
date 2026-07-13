@@ -275,11 +275,13 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
 %     IQ = squeeze(IData{1} + 1i .* QData{1});                                         % Merge the I and Q into one variable
 %     IQ = squeeze(IData + 1i .* QData);                                         % Merge the I and Q into one variable
 %     figure; imagesc(squeeze(abs(IQ(:, :, 1))) .^ 0.5)
-    IData = IData{1};
-    QData = QData{1};
+    % IData = IData{1};
+    % QData = QData{1};
+    IQ = complex(squeeze(IData{1}), squeeze(QData{1}));
 
     % savefast([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData')
-    save([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData', '-v7.3')
+    % save([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData', '-v7.3')
+    save([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IQ', '-v7.3')
     disp(strcat("IQ file ", num2str(Mcr_filenum), " saved."))
     
     toc
