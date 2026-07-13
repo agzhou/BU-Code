@@ -728,7 +728,7 @@ if useTriggers
     savefast([savepath, 'triggerData.mat'], 'inScanData', 'timeStamp', 'triggerTime')
 end
 clearvars RcvData
-% save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
+save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
 
 %% **** Callback routines used by UIControls (UI) ****
 
