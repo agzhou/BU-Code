@@ -78,3 +78,6 @@ TD.sfTimeTagsDAQStart_adj = sfTimeTagsDAQStart_adj;
 TD.sfWidth = sfWidth;
 TD.sfWidth_adj = sfWidth_adj;
 TD.timeStamp = timeStamp;
+
+%% Save the timing data into a new directory
+save(datapath + "\Timing Data\TD.mat", "TD")
