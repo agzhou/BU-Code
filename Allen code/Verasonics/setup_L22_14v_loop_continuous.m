@@ -1,4 +1,4 @@
-
+% ********************** TIMING NOT WORKING **********************
 %% Description
 % Actual continuous acquisition and saving of RF data with the L22-14v probe
 % Saves all defined # of frames in one file
@@ -12,21 +12,21 @@ clearvars
 
 codeDir = cd;
 codeDir_split = split(string(codeDir), filesep);
-AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "Allen code"))), '\') + "\Verasonics");
+AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\Verasonics");
 addpath(AllenVerasonicsCodePath)
 
-addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Air Puff\')
-addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Accelerometer DAQ\')
+addpath('C:\Users\BOAS-US\Documents\GitHub\BU-Code\Allen code\Air Puff\')
+addpath('C:\Users\BOAS-US\Documents\GitHub\BU-Code\Allen code\Accelerometer DAQ\')
 % cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 % cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.7-2505271400'
 cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
 activate
 
-savepath = uigetdir('F:\', 'Select the save path');
+savepath = uigetdir('G:\', 'Select the save path');
 savepath = [savepath, '\'];
 
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Number of buffers', 'Use accelerometer (0-no, 1-yes)', 'Use air puff (0-no, 1-yes)'}; % 'Save RF data (0-no, 1-yes)', 
-parameterDefaults = {'20', '0', '8', '50000', '500', '11', '5', '15.625', '1540', '0', '1', '500', '2', '0'};
+parameterDefaults = {'20', '0', '8', '50000', '400', '11', '5', '15.625', '1540', '0', '1', '400', '2', '0', '0'};
 
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
@@ -790,7 +790,7 @@ end
 % saveRcvData(RcvData{1})
 clearvars RcvData
 
-save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
+% save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
 
 
 %% **** Callback routines used by UIControls (UI) ****

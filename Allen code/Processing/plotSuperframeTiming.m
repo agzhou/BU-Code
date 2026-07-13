@@ -1,5 +1,5 @@
 %% Choose data path and load the parameters and timing data
-datapath = uigetdir('J:\', 'Select the raw data path');
+datapath = uigetdir('G:\', 'Select the raw data path');
 datapath = [datapath, '\'];
 
 % load([datapath, ''])

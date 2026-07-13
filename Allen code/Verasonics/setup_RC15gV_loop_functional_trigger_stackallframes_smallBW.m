@@ -13,10 +13,10 @@ clearvars
 
 codeDir = cd;
 codeDir_split = split(string(codeDir), filesep);
-AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "Allen code"))), '\') + "\Verasonics");
+AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\Verasonics");
 addpath(AllenVerasonicsCodePath)
 
-addpath('C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Air Puff\')
+addpath('C:\Users\BOAS-US\Documents\GitHub\BU-Code\Allen code\Air Puff\')
 
 cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
 % cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
