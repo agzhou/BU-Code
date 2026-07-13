@@ -1,8 +1,14 @@
 
 % Trying to write my own air puff code
-% Requires Data Acquisition Toolbox and the NI package (NI-DAQmx driver)
+
+% Requirements:
+%   - Matlab Data Acquisition Toolbox
+%   - NI DAQmx driver: https://www.ni.com/en/support/downloads/drivers/download.ni-daq-mx.html
 %   - Matlab's "Data Acquisition Toolbox Support Package for National Instruments NI-DAQmx Devices"
+
 % Connect the air puffer (PicoSpritzer III) to the NI DAQ
+%   - Make sure the switch under Channel 2 is flipped to "TIMER"
+
 function [Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts, daqrate, numTrials)
     %% Set up the hardware and channels
     Mcr_d = daq('ni'); % Create the DAQ object
