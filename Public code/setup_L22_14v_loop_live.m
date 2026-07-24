@@ -20,7 +20,7 @@ savepath = [savepath, '\'];
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save IQ data (0-no, 1-yes)'}; % 'Save RF data (0-no, 1-yes)', 
 %Mouse brain default (BOAS)
 %parameterDefaults = {'5', '0', '10', '500', '21', '5', '15.625', '0','0'};
-parameterDefaults = {'15', '0', '10', '10', '63', '15', '15.625', '0', '0'};
+parameterDefaults = {'15', '0', '10', '10', '21', '5', '15.625', '0', '0'};
 %Mouse bladder default (OSHEA)
 % parameterDefaults = {'15', '0', '10', '10', '63', '15', '15.625', '0', '1'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);

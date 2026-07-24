@@ -4,7 +4,9 @@
 %%%% VERASONICS FOLDER %%%%
 
 % function saveRcvData(ReceiveData)
-function saveIQData(IQData)
+function saveIQData(IData,QData)
+%test MS 7/21/26. trying to solve error w/ too many variables passed to 
+%saveIQData... does splitting IQData into IData,QData solve it?
 %     tic
     disp('test')
 %     disp(size(IQData))
@@ -25,5 +27,23 @@ function saveIQData(IQData)
 %     
 %     savefast([savepath, filename], 'RcvData')
 
+
+    %%%%%added 7/21/26 MS to fix public live loop error
+    savepath = evalin('base', 'savepath');
+    Trans = evalin('base', 'Trans');
+    Psmall = evalin('base', 'Psmall');
+    Psmall.supFrameIndex = Psmall.supFrameIndex + 1;
+    assignin('base', 'Psmall', Psmall);
+    paramNames = [num2str(Psmall.maxAngle), '-', num2str(Psmall.na), '-', num2str(Psmall.fps_target), '-', num2str(Psmall.numSubFrames), '-', num2str(Psmall.numSupFrames), '-', num2str(Psmall.supFrameIndex)];
+
+%     filename = strcat(Trans.name, '-IQData-', paramNames, '.mat');
+    filename = strcat('IQData-', paramNames, '.mat');
+%     disp(strcat('Saving ', filename))
+
+%     save([savepath, filename], 'RcvData', '-v7.3')
+%     RcvData = RcvData(:, Trans.Connector, :);
+%     whos RcvData
+    
+    savefast([savepath, filename], 'IData', 'QData') % have to save them separately because H5 doesn't support complex probably
 %     toc
 end

@@ -1,9 +1,9 @@
 AVG_all_coronal2 = [];
-savepath = 'F:\OShea Lab\BU1398\slice2'; %saves TIFF here
+savepath = 'F:\OShea Lab\BU1402\slice1'; %saves TIFF here
 
 %load mat files
 for k = 1:60
-    fname = ['F:\OShea Lab\BU1398\slice2\IQData-15-63-10-1-10-',num2str(k),'.mat'];
+    fname = ['F:\OShea Lab\BU1402\slice1\IQData-15-63-10-1-10-',num2str(k),'.mat'];
     load(fname,'IData')
     AVG_all_coronal2 = cat(5,AVG_all_coronal2,IData);
 end
