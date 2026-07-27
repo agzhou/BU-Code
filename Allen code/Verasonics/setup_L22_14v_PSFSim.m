@@ -1,12 +1,13 @@
-
+% ********************** TIMING NOT WORKING **********************
 %% Description
-% Continuous acquisition and saving of RF data with the RC15gV probe
+% Actual continuous acquisition and saving of RF data with the L22-14v probe
 % Saves all defined # of frames in one file
-% C-R and R-C pairs of TX-RX
 % Uses saveRcvData external function for saving
 % Note: update the savepath variable as needed
 
-%% Specify system parameters
+% Collects nbuf buffers of nf frames to keep the continuous data flow
+
+%% 1. Specify system parameters
 clearvars
 
 codeDir = cd;
@@ -14,18 +15,25 @@ codeDir_split = split(string(codeDir), filesep);
 AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\Verasonics");
 addpath(AllenVerasonicsCodePath)
 
-cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
-% cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.7-2505271400'
-% cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
+% cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
+cd '\\ad\eng\users\a\g\agzhou\Desktop\Vantage-5.0.1-p1'
+
 activate
 
-%%
-savepath = uigetdir('F:\', 'Select the save path');
+savepath = uigetdir('G:\', 'Select the save path');
 savepath = [savepath, '\'];
 
-parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe'}; % 'Save RF data (0-no, 1-yes)', 
-parameterDefaults = {'20', '0', '10', '10000', '450', '11', '5', '13.6', '1540', '1', '1', '1'};
+parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Number of buffers'}; % 'Save RF data (0-no, 1-yes)', 
+parameterDefaults = {'20', '0', '10', '10000', '450', '17', '10', '15.625', '1540', '1', '1', '1', '2'};
+
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
+
+% ADC_sampleMode = 'BS67BW'; % ADC sampling mode
+% spw_guess = 1.3333; % Samples per wave guess
+ADC_sampleMode = 'NS200BW';
+spw_guess = 4;
+
+sfRate = 1; % Superframe rate [Hz]
 
 % Store the user inputs for parameters into the corresponding variables
 initialVoltage = str2double(parameterUserInput{1});
@@ -40,15 +48,15 @@ speedOfSound = str2double(parameterUserInput{9});
 simMode = str2double(parameterUserInput{10});
 saveRcvDataFlag = str2double(parameterUserInput{11});
 numFramesPerSF = str2double(parameterUserInput{12});
+if mod(numFramesPerSF, 2) ~= 0
+    error('# of frames per SF must be even')
+end
+numBuffers = str2double(parameterUserInput{13}); % Default of 3 buffers. The basic idea is to have two buffers so we can do continuous acquisition/saving, but adding a 3rd buffer to give us some *buffer room*
 
 bufferIndex = 0;
 runVSX = 1;
 movePointsOrNot = 0;
-numChannels = 256; % enable channels
-
-numBuffers = 1;
-bufferDutyCycle = 1/3;
-% disp(num2str(numFramesPerBuffer / frameRate / bufferDutyCycle))
+numChannels = 128; % enable channels
 
 angleRange = [-maxAngle, maxAngle].*pi/180; % Angle range in radians
 
@@ -61,7 +69,6 @@ else
 end
 
 % numAngles = length(angles);
-pair = 2; % The R-C and C-R pair of acquisitions per angle
 
 % Resource is a structure, define system parameters
 Resource.Parameters.numTransmit = numChannels; % number of transmit channels
@@ -69,34 +76,33 @@ Resource.Parameters.numRcvChannels = numChannels; % number of receive channels
 % Resource.Parameters.connector = 1; % transducer connector to use since the current plate for the 256 bit system is split into two 128 bit connectors. 1 is left and 2 is right
 Resource.Parameters.speedOfSound = speedOfSound; % speed of sound in m/s, the 1540 is for average human tissue
 
+%% 2. Define Transducer
+
+Trans.name = 'L22-14v'; 
+Trans.frequency = probe_freq; % Not needed if using the default center frequency
+Trans.units = 'wavelengths'; % or mm
+
+Trans = computeTrans(Trans); % Generate required attributes for the probe into the Trans structure; e.g., the transducer element positions
+% Trans.maxHighVoltage = ; % set maximum high voltage that is allowed to the transducer
+
+L = Trans.spacingMm*Trans.numelements/1e3; % m
+wl = Resource.Parameters.speedOfSound / Trans.frequency / 1e6; % m
+
+startDepth = startDepthMM/1e3/wl; % start depth in wavelengths
+endDepth = endDepthMM/1e3/wl; % end depth in wavelengths
+
+%% angles
+% angpitch = wl / (Trans.spacingMm*Trans.numelements / 2 / 1e3);
+% angles = -(na - 1) / 2 * angpitch : angpitch : (na - 1) / 2 * angpitch
 %% enable time tag
 TimeTagEna = 0;
 % 0: disable
 % 1: enable but don't reset counter
 % 2: enable and reset counter
 
-%% Define Transducer
-
-Trans.name = 'RC15gV'; 
-% Trans.frequency = 18.5; % Not needed if using the default center frequency
-Trans.frequency = 13.6;
-Trans.units = 'wavelengths'; % or mm
-% Trans.units = 'mm';
-
-Trans = computeTrans(Trans); % Generate required attributes for the probe into the Trans structure; e.g., the transducer element positions
-% Trans.maxHighVoltage = ; % set maximum high voltage that is allowed to the transducer
-
-L = Trans.spacingMm*Trans.numelements/2/1e3; % m
-wl = Resource.Parameters.speedOfSound / Trans.frequency / 1e6; % m
-
-startDepth = startDepthMM/1e3/wl; % start depth in wavelengths
-endDepth = endDepthMM/1e3/wl;
 
 %% Simulation things - Media structure (define scattering points and attenuation)
 Resource.Parameters.simulateMode = simMode; % run script in simulate mode. Set to 0 if not
-
-% xd_mm = 5; % in mm
-% xd = xd_mm/wl/1e3;
 
 % Set up Media model for the simulation, which generates the scattering points with 3D location
 % and reflectivity. For 1D transducer arrays, they are aligned on the
@@ -106,16 +112,13 @@ Media.MP(1, :) = [0, 0, 50, 1.0]; % [x, y, z, reflectivity]. x, y, z are defined
 % Media.MP(3, :) = [20, -20, 100, 1.0]; % [x, y, z, reflectivity]. x, y, z are defined as # of wavelengths.
 % Media.MP(1, :) = [30, 30, 70, 1.0]; % [x, y, z, reflectivity]. x, y, z are defined as # of wavelengths.
 
-% new %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % vesselX = 30e-6;    % x dimension
 % vesselY = 30e-6;    % x dimension
 % vesselZ = endDepthMM * 1e-3; % z dimension
-% flow_v_mm_s = 300;
-%  
 % Media.MP = randomPts3D_func(vesselX, vesselY, vesselZ, wl);
 
 Media.attenuation = 0;
-% Media.attenuation = -0.5; % media attenuation in dB/cm/MHz
+% Media.attenuation = -0.7; % media attenuation in dB/cm/MHz
 
 Media.function = 'movePointsZ3D'; % move points in _ dimension after each frame
 
@@ -123,85 +126,49 @@ Media.function = 'movePointsZ3D'; % move points in _ dimension after each frame
 % For 2D scans and slices of 3D scans, it's always a rectangular area at a
 % fixed location in the transducer coord system
 
-numElements = Trans.numelements./2; % the structure gives # row elements + # column elements
+numElements = Trans.numelements;
 
-PData.PDelta = [Trans.spacing, Trans.spacing, 0.5]; % Spacing between pixels in x, y, z, in wavelengths
+PData.PDelta = [Trans.spacing/2, 0, 0.5]; % Spacing between pixels in x, y, z, in wavelengths
 
 PData.Coord = 'rectangular'; % rectangular coords, could change to polar or spherical
 % Set PData array dimensions --> # of rows, columns, sections (planes
 % parallel to the xy plane)
 % For a 3D scan, rows - y axis, columns - x axis, sections - z axis
-PData.Size(1) = ceil(numElements.*Trans.spacing./PData.PDelta(2)); % # rows
-PData.Size(2) = ceil(numElements.*Trans.spacing./PData.PDelta(1)); % # cols
-PData.Size(3) = ceil((endDepth - startDepth)./PData.PDelta(3)); % sections
+PData.Size(1) = floor((endDepth - startDepth)./PData.PDelta(3));
+% (old)
+% PData.Size(1) = ceil((Receive(1).endDepth - Receive(1).startDepth)./PData.PDelta(3));
+PData.Size(2) = ceil(numElements.*Trans.spacing./PData.PDelta(1));
+PData.Size(3) = 1; % depth, is 1 unit deep for a 2D image
 
 % Define the location (x, y, z) of the upper left corner of the array
-half_probe_dist = (numElements-1)./2.*Trans.spacing;
-PData.Origin = [-half_probe_dist, half_probe_dist, startDepth];
-% PData.Origin = [-half_probe_dist, -half_probe_dist, startDepth];
+PData.Origin = [-(numElements-1)./2.*Trans.spacing, 0, startDepth];
 
 % Upper left corner if you look aligned with positive z
 
 % Set a local region to view/use for processing
 PData.Region(1) = struct('Shape',struct('Name','PData'));
 
-PData.Region(2).Shape = struct('Name', 'Slice', 'Orientation', 'xz', ...
-                            'oPAIntersect', PData.Origin(2) - (numElements-1).*Trans.spacing./2); % out of Plane Axis Intersection
-PData.Region(3).Shape = struct('Name', 'Slice', 'Orientation', 'yz', ...
-                            'oPAIntersect', PData.Origin(1) + (numElements-1).*Trans.spacing./2);
-PData.Region(4).Shape = struct('Name', 'Slice', 'Orientation', 'xy', ...
-                            'oPAIntersect', Media.MP(3)); % currently set to the plane intersecting the only scatter point
-
 %     'Position', [0, 0, 10], ...
 %                      'width', PData.Size(2), 'height', PData.Size(1)./2);
                     % Position is relative to the global coords
-% PData.Region = computeRegions(PData);
+PData.Region = computeRegions(PData);
 
-% Display window
-
-xd = 70;
-% 
-% xz
-% Resource.DisplayWindow(1).Title = 'Slice xz plane';
-% Resource.DisplayWindow(1).pdelta = 0.3; % pixel spacing (in wavelengths) on the display window, for all dimensions
+% % Display window
+% % xz
+% Resource.DisplayWindow(1).Type = 'Verasonics';
+% Resource.DisplayWindow(1).Title = 'xz plane';
+% Resource.DisplayWindow(1).pdelta = 0.4; % pixel spacing (in wavelengths) on the display window, for all dimensions
 % llx = 100; % lower left corner x on screen
 % xmult = 200;
 % lly = 150; % lower left corner y
 % Resource.DisplayWindow(1).Position = [llx, lly, ...
 %                                       ceil(PData.Size(2).* PData.PDelta(1) ./ Resource.DisplayWindow(1).pdelta), ... % width (x)
-%                                       ceil(PData.Size(3).* PData.PDelta(3) ./ Resource.DisplayWindow(1).pdelta)]; % height (z)
+%                                       ceil(PData.Size(1).* PData.PDelta(3) ./ Resource.DisplayWindow(1).pdelta)]; % height (z)
 % Resource.DisplayWindow(1).ReferencePt = [PData.Origin(1), 0, PData.Origin(3)]; % Display Window location wrt transducer coords
-% Resource.DisplayWindow(1).AxesUnits = 'wavelengths'; % can change to mm
+% Resource.DisplayWindow(1).AxesUnits = 'mm'; % can use wavelengths or mm
 % Resource.DisplayWindow(1).Colormap = gray(256);
-% Resource.DisplayWindow(1).Orientation = 'xz';
-% Resource.DisplayWindow(1).numFrames = numFrames; % Define buffer size for a history of displayed frames
-% 
-% % xy
-% Resource.DisplayWindow(2).Title = 'Slice xy plane';
-% Resource.DisplayWindow(2).pdelta = 0.3; % pixel spacing (in wavelengths) on the display window, for all dimensions
-% 
-% Resource.DisplayWindow(2).Position = [llx + 2.*xmult, lly, ...
-%                                       ceil(PData.Size(2).* PData.PDelta(1) ./ Resource.DisplayWindow(1).pdelta), ... % width (x)
-%                                       ceil(PData.Size(1).* PData.PDelta(2) ./ Resource.DisplayWindow(1).pdelta)]; % height (z)
-% Resource.DisplayWindow(2).ReferencePt = [PData.Origin(1), -PData.Origin(2), xd]; % Display Window location wrt transducer coords
-% Resource.DisplayWindow(2).AxesUnits = 'wavelengths'; % can change to mm
-% Resource.DisplayWindow(2).Colormap = gray(256);
-% Resource.DisplayWindow(2).Orientation = 'xy';
-% Resource.DisplayWindow(2).numFrames = numFrames; % Define buffer size for a history of displayed frames
-% 
-% % yz
-% Resource.DisplayWindow(3).Title = 'Slice yz plane';
-% Resource.DisplayWindow(3).pdelta = 0.3; % pixel spacing (in wavelengths) on the display window, for all dimensions
-% 
-% Resource.DisplayWindow(3).Position = [llx + 4.*xmult, lly, ...
-%                                       ceil(PData.Size(1).* PData.PDelta(2) ./ Resource.DisplayWindow(1).pdelta), ... % width (x)
-%                                       ceil(PData.Size(3).* PData.PDelta(3) ./ Resource.DisplayWindow(1).pdelta)]; % height (z)
-% Resource.DisplayWindow(3).ReferencePt = [0, -PData.Origin(2), PData.Origin(3)]; % Display Window location wrt transducer coords
-% Resource.DisplayWindow(3).AxesUnits = 'wavelengths'; % can change to mm
-% Resource.DisplayWindow(3).Colormap = gray(256);
-% Resource.DisplayWindow(3).Orientation = 'yz';
-% Resource.DisplayWindow(3).numFrames = numFrames; % Define buffer size for a history of displayed frames
-
+% % Resource.DisplayWindow(1).Orientation = 'xz';
+% Resource.DisplayWindow(1).numFrames = numSubFrames; % Define buffer size for a history of displayed frames
 
 %% Transmission Waveform (TW)
 tw.A = Trans.frequency; % frequency of transmission pulse, sets half cycle period of the waveform...
@@ -224,29 +191,27 @@ TW(1).Parameters = [tw.A, tw.B, tw.C, tw.D];
 % described in the Sequence Programming Manual.
 
 TPC.hv = initialVoltage;
+
 %% Transmit action - TX structure
 
 % Need a TX structure for each unique transmit action in the imaging
 % sequence
 
-% na*2 transmissions of a plane wave in pairs, one by all row elements and then one by all
-% column elements
+emitElem = ones(1, Trans.numelements);
+% nTrans = 120;
+% emitElem=kaiser(Resource.Parameters.numTransmit, 1)';
+% emitElem(1:(128-nTrans)/2) = 0;
+% emitElem(end-(128-nTrans)/2+1:end) = 0;
+
+% na transmissions of a plane wave
 TX = repmat(struct('waveform', 1, ...
                    'focus', 0, ... % plane wave
                    'Steer', [0.0, 0.0], ... % theta, alpha (beam angle projected in xz from +z axis, beam angle wrt xz)
-                   'Apod', zeros(1, Trans.numelements)), 1, na*2);
+                   'Apod', emitElem), 1, na*1);
 for n = 1:na
-    TX(n).Apod(1:Trans.numelements/2) = ones(1, Trans.numelements/2); % Turn on columns (y)
     TX(n).Steer = [angles(n), 0];
     TX(n).Delay = computeTXDelays(TX(n));
 end
-
-for n = 1:na
-    TX(na + n).Apod(Trans.numelements/2 + 1 : end) = ones(1, Trans.numelements/2); % Turn on rows (x)
-    TX(na + n).Steer = [0, angles(n)];
-    TX(na + n).Delay = computeTXDelays(TX(na + n));
-end
-
 
 %% Define Time Gain Control waveform (TGC)
 % Accounts for decrease in amplitude of echoes for longer distance traveled
@@ -263,23 +228,33 @@ TGC.CntrlPts = [1023 1023 1023 1023 1023 1023 1023 1023];
                                                      % distributed over the
                                                      % 0 to rangeMax depth
                                                      % (in wavelengths)
-TGC(1).rangeMax = endDepth; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+TGC(1).rangeMax = endDepth;
 TGC(1).Waveform = computeTGCWaveform(TGC); % Parameters can be adjusted later with GUI sliders
 
+%% RcvProfile adjustment (8/7/25 or 1/14/26 change)
+RcvProfile.antiAliasCutoff = 25; % Low pass filter at 25 MHz (L22-14v bandwidth goes to 24.6667 MHz)
+RcvProfile.antiAliasCutoff = 30;
+
 %% Receiver array object
-maxAcqLength = ceil(sqrt(endDepth^2 + 2*(numElements*Trans.spacing)^2)); % account for the longest distance an echo could travel
-Receive = repmat(struct('Apod', zeros(1, Trans.numelements), ... 
+maxAcqLength = ceil(sqrt(endDepth^2 + (numElements*Trans.spacing)^2)); % account for the longest distance an echo could travel
+
+rcvElem = ones(1, Trans.numelements);
+% nRcv = 120;
+% rcvElem(1:(128-nRcv)/2)=0;
+% rcvElem((end-(128-nRcv)/2+1):end)=0;
+
+Receive = repmat(struct('Apod', rcvElem, ... 
                         'startDepth', startDepth, ...
                         'endDepth', maxAcqLength, ...
                         'TGC', 1, ...
-                        'bufnum', 1, ...
+                        'bufnum', 1, ... % This is changed in the loop below
                         'framenum', 1, ...
                         'acqNum', 1, ...
-                        'sampleMode', 'NS200BW', ...
+                        'sampleMode', ADC_sampleMode, ...
                         'mode', 0, ...
                         'callMediaFunc', 0, ...
                         'LowPassCoef', [], ...
-                        'InputFilter', []), 1, pair * numBuffers * numFramesPerSF * na);
+                        'InputFilter', []), 1, 1 * numBuffers * numFramesPerSF * na);
 j = 1;
 % an = 0;
 for nbuf = 1:numBuffers
@@ -295,16 +270,6 @@ for nbuf = 1:numBuffers
             Receive(j).bufnum = nbuf;
             Receive(j).framenum = nf;
             Receive(j).acqNum = an;
-            Receive(j).Apod(Trans.numelements/2 + 1 : end) = ones(1, Trans.numelements/2);
-            j = j + 1;
-        end
-    
-        for n = 1:na
-            an = an + 1;
-            Receive(j).bufnum = nbuf;
-            Receive(j).framenum = nf;
-            Receive(j).acqNum = an;
-            Receive(j).Apod(1:Trans.numelements/2) = ones(1, Trans.numelements/2);
             j = j + 1;
         end
         
@@ -328,7 +293,7 @@ if strcmp(Receive(1).sampleMode,'custom')
     error('No handling of condition for custom Receive sampling. Refer to VsUpdate line 712 to implement');
 else
     fs = 4*Trans.frequency;
-    samplesPerWave = 4;
+    samplesPerWave = spw_guess;
 end
 
 % if statement included to match verasonics automatic extension to
@@ -352,8 +317,14 @@ end
 
 maxAcqLength_adjusted = numRcvSamples / samplesPerWave / 2;
 
+% Check if the PRF is too high
+if ((maxAcqLength_adjusted + (endDepth))*wl / speedOfSound) > 1/PRF
+    error('Error: the PRF is too high, it will send the next transmission before the previous transmission reflects from the deepest part of the region')
+end
+
+% Set up the RcvBuffer fields
 for nbuf = 1:numBuffers
-    Resource.RcvBuffer(nbuf).rowsPerFrame = numRcvSamples * na * 2;
+    Resource.RcvBuffer(nbuf).rowsPerFrame = numRcvSamples * na * 1;
     Resource.RcvBuffer(nbuf).colsPerFrame = Resource.Parameters.numRcvChannels; % Usually 1:1 to # of receive channels available in the system. Can change to 256 with the 2D probe and new connector plate.
     Resource.RcvBuffer(nbuf).numFrames = numFramesPerSF; % minimum # frames of RF data to acquire; RcvBuffer contains all the data needed for a whole frame, including multiple acquisition passes needed for reconstruction. Software can re-process RcvBuffer frames
     Resource.RcvBuffer(nbuf).datatype = 'int16'; % 16 bit signed integers are the only supported datatype
@@ -382,16 +353,12 @@ if numGBPerBufferFrame > 2
     return
 end
 
-if ((maxAcqLength_adjusted + (endDepth))*wl / speedOfSound) > 1/PRF
-    error('Error: the PRF is too high, it will send the next transmission before the previous transmission reflects from the deepest part of the region')
-end
-
 %% Reconstruction
-% numRegions = 3;
+% numRegions = 1;
 % 
 % Resource.ImageBuffer(1).numFrames = numSupFrames; % Define an ImageBuffer with a # of frames
-% Resource.InterBuffer(1).numFrames = numSupFrames; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % Resource.InterBuffer(1).numFrames = 1;
+% Resource.InterBuffer(1).numFrames = numSupFrames;
+% % Resource.InterBuffer(1).pagesPerFrame = na; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 
 % % Recon = struct('senscutoff', 0.6, ... % Threshold for which the reconstruction doesn't consider an element's contribution due to directivity of the element, for a certain pixel (whose echoes are at an angle to the element). Should be in radians.
 % %                'pdatanum', 1, ... % Which PData structure to use
@@ -400,14 +367,14 @@ end
 % %                'ImgBufDest', [1, -1], ... % [buffer #, frame #] Auto-increment ImageBuffer for each reconstruction???? % something is [first/oldest frame, last/newest frame]
 % %                'RINums', [1:2*na]); % The ReconInfo structure #(s). Each Recon must have its own unique set of ReconInfo #s
 % 
-% sco = 0.6; %%%%
+% sco = 0.6;
 % % sco = 0.4;
 % Recon = struct('senscutoff', sco, ... % Threshold for which the reconstruction doesn't consider an element's contribution due to directivity of the element, for a certain pixel (whose echoes are at an angle to the element). Should be in radians.
 %                'pdatanum', 1, ... % Which PData structure to use
 %                'rcvBufFrame', -1, ... % Use the most recently transferred frame
-%                'IntBufDest', [1, -1], ... % IQ (complex) data, Auto-increment for every frame
+%                'IntBufDest', [1, -1], ... % idk but it's for the IQ (complex) data
 %                'ImgBufDest', [1, -1], ... % [buffer #, frame #] Auto-increment ImageBuffer for each reconstruction???? % something is [first/oldest frame, last/newest frame]
-%                'RINums', [1:2*na]); % The ReconInfo structure #(s). Each Recon must have its own unique set of ReconInfo #s
+%                'RINums', [1:na]); % The ReconInfo structure #(s). Each Recon must have its own unique set of ReconInfo #s
 % 
 % % Recon = repmat(Recon, 1, numFrames);
 % % for nf = 1:numFrames
@@ -415,23 +382,26 @@ end
 % %     Recon(nf).ImgBufDest = [1, nf];
 % % end
 % 
-% ReconInfo = repmat(struct('mode', 'accumIQ_replaceIntensity', ... % reconstruct, and replace intensity data in ImageBuffer and IQ data in InterBuffer (see Table 12.4 in Tutorial)
+% % The final image it shows only shows the image buffer data for the last
+% % page (angle)
+% ReconInfo = repmat(struct('mode', 'accumIQ', ... % reconstruct, and replace intensity data in ImageBuffer and IQ data in InterBuffer (see Table 12.4 in Tutorial)
 %                    'txnum', 1, ...                 % TX structure to use
 %                    'rcvnum', 1, ...                % RX structure to use
-%                    'regionnum', 1), 1, 2*na);                % PData Region to process in
+%                    'regionnum', 1), ...
+%                    1, na);                % PData Region to process in
 % 
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % for nf = 1
-% for n = 1:2*na % need to change this and above for more than 1 frame
+% 
+% for n = 1:na % need to change this and above for more than 1 frame
 %     % - Set specific ReconInfo attributes.
 %     % ReconInfo(1).mode = 'replaceIQ'; % replace IQ data
 %     ReconInfo(n).txnum = n;
 %     ReconInfo(n).rcvnum = n;
-%     ReconInfo(n).pagenum = n; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %     ReconInfo(n).pagenum = n; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % %     ReconInfo(1).regionnum = 1; %1 for the whole volume, 5 for the slices
 % 
 % end
-
+% ReconInfo(1).mode = 'replaceIQ'; % replace IQ data
+% ReconInfo(end).mode = 'accumIQ_replaceIntensity';
 
 %% Process structures
 
@@ -461,7 +431,9 @@ for nbuf = 1:numBuffers
 end
 
 %%
-makeParameterStructureSmall_ULM;
+% makeParameterStructureSmall_ULM;
+makeParameterStructureSmall_functional;
+
 %% New Event structure
 
 Resource.VDAS.dmaTimeout = 1000;
@@ -480,9 +452,10 @@ SeqControl(scInd).command = 'timeToNextAcq'; % In us, allowed range is from 10 -
                                          % switch
 % SeqControl(scInd).condition = 'ignore';  % don't print the warning message
 
-timePerAcq = 1 / PRF * 1e6; % PRF in us
 
-timePerAcqLimits = [10, 4190000];
+% 1. Set up the time per plane wave
+timePerAcq = 1 / PRF * 1e6; % PRF in us
+timePerAcqLimits = [10, 4190000]; % The Vantage 256's limits in what the timeToNextAcq can be
 if timePerAcq < timePerAcqLimits(1)
     warning('Acquisition time too short, setting to minimum of 10 us')
     SeqControl(scInd).argument = timePerAcqLimits(1); 
@@ -493,20 +466,23 @@ else
     SeqControl(scInd).argument = timePerAcq;
 end
 
+% 2. Set up the return to Matlab command
 scInd = scInd + 1;
 SeqControl(scInd).command = 'returnToMatlab';
 
+% 3. Set up the jump command so we can repeat the sequence
 scInd = scInd + 1;
 SeqControl(scInd).command = 'jump'; % jump to
 SeqControl(scInd).argument = 1;     % first event
+SeqControl(scInd).condition = 'exitAfterJump'; % Normally, jumping auto returns to Matlab if it returns to the first event, but not for other events
 
-% frame/volume rate
-timePerFrame = SeqControl(scInd - 2).argument * na * 2;     % Time to acquire all the acquisitions for one frame/volume based on PRF (us)
+% 4. Define the frame/volume rate
+timePerFrame = SeqControl(scInd - 2).argument * na * 1;     % Time to acquire all the acquisitions for one frame/volume based on PRF (us)
 frameTimeGap = 1 / frameRate * 1e6 - timePerFrame + SeqControl(scInd-2).argument;      % Add delays to account for the frame/volume rate set above. % Add delays to account for the frame/volume rate set above. Add the PRF time because this value replaces one of those delays too.
 
-timePerTransferSeconds = numGBPerBufferFrame / 6.6; % PCie speed is 6.6 GB/s
-frameTimeGapDMALimit = timePerTransferSeconds * 1e6; % [us]
-frameRateDMALimit = 1/(frameTimeGapDMALimit * 1e-6);
+timePerTransferSeconds = numGBPerBufferFrame / 6.6;  % Maximum PCIe speed for the Vantage 256 is 6.6 GB/s
+frameTimeGapDMALimit = timePerTransferSeconds * 1e6; % Minimum DMA time given the estimated frame size [us]
+frameRateDMALimit = 1/(frameTimeGapDMALimit * 1e-6); % Maximum frame rate allowed by the DMA rate [Hz]
 
 % Check if the inputted frame rate is faster than what the DMA time allows
 if frameRateDMALimit < frameRate
@@ -514,6 +490,7 @@ if frameRateDMALimit < frameRate
     return
 end
 
+% If the inputted frame rate is fine, then set up the timeToNextAcq delays
 scInd = scInd + 1;
 SeqControl(scInd).command = 'timeToNextAcq';
 
@@ -527,93 +504,129 @@ else
     SeqControl(scInd).argument = frameTimeGap;
 end
 
-% frame/volume rate noop
+% 5. Set up a frame/volume rate noop
 scInd = scInd + 1;
 SeqControl(scInd).command = 'noop';                     % no operation
 frame_noop_time_us = SeqControl(scInd - 1).argument;
-SeqControl(scInd).argument = frame_noop_time_us / 200 * 1e3;  % (value*200nsec; max. value is 2^25 - 1 for 6.7 sec)
+% SeqControl(scInd).argument = frame_noop_time_us / 200 * 1e3;  % (value*200nsec; max. value is 2^25 - 1 for 6.7 sec)
+SeqControl(scInd).argument = frameTimeGap / 200 * 1e3;  % (value*200nsec; max. value is 2^25 - 1 for 6.7 sec)
 SeqControl(scInd).condition = 'Hw&Sw';                  % need to enable the noop in hardware
 
-% buffer rate
+% 6. buffer rate
 
 % need to change this to be consistent with the if blocks above
-timePerBuffer = 1 / frameRate * numFramesPerSF * 1e6;                 % Time to acquire all the frames within one buffer (us)
-bufferTimeGap = timePerBuffer / bufferDutyCycle - timePerBuffer;          % Add delay to account for the buffer rate duty cycle set above
+% timePerBuffer = 1 / frameRate * numFramesPerSF * 1e6;                 % Time to acquire all the frames within one buffer (us)
+% bufferTimeGap = timePerBuffer / bufferDutyCycle - timePerBuffer;          % Add delay to account for the buffer rate duty cycle set above
 
 scInd = scInd + 1;
 SeqControl(scInd).command = 'timeToNextAcq';
 
-if bufferTimeGap < timePerAcqLimits(1)
-    warning('Buffer delay time too short, setting to minimum of 10 us')
-    SeqControl(scInd).argument = timePerAcqLimits(1); 
-elseif bufferTimeGap > timePerAcqLimits(2)
-    warning('Buffer delay time too long, setting to maximum of 4190000 us')
-    SeqControl(scInd).argument = timePerAcqLimits(2);
-else
-    SeqControl(scInd).argument = bufferTimeGap;
-end
+% if bufferTimeGap < timePerAcqLimits(1)
+%     warning('Buffer delay time too short, setting to minimum of 10 us')
+    SeqControl(scInd).argument = timePerAcqLimits(1); % Dummy value for now
+% elseif bufferTimeGap > timePerAcqLimits(2)
+%     warning('Buffer delay time too long, setting to maximum of 4190000 us')
+%     SeqControl(scInd).argument = timePerAcqLimits(2);
+% else
+%     SeqControl(scInd).argument = bufferTimeGap;
+% end
 
-% buffer rate noop
+% 7. buffer rate noop
 scInd = scInd + 1;
 SeqControl(scInd).command = 'noop'; % jump to
 buffer_noop_time_us = SeqControl(scInd - 1).argument;
 SeqControl(scInd).argument = buffer_noop_time_us / 200 * 1e3; % (value*200nsec; max. value is 2^25 - 1 for 6.7 sec)
 SeqControl(scInd).condition = 'Hw&Sw'; % need to enable the noop in hardware
 
-% Sync for aligning the hardware to when the data is done saving
+% 8. Sync for aligning the hardware to when the data is done saving
 scInd = scInd + 1;
 SeqControl(scInd).command = 'sync';
 SeqControl(scInd).argument = 30000000; % 30 s
 % SeqControl(scInd).argument = 1000000 * vts.delay_s*5; % Timeout set to 5x the input delay just in case
 
+% 9. Trigger input
+scInd = scInd + 1;
+SeqControl(scInd).command = 'triggerIn';
+SeqControl(scInd).argument = 0; % 0-255. Each increment of 1 corresponds to 250 ms. The default is 0 and means to wait indefinitely.
+SeqControl(scInd).condition = 'Trigger_2_Rising'; % Which trigger in port and type to use
+% SeqControl(scInd).command = 'pause';
+% SeqControl(scInd).argument = 19; % see p137
+% SeqControl(scInd).condition = 'extTrigger'; % need to enable the noop in hardware
+
+% 10. Trigger output
+% "Generates external 1 microsecond active low output on the TRIG OUT BNC
+%  connector. A delay can be set in the argument field." (p138)
+scInd = scInd + 1;
+SeqControl(scInd).command = 'triggerOut';
+% SeqControl(scInd).argument = 0; % 0-255. Each increment of 1 corresponds to 250 ms. The default is 0 and means to wait indefinitely.
+SeqControl(scInd).condition = 'syncNone'; % syncNone -> generate the trigger asap after the scheduled time
+
+% 11. Sync to make the software sequencer also wait for the trigger input
+scInd = scInd + 1;
+SeqControl(scInd).command = 'sync';
+% SeqControl(scInd).argument = 10000000; % 10 s
+SeqControl(scInd).argument = 60000000; % 60 s
+
+% 12. Sync for aligning the hardware to when the data is done saving
+scInd = scInd + 1;
+SeqControl(scInd).command = 'sync';
+SeqControl(scInd).argument = 100000000; % 100 s
+
+
+% 13. Control superframe rate
+scInd = scInd + 1;
+SeqControl(scInd).command = 'timeToNextAcq';
+SeqControl(scInd).argument = (1/sfRate - 1/frameRate*numFramesPerSF) * 1e6 + SeqControl(1).argument; % [us]
 
 n = 0;
+
 for nbuf = 1:numBuffers
     for nf = 1:numFramesPerSF
     
         for a = 1:na % go through all the angles for each frame
             n = n + 1;
-            Event(n).info = 'Transmit all columns and receive all rows';
-            Event(n).tx = a.*2 - 1; % Use ath TX structure
-            Event(n).rcv = (nbuf - 1) .* numFramesPerSF .* pair .* na + (nf - 1).*pair.*na + a.*2 - 1; % Use nth Receive structure % need to make this alternate between (1 and 2) * numframes or something
+            Event(n).info = 'Transmit and receive';
+            Event(n).tx = a; % Use ath TX structure
+            Event(n).rcv = (nbuf - 1) .* numFramesPerSF .* 1 .* na + (nf - 1).*1.*na + a; % Use nth Receive structure % need to make this alternate between (1 and 2) * numframes or something
             Event(n).recon = 0; % 0 means no reconstruction
             Event(n).process = 0; % 0 means no processing
             Event(n).seqControl = 1;
-            
-            n = n + 1;
-            Event(n).info = 'Transmit all rows and receive all columns';
-            Event(n).tx = a.*2; 
-            Event(n).rcv = (nbuf - 1) .* numFramesPerSF .* pair .* na + (nf - 1).*pair.*na + a.*2; 
-            Event(n).recon = 0; 
-            Event(n).process = 0; 
-            Event(n).seqControl = 1;  
         
         end
         scInd = scInd + 1; 
         SeqControl(scInd).command = 'transferToHost'; % Transfer every frame
 %         Event(n).seqControl = [4, 5, scInd];
-%         Event(n).seqControl = [4, scInd];
+%         Event(n).seqControl = [5, scInd];
+        Event(n).seqControl = [4, scInd];
             
-        scInd = scInd + 1;
-        SeqControl(scInd).command = 'waitForTransferComplete';
-        SeqControl(scInd).argument = scInd - 1;
-        Event(n).seqControl = [4, scInd - 1, scInd];
+%         % Original location
+%         scInd = scInd + 1;
+%         SeqControl(scInd).command = 'waitForTransferComplete'; % Pause the software sequencer (so we don't save the buffer at the end before it's done transferring)
+%         SeqControl(scInd).argument = scInd - 1;
+%         Event(n).seqControl = [4, scInd - 1, scInd];
 
     end
 
-    % Don't worry about timeToNextAcq while saving the superframe
-    Event(n).seqControl = [scInd - 1, scInd];
+    % New location
+    scInd = scInd + 1;
+    SeqControl(scInd).command = 'waitForTransferComplete'; % Pause the software sequencer (so we don't save the buffer at the end before it's done transferring)
+    SeqControl(scInd).argument = scInd - 1;
+%     Event(n).seqControl = [4, scInd - 1, scInd];
+
+    Event(n).seqControl = [13, scInd - 1, scInd]; % Superframe rate control
+    % Event(n).seqControl = [4, scInd - 1, scInd];
 %     Event(n).seqControl = [scInd];
 %     Event(n).seqControl = [6, scInd];
     
-    if saveRcvDataFlag
+    if saveRcvDataFlag % If saving RF, save each superframe
         n = n + 1;
         Event(n).info = 'Save data - ext proc func';
         Event(n).tx = 0; 
         Event(n).rcv = 0; 
         Event(n).recon = 0;
-        Event(n).process = nbuf + nprevproc; 
-        Event(n).seqControl = 8;
+        Event(n).process = nbuf + nprevproc; % Switch between buffers
+%         Event(n).seqControl = 8;
+        Event(n).seqControl = 0; % We don't want to sync the HW + SW for continuous acq
     end
 
 end
@@ -627,63 +640,11 @@ Event(n).recon = 0;
 Event(n).process = 0; 
 Event(n).seqControl = 3; 
 
-
-% %% User specified UI Control Elements
-% 
-% import vsv.seq.uicontrol.VsSliderControl
-% 
-% % - Time Tag
-% UI(1).Control = VsSliderControl('LocationCode', 'UserB5',...
-%                                 'Label', 'Time Tag', ...
-%                                 'SliderMinMaxVal', [0, 2, TimeTagEna],...
-%                                 'SliderStep', [0.5, 0.5], ...
-%                                 'ValueFormat', '%1.0f',...
-%                                 'Callback', @TimeTagCallback);
-% 
-% 
-% % External function definitions.
-% 
-% import vsv.seq.function.ExFunctionDef
-% 
-% EF(1).Function = vsv.seq.function.ExFunctionDef('readTimeTag',@readTimeTag);
-
 %% Save all the data/structures to a .mat file.
 currentDir = cd; currentDir = regexp(currentDir, filesep, 'split');
-filename = 'RC15gV_Allen_loop_fixed.mat';
+filename = 'L22_14v_Allen_PSFSim.mat';
 
 save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+filename);
-
-%% Initialize time tagging if enabled
-import com.verasonics.hal.hardware.*
-switch TimeTagEna
-    case 0
-        % disable time tag
-        rc = Hardware.enableAcquisitionTimeTagging(false);
-        if ~rc
-            error('Error from enableAcqTimeTagging')
-        end
-        tagstr = 'off';
-    case 1
-        % enable time tag
-        rc = Hardware.enableAcquisitionTimeTagging(true);
-        if ~rc
-            error('Error from enableAcqTimeTagging')
-        end
-        tagstr = 'on';
-        disp('**** Time tagging enabled on mode 1 ****')
-    case 2
-        % enable time tag and reset counter
-        rc = Hardware.enableAcquisitionTimeTagging(true);
-        if ~rc
-            error('Error from enableAcqTimeTagging')
-        end
-        rc = Hardware.setTimeTaggingAttributes(false, true); % reset hardware counter to 0 (otherwise, it continuously counts up from system bootup until it gets to 107,000s - see p37 of User Manual
-        if ~rc
-            error('Error from setTimeTaggingAttributes')
-        end
-        tagstr = 'on, reset';
-        disp('**** Time tagging enabled on mode 2 ****')
-end
 
 %% Run VSX automatically and make parameter structure for RF file naming
 
@@ -697,127 +658,11 @@ end
 % save([savepath, 'params.mat'], 'angles', 'startDepth', 'startDepthMM', 'endDepth', 'endDepthMM', 'Event', 'fps_target', 'maxAcqLength_adjusted', 'maxAngle', 'Media', 'na', 'nf', 'Receive', 'Resource', 'SeqControl', 'TGC', 'Trans', 'TW', 'TX', 'wl', 'numElements', '-v7.3')
 % save([savepath, 'params.mat'], 'P')
 
-makeParameterStructure_ULM;
-savefast([savepath, 'params.mat'], 'P')
+% makeParameterStructure_ULM;
+makeParameterStructure_functional;
+save([savepath, 'params.mat'], 'P')
+
 % saveRcvData(RcvData{1})
 clearvars RcvData
-save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
 
-%% **** Callback routines used by UIControls (UI) ****
-%% Time tag callback test
-
-function TimeTagCallback(~, ~, UIValue)
-    import com.verasonics.hal.hardware.*
-    TimeTagEna = round(UIValue);
-    VDAS = evalin('base', 'VDAS');
-    switch TimeTagEna
-        case 0
-            if VDAS % can't execute this command if HW is not present
-                % disable time tag
-                rc = Hardware.enableAcquisitionTimeTagging(false);
-                if ~rc
-                    error('Error from enableAcqTimeTagging')
-                end
-            end
-            tagstr = 'off';
-        case 1
-            if VDAS
-                % enable time tag
-                rc = Hardware.enableAcquisitionTimeTagging(true);
-                if ~rc
-                    error('Error from enableAcqTimeTagging')
-                end
-            end
-            tagstr = 'on';
-        case 2
-            if VDAS
-                % enable time tag and reset counter
-                rc = Hardware.enableAcquisitionTimeTagging(true);
-                if ~rc
-                    error('Error from enableAcqTimeTagging')
-                end
-                rc = Hardware.setTimeTaggingAttributes(false, true); % reset hardware counter to 0 (otherwise, it continuously counts up from system bootup until it gets to 107,000s - see p37 of User Manual
-                if ~rc
-                    error('Error from setTimeTaggingAttributes')
-                end
-            end
-            tagstr = 'on, reset';
-    end
-    % display at the GUI slider value
-    h = findobj('Tag', 'UserB5Edit');
-    set(h,'String', tagstr);
-    assignin('base', 'TimeTagEna', TimeTagEna);
-end
-
-%% **** Callback routines used by External function definition (EF) ****
-
-function readTimeTag(RDatain)
-    persistent frmCount
-    if isempty(frmCount)
-        frmCount = 0;
-    end
-    % get time tag from first two samples
-    % time tag is 32 bit unsigned interger value, with 16 LS bits in sample 1
-    % and 16 MS bits in sample 2.  Note RDatain is in signed INT16 format so must
-    % convert to double in unsigned format before scaling and adding
-    W = zeros(2, 1);
-    for i=1:2
-        W(i) = double(RDatain(i, 1));
-        if W(i) < 0
-            % translate 2's complement negative values to their unsigned integer
-            % equivalents
-            W(i) = W(i) + 65536;
-        end
-    end
-    timeStamp = W(1) + 65536 * W(2);
-    % the 32 bit time tag counter increments every 25 usec, so we have to scale
-    % by 25 * 1e-6 to convert to a value in seconds
-    frmCount = frmCount + 1;
-    if mod(frmCount, 25) == 1
-        TimeTagEna = evalin('base', 'TimeTagEna');
-        if TimeTagEna
-            disp(['Time tag value in seconds ', num2str(timeStamp/4e4,'%2.3f')]);
-        end
-    end
-end
-
-%% Plot FPS
-
-% maxTravelDist = (Trans.spacingMm*Trans.numelements /cosd(maxAngle)) + maxAcqLength*wl*1e3; 
-% maxTravelTime = maxTravelDist / 1e3 / Resource.Parameters.speedOfSound;
-% 
-% timePerFramePhysical = maxTravelTime * acqsPerFrame * pair;
-% maxFPSPhysical = 1./timePerFramePhysical;
-% 
-% figure (1)
-% plot(acqsPerFrame, maxFPSPhysical./1e3, 'LineWidth', 3)
-% xlabel('Acquisition pairs (angles) per frame')
-% ylabel('Max Frame Rate (kHz)')
-% title(['Max angle = ', num2str(maxAngle), ' degrees'])
-% 
-% % Data transfer parameters
-% writeRate = 6.6*1024; % MB/s for DMA https://verasonics.com/wp-content/uploads/2019/04/Vantage-Systems-Brochure.pdf
-% timePerFrameFile = RcvDataSize ./ writeRate;
-% 
-% mask = timePerFrameFile > timePerFramePhysical;
-% % totalTimePerFrame = timePerFramePhysical + timePerFrameFile;
-% totalTimePerFrame = timePerFramePhysical;
-% totalTimePerFrame(mask) = timePerFrameFile; % When file transfer time > physical time, that is the total since you can transfer the data during the next acq
-% 
-% totalFPS = 1 ./ totalTimePerFrame;
-% hold on
-% plot(acqsPerFrame, totalFPS./1e3, 'LineWidth', 3)
-% yline(1, '--', 'LineWidth', 2) % 1 kHz frame rate needed for g1
-% hold off
-% legend('Physical limit', 'Including file transfer', '1 kHz line')
-% title(['Max angle = ', num2str(maxAngle), ' degrees'])
-% 
-% figure(2)
-% plot(acqsPerFrame, timePerFramePhysical*1e3, 'LineWidth', 3)
-% hold on
-% plot(acqsPerFrame, timePerFrameFile*1e3, 'LineWidth', 3)
-% hold off
-% legend('Physical time per frame', 'File transfer time per frame')
-% xlabel('Acquisition pairs (angles) per frame')
-% ylabel('Time per frame (ms)')
-
+% save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
