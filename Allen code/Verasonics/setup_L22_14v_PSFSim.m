@@ -15,8 +15,8 @@ codeDir_split = split(string(codeDir), filesep);
 AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\Verasonics");
 addpath(AllenVerasonicsCodePath)
 
-% cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
-cd '\\ad\eng\users\a\g\agzhou\Desktop\Vantage-5.0.1-p1'
+cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
+% cd '\\ad\eng\users\a\g\agzhou\Desktop\Vantage-5.0.1-p1'
 
 activate
 
@@ -24,7 +24,7 @@ savepath = uigetdir('G:\', 'Select the save path');
 savepath = [savepath, '\'];
 
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Number of buffers'}; % 'Save RF data (0-no, 1-yes)', 
-parameterDefaults = {'20', '0', '10', '10000', '450', '17', '10', '15.625', '1540', '1', '1', '1', '2'};
+parameterDefaults = {'20', '0', '10', '10000', '450', '17', '10', '15.625', '1540', '1', '1', '1', '1'};
 
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
@@ -48,8 +48,8 @@ speedOfSound = str2double(parameterUserInput{9});
 simMode = str2double(parameterUserInput{10});
 saveRcvDataFlag = str2double(parameterUserInput{11});
 numFramesPerSF = str2double(parameterUserInput{12});
-if mod(numFramesPerSF, 2) ~= 0
-    error('# of frames per SF must be even')
+if mod(numFramesPerSF, 2) ~= 0 & numFramesPerSF ~= 1
+    error('# of frames per SF must be even or 1')
 end
 numBuffers = str2double(parameterUserInput{13}); % Default of 3 buffers. The basic idea is to have two buffers so we can do continuous acquisition/saving, but adding a 3rd buffer to give us some *buffer room*
 
