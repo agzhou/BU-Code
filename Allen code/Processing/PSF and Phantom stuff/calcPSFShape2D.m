@@ -53,13 +53,15 @@ legend('Gaussian fit', 'Simulated')
 [FWHM_GF_units(2)] = NaN;
 [FWHM_GF_units(3)] = fwhm(zPSF_pixel_inds_GF, zPSF_GF_values);
 
-FWHM_wl = FWHM_GF_units .* PData.PDelta ./ gfit_pixel_spacing;
-FWHM_um = FWHM_wl .* P.wl ./ 1e6;
+% FWHM_wl = FWHM_GF_units .* PData.PDelta ./ gfit_pixel_spacing;
+FWHM_wl = FWHM_GF_units .* PData.PDelta;
+FWHM_um = FWHM_wl .* P.wl .* 1e6;
 
 % 1/e values
 [OOE_GF_units(1)] = fw_anymax(xPSF_pixel_inds_GF, xPSF_GF_values, 1/exp(1));
 [OOE_GF_units(2)] = NaN;
 [OOE_GF_units(3)] = fw_anymax(zPSF_pixel_inds_GF, zPSF_GF_values, 1/exp(1));
 
-OOE_wl = OOE_GF_units .* PData.PDelta ./ gfit_pixel_spacing;
-OOE_um = OOE_wl .* P.wl ./ 1e6;
+% OOE_wl = OOE_GF_units .* PData.PDelta ./ gfit_pixel_spacing;
+OOE_wl = OOE_GF_units .* PData.PDelta;
+OOE_um = OOE_wl .* P.wl .* 1e6;
