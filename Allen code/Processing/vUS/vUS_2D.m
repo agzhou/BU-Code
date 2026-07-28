@@ -141,7 +141,7 @@ g1pos_exp = reshape(g1pos, num_voxels, nTau);
 g1all_exp = reshape(g1all, num_voxels, nTau);
 
 % TESTING
-sigma = [379, 379, 111].*1e-6; % 1/e PSF values [m] for the L22-14v probe at 15.625 MHz and 17 angles from -10 to 10 deg (G:\My Drive\Data\RC15gV PSF sim - 11 angles from -5 to 5 deg)
+sigma = [113, NaN, 151].*1e-6; % 1/e PSF values [m] for the L22-14v probe at 15.625 MHz and 17 angles from -10 to 10 deg (G:\My Drive\Data\PSF Simulations\L22-14v PSF sim - 17 angles from -10 to 10 deg)
 
 % Create structs that store parameters (including initial guesses) for the vUS fitting
 
