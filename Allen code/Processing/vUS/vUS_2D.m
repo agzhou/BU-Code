@@ -95,10 +95,14 @@ figure; imagesc(squeeze(max(Rpos, [], 1))'); colormap gray
 % figure; imagesc(squeeze(max(Rpos_mf, [], 1))'); colormap gray
 
 %% ========= 3. Calculate g1 ========= %%
-startTau = 1; % Index for the first tau point (tau1) for subsequent analysis. Changed this from 2 to 1 on 7/8/26 because I changed the g1T.m function to output g1 starting from tau = tau1 instead of tau = 0.
-% startTau = 2; % Index for the first tau point (tau1) for subsequent analysis.
+
+
+% startTau = 1; % Index for the first tau point (tau1) for subsequent analysis. Changed this from 2 to 1 on 7/8/26 because I changed the g1T.m function to output g1 starting from tau = tau1 instead of tau = 0.
+startTau = 2; % Index for the first tau point (tau1) for subsequent analysis.
 
 nTau = ceil(20e-3 *P.frameRate); % # of time lags to consider; empirically set by assuming all g1 for voxels containing actual flow decay within 10 ms
+tau = (0:nTau - 1)' ./ P.frameRate; % Time lag vector [s]
+
 % g1neg = g1T(IQf_separated{1}, nTau + startTau - 1); % Add the startTau-1 because the values start at startTau, but we still want nTau points total
 % g1pos = g1T(IQf_separated{2}, nTau + startTau - 1); % Add the startTau-1 because the values start at startTau, but we still want nTau points total
 g1neg = g1T(IQf_separated{1}, nTau);
@@ -117,12 +121,12 @@ figure; imagesc(squeeze(mean(abs(IQf_separated{3}), frameDim))); title('All flow
 % 4.1 Screen voxels for noisiness, through |g1(tau1)|
 g1_tau1_threshold = 0.2;
 
-g1neg_tau1_mask = abs(squeeze(g1neg(:, :, :, startTau))) > g1_tau1_threshold; % Use index 2 because index 1 corresponds to tau = 0
-g1pos_tau1_mask = abs(squeeze(g1pos(:, :, :, startTau))) > g1_tau1_threshold;
+g1neg_tau1_mask = abs(squeeze(g1neg(:, :, startTau))) > g1_tau1_threshold; % Use index 2 because index 1 corresponds to tau = 0
+g1pos_tau1_mask = abs(squeeze(g1pos(:, :, startTau))) > g1_tau1_threshold;
 
 % Testing/visualization
-figure; plot(squeeze(abs(g1neg(tp(1), tp(2), tp(3), :))), '-o'); title('Negative frequencies')
-figure; plot(squeeze(abs(g1pos(tp(1), tp(2), tp(3), :))), '-o'); title('Positive frequencies')
+figure; plot(squeeze(abs(g1neg(tp(1), tp(2), :))), '-o'); title('Negative frequencies')
+figure; plot(squeeze(abs(g1pos(tp(1), tp(2), :))), '-o'); title('Positive frequencies')
 % volumeViewer(g1neg_tau1_mask)
 % volumeViewer(g1pos_tau1_mask)
 
@@ -141,7 +145,7 @@ g1pos_exp = reshape(g1pos, num_voxels, nTau);
 g1all_exp = reshape(g1all, num_voxels, nTau);
 
 % TESTING
-sigma = [113, NaN, 151].*1e-6; % 1/e PSF values [m] for the L22-14v probe at 15.625 MHz and 17 angles from -10 to 10 deg (G:\My Drive\Data\PSF Simulations\L22-14v PSF sim - 17 angles from -10 to 10 deg)
+sigma = [113, 999999, 151].*1e-6; % 1/e PSF values [m] for the L22-14v probe at 15.625 MHz and 17 angles from -10 to 10 deg. The y component is set to some arbitrary positive number but it won't really be used. (G:\My Drive\Data\PSF Simulations\L22-14v PSF sim - 17 angles from -10 to 10 deg)
 
 % Create structs that store parameters (including initial guesses) for the vUS fitting
 
@@ -238,7 +242,8 @@ useDC = false;
 % fit_roi = {tp(1), tp(2), tp(3)}; % Define a spatial region to fit within
 % k = [2, 5, 10];
 % fit_roi = {tp(1) - k(1) : tp(1) + k(1), tp(2) - k(2) : tp(2) + k(2), tp(3) - k(3):tp(3) + k(3)}; % Define a spatial region to fit within
-fit_roi = {1:ps(1), 1:ps(2)}; % Full volume
+% fit_roi = {1:ps(1), 1:ps(2)}; % Full volume
+fit_roi = {2:ps(1), 1:ps(2)}; % Full volume
 
 % Fitting options
 options = optimoptions('lsqcurvefit', 'Display', 'off');
@@ -246,17 +251,17 @@ if useF
     if useDC
         % ****** NEED TO CHANGE THE BELOW TO ONLY FIT X AND Z ****** %
         lb = [0, 0, 0, 0, 0, 0];             % Lower bounds for parameters [SI units]
-        ub = [1, 50e-3, 50e-3, 50e-3, 1, 1]; % Upper bounds for parameters [SI units]
-        % ub = [1, 100e-3, 100e-3, 100e-3, 1, 1]; % Upper bounds for parameters [SI units]
+        ub = [1, 50e-3, 0, 50e-3, 1, 1]; % Upper bounds for parameters [SI units]
+        % ub = [1, 100e-3, 0, 100e-3, 1, 1]; % Upper bounds for parameters [SI units]
     else
         lb = [0, 0, 0, 0, 0];             % Lower bounds for parameters [SI units]
-        ub = [1, 50e-3, 50e-3, 50e-3, 1]; % Upper bounds for parameters [SI units]
-        % ub = [1, 100e-3, 100e-3, 100e-3, 1]; % Upper bounds for parameters [SI units]
+        ub = [1, 50e-3, 0, 50e-3, 1]; % Upper bounds for parameters [SI units]
+        % ub = [1, 100e-3, 0, 100e-3, 1]; % Upper bounds for parameters [SI units]
     end
 else
     lb = [0, 0, 0, 0];             % Lower bounds for parameters [SI units]
-    ub = [1, 50e-3, 50e-3, 50e-3]; % Upper bounds for parameters [SI units]
-    % ub = [1, 100e-3, 100e-3, 100e-3]; % Upper bounds for parameters [SI units]
+    ub = [1, 50e-3, 0, 50e-3]; % Upper bounds for parameters [SI units]
+    % ub = [1, 100e-3, 0, 100e-3]; % Upper bounds for parameters [SI units]
 end
                 
 % Create variables to store vUS fitting results
@@ -275,122 +280,120 @@ if useF
 end
 
 tic
-for xi = fit_roi{1}
-    for yi = fit_roi{2}
-        for zi = fit_roi{3}
-            ind = sub2ind(ps, xi, yi, zi);
+for zi = fit_roi{1}
+    for xi = fit_roi{2}
+        ind = sub2ind(ps, zi, xi);
 
-            % Only fit if the voxel meets some criterion (after screening). For testing, don't do this.
-            if 1
-            % if vf_all.F0(ind) > 0.2
+        % Only fit if the voxel meets some criterion (after screening). For testing, don't do this.
+        if 1
+        % if vf_all.F0(ind) > 0.2
 
-                % % Fitting the complex data all-in-one
-                % % x0_neg = [p_neg.F0, p_neg.p0, p_neg.v_xgp0, p_neg.v_ygp0, p_neg.v_zgp0]; % ICs: [F0, p0, v_xgp0, v_ygp0, v_zgp0]
-                % % x0_neg = [p_neg.p0(ind), p_neg.v_xgp0(ind), p_neg.v_ygp0(ind), p_neg.v_zgp0(ind)]; % ICs: [F0, p0, v_xgp0, v_ygp0, v_zgp0]
-                % x0_neg = [1, 10e-3, 10e-3, vf_neg.v_zgp0(ind)]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0]
-                % % lb = [0, 0, 0, 0];             % Lower bounds for parameters [SI units]
-                % % ub = [1, 50e-3, 50e-3, 50e-3]; % Upper bounds for parameters [SI units]
-                % f_temp = @(x, tau) g1vUS3D_vec(x, tau, sigma, vf_gen.k0, useF); % Use "anonymous function" to pass in the g1 vUS model function to the fitting
-                % ydata = squeeze(g1neg_exp(ind, :));
-                % x_neg = lsqcurvefit(f_temp, x0_neg, squeeze(tau(1:nTau)), ydata);
-                % % x_neg = lsqcurvefit(f_temp, x0_neg, squeeze(tau(1:nTau)), squeeze(g1neg_exp(ind, :)), lb, ub);
-                
-                % Get the data and initial conditions for this voxel
-                if useF
-                    ydata_neg = squeeze(g1neg_exp(ind, 2:end));
-                    ydata_pos = squeeze(g1pos_exp(ind, 2:end));
-                    ydata_all = squeeze(g1all_exp(ind, 2:end));
+            % % Fitting the complex data all-in-one
+            % % x0_neg = [p_neg.F0, p_neg.p0, p_neg.v_xgp0, p_neg.v_ygp0, p_neg.v_zgp0]; % ICs: [F0, p0, v_xgp0, v_ygp0, v_zgp0]
+            % % x0_neg = [p_neg.p0(ind), p_neg.v_xgp0(ind), p_neg.v_ygp0(ind), p_neg.v_zgp0(ind)]; % ICs: [F0, p0, v_xgp0, v_ygp0, v_zgp0]
+            % x0_neg = [1, 10e-3, 10e-3, vf_neg.v_zgp0(ind)]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0]
+            % % lb = [0, 0, 0, 0];             % Lower bounds for parameters [SI units]
+            % % ub = [1, 50e-3, 50e-3, 50e-3]; % Upper bounds for parameters [SI units]
+            % f_temp = @(x, tau) g1vUS3D_vec(x, tau, sigma, vf_gen.k0, useF); % Use "anonymous function" to pass in the g1 vUS model function to the fitting
+            % ydata = squeeze(g1neg_exp(ind, :));
+            % x_neg = lsqcurvefit(f_temp, x0_neg, squeeze(tau(1:nTau)), ydata);
+            % % x_neg = lsqcurvefit(f_temp, x0_neg, squeeze(tau(1:nTau)), squeeze(g1neg_exp(ind, :)), lb, ub);
+            
+            % Get the data and initial conditions for this voxel
+            if useF
+                ydata_neg = squeeze(g1neg_exp(ind, 2:end)); ydata_neg = ydata_neg(:);
+                ydata_pos = squeeze(g1pos_exp(ind, 2:end)); ydata_pos = ydata_pos(:);
+                ydata_all = squeeze(g1all_exp(ind, 2:end)); ydata_all = ydata_all(:);
 
-                    if useDC
-                        x0_neg = [1, 10e-3, 10e-3, vf_neg.v_zgp0(ind), vf_neg.F0(ind), 0]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0, F0, DC]
-                        x0_pos = [1, 10e-3, 10e-3, vf_pos.v_zgp0(ind), vf_pos.F0(ind), 0]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0, F0, DC]
-                        x0_all = [1, 10e-3, 10e-3, vf_all.v_zgp0(ind), vf_all.F0(ind), 0]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0, F0, DC]
-                    else
-                        x0_neg = [1, 10e-3, 10e-3, vf_neg.v_zgp0(ind), vf_neg.F0(ind)]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0, F0]
-                        x0_pos = [1, 10e-3, 10e-3, vf_pos.v_zgp0(ind), vf_pos.F0(ind)]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0, F0]
-                        x0_all = [1, 10e-3, 10e-3, vf_all.v_zgp0(ind), vf_all.F0(ind)]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0, F0]
-                    end
+                if useDC
+                    x0_neg = [1, 10e-3, 0, vf_neg.v_zgp0(ind), vf_neg.F0(ind), 0]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0, F0, DC]
+                    x0_pos = [1, 10e-3, 0, vf_pos.v_zgp0(ind), vf_pos.F0(ind), 0]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0, F0, DC]
+                    x0_all = [1, 10e-3, 0, vf_all.v_zgp0(ind), vf_all.F0(ind), 0]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0, F0, DC]
                 else
-                    ydata_neg = squeeze(g1neg_exp(ind, :));
-                    x0_neg = [1, 10e-3, 10e-3, vf_neg.v_zgp0(ind)]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0]
-
-                    ydata_pos = squeeze(g1pos_exp(ind, :));
-                    x0_pos = [1, 10e-3, 10e-3, vf_pos.v_zgp0(ind)]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0]
-
-                    ydata_all = squeeze(g1all_exp(ind, :));
-                    x0_all = [1, 10e-3, 10e-3, vf_all.v_zgp0(ind)]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0]
+                    x0_neg = [1, 10e-3, 0, vf_neg.v_zgp0(ind), vf_neg.F0(ind)]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0, F0]
+                    x0_pos = [1, 10e-3, 0, vf_pos.v_zgp0(ind), vf_pos.F0(ind)]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0, F0]
+                    x0_all = [1, 10e-3, 0, vf_all.v_zgp0(ind), vf_all.F0(ind)]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0, F0]
                 end
+            else
+                ydata_neg = squeeze(g1neg_exp(ind, :)); ydata_neg = ydata_neg(:); % make sure it's a column vector
+                x0_neg = [1, 10e-3, 0, vf_neg.v_zgp0(ind)]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0]
 
-                % % Splitting the real and complex components
-                % ydata_neg = ydata_neg(:);
-                % ydata_neg_split = [real(ydata_neg), imag(ydata_neg)];
-                % 
-                % ydata_all = ydata_all(:);
-                % ydata_all_split = [real(ydata_all), imag(ydata_all)];
+                ydata_pos = squeeze(g1pos_exp(ind, :));
+                x0_pos = [1, 10e-3, 0, vf_pos.v_zgp0(ind)]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0]
 
-                % % Magnitude only
-                % ydata_neg = abs(ydata_neg(:));
-                % ydata_neg_split = [real(ydata_neg), zeros(size(ydata_neg))];
-                % 
-                % ydata_all = abs(ydata_all(:));
-                % ydata_all_split = [real(ydata_all), zeros(size(ydata_all))];
-
-                % Perform the fitting
-                % f_temp = @(x, tau) g1vUS3D_vec_split(x, tau, sigma, vf_gen.k0, useF); % Use "anonymous function" to pass in the g1 vUS model function to the fitting
-                % % x_neg = lsqcurvefit(f_temp, x0_neg, squeeze(tau(1:nTau)), ydata_split);
-                % % x_all = lsqcurvefit(f_temp, x0_all, squeeze(tau(1:nTau)), ydata_all_split, lb, ub, options);
-                % if useF
-                %     x_neg = lsqcurvefit(f_temp, x0_neg, squeeze(tau(2:nTau)), ydata_neg_split, lb, ub, options);
-                %     F_neg(xi, yi, zi) = x_neg(5);
-                % 
-                %     x_all = lsqcurvefit(f_temp, x0_all, squeeze(tau(2:nTau)), ydata_all_split, lb, ub, options);
-                %     F_all(xi, yi, zi) = x_all(5);
-                % else
-                %     x_neg = lsqcurvefit(f_temp, x0_neg, squeeze(tau(1:nTau)), ydata_neg_split, lb, ub, options);
-                % 
-                %     x_all = lsqcurvefit(f_temp, x0_all, squeeze(tau(1:nTau)), ydata_all_split, lb, ub, options);
-                % end
-                % 
-                % % Store more results
-                % vUS_neg(xi, yi, zi, :) = x_neg(2:4);
-                % p_neg(xi, yi, zi) = x_neg(1);
-                % 
-                % vUS_all(xi, yi, zi, :) = x_all(2:4);
-                % p_all(xi, yi, zi) = x_all(1);
-
-
-                % ======== Fit only |g1| ========
-                f_temp = @(x, tau) g1vUS3D_mag_vec(x, tau, sigma, vf_gen.k0, useF, useDC); % Use "anonymous function" to pass in the g1 vUS model function to the fitting
-                if useF
-                    x_neg = lsqcurvefit(f_temp, x0_neg, squeeze(tau(2:nTau)), abs(ydata_neg), lb, ub, options);
-                    F_neg(xi, yi, zi) = x_neg(5);
-
-                    x_pos = lsqcurvefit(f_temp, x0_neg, squeeze(tau(2:nTau)), abs(ydata_pos), lb, ub, options);
-                    F_pos(xi, yi, zi) = x_pos(5);
-
-                    x_all = lsqcurvefit(f_temp, x0_all, squeeze(tau(2:nTau)), abs(ydata_all), lb, ub, options);
-                    F_all(xi, yi, zi) = x_all(5);
-                else
-                    x_neg = lsqcurvefit(f_temp, x0_neg, squeeze(tau(1:nTau)), abs(ydata_neg), lb, ub, options);
-
-                    x_pos = lsqcurvefit(f_temp, x0_pos, squeeze(tau(1:nTau)), abs(ydata_pos), lb, ub, options);
-
-                    x_all = lsqcurvefit(f_temp, x0_all, squeeze(tau(1:nTau)), abs(ydata_all), lb, ub, options);
-                end
-
-                % Store more results
-                vUS_neg(xi, yi, zi, :) = x_neg(2:4);
-                p_neg(xi, yi, zi) = x_neg(1);
-
-                vUS_pos(xi, yi, zi, :) = x_pos(2:4);
-                p_pos(xi, yi, zi) = x_pos(1);
-
-                vUS_all(xi, yi, zi, :) = x_all(2:4);
-                p_all(xi, yi, zi) = x_all(1);
-                
+                ydata_all = squeeze(g1all_exp(ind, :));
+                x0_all = [1, 10e-3, 0, vf_all.v_zgp0(ind)]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0]
             end
 
+            % % Splitting the real and complex components
+            % ydata_neg = ydata_neg(:);
+            % ydata_neg_split = [real(ydata_neg), imag(ydata_neg)];
+            % 
+            % ydata_all = ydata_all(:);
+            % ydata_all_split = [real(ydata_all), imag(ydata_all)];
+
+            % % Magnitude only
+            % ydata_neg = abs(ydata_neg(:));
+            % ydata_neg_split = [real(ydata_neg), zeros(size(ydata_neg))];
+            % 
+            % ydata_all = abs(ydata_all(:));
+            % ydata_all_split = [real(ydata_all), zeros(size(ydata_all))];
+
+            % Perform the fitting
+            % f_temp = @(x, tau) g1vUS3D_vec_split(x, tau, sigma, vf_gen.k0, useF); % Use "anonymous function" to pass in the g1 vUS model function to the fitting
+            % % x_neg = lsqcurvefit(f_temp, x0_neg, squeeze(tau(1:nTau)), ydata_split);
+            % % x_all = lsqcurvefit(f_temp, x0_all, squeeze(tau(1:nTau)), ydata_all_split, lb, ub, options);
+            % if useF
+            %     x_neg = lsqcurvefit(f_temp, x0_neg, squeeze(tau(2:nTau)), ydata_neg_split, lb, ub, options);
+            %     F_neg(xi, yi, zi) = x_neg(5);
+            % 
+            %     x_all = lsqcurvefit(f_temp, x0_all, squeeze(tau(2:nTau)), ydata_all_split, lb, ub, options);
+            %     F_all(xi, yi, zi) = x_all(5);
+            % else
+            %     x_neg = lsqcurvefit(f_temp, x0_neg, squeeze(tau(1:nTau)), ydata_neg_split, lb, ub, options);
+            % 
+            %     x_all = lsqcurvefit(f_temp, x0_all, squeeze(tau(1:nTau)), ydata_all_split, lb, ub, options);
+            % end
+            % 
+            % % Store more results
+            % vUS_neg(xi, yi, zi, :) = x_neg(2:4);
+            % p_neg(xi, yi, zi) = x_neg(1);
+            % 
+            % vUS_all(xi, yi, zi, :) = x_all(2:4);
+            % p_all(xi, yi, zi) = x_all(1);
+
+
+            % ======== Fit only |g1| ========
+            f_temp = @(x, tau) g1vUS3D_mag_vec(x, tau, sigma, vf_gen.k0, useF, useDC); % Use "anonymous function" to pass in the g1 vUS model function to the fitting
+            if useF
+                x_neg = lsqcurvefit(f_temp, x0_neg, squeeze(tau(2:nTau)), abs(ydata_neg), lb, ub, options);
+                F_neg(zi, xi) = x_neg(5);
+
+                x_pos = lsqcurvefit(f_temp, x0_neg, squeeze(tau(2:nTau)), abs(ydata_pos), lb, ub, options);
+                F_pos(zi, xi) = x_pos(5);
+
+                x_all = lsqcurvefit(f_temp, x0_all, squeeze(tau(2:nTau)), abs(ydata_all), lb, ub, options);
+                F_all(zi, xi) = x_all(5);
+            else
+                x_neg = lsqcurvefit(f_temp, x0_neg, squeeze(tau(1:nTau)), abs(ydata_neg), lb, ub, options);
+
+                x_pos = lsqcurvefit(f_temp, x0_pos, squeeze(tau(1:nTau)), abs(ydata_pos), lb, ub, options);
+
+                x_all = lsqcurvefit(f_temp, x0_all, squeeze(tau(1:nTau)), abs(ydata_all), lb, ub, options);
+            end
+
+            % Store more results
+            vUS_neg(zi, xi, :) = x_neg(2:4);
+            p_neg(zi, xi) = x_neg(1);
+
+            vUS_pos(zi, xi, :) = x_pos(2:4);
+            p_pos(zi, xi) = x_pos(1);
+
+            vUS_all(zi, xi, :) = x_all(2:4);
+            p_all(zi, xi) = x_all(1);
+            
         end
+
     end
 end
 toc
