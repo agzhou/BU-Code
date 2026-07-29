@@ -242,8 +242,8 @@ useDC = false;
 % fit_roi = {tp(1), tp(2), tp(3)}; % Define a spatial region to fit within
 % k = [2, 5, 10];
 % fit_roi = {tp(1) - k(1) : tp(1) + k(1), tp(2) - k(2) : tp(2) + k(2), tp(3) - k(3):tp(3) + k(3)}; % Define a spatial region to fit within
-% fit_roi = {1:ps(1), 1:ps(2)}; % Full volume
-fit_roi = {2:ps(1), 1:ps(2)}; % Full volume
+fit_roi = {1:ps(1), 1:ps(2)}; % Full volume
+% fit_roi = {2:ps(1), 1:ps(2)}; % Full volume
 
 % Fitting options
 options = optimoptions('lsqcurvefit', 'Display', 'off');
