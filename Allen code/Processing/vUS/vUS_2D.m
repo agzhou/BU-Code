@@ -95,7 +95,7 @@ figure; imagesc(squeeze(max(Rpos, [], 1))'); colormap gray
 % figure; imagesc(squeeze(max(Rpos_mf, [], 1))'); colormap gray
 
 %% ========= 3. Calculate g1 ========= %%
-% startTau = 1; % Index for the first tau point (tau1) for subsequent analysis. Changed this from 2 to 1 on 7/8/26 because I changed the g1T.m function to output g1 starting from tau = tau1 instead of tau = 0.
+startTau = 1; % Index for the first tau point (tau1) for subsequent analysis. Changed this from 2 to 1 on 7/8/26 because I changed the g1T.m function to output g1 starting from tau = tau1 instead of tau = 0.
 % startTau = 2; % Index for the first tau point (tau1) for subsequent analysis.
 
 nTau = ceil(20e-3 *P.frameRate); % # of time lags to consider; empirically set by assuming all g1 for voxels containing actual flow decay within 10 ms
@@ -134,8 +134,8 @@ figure; plot(squeeze(abs(g1pos(tp(1), tp(2), tp(3), :))), '-o'); title('Positive
 
 % CHANGE THIS LATER, WHEN I ACTUALLY IMPLEMENT VOXEL SCREENING!!!!!!!!!!!!!!!!!!
 % num_voxels = size(g1neg, 1)*size(g1neg, 2)*size(g1neg, 3);
-vs = size(IQf); vs = vs(1:end-1); % Volume size [voxels]
-num_voxels = size(IQf, 1)*size(IQf, 2)*size(IQf, 3);
+ps = size(IQf); ps = ps(1:end-1); % Plane size [voxels]
+num_voxels = size(IQf, 1)*size(IQf, 2);
 g1neg_exp = reshape(g1neg, num_voxels, nTau);
 g1pos_exp = reshape(g1pos, num_voxels, nTau);
 g1all_exp = reshape(g1all, num_voxels, nTau);
@@ -167,21 +167,21 @@ vf_gen.meshgrid = meshgrid(vf_gen.v_xgp_grid, vf_gen.v_ygp_grid, vf_gen.p_grid);
 
 % Negative frequency flow
 vf_neg = struct();
-vf_neg.F0 = reshape( abs(squeeze(g1neg(:, :, :, startTau))), num_voxels, 1); % Initial guess for F
+vf_neg.F0 = reshape( abs(squeeze(g1neg(:, :, startTau))), num_voxels, 1); % Initial guess for F
 vf_neg.tau_V = findFirstLocalMin(g1neg_exp, nTau, 'smooth') ./ P.frameRate; % Time lag [s] at which g1 reaches its first minimum, per voxel. Here, I'm reshaping g1 to pass in a matrix where voxels are stacked.
 vf_neg.v_zgp0 = squeeze(P.wl./(4.*vf_neg.tau_V)); % Initial guess for v_zgp (Eq. 16)
 % vf_neg.mesh = vf_gen.meshgrid; % See comment for p_all.meshgrid
 
 % Positive frequency flow
 vf_pos = struct();
-vf_pos.F0 = reshape( abs(squeeze(g1pos(:, :, :, startTau))), num_voxels, 1); % Initial guess for F
+vf_pos.F0 = reshape( abs(squeeze(g1pos(:, :, startTau))), num_voxels, 1); % Initial guess for F
 vf_pos.tau_V = findFirstLocalMin(g1pos_exp, nTau, 'smooth') ./ P.frameRate; % Time lag [s] at which g1 reaches its first minimum, per voxel. Here, I'm reshaping g1 to pass in a matrix where voxels are stacked.
 vf_pos.v_zgp0 = squeeze(P.wl./(4.*vf_pos.tau_V)); % Initial guess for v_zgp (Eq. 16)
 % vf_pos.mesh = vf_gen.meshgrid; % See comment for p_all.meshgrid
 
 % All frequencies flow
 vf_all = struct();
-vf_all.F0 = reshape( abs(squeeze(g1all(:, :, :, startTau))), num_voxels, 1); % Initial guess for F
+vf_all.F0 = reshape( abs(squeeze(g1all(:, :, startTau))), num_voxels, 1); % Initial guess for F
 vf_all.tau_V = findFirstLocalMin(g1all_exp, nTau, 'smooth') ./ P.frameRate; % Time lag [s] at which g1 reaches its first minimum, per voxel. Here, I'm reshaping g1 to pass in a matrix where voxels are stacked.
 vf_all.v_zgp0 = squeeze(P.wl./(4.*vf_all.tau_V)); % Initial guess for v_zgp (Eq. 16)
 % vf_all.mesh = vf_gen.meshgrid; % See comment for p_all.meshgrid
@@ -238,12 +238,13 @@ useDC = false;
 % fit_roi = {tp(1), tp(2), tp(3)}; % Define a spatial region to fit within
 % k = [2, 5, 10];
 % fit_roi = {tp(1) - k(1) : tp(1) + k(1), tp(2) - k(2) : tp(2) + k(2), tp(3) - k(3):tp(3) + k(3)}; % Define a spatial region to fit within
-fit_roi = {1:vs(1), 1:vs(2), 10:vs(3)}; % Full volume
+fit_roi = {1:ps(1), 1:ps(2)}; % Full volume
 
 % Fitting options
 options = optimoptions('lsqcurvefit', 'Display', 'off');
 if useF
     if useDC
+        % ****** NEED TO CHANGE THE BELOW TO ONLY FIT X AND Z ****** %
         lb = [0, 0, 0, 0, 0, 0];             % Lower bounds for parameters [SI units]
         ub = [1, 50e-3, 50e-3, 50e-3, 1, 1]; % Upper bounds for parameters [SI units]
         % ub = [1, 100e-3, 100e-3, 100e-3, 1, 1]; % Upper bounds for parameters [SI units]
@@ -259,25 +260,25 @@ else
 end
                 
 % Create variables to store vUS fitting results
-vUS_neg = zeros([vs, 3]);
-vUS_pos = zeros([vs, 3]);
-vUS_all = zeros([vs, 3]);
+vUS_neg = zeros([ps, 3]);
+vUS_pos = zeros([ps, 3]);
+vUS_all = zeros([ps, 3]);
 
-p_neg = zeros(vs);
-p_pos = zeros(vs);
-p_all = zeros(vs);
+p_neg = zeros(ps);
+p_pos = zeros(ps);
+p_all = zeros(ps);
 
 if useF
-    F_neg = zeros(vs);
-    F_pos = zeros(vs);
-    F_all = zeros(vs);
+    F_neg = zeros(ps);
+    F_pos = zeros(ps);
+    F_all = zeros(ps);
 end
 
 tic
 for xi = fit_roi{1}
     for yi = fit_roi{2}
         for zi = fit_roi{3}
-            ind = sub2ind(vs, xi, yi, zi);
+            ind = sub2ind(ps, xi, yi, zi);
 
             % Only fit if the voxel meets some criterion (after screening). For testing, don't do this.
             if 1
