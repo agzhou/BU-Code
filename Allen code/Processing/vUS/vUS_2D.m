@@ -145,7 +145,8 @@ g1pos_exp = reshape(g1pos, num_voxels, nTau);
 g1all_exp = reshape(g1all, num_voxels, nTau);
 
 % TESTING
-sigma = [113, 999999, 151].*1e-6; % 1/e PSF values [m] for the L22-14v probe at 15.625 MHz and 17 angles from -10 to 10 deg. The y component is set to some arbitrary positive number but it won't really be used. (G:\My Drive\Data\PSF Simulations\L22-14v PSF sim - 17 angles from -10 to 10 deg)
+% sigma = [113, 999999, 151].*1e-6; % 1/e PSF values [m] for the L22-14v probe at 15.625 MHz and 17 angles from -10 to 10 deg. The y component is set to some arbitrary positive number but it won't really be used. (G:\My Drive\Data\PSF Simulations\L22-14v PSF sim - 17 angles from -10 to 10 deg)
+sigma = [113, 151].*1e-6; % 1/e PSF values (x, z) [m] for the L22-14v probe at 15.625 MHz and 17 angles from -10 to 10 deg. The y component is set to some arbitrary positive number but it won't really be used. (G:\My Drive\Data\PSF Simulations\L22-14v PSF sim - 17 angles from -10 to 10 deg)
 
 % Create structs that store parameters (including initial guesses) for the vUS fitting
 
@@ -229,6 +230,8 @@ for v_xgp = vf_gen.v_xgp_grid % Go through the mesh to get initial guesses (per 
 end
 
 %% Fit voxels individually
+tic
+
 % useF = false; % Use the F parameter or not
 useF = true;
 
@@ -242,32 +245,35 @@ useDC = false;
 % fit_roi = {tp(1), tp(2), tp(3)}; % Define a spatial region to fit within
 % k = [2, 5, 10];
 % fit_roi = {tp(1) - k(1) : tp(1) + k(1), tp(2) - k(2) : tp(2) + k(2), tp(3) - k(3):tp(3) + k(3)}; % Define a spatial region to fit within
+% fit_roi = {50:70, 130:170};
 fit_roi = {1:ps(1), 1:ps(2)}; % Full volume
-% fit_roi = {2:ps(1), 1:ps(2)}; % Full volume
 
 % Fitting options
 options = optimoptions('lsqcurvefit', 'Display', 'off');
 if useF
     if useDC
         % ****** NEED TO CHANGE THE BELOW TO ONLY FIT X AND Z ****** %
-        lb = [0, 0, 0, 0, 0, 0];             % Lower bounds for parameters [SI units]
-        ub = [1, 50e-3, 0, 50e-3, 1, 1]; % Upper bounds for parameters [SI units]
-        % ub = [1, 100e-3, 0, 100e-3, 1, 1]; % Upper bounds for parameters [SI units]
-    else
+        % [vx, vz, p, F, DC offset]
         lb = [0, 0, 0, 0, 0];             % Lower bounds for parameters [SI units]
-        ub = [1, 50e-3, 0, 50e-3, 1]; % Upper bounds for parameters [SI units]
-        % ub = [1, 100e-3, 0, 100e-3, 1]; % Upper bounds for parameters [SI units]
+        ub = [50e-3, 50e-3, 1, 1, 1]; % Upper bounds for parameters [SI units]
+        % ub = [100e-3, 100e-3, 1, 1, 1]; % Upper bounds for parameters [SI units]
+    else
+        % [vx, vz, p, F]
+        lb = [0, 0, 0, 0];             % Lower bounds for parameters [SI units]
+        ub = [50e-3, 50e-3, 1, 1]; % Upper bounds for parameters [SI units]
+        % ub = [100e-3, 100e-3, 1, 1]; % Upper bounds for parameters [SI units]
     end
 else
-    lb = [0, 0, 0, 0];             % Lower bounds for parameters [SI units]
-    ub = [1, 50e-3, 0, 50e-3]; % Upper bounds for parameters [SI units]
-    % ub = [1, 100e-3, 0, 100e-3]; % Upper bounds for parameters [SI units]
+    % [vx, vz, p]
+    lb = [0, 0, 0];             % Lower bounds for parameters [SI units]
+    ub = [50e-3, 50e-3, 1]; % Upper bounds for parameters [SI units]
+    % ub = [100e-3, 100e-3, 1]; % Upper bounds for parameters [SI units]
 end
                 
 % Create variables to store vUS fitting results
-vUS_neg = zeros([ps, 3]);
-vUS_pos = zeros([ps, 3]);
-vUS_all = zeros([ps, 3]);
+vUS_neg = zeros([ps, 2]);
+vUS_pos = zeros([ps, 2]);
+vUS_all = zeros([ps, 2]);
 
 p_neg = zeros(ps);
 p_pos = zeros(ps);
@@ -306,23 +312,23 @@ for zi = fit_roi{1}
                 ydata_all = squeeze(g1all_exp(ind, 2:end)); ydata_all = ydata_all(:);
 
                 if useDC
-                    x0_neg = [1, 10e-3, 0, vf_neg.v_zgp0(ind), vf_neg.F0(ind), 0]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0, F0, DC]
-                    x0_pos = [1, 10e-3, 0, vf_pos.v_zgp0(ind), vf_pos.F0(ind), 0]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0, F0, DC]
-                    x0_all = [1, 10e-3, 0, vf_all.v_zgp0(ind), vf_all.F0(ind), 0]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0, F0, DC]
+                    x0_neg = [10e-3, vf_neg.v_zgp0(ind), 1, vf_neg.F0(ind), 0]; % ICs: [v_xgp0, v_zgp0, p0, F0, DC]
+                    x0_pos = [10e-3, vf_pos.v_zgp0(ind), 1, vf_pos.F0(ind), 0]; % ICs: [v_xgp0, v_zgp0, p0, F0, DC]
+                    x0_all = [10e-3, vf_all.v_zgp0(ind), 1, vf_all.F0(ind), 0]; % ICs: [v_xgp0, v_zgp0, p0, F0, DC]
                 else
-                    x0_neg = [1, 10e-3, 0, vf_neg.v_zgp0(ind), vf_neg.F0(ind)]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0, F0]
-                    x0_pos = [1, 10e-3, 0, vf_pos.v_zgp0(ind), vf_pos.F0(ind)]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0, F0]
-                    x0_all = [1, 10e-3, 0, vf_all.v_zgp0(ind), vf_all.F0(ind)]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0, F0]
+                    x0_neg = [10e-3, vf_neg.v_zgp0(ind), 1, vf_neg.F0(ind)]; % ICs: [v_xgp0, v_zgp0, p0, F0]
+                    x0_pos = [10e-3, vf_pos.v_zgp0(ind), 1, vf_pos.F0(ind)]; % ICs: [v_xgp0, v_zgp0, p0, F0]
+                    x0_all = [10e-3, vf_all.v_zgp0(ind), 1, vf_all.F0(ind)]; % ICs: [v_xgp0, v_zgp0, p0, F0]
                 end
             else
                 ydata_neg = squeeze(g1neg_exp(ind, :)); ydata_neg = ydata_neg(:); % make sure it's a column vector
-                x0_neg = [1, 10e-3, 0, vf_neg.v_zgp0(ind)]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0]
+                x0_neg = [10e-3, vf_neg.v_zgp0(ind), 1]; % ICs: [v_xgp0, v_zgp0, p0]
 
                 ydata_pos = squeeze(g1pos_exp(ind, :));
-                x0_pos = [1, 10e-3, 0, vf_pos.v_zgp0(ind)]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0]
+                x0_pos = [10e-3, vf_pos.v_zgp0(ind), 1]; % ICs: [v_xgp0, v_zgp0, p0]
 
                 ydata_all = squeeze(g1all_exp(ind, :));
-                x0_all = [1, 10e-3, 0, vf_all.v_zgp0(ind)]; % ICs: [p0, v_xgp0, v_ygp0, v_zgp0]
+                x0_all = [10e-3, vf_all.v_zgp0(ind), 1]; % ICs: [v_xgp0, v_zgp0, p0]
             end
 
             % % Splitting the real and complex components
@@ -364,16 +370,16 @@ for zi = fit_roi{1}
 
 
             % ======== Fit only |g1| ========
-            f_temp = @(x, tau) g1vUS3D_mag_vec(x, tau, sigma, vf_gen.k0, useF, useDC); % Use "anonymous function" to pass in the g1 vUS model function to the fitting
+            f_temp = @(x, tau) g1vUS2D_mag_vec(x, tau, sigma, vf_gen.k0, useF, useDC); % Use "anonymous function" to pass in the g1 vUS model function to the fitting
             if useF
                 x_neg = lsqcurvefit(f_temp, x0_neg, squeeze(tau(2:nTau)), abs(ydata_neg), lb, ub, options);
-                F_neg(zi, xi) = x_neg(5);
+                F_neg(zi, xi) = x_neg(4);
 
                 x_pos = lsqcurvefit(f_temp, x0_neg, squeeze(tau(2:nTau)), abs(ydata_pos), lb, ub, options);
-                F_pos(zi, xi) = x_pos(5);
+                F_pos(zi, xi) = x_pos(4);
 
                 x_all = lsqcurvefit(f_temp, x0_all, squeeze(tau(2:nTau)), abs(ydata_all), lb, ub, options);
-                F_all(zi, xi) = x_all(5);
+                F_all(zi, xi) = x_all(4);
             else
                 x_neg = lsqcurvefit(f_temp, x0_neg, squeeze(tau(1:nTau)), abs(ydata_neg), lb, ub, options);
 
@@ -383,14 +389,14 @@ for zi = fit_roi{1}
             end
 
             % Store more results
-            vUS_neg(zi, xi, :) = x_neg(2:4);
-            p_neg(zi, xi) = x_neg(1);
+            vUS_neg(zi, xi, :) = x_neg(1:2);
+            p_neg(zi, xi) = x_neg(3);
 
-            vUS_pos(zi, xi, :) = x_pos(2:4);
-            p_pos(zi, xi) = x_pos(1);
+            vUS_pos(zi, xi, :) = x_pos(1:2);
+            p_pos(zi, xi) = x_pos(3);
 
-            vUS_all(zi, xi, :) = x_all(2:4);
-            p_all(zi, xi) = x_all(1);
+            vUS_all(zi, xi, :) = x_all(1:2);
+            p_all(zi, xi) = x_all(3);
             
         end
 
@@ -403,36 +409,34 @@ toc
 % figure; plot(abs(ydata_neg), '-x', 'LineWidth', 2); hold on; plot(abs(testg1), ':', 'LineWidth', 1); hold off
 % testspeed = sqrt(sum(x_neg(2:4).^2))
 
-testg1 = g1vUS3D_vec(x_all, tau(2:end), sigma, vf_gen.k0, useF, useDC);
+testg1 = g1vUS2D_vec(x_all, tau(2:end), sigma, vf_gen.k0, useF, useDC);
 figure; plot(ydata_all); hold on; plot(testg1); hold off
 figure; plot(abs(ydata_all)); hold on; plot(abs(testg1)); hold off
-testspeed = sqrt(sum(x_all(2:4).^2))
+testspeed = sqrt(sum(x_all(1:2).^2))
 
-testg1 = g1vUS3D_vec(x_neg, tau(2:end), sigma, vf_gen.k0, useF, useDC);
+testg1 = g1vUS2D_vec(x_neg, tau(2:end), sigma, vf_gen.k0, useF, useDC);
 figure; plot(ydata_neg); hold on; plot(testg1); hold off
 figure; plot(abs(ydata_neg)); hold on; plot(abs(testg1)); hold off
-testspeed = sqrt(sum(x_neg(2:4).^2))
+testspeed = sqrt(sum(x_neg(1:2).^2))
 
-testg1 = g1vUS3D_vec(x_pos, tau(2:end), sigma, vf_gen.k0, useF, useDC);
+testg1 = g1vUS2D_vec(x_pos, tau(2:end), sigma, vf_gen.k0, useF, useDC);
 figure; plot(ydata_pos); hold on; plot(testg1); hold off
 figure; plot(abs(ydata_pos)); hold on; plot(abs(testg1)); hold off
-testspeed = sqrt(sum(x_pos(2:4).^2))
+testspeed = sqrt(sum(x_pos(1:2).^2))
 
 % testg1 = g1vUS3D_vec(x_all, tau(1:end), sigma, vf_gen.k0, useF);
 % figure; plot(ydata_all); hold on; plot(testg1); hold off
 % figure; plot(abs(ydata_all)); hold on; plot(abs(testg1)); hold off
 % testspeed = sqrt(sum(x_all(2:4).^2))
 
+toc
+
 %% Testing: visualize vUS results
-volumeViewer(sqrt(sum(vUS_all(fit_roi{1}, fit_roi{2}, fit_roi{3}).^2, 4)) .^ 1) % vUS_all speed
-volumeViewer(sqrt(sum(vUS_neg(fit_roi{1}, fit_roi{2}, fit_roi{3}).^2, 4)) .^ 1) % vUS_neg speed
-volumeViewer(sqrt(sum(vUS_pos(fit_roi{1}, fit_roi{2}, fit_roi{3}).^2, 4)) .^ 1) % vUS_pos speed
-volumeViewer(PDI(fit_roi{1}, fit_roi{2}, fit_roi{3}))
 
-
-figure; imagesc(squeeze(max(sqrt(sum(vUS_all(fit_roi{1}, fit_roi{2}, fit_roi{3}, :).^2, 4)), [], 1))')
-figure; imagesc(squeeze(max(sqrt(sum(vUS_neg(fit_roi{1}, fit_roi{2}, fit_roi{3}, :).^2, 4)), [], 1))')
-figure; imagesc(squeeze(max(sqrt(sum(vUS_pos(fit_roi{1}, fit_roi{2}, fit_roi{3}, :).^2, 4)), [], 1))')
+figure; imagesc(squeeze(sqrt(sum(vUS_all(fit_roi{1}, fit_roi{2}, :).^2, 3)))); title('All flows')
+figure; imagesc(squeeze(sqrt(sum(vUS_neg(fit_roi{1}, fit_roi{2}, :).^2, 3)))); title('Down flow')
+figure; imagesc(squeeze(sqrt(sum(vUS_pos(fit_roi{1}, fit_roi{2}, :).^2, 3)))); title('Up flow')
 % figure; imagesc(squeeze(max(PDI, [], 1))')
-figure; imagesc(squeeze(max(PDI(fit_roi{1}, fit_roi{2}, fit_roi{3}), [], 1))')
+PDI = squeeze(mean(abs(IQf_HPF).^2, 3));
+figure; imagesc(squeeze(PDI(fit_roi{1}, fit_roi{2}))); title('PDI')
 
