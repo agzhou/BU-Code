@@ -397,7 +397,18 @@ for zi = fit_roi{1}
 
             vUS_all(zi, xi, :) = x_all(1:2);
             p_all(zi, xi) = x_all(3);
-            
+        else % If we don't fit that pixel due to noisiness, set the velocities and other parameters to 0
+            vUS_neg(zi, xi, :) = [0, 0];
+            p_neg(zi, xi) = 0;
+            F_neg(zi, xi) = 0;
+
+            vUS_pos(zi, xi, :) = [0, 0];
+            p_pos(zi, xi) = 0;
+            F_pos(zi, xi) = 0;
+
+            vUS_all(zi, xi, :) = [0, 0];
+            p_all(zi, xi) = 0;
+            F_all(zi, xi) = 0;
         end
 
     end
@@ -432,11 +443,84 @@ testspeed = sqrt(sum(x_pos(1:2).^2))
 toc
 
 %% Testing: visualize vUS results
-
-figure; imagesc(squeeze(sqrt(sum(vUS_all(fit_roi{1}, fit_roi{2}, :).^2, 3)))); title('All flows')
-figure; imagesc(squeeze(sqrt(sum(vUS_neg(fit_roi{1}, fit_roi{2}, :).^2, 3)))); title('Down flow')
-figure; imagesc(squeeze(sqrt(sum(vUS_pos(fit_roi{1}, fit_roi{2}, :).^2, 3)))); title('Up flow')
+vUS_speed_all = squeeze(sqrt(sum(vUS_all(fit_roi{1}, fit_roi{2}, :).^2, 3)));
+vUS_speed_neg = squeeze(sqrt(sum(vUS_neg(fit_roi{1}, fit_roi{2}, :).^2, 3)));
+vUS_speed_pos = squeeze(sqrt(sum(vUS_pos(fit_roi{1}, fit_roi{2}, :).^2, 3)));
+figure; imagesc(vUS_speed_all); title('All flows'); colorbar
+figure; imagesc(vUS_speed_neg); title('Down flow'); colorbar
+figure; imagesc(vUS_speed_pos); title('Up flow'); colorbar
 % figure; imagesc(squeeze(max(PDI, [], 1))')
 PDI = squeeze(mean(abs(IQf_HPF).^2, 3));
-figure; imagesc(squeeze(PDI(fit_roi{1}, fit_roi{2}))); title('PDI')
+figure; imagesc(squeeze(PDI(fit_roi{1}, fit_roi{2})) .^ 0.5); title('PDI')
 
+%% Plot the vUS fit at a test point
+% testpt = [43, 11];
+testpt = [60, 133];
+plotg1pt(testpt(1), testpt(2), useF, useDC, tau, sigma, vf_gen.k0, g1neg, vUS_neg, p_neg, F_neg)
+plotg1pt(testpt(1), testpt(2), useF, useDC, tau, sigma, vf_gen.k0, g1pos, vUS_pos, p_pos, F_pos)
+plotg1pt(testpt(1), testpt(2), useF, useDC, tau, sigma, vf_gen.k0, g1all, vUS_all, p_all, F_all)
+findfigs
+%% Overlay up and down flows
+
+% Load Jianbo's colormaps
+[VzCmap, VzCmapDn, VzCmapUp, pdiCmapUp, PhtmCmap] = Colormaps_fUS;
+vUSMapFig = figure;
+
+% Plot with two linked axes (one for up Z, other for down Z)
+% % hold on
+% vCrange = [-maxSpeedExpectedMMPerS, maxSpeedExpectedMMPerS];
+figure(vUSMapFig)
+h1 = axes;
+imagesc(h1, vUS_speed_pos)
+% alpha(h1, double(abs(zvUpMap) > 1))
+% alpha(h1, 1)
+alpha(h1, vUS_speed_pos ./ max(vUS_speed_pos, [], 'all'));
+colormap(vUSMapFig, flipud(VzCmapUp))
+% caxis(vCrange);
+axis tight
+colorbar
+hold on
+
+% figure
+h2 = axes;
+imagesc(h2, vUS_speed_neg)
+% alpha(h2, double(abs(vUS_speed_neg) > 1))
+% alpha(h2, 0.5)
+alpha(h2, vUS_speed_neg ./ max(vUS_speed_neg, [], 'all'));
+colormap(vUSMapFig, VzCmapDn)
+% caxis(vCrange);
+axis tight
+cb = colorbar;
+axis off
+linkaxes([h1, h2]);
+% ylabel(cb, 'Speed (m/s)') % label colorbar
+
+% clim([])
+findfigs
+
+%% Helper functions
+
+% Plot the vUS fit at one point (z, x) against the experimental data. Do
+% up, down, all flow directions separately
+function plotg1pt(z, x, useF, useDC, tau, sigma, k0, g1exp, vUS, p, F)
+    X = paramsToX(z, x, useF, useDC, vUS, p, F);
+
+    testg1 = g1vUS2D_vec(X, tau(2:end), sigma, k0, useF, useDC);
+    % figure; plot(squeeze(g1exp(z, x, :))); hold on; plot(testg1); hold off
+    figure; plot(tau, squeeze(abs(g1exp(z, x, :))), '-x', 'LineWidth', 2); hold on; plot(tau(2:end), abs(testg1), '-o', 'LineWidth', 2); hold off; ylabel('|g1|'); xlabel('Time lag [s]'); legend('Data', 'Fit')
+    % testspeed = sqrt(sum(X(1:2).^2))
+    
+end
+
+% Convert fitted params into a vector X
+function X = paramsToX(z, x, useF, useDC, vUS, p, F)
+    if useF
+        if useDC
+            error('Have not added this in the code yet')
+        else
+            X = [squeeze(vUS(z, x, :)); p(z, x); F(z, x)];
+        end
+    else
+        X = [squeeze(vUS(z, x, :)); p(z, x)];
+    end
+end
