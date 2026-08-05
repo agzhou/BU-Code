@@ -1,7 +1,8 @@
 % expects pixels as a row vector
 function [psf_gFit, psf_gFit_values, pixels_finer] = PSFGaussianFit(pixels, psf, gfit_pixel_spacing)
 
-    gfit_type = 'gauss2';
+    % gfit_type = 'gauss2';
+    gfit_type = 'gauss1';
 %     [lb, ub] = findLocalMinsOfPSF(psf);
     lb = 1; ub = length(psf); % Change 7/6/26
     psf_cut = psf(lb:ub);

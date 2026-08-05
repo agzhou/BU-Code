@@ -48,20 +48,33 @@ title('z PSF and Gaussian fit')
 legend('Gaussian fit', 'Simulated')
 
 %% Get 1/e and FWHM values for x, y, z PSFs by using the Gaussian fits
-% FWHM values
+% FWHM values: calculate from the fitted Gaussian's curve
 [FWHM_GF_units(1)] = fwhm(xPSF_pixel_inds_GF, xPSF_GF_values);
 [FWHM_GF_units(2)] = NaN;
 [FWHM_GF_units(3)] = fwhm(zPSF_pixel_inds_GF, zPSF_GF_values);
+
+% % FWHM values: calculate directly from the fit parameters
+% [FWHM_GF_units(1)] = xPSF_GF.c1;
+% [FWHM_GF_units(2)] = NaN;
+% [FWHM_GF_units(3)] = zPSF_GF.c1;
 
 % FWHM_wl = FWHM_GF_units .* PData.PDelta ./ gfit_pixel_spacing;
 FWHM_wl = FWHM_GF_units .* PData.PDelta;
 FWHM_um = FWHM_wl .* P.wl .* 1e6;
 
-% 1/e values
-[OOE_GF_units(1)] = fw_anymax(xPSF_pixel_inds_GF, xPSF_GF_values, 1/exp(1));
+% % 1/e values: calculate from the fitted Gaussian's curve
+% [OOE_GF_units(1)] = fw_anymax(xPSF_pixel_inds_GF, xPSF_GF_values, 1/exp(1));
+% [OOE_GF_units(2)] = NaN;
+% [OOE_GF_units(3)] = fw_anymax(zPSF_pixel_inds_GF, zPSF_GF_values, 1/exp(1));
+
+% 1/e values (field): get directly from the fit parameters
+[OOE_GF_units(1)] = xPSF_GF.c1;
 [OOE_GF_units(2)] = NaN;
-[OOE_GF_units(3)] = fw_anymax(zPSF_pixel_inds_GF, zPSF_GF_values, 1/exp(1));
+[OOE_GF_units(3)] = zPSF_GF.c1;
 
 % OOE_wl = OOE_GF_units .* PData.PDelta ./ gfit_pixel_spacing;
 OOE_wl = OOE_GF_units .* PData.PDelta;
 OOE_um = OOE_wl .* P.wl .* 1e6;
+
+sigma_um = OOE_um ./ sqrt(2);
+
