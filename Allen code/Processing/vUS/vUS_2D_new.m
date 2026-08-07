@@ -9,6 +9,13 @@
 %%
 % function [vUS] = vUS_2D(IQ)
 
+%% Add the Speckle tracking folder to path
+codeDir = cd;
+codeDir_split = split(string(codeDir), filesep);
+% AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "Allen code"))), '\') + "\Verasonics");
+AllenSpeckleTrackingCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\Processing\Speckle tracking");
+addpath(AllenSpeckleTrackingCodePath)
+
 %% Set up the High Pass Filter (parameters from the 2020 vUS paper)
 HPF.fc = 25; % Cutoff frequency [Hz]
 % 25 Hz corresponds to 1 mm/s
@@ -349,8 +356,13 @@ for zi = fit_roi{1}
             else % If we don't fit that pixel due to noisiness, set the velocities and other parameters to 0
                 vUS{j}(zi, xi, :) = [0, 0];
                 p{j}(zi, xi) = 0;
-                F{j}(zi, xi) = 0;
-    
+                if useF
+                    F{j}(zi, xi) = 0;
+                end
+                if useDC
+                    DC{j}(zi, xi) = 0;
+                end
+                
             end
         end
     end
@@ -382,8 +394,6 @@ toc
 % figure; plot(abs(ydata_all)); hold on; plot(abs(testg1)); hold off
 % testspeed = sqrt(sum(x_all(2:4).^2))
 
-toc
-
 %% Testing: visualize vUS results
 vUS_speed = cell(size(vUS));
 for j = ctp
@@ -402,7 +412,15 @@ figure; imagesc(squeeze(PDI(fit_roi{1}, fit_roi{2})) .^ 0.5); title('PDI')
 % testpt = [43, 11];
 testpt = [60, 133];
 for j = ctp
-    plotg1pt(testpt(1), testpt(2), useF, useDC, tau, sigma, vf_gen.k0, g1{j}, vUS{j}, p{j}, F{j})
+    if useF
+        if useDC
+            plotg1pt(testpt(1), testpt(2), useF, useDC, tau, sigma, vf_gen.k0, g1{j}, vUS{j}, p{j}, F{j}, DC{j})
+        else
+            plotg1pt(testpt(1), testpt(2), useF, useDC, tau, sigma, vf_gen.k0, g1{j}, vUS{j}, p{j}, F{j})
+        end
+    else
+        plotg1pt(testpt(1), testpt(2), useF, useDC, tau, sigma, vf_gen.k0, g1{j}, vUS{j}, p{j})
+    end
 end
 
 findfigs
@@ -448,9 +466,17 @@ findfigs
 
 % Plot the vUS fit at one point (z, x) against the experimental data. Do
 % up, down, all flow directions separately
-function plotg1pt(z, x, useF, useDC, tau, sigma, k0, g1exp, vUS, p, F)
-    X = paramsToX(z, x, useF, useDC, vUS, p, F);
-
+function plotg1pt(z, x, useF, useDC, tau, sigma, k0, g1exp, vUS, p, varargin)
+    if nargin > 10
+        F = varargin{1};
+        if nargin > 11
+            DC = varargin{2};
+            X = paramsToX(z, x, useF, useDC, vUS, p, F, DC);
+        else
+            X = paramsToX(z, x, useF, useDC, vUS, p, F);
+        end
+    end
+    
     testg1 = g1vUS2D_vec(X, tau(2:end), sigma, k0, useF, useDC);
     % figure; plot(squeeze(g1exp(z, x, :))); hold on; plot(testg1); hold off
     figure; plot(tau, squeeze(abs(g1exp(z, x, :))), '-x', 'LineWidth', 2); hold on; plot(tau(2:end), abs(testg1), '-o', 'LineWidth', 2); hold off; ylabel('|g1|'); xlabel('Time lag [s]'); legend('Data', 'Fit')
@@ -459,10 +485,19 @@ function plotg1pt(z, x, useF, useDC, tau, sigma, k0, g1exp, vUS, p, F)
 end
 
 % Convert fitted params into a vector X
-function X = paramsToX(z, x, useF, useDC, vUS, p, F)
+%   Optional inputs: F, DC
+function X = paramsToX(z, x, useF, useDC, vUS, p, varargin)
+    if nargin > 6
+        F = varargin{1};
+        if nargin > 7
+            DC = varargin{2};
+        end
+    end
+
     if useF
         if useDC
-            error('Have not added this in the code yet')
+            % error('Have not added this in the code yet')
+            X = [squeeze(vUS(z, x, :)); p(z, x); F(z, x); DC(z, x)];
         else
             X = [squeeze(vUS(z, x, :)); p(z, x); F(z, x)];
         end
