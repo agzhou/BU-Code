@@ -76,5 +76,6 @@ FWHM_um = FWHM_wl .* P.wl .* 1e6;
 OOE_wl = OOE_GF_units .* PData.PDelta;
 OOE_um = OOE_wl .* P.wl .* 1e6;
 
+% 1/e values (intensity)
 sigma_um = OOE_um ./ sqrt(2);
 
