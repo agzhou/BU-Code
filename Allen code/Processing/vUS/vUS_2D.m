@@ -103,30 +103,30 @@ end
 
 g1_dirty = g1T(IQf_separated{3}, 4); % Use all frequencies
 
+%% 3.5 Calculate g1
+% startTau = 1; % Index for the first tau point (tau1) for subsequent analysis. Changed this from 2 to 1 on 7/8/26 because I changed the g1T.m function to output g1 starting from tau = tau1 instead of tau = 0.
+startTau = 2; % Index for the first tau point (tau1) for subsequent analysis.
 
-% % startTau = 1; % Index for the first tau point (tau1) for subsequent analysis. Changed this from 2 to 1 on 7/8/26 because I changed the g1T.m function to output g1 starting from tau = tau1 instead of tau = 0.
-% startTau = 2; % Index for the first tau point (tau1) for subsequent analysis.
-% 
-% nTau = ceil(20e-3 *P.frameRate); % # of time lags to consider; empirically set by assuming all g1 for voxels containing actual flow decay within 10 ms
-% tau = (0:nTau - 1)' ./ P.frameRate; % Time lag vector [s]
-% 
-% % g1neg = g1T(IQf_separated{1}, nTau + startTau - 1); % Add the startTau-1 because the values start at startTau, but we still want nTau points total
-% % g1pos = g1T(IQf_separated{2}, nTau + startTau - 1); % Add the startTau-1 because the values start at startTau, but we still want nTau points total
-% 
-% % Store g1 for each frequency component in a cell array
-% g1 = cell(size(IQf_separated));
-% 
-% for j = ctp
-%     g1{j} = g1T(IQf_separated{j}, nTau);
-% end
-% 
-% % Testing
-% figure; plot(squeeze(abs(g1{1}(tp(1), tp(2), :))), '-o')
-% figure; plot(squeeze(abs(g1{3}(tp(1), tp(2), :))), '-o')
-% 
-% figure; imagesc(squeeze(mean(abs(IQf_separated{1}), frameDim))); title('Down flow')
-% figure; imagesc(squeeze(mean(abs(IQf_separated{2}), frameDim))); title('Up flow')
-% figure; imagesc(squeeze(mean(abs(IQf_separated{3}), frameDim))); title('All flow')
+nTau = ceil(20e-3 *P.frameRate); % # of time lags to consider; empirically set by assuming all g1 for voxels containing actual flow decay within 10 ms
+tau = (0:nTau - 1)' ./ P.frameRate; % Time lag vector [s]
+
+% g1neg = g1T(IQf_separated{1}, nTau + startTau - 1); % Add the startTau-1 because the values start at startTau, but we still want nTau points total
+% g1pos = g1T(IQf_separated{2}, nTau + startTau - 1); % Add the startTau-1 because the values start at startTau, but we still want nTau points total
+
+% Store g1 for each frequency component in a cell array
+g1 = cell(size(IQf_separated));
+
+for j = ctp
+    g1{j} = g1T(IQf_separated{j}, nTau);
+end
+
+% Testing
+figure; plot(tau, squeeze(abs(g1{1}(tp(1), tp(2), :))), '-o')
+figure; plot(tau, squeeze(abs(g1{3}(tp(1), tp(2), :))), '-o')
+
+figure; imagesc(squeeze(mean(abs(IQf_separated{1}), frameDim))); title('Down flow')
+figure; imagesc(squeeze(mean(abs(IQf_separated{2}), frameDim))); title('Up flow')
+figure; imagesc(squeeze(mean(abs(IQf_separated{3}), frameDim))); title('All flow')
 
 %% ========= 4. Clean data ========= %%
 
@@ -150,12 +150,26 @@ g1_dirty = g1T(IQf_separated{3}, 4); % Use all frequencies
 zPix = max(floor(zp * 0.1), 1):floor(zp); % z pixels to consider (avoid NaNs and near-field artifacts)
 fDim = 3; % Dimension of the data corresponding to frequency (or time)
 zDim = 1; % Dimension of the data corresponding to z (axial direction)
-xDim = 1; % Dimension of the data corresponding to x (lateral direction)
+xDim = 2; % Dimension of the data corresponding to x (lateral direction)
 
 % 4.1 Frequency-based SNR: whole frequency spectrum
-fbSNR = sum(abs(IQf_FT_separated_masked{3}(zPix, :, :)), fDim) ./ sum(abs(IQf_FT_separated{3}(zPix, :, :)), fDim); % Frequency-based SNR
-fbSNR_zAvg = mean(fbSNR, xDim); % Average the frequency-based SNR across the lateral dimension (x), to get an average value for each depth value (z)
+% fbSNR = sum(abs(IQf_FT_separated_masked{3}(zPix, :, :)), fDim) ./ sum(abs(IQf_FT_separated{3}(zPix, :, :)), fDim); % Frequency-based SNR
+fbSNR = sum(abs(IQf_FT_separated_masked{3}(:, :, :)), fDim) ./ sum(abs(IQf_FT_separated{3}(:, :, :)), fDim); % Frequency-based SNR
+fbSNR_zAvg = squeeze(mean(fbSNR, xDim)) - 0.9*(1 + ([1:zp]./(5*zp)).^2)' .* std(fbSNR, 0, xDim); % Average the frequency-based SNR across the lateral dimension (x), to get an average value for each depth value (z)
+fbLinearFit = polyfit(zPix, fbSNR_zAvg(zPix), 1); % Linear fit for this z-averaged and std-subtracted threshold vector
+fbSNR_threshold = repmat(polyval(fbLinearFit, 1:zp)', [1, xp]) .* 1.02; % Evaluate the linear fit at all z pixels and stretch over x, then add an extra 2%
+fbSNR_mask = fbSNR > fbSNR_threshold; % Mask for pixels to keep, according to this frequency-based SNR method
 
+% 4.2 g1-based SNR: whole frequency spectrum
+% gR = mean(real(g1_dirty(:, :, 2:3)), fDim); % Average real(g1) over the first two time lags
+gR = mean(abs(g1_dirty(:, :, 2:3)), fDim); % Average abs(g1) over the first two time lags
+gR_pixel_avg = mean(gR, [1, 2]);
+gR_std = std(gR, 0, [1, 2]);
+gR_mask = gR > max( (gR_pixel_avg - 0.4*gR_std), 0.08 );
+g1_express_mask = abs(g1_dirty(:, :, 2)) > 0.4; % Immediate pass mask according to |g1(tau1)| > threshold
+
+% 4.3 Create the overall whole-frequency-spectrum mask (of pixels to keep)
+overall_mask = and( or(fbSNR_mask, g1_express_mask), gR_mask);
 
 %% ========= 5. Fit vUS ========= %%
 % Initial guesses for parameters; separate fitting for negative and positive frequencies (down and up flows)
@@ -246,7 +260,12 @@ else
     ub = [50e-3, 50e-3, 1]; % Upper bounds for parameters [SI units]
     % ub = [100e-3, 100e-3, 1]; % Upper bounds for parameters [SI units]
 end
-                
+% fit_roi = {11, 81};
+fit_roi = {1:ps(1), 1:ps(2)}; % Full volume
+
+% Fitting options
+options = optimoptions('lsqcurvefit', 'Display', 'off');
+          
 % Create variables to store vUS fitting results
 vUS = cell(size(IQf_separated)); % vUS results for each frequency component
 p = cell(size(IQf_separated)); % p results for each frequency component
@@ -276,8 +295,9 @@ for zi = fit_roi{1}
         for j = ctp % For each pixel, go through and fit each 
 
             % Only fit if the voxel meets some criterion (after screening). For testing, don't do this.
-            if 1
+            % if 1
             % if vf_all.F0(ind) > 0.2
+            if overall_mask(zi, xi)
     
                 % % Fitting the complex data all-in-one
                 % % x0_neg = [p_neg.F0, p_neg.p0, p_neg.v_xgp0, p_neg.v_ygp0, p_neg.v_zgp0]; % ICs: [F0, p0, v_xgp0, v_ygp0, v_zgp0]
@@ -418,7 +438,9 @@ figure; imagesc(squeeze(PDI(fit_roi{1}, fit_roi{2})) .^ 0.5); title('PDI')
 
 %% Plot the vUS fit at a test point
 % testpt = [43, 11];
-testpt = [60, 133];
+% testpt = [60, 133];
+% testpt = [11, 81];
+testpt = [43, 65];
 for j = ctp
     if useF
         if useDC
