@@ -25,6 +25,16 @@ HPF.order = 4; % Butterworth filter order
 
 [HPF.b, HPF.a] = butter(HPF.order, HPF.fc/(HPF.fs/2), 'high');
 
+%% Define some parameters
+% sigma = [113, 999999, 151].*1e-6; % 1/e PSF values [m] for the L22-14v probe at 15.625 MHz and 17 angles from -10 to 10 deg. The y component is set to some arbitrary positive number but it won't really be used. (G:\My Drive\Data\PSF Simulations\L22-14v PSF sim - 17 angles from -10 to 10 deg)
+% sigma = [113, 151].*1e-6; % 1/e PSF values (x, z) [m] for the L22-14v probe at 15.625 MHz and 17 angles from -10 to 10 deg. The y component is set to some arbitrary positive number but it won't really be used. (G:\My Drive\Data\PSF Simulations\L22-14v PSF sim - 17 angles from -10 to 10 deg)
+% sigma = [41.6564, 52.3236].*1e-6; % Intensity-based 1/e PSF values (x, z) [m] for the L22-14v probe at 15.625 MHz and 17 angles from -10 to 10 deg. The y component is set to some arbitrary positive number but it won't really be used. (G:\My Drive\Data\PSF Simulations\L22-14v PSF sim - 17 angles from -10 to 10 deg)
+sigma = [58.9110, 73.9967].*1e-6; % Field-based 1/e PSF values (x, z) [m] for the L22-14v probe at 15.625 MHz and 17 angles from -10 to 10 deg. The y component is set to some arbitrary positive number but it won't really be used. (G:\My Drive\Data\PSF Simulations\L22-14v PSF sim - 17 angles from -10 to 10 deg)
+
+fDim = 3; % Dimension of the data corresponding to frequency (or time)
+zDim = 1; % Dimension of the data corresponding to z (axial direction)
+xDim = 2; % Dimension of the data corresponding to x (lateral direction)
+
 %% ========= 1. Preprocessing ========= %%
 % IQ = squeeze(complex(IData, QData));
 % clearvars IData QData
@@ -40,10 +50,11 @@ IQm = IQ(zrange, xrange, :);
 % 1.1 SVD clutter filter
 %     [PP, EVs, V_sort] = getSVs2D(IQ);
 [zp, xp, nf] = size(IQm);
-PP = reshape(IQm, [zp*xp, nf]);
+
+CM = reshape(IQm, [zp*xp, nf]); % Covariance matrix
 tic
 %     [U, S, V] = svd(PP); % Already sorted in decreasing order
-[U, S, V] = svd(PP, 'econ'); % Already sorted in decreasing order
+[U, S, V] = svd(CM, 'econ'); % Already sorted in decreasing order
 SVs = diag(S);
 %     disp('Full SVD done')
 toc
@@ -128,6 +139,9 @@ figure; imagesc(squeeze(mean(abs(IQf_separated{1}), frameDim))); title('Down flo
 figure; imagesc(squeeze(mean(abs(IQf_separated{2}), frameDim))); title('Up flow')
 figure; imagesc(squeeze(mean(abs(IQf_separated{3}), frameDim))); title('All flow')
 
+%% Create a struct for all the relevant processing parameters
+PP = createStruct(zp, xp, nf, nTau, xDim, zDim, fDim); % Processing Parameters ======> adjust as needed
+
 %% ========= 4. Clean data ========= %%
 
 % % 4.1 Screen voxels for noisiness, through |g1(tau1)|
@@ -147,29 +161,21 @@ figure; imagesc(squeeze(mean(abs(IQf_separated{3}), frameDim))); title('All flow
 % % 4.2 Apply mask
 % % ...
 
-zPix = max(floor(zp * 0.1), 1):floor(zp); % z pixels to consider (avoid NaNs and near-field artifacts)
-fDim = 3; % Dimension of the data corresponding to frequency (or time)
-zDim = 1; % Dimension of the data corresponding to z (axial direction)
-xDim = 2; % Dimension of the data corresponding to x (lateral direction)
 
 % 4.1 Frequency-based SNR: whole frequency spectrum
-% fbSNR = sum(abs(IQf_FT_separated_masked{3}(zPix, :, :)), fDim) ./ sum(abs(IQf_FT_separated{3}(zPix, :, :)), fDim); % Frequency-based SNR
-fbSNR = sum(abs(IQf_FT_separated_masked{3}(:, :, :)), fDim) ./ sum(abs(IQf_FT_separated{3}(:, :, :)), fDim); % Frequency-based SNR
-fbSNR_zAvg = squeeze(mean(fbSNR, xDim)) - 0.9*(1 + ([1:zp]./(5*zp)).^2)' .* std(fbSNR, 0, xDim); % Average the frequency-based SNR across the lateral dimension (x), to get an average value for each depth value (z)
-fbLinearFit = polyfit(zPix, fbSNR_zAvg(zPix), 1); % Linear fit for this z-averaged and std-subtracted threshold vector
-fbSNR_threshold = repmat(polyval(fbLinearFit, 1:zp)', [1, xp]) .* 1.02; % Evaluate the linear fit at all z pixels and stretch over x, then add an extra 2%
-fbSNR_mask = fbSNR > fbSNR_threshold; % Mask for pixels to keep, according to this frequency-based SNR method
+[fbSNR, fbSNR_mask] = spectralSNR(IQf_FT_separated_masked{3}, IQf_FT_separated{3}, PP, 'full');
 
 % 4.2 g1-based SNR: whole frequency spectrum
-% gR = mean(real(g1_dirty(:, :, 2:3)), fDim); % Average real(g1) over the first two time lags
-gR = mean(abs(g1_dirty(:, :, 2:3)), fDim); % Average abs(g1) over the first two time lags
-gR_pixel_avg = mean(gR, [1, 2]);
-gR_std = std(gR, 0, [1, 2]);
-gR_mask = gR > max( (gR_pixel_avg - 0.4*gR_std), 0.08 );
-g1_express_mask = abs(g1_dirty(:, :, 2)) > 0.4; % Immediate pass mask according to |g1(tau1)| > threshold
+% % gR = mean(real(g1_dirty(:, :, 2:3)), fDim); % Average real(g1) over the first two time lags
+% gR = mean(abs(g1_dirty(:, :, 2:3)), fDim); % Average abs(g1) over the first two time lags
+% gR_pixel_avg = mean(gR, [zDim, xDim]);
+% gR_std = std(gR, 0, [1, 2]);
+% gR_mask = gR > max( (gR_pixel_avg - 0.4*gR_std), 0.08 );
+% g1_express_mask = abs(g1_dirty(:, :, 2)) > 0.4; % Immediate pass mask according to |g1(tau1)| > threshold
+[g1SNR, g1SNR_mask, g1SNR_express_mask] = g1BasedSNR(g1_dirty, PP, 'full');
 
 % 4.3 Create the overall whole-frequency-spectrum mask (of pixels to keep)
-overall_mask = and( or(fbSNR_mask, g1_express_mask), gR_mask);
+overall_mask = and( or(fbSNR_mask, g1SNR_express_mask), g1SNR_mask);
 
 %% ========= 5. Fit vUS ========= %%
 % Initial guesses for parameters; separate fitting for negative and positive frequencies (down and up flows)
@@ -183,12 +189,6 @@ g1_exp = cell(size(IQf_separated)); % Cell array of experimental g1 data with sp
 for j = ctp
     g1_exp{j} = reshape(g1{j}, num_voxels, nTau);
 end
-
-% TESTING
-% sigma = [113, 999999, 151].*1e-6; % 1/e PSF values [m] for the L22-14v probe at 15.625 MHz and 17 angles from -10 to 10 deg. The y component is set to some arbitrary positive number but it won't really be used. (G:\My Drive\Data\PSF Simulations\L22-14v PSF sim - 17 angles from -10 to 10 deg)
-% sigma = [113, 151].*1e-6; % 1/e PSF values (x, z) [m] for the L22-14v probe at 15.625 MHz and 17 angles from -10 to 10 deg. The y component is set to some arbitrary positive number but it won't really be used. (G:\My Drive\Data\PSF Simulations\L22-14v PSF sim - 17 angles from -10 to 10 deg)
-% sigma = [41.6564, 52.3236].*1e-6; % Intensity-based 1/e PSF values (x, z) [m] for the L22-14v probe at 15.625 MHz and 17 angles from -10 to 10 deg. The y component is set to some arbitrary positive number but it won't really be used. (G:\My Drive\Data\PSF Simulations\L22-14v PSF sim - 17 angles from -10 to 10 deg)
-sigma = [58.9110, 73.9967].*1e-6; % Field-based 1/e PSF values (x, z) [m] for the L22-14v probe at 15.625 MHz and 17 angles from -10 to 10 deg. The y component is set to some arbitrary positive number but it won't really be used. (G:\My Drive\Data\PSF Simulations\L22-14v PSF sim - 17 angles from -10 to 10 deg)
 
 % Create structs that store parameters (including initial guesses) for the vUS fitting
 
