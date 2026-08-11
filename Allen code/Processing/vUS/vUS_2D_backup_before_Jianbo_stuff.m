@@ -13,8 +13,8 @@
 codeDir = cd;
 codeDir_split = split(string(codeDir), filesep);
 % AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "Allen code"))), '\') + "\Verasonics");
-AllenProcessingCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\Processing\");
-addpath(genpath(AllenProcessingCodePath))
+AllenSpeckleTrackingCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\Processing\Speckle tracking");
+addpath(AllenSpeckleTrackingCodePath)
 
 %% Set up the High Pass Filter (parameters from the 2020 vUS paper)
 HPF.fc = 25; % Cutoff frequency [Hz]
@@ -26,21 +26,11 @@ HPF.order = 4; % Butterworth filter order
 [HPF.b, HPF.a] = butter(HPF.order, HPF.fc/(HPF.fs/2), 'high');
 
 %% ========= 1. Preprocessing ========= %%
-% IQ = squeeze(complex(IData, QData));
-% clearvars IData QData
-
-% sv_threshold_lower = 20; sv_threshold_upper = size(IQ, 3);
-
-% Mask the region to actually process
-[zpo, xpo, nfo] = size(IQ); % Original sizes
-zrange = 1:100;
-xrange = 1:xpo;
-IQm = IQ(zrange, xrange, :);
 
 % 1.1 SVD clutter filter
 %     [PP, EVs, V_sort] = getSVs2D(IQ);
-[zp, xp, nf] = size(IQm);
-PP = reshape(IQm, [zp*xp, nf]);
+[zp, xp, nf] = size(IQ);
+PP = reshape(IQ, [zp*xp, nf]);
 tic
 %     [U, S, V] = svd(PP); % Already sorted in decreasing order
 [U, S, V] = svd(PP, 'econ'); % Already sorted in decreasing order
@@ -49,7 +39,7 @@ SVs = diag(S);
 toc
 disp('SVs decomposed')
 
-[IQf, noise] = applySVs1D(IQm, PP, SVs, V, sv_threshold_lower, sv_threshold_upper);
+[IQf, noise] = applySVs1D(IQ, PP, SVs, V, sv_threshold_lower, sv_threshold_upper);
 
 % 1.2 High pass filter (apply to the post-SVD clutter filtered data)
 HPF.dim = length(size(IQf)); % Operate on the time dimension
@@ -58,7 +48,7 @@ IQf_HPF = filter(HPF.b, HPF.a, IQf, [], HPF.dim);
 % Testing
 % figure; imagesc(squeeze(abs(IQf(:, :, 1))))
 temp = sum(abs(IQf).^2, 3);
-figure; imagesc(temp .^ 0.5)
+figure; imagesc(temp)
 % tp = [128, 39]; % Test point
 tp = [87, 26]; % Test point
 figure; plot(squeeze(abs(IQf_HPF(tp(1), tp(2), :))))
@@ -71,9 +61,6 @@ figure; plot(squeeze(abs(IQf_HPF(tp(1), tp(2), :))))
 [IQf_separated, IQf_FT_separated, nFTpts] = separatePosNegFreqs(IQf_HPF); % Outputs are cell arrays in the order of: negative, positive, all frequencies
 frameDim = length(size(IQf)); % Get the dimension corresponding to time/frames
 
-ctp = 1:length(IQf_FT_separated); % Indices of which frequency Components To Process (typically [1, 2, 3]: negative, positive, all)
-ctp_labels = {"Down flows", "Up flows", "All flows"};
-
 % Testing: plot the separated and full Fourier spectrums and reconstructed IQ signals
 faxis = linspace(-P.frameRate/2, P.frameRate/2, nFTpts)';
 figure; plot(faxis, squeeze(abs(IQf_FT_separated{1}(tp(1), tp(2), :))))
@@ -83,79 +70,84 @@ figure; plot(faxis, squeeze(abs(IQf_FT_separated{3}(tp(1), tp(2), :))))
 % figure; plot(1:P.numFramesPerBuffer, squeeze(abs(IQf_separated{2}(tp(1), tp(2), tp(3), :))))
 % figure; plot(1:P.numFramesPerBuffer, squeeze(abs(IQf_separated{3}(tp(1), tp(2), tp(3), :))))
 
-% 2.2 Mask out all frequencies outside of +/- 1100 Hz, and other bands
-% considered 'system noise' -- see Jianbo's sysNoiseRemove.m
-freqMask = abs(faxis) > 1100; % [Hz]
-% *********** add the system noise stuff later ***********
+% 2.2 Screen voxels for signal power
+IQf_FT_power = {sum(abs(IQf_FT_separated{1}), frameDim), sum(abs(IQf_FT_separated{2}), frameDim), sum(abs(IQf_FT_separated{3}), frameDim)}';
+% Get masks for signal quality (Eqs. 13-14 in the vUS paper)
+Rneg = IQf_FT_power{1} ./ IQf_FT_power{3};
+Rpos = IQf_FT_power{2} ./ IQf_FT_power{3};
 
-% Create IQf_FT_separated_masked: the Fourier-transformed filtered IQ data,
-% with some frequencies masked out
+% % Apply a median filter to the Rneg and Rpos volumes before screening with a threshold
+% % mf_kernel_size = [3, 3, 3];
+% % mf_kernel_size = [5, 5, 5];
+% mf_kernel_size = [9, 9, 9];
+% Rneg_mf = medfilt3(Rneg, mf_kernel_size);
+% Rpos_mf = medfilt3(Rpos, mf_kernel_size);
+
+% % Get masks for voxels to keep, according to the Rneg and Rpos volumes
+% R_threshold = 0.4;
+% Rneg_mask = Rneg > R_threshold;
+% Rpos_mask = Rpos > R_threshold;
+
+% Testing/visualization
+% figure; imagesc(squeeze(max(sum(abs(IQf_separated{3}), 4), [], 1))')
+% volumeViewer(Rneg)
+% volumeViewer(Rpos)
+figure; imagesc(squeeze(max(Rneg, [], 1))'); colormap gray
+figure; imagesc(squeeze(max(Rpos, [], 1))'); colormap gray
+% volumeViewer(Rneg_mask)
+% volumeViewer(Rpos_mask)
+% figure; imagesc(squeeze(max(Rneg_mask, [], 1))'); colormap gray
+% figure; imagesc(squeeze(max(Rpos_mask, [], 1))'); colormap gray
+% figure; imagesc(squeeze(max(Rneg_mf, [], 1))'); colormap gray
+% figure; imagesc(squeeze(max(Rpos_mf, [], 1))'); colormap gray
+
+%% ========= 3. Calculate g1 ========= %%
+
+
+% startTau = 1; % Index for the first tau point (tau1) for subsequent analysis. Changed this from 2 to 1 on 7/8/26 because I changed the g1T.m function to output g1 starting from tau = tau1 instead of tau = 0.
+startTau = 2; % Index for the first tau point (tau1) for subsequent analysis.
+
+nTau = ceil(20e-3 *P.frameRate); % # of time lags to consider; empirically set by assuming all g1 for voxels containing actual flow decay within 10 ms
+tau = (0:nTau - 1)' ./ P.frameRate; % Time lag vector [s]
+
+% g1neg = g1T(IQf_separated{1}, nTau + startTau - 1); % Add the startTau-1 because the values start at startTau, but we still want nTau points total
+% g1pos = g1T(IQf_separated{2}, nTau + startTau - 1); % Add the startTau-1 because the values start at startTau, but we still want nTau points total
+
+% Store g1 for each frequency component in a cell array
+g1 = cell(size(IQf_separated));
+ctp = 1:length(g1); % Indices of which frequency Components To Process (typically [1, 2, 3]: negative, positive, all)
+ctp_labels = {"Down flows", "Up flows", "All flows"};
+
 for j = ctp
-    IQf_FT_separated_masked{j} = IQf_FT_separated{j};
-    IQf_FT_separated_masked{j}(:, :, freqMask) = 0;
+    g1{j} = g1T(IQf_separated{j}, nTau);
 end
-% figure; plot(faxis, squeeze(abs(IQf_FT_separated{3}(tp(1), tp(2), :))), '-', 'LineWidth', 2)
-% hold on
-% plot(faxis, squeeze(abs(IQf_FT_separated_masked{3}(tp(1), tp(2), :))), '--', 'LineWidth', 1)
-% hold off
 
-%% ========= 3. Calculate g1 at the first couple time lags, for cleaning criteria ========= %%
+% Testing
+figure; plot(squeeze(abs(g1{1}(tp(1), tp(2), :))), '-o')
+figure; plot(squeeze(abs(g1{3}(tp(1), tp(2), :))), '-o')
 
-g1_dirty = g1T(IQf_separated{3}, 4); % Use all frequencies
-
-
-% % startTau = 1; % Index for the first tau point (tau1) for subsequent analysis. Changed this from 2 to 1 on 7/8/26 because I changed the g1T.m function to output g1 starting from tau = tau1 instead of tau = 0.
-% startTau = 2; % Index for the first tau point (tau1) for subsequent analysis.
-% 
-% nTau = ceil(20e-3 *P.frameRate); % # of time lags to consider; empirically set by assuming all g1 for voxels containing actual flow decay within 10 ms
-% tau = (0:nTau - 1)' ./ P.frameRate; % Time lag vector [s]
-% 
-% % g1neg = g1T(IQf_separated{1}, nTau + startTau - 1); % Add the startTau-1 because the values start at startTau, but we still want nTau points total
-% % g1pos = g1T(IQf_separated{2}, nTau + startTau - 1); % Add the startTau-1 because the values start at startTau, but we still want nTau points total
-% 
-% % Store g1 for each frequency component in a cell array
-% g1 = cell(size(IQf_separated));
-% 
-% for j = ctp
-%     g1{j} = g1T(IQf_separated{j}, nTau);
-% end
-% 
-% % Testing
-% figure; plot(squeeze(abs(g1{1}(tp(1), tp(2), :))), '-o')
-% figure; plot(squeeze(abs(g1{3}(tp(1), tp(2), :))), '-o')
-% 
-% figure; imagesc(squeeze(mean(abs(IQf_separated{1}), frameDim))); title('Down flow')
-% figure; imagesc(squeeze(mean(abs(IQf_separated{2}), frameDim))); title('Up flow')
-% figure; imagesc(squeeze(mean(abs(IQf_separated{3}), frameDim))); title('All flow')
+figure; imagesc(squeeze(mean(abs(IQf_separated{1}), frameDim))); title('Down flow')
+figure; imagesc(squeeze(mean(abs(IQf_separated{2}), frameDim))); title('Up flow')
+figure; imagesc(squeeze(mean(abs(IQf_separated{3}), frameDim))); title('All flow')
 
 %% ========= 4. Clean data ========= %%
 
-% % 4.1 Screen voxels for noisiness, through |g1(tau1)|
-% g1_tau1_threshold = 0.2;
-% 
-% g1_tau1_mask = cell(size(IQf_separated)); % Cell array of masks using the g1(tau1) threshold
-% for j = ctp
-%     g1_tau1_mask{j} = abs(squeeze(g1{j}(:, :, startTau))) > g1_tau1_threshold; % Use index 2 because index 1 corresponds to tau = 0
-% end
-% 
-% % Testing/visualization
-% figure; plot(squeeze(abs(g1{1}(tp(1), tp(2), :))), '-o'); title('Negative frequencies')
-% figure; plot(squeeze(abs(g1{2}(tp(1), tp(2), :))), '-o'); title('Positive frequencies')
-% % volumeViewer(g1_tau1_mask{1})
-% % volumeViewer(g1_tau1_mask{2})
-% 
-% % 4.2 Apply mask
-% % ...
+% 4.1 Screen voxels for noisiness, through |g1(tau1)|
+g1_tau1_threshold = 0.2;
 
-zPix = max(floor(zp * 0.1), 1):floor(zp); % z pixels to consider (avoid NaNs and near-field artifacts)
-fDim = 3; % Dimension of the data corresponding to frequency (or time)
-zDim = 1; % Dimension of the data corresponding to z (axial direction)
-xDim = 1; % Dimension of the data corresponding to x (lateral direction)
+g1_tau1_mask = cell(size(IQf_separated)); % Cell array of masks using the g1(tau1) threshold
+for j = ctp
+    g1_tau1_mask{j} = abs(squeeze(g1{j}(:, :, startTau))) > g1_tau1_threshold; % Use index 2 because index 1 corresponds to tau = 0
+end
 
-% 4.1 Frequency-based SNR: whole frequency spectrum
-fbSNR = sum(abs(IQf_FT_separated_masked{3}(zPix, :, :)), fDim) ./ sum(abs(IQf_FT_separated{3}(zPix, :, :)), fDim); % Frequency-based SNR
-fbSNR_zAvg = mean(fbSNR, xDim); % Average the frequency-based SNR across the lateral dimension (x), to get an average value for each depth value (z)
+% Testing/visualization
+figure; plot(squeeze(abs(g1{1}(tp(1), tp(2), :))), '-o'); title('Negative frequencies')
+figure; plot(squeeze(abs(g1{2}(tp(1), tp(2), :))), '-o'); title('Positive frequencies')
+% volumeViewer(g1_tau1_mask{1})
+% volumeViewer(g1_tau1_mask{2})
 
+% 4.2 Apply mask
+% ...
 
 %% ========= 5. Fit vUS ========= %%
 % Initial guesses for parameters; separate fitting for negative and positive frequencies (down and up flows)
