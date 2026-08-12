@@ -27,7 +27,9 @@ savepath = [savepath, '\'];
 
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use air puff (0-no, 1-yes)'}; % 'Save RF data (0-no, 1-yes)', 
 % parameterDefaults = {'20', '0', '10', '50000', '5000', '5', '5', '15.625', '1540', '0', '1', '500', '0'};
-parameterDefaults = {'20', '0', '8', '50000', '1000', '17', '10', '15.625', '1540', '0', '1', '200', '1'};
+% parameterDefaults = {'20', '0', '8', '50000', '1000', '17', '10', '15.625', '1540', '0', '1', '200', '1'};
+% parameterDefaults = {'20', '0', '8', '50000', '5000', '5', '5', '18.5', '1540', '0', '1', '1000', '1'};
+parameterDefaults = {'20', '0', '8', '50000', '5000', '9', '8', '18.5', '1540', '0', '1', '400', '1'};
 % parameterDefaults = {'20', '2', '10', '50000', '2000', '17', '16', '15.625', '1540', '0', '1', '200', '0'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 

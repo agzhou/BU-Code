@@ -96,6 +96,11 @@ clear Event Process Recon ReconInfo SeqControl Trans TW TX
 Resource.RcvBuffer.lastFrame = 1; % reset the counter
 Resource.Parameters.simulateMode = 2; % Enable mode 2, which processes data in the buffers
 
+
+% Resource.System.Product = "SimulateOnly";
+%%%% use if transducer for reconstruction does not match the one plugged in
+
+
 % Resource.Parameters.verbose = 2; % Describe errors in varying levels
 %% Define Transducer
 

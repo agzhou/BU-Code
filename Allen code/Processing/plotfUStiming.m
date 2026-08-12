@@ -81,4 +81,5 @@ TD.timeStamp = timeStamp;
 
 %% Save the timing data into a new directory
 % save(datapath + "\Timing Data\TD.mat", "TD")
-save(datapath + "\TD.mat", "TD")
+mkdir(datapath + "\Timing Data")
+save(datapath + "\Timing Data\TD.mat", "TD")

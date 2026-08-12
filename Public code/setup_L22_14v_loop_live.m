@@ -71,7 +71,7 @@ Trans = computeTrans(Trans); % Generate required attributes for the probe into t
 wl = Resource.Parameters.speedOfSound / Trans.frequency / 1e6; % Wavelength, in m
 
 %% enable time tag
-TimeTagEna = 2;
+% TimeTagEna = 2;
 % 0: disable
 % 1: enable but don't reset counter
 % 2: enable and reset counter
@@ -647,22 +647,22 @@ Event(n).seqControl = 3;
 
 %% User specified UI Control Elements
 
-import vsv.seq.uicontrol.VsSliderControl
-
-% - Time Tag
-UI(1).Control = VsSliderControl('LocationCode', 'UserB5',...
-                                'Label', 'Time Tag', ...
-                                'SliderMinMaxVal', [0, 2, TimeTagEna],...
-                                'SliderStep', [0.5, 0.5], ...
-                                'ValueFormat', '%1.0f',...
-                                'Callback', @TimeTagCallback);
-
-
-% External function definitions.
-
-import vsv.seq.function.ExFunctionDef
-
-EF(1).Function = vsv.seq.function.ExFunctionDef('readTimeTag',@readTimeTag);
+% import vsv.seq.uicontrol.VsSliderControl
+% 
+% % - Time Tag
+% UI(1).Control = VsSliderControl('LocationCode', 'UserB5',...
+%                                 'Label', 'Time Tag', ...
+%                                 'SliderMinMaxVal', [0, 2, TimeTagEna],...
+%                                 'SliderStep', [0.5, 0.5], ...
+%                                 'ValueFormat', '%1.0f',...
+%                                 'Callback', @TimeTagCallback);
+% 
+% 
+% % External function definitions.
+% 
+% import vsv.seq.function.ExFunctionDef
+% 
+% EF(1).Function = vsv.seq.function.ExFunctionDef('readTimeTag',@readTimeTag);
 
 %% Save all the data/structures to a .mat file.
 currentDir = cd; currentDir = regexp(currentDir, filesep, 'split');
@@ -687,77 +687,77 @@ makeParameterStructure;
 %% **** Callback routines used by UIControls (UI) ****
 %% Time tag callback test
 
-function TimeTagCallback(~, ~, UIValue)
-    import com.verasonics.hal.hardware.*
-    TimeTagEna = round(UIValue);
-    VDAS = evalin('base', 'VDAS');
-    switch TimeTagEna
-        case 0
-            if VDAS % can't execute this command if HW is not present
-                % disable time tag
-                rc = Hardware.enableAcquisitionTimeTagging(false);
-                if ~rc
-                    error('Error from enableAcqTimeTagging')
-                end
-            end
-            tagstr = 'off';
-        case 1
-            if VDAS
-                % enable time tag
-                rc = Hardware.enableAcquisitionTimeTagging(true);
-                if ~rc
-                    error('Error from enableAcqTimeTagging')
-                end
-            end
-            tagstr = 'on';
-        case 2
-            if VDAS
-                % enable time tag and reset counter
-                rc = Hardware.enableAcquisitionTimeTagging(true);
-                if ~rc
-                    error('Error from enableAcqTimeTagging')
-                end
-                rc = Hardware.setTimeTaggingAttributes(false, true); % reset hardware counter to 0 (otherwise, it continuously counts up from system bootup until it gets to 107,000s - see p37 of User Manual
-                if ~rc
-                    error('Error from setTimeTaggingAttributes')
-                end
-            end
-            tagstr = 'on, reset';
-    end
-    % display at the GUI slider value
-    h = findobj('Tag', 'UserB5Edit');
-    set(h,'String', tagstr);
-    assignin('base', 'TimeTagEna', TimeTagEna);
-end
-
-%% **** Callback routines used by External function definition (EF) ****
-
-function readTimeTag(RDatain)
-    persistent frmCount
-    if isempty(frmCount)
-        frmCount = 0;
-    end
-    % get time tag from first two samples
-    % time tag is 32 bit unsigned interger value, with 16 LS bits in sample 1
-    % and 16 MS bits in sample 2.  Note RDatain is in signed INT16 format so must
-    % convert to double in unsigned format before scaling and adding
-    W = zeros(2, 1);
-    for i=1:2
-        W(i) = double(RDatain(i, 1));
-        if W(i) < 0
-            % translate 2's complement negative values to their unsigned integer
-            % equivalents
-            W(i) = W(i) + 65536;
-        end
-    end
-    timeStamp = W(1) + 65536 * W(2);
-    % the 32 bit time tag counter increments every 25 usec, so we have to scale
-    % by 25 * 1e-6 to convert to a value in seconds
-    frmCount = frmCount + 1;
-    if mod(frmCount, 25) == 1
-        TimeTagEna = evalin('base', 'TimeTagEna');
-        if TimeTagEna
-            disp(['Time tag value in seconds ', num2str(timeStamp/4e4,'%2.3f')]);
-        end
-    end
-end
+% function TimeTagCallback(~, ~, UIValue)
+%     import com.verasonics.hal.hardware.*
+%     TimeTagEna = round(UIValue);
+%     VDAS = evalin('base', 'VDAS');
+%     switch TimeTagEna
+%         case 0
+%             if VDAS % can't execute this command if HW is not present
+%                 % disable time tag
+%                 rc = Hardware.enableAcquisitionTimeTagging(false);
+%                 if ~rc
+%                     error('Error from enableAcqTimeTagging')
+%                 end
+%             end
+%             tagstr = 'off';
+%         case 1
+%             if VDAS
+%                 % enable time tag
+%                 rc = Hardware.enableAcquisitionTimeTagging(true);
+%                 if ~rc
+%                     error('Error from enableAcqTimeTagging')
+%                 end
+%             end
+%             tagstr = 'on';
+%         case 2
+%             if VDAS
+%                 % enable time tag and reset counter
+%                 rc = Hardware.enableAcquisitionTimeTagging(true);
+%                 if ~rc
+%                     error('Error from enableAcqTimeTagging')
+%                 end
+%                 rc = Hardware.setTimeTaggingAttributes(false, true); % reset hardware counter to 0 (otherwise, it continuously counts up from system bootup until it gets to 107,000s - see p37 of User Manual
+%                 if ~rc
+%                     error('Error from setTimeTaggingAttributes')
+%                 end
+%             end
+%             tagstr = 'on, reset';
+%     end
+%     % display at the GUI slider value
+%     h = findobj('Tag', 'UserB5Edit');
+%     set(h,'String', tagstr);
+%     assignin('base', 'TimeTagEna', TimeTagEna);
+% end
+% 
+% %% **** Callback routines used by External function definition (EF) ****
+% 
+% function readTimeTag(RDatain)
+%     persistent frmCount
+%     if isempty(frmCount)
+%         frmCount = 0;
+%     end
+%     % get time tag from first two samples
+%     % time tag is 32 bit unsigned interger value, with 16 LS bits in sample 1
+%     % and 16 MS bits in sample 2.  Note RDatain is in signed INT16 format so must
+%     % convert to double in unsigned format before scaling and adding
+%     W = zeros(2, 1);
+%     for i=1:2
+%         W(i) = double(RDatain(i, 1));
+%         if W(i) < 0
+%             % translate 2's complement negative values to their unsigned integer
+%             % equivalents
+%             W(i) = W(i) + 65536;
+%         end
+%     end
+%     timeStamp = W(1) + 65536 * W(2);
+%     % the 32 bit time tag counter increments every 25 usec, so we have to scale
+%     % by 25 * 1e-6 to convert to a value in seconds
+%     frmCount = frmCount + 1;
+%     if mod(frmCount, 25) == 1
+%         TimeTagEna = evalin('base', 'TimeTagEna');
+%         if TimeTagEna
+%             disp(['Time tag value in seconds ', num2str(timeStamp/4e4,'%2.3f')]);
+%         end
+%     end
+% end
