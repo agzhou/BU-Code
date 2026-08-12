@@ -27,6 +27,7 @@ function [g1] = g1T(data, varargin)
                                 % e.g., in 3D: (x, y, z, tau step)
     % numer = zeros(dataSize);
     denom = mean((conj(data) .* data), frameDim); % temporal (frame) average
+    % denom(denom == 0) = 
     switch frameDim
         case 2 % 1D
             for f = startTau:np % go through each frame to get the g1 at each tau step
@@ -48,6 +49,8 @@ function [g1] = g1T(data, varargin)
                 g1(:, :, :, f) = numer ./ denom;
             end
     end
+
+    g1(isnan(g1)) = 0; % Account for any 0/0 issues that result in NaNs
 
     tend = clock;
 %     disp(strcat("Temporal g_{1} processing done, elapsed time is ", num2str(etime(tend, tstart)), "s"))

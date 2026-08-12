@@ -1,7 +1,13 @@
 % expects pixels as a row vector
-function [psf_gFit, psf_gFit_values, pixels_finer] = PSFGaussianFit(pixels, psf, gfit_pixel_spacing)
+% Optional input for the fit type
+function [psf_gFit, psf_gFit_values, pixels_finer] = PSFGaussianFit(pixels, psf, gfit_pixel_spacing, varargin)
 
-    gfit_type = 'gauss2';
+    % gfit_type = 'gauss2';
+    gfit_type = 'gauss1'; % Default fit type: single-term Gaussian
+    if nargin > 3
+        gfit_type = varargin{1};
+    end
+
 %     [lb, ub] = findLocalMinsOfPSF(psf);
     lb = 1; ub = length(psf); % Change 7/6/26
     psf_cut = psf(lb:ub);
