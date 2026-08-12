@@ -43,8 +43,11 @@ xDim = 2; % Dimension of the data corresponding to x (lateral direction)
 
 % Mask the region to actually process
 [zpo, xpo, nfo] = size(IQ); % Original sizes
-zrange = 1:100;
+% zrange = 1:100;
+% zrange = 1:zpo;
+zrange = 20:140;
 xrange = 1:xpo;
+% xrange = 40:60;
 IQm = IQ(zrange, xrange, :);
 
 % 1.1 SVD clutter filter
@@ -60,7 +63,7 @@ SVs = diag(S);
 toc
 disp('SVs decomposed')
 
-[IQf, noise] = applySVs1D(IQm, PP, SVs, V, sv_threshold_lower, sv_threshold_upper);
+[IQf, noise] = applySVs1D(IQm, CM, SVs, V, sv_threshold_lower, sv_threshold_upper);
 
 % 1.2 High pass filter (apply to the post-SVD clutter filtered data)
 HPF.dim = length(size(IQf)); % Operate on the time dimension
@@ -71,8 +74,8 @@ IQf_HPF = filter(HPF.b, HPF.a, IQf, [], HPF.dim);
 temp = sum(abs(IQf).^2, 3);
 figure; imagesc(temp .^ 0.5)
 % tp = [128, 39]; % Test point
-tp = [87, 26]; % Test point
-figure; plot(squeeze(abs(IQf_HPF(tp(1), tp(2), :))))
+% tp = [87, 26]; % Test point
+% figure; plot(squeeze(abs(IQf_HPF(tp(1), tp(2), :))))
 % figure; plot(squeeze(real(IQf(tp(1), tp(2), :))))
 % figure; plot(squeeze(real(IQf_HPF(tp(1), tp(2), :))))
 
@@ -87,9 +90,9 @@ ctp_labels = {"Down flows", "Up flows", "All flows"};
 
 % Testing: plot the separated and full Fourier spectrums and reconstructed IQ signals
 faxis = linspace(-P.frameRate/2, P.frameRate/2, nFTpts)';
-figure; plot(faxis, squeeze(abs(IQf_FT_separated{1}(tp(1), tp(2), :))))
-figure; plot(faxis, squeeze(abs(IQf_FT_separated{2}(tp(1), tp(2), :))))
-figure; plot(faxis, squeeze(abs(IQf_FT_separated{3}(tp(1), tp(2), :))))
+% figure; plot(faxis, squeeze(abs(IQf_FT_separated{1}(tp(1), tp(2), :))))
+% figure; plot(faxis, squeeze(abs(IQf_FT_separated{2}(tp(1), tp(2), :))))
+% figure; plot(faxis, squeeze(abs(IQf_FT_separated{3}(tp(1), tp(2), :))))
 % figure; plot(1:P.numFramesPerBuffer, squeeze(abs(IQf_separated{1}(tp(1), tp(2), tp(3), :))))
 % figure; plot(1:P.numFramesPerBuffer, squeeze(abs(IQf_separated{2}(tp(1), tp(2), tp(3), :))))
 % figure; plot(1:P.numFramesPerBuffer, squeeze(abs(IQf_separated{3}(tp(1), tp(2), tp(3), :))))
@@ -177,6 +180,7 @@ PP = createStruct(zp, xp, nf, nTau, xDim, zDim, fDim, dimensionality); % Process
 
 % 4.3 Create the overall whole-frequency-spectrum mask (of pixels to keep)
 overall_mask = and( or(fbSNR_mask, g1SNR_express_mask), g1SNR_mask);
+figure; imagesc(overall_mask); title('Overall whole-frequency-spectrum mask')
 
 %% ========= 5. Fit vUS ========= %%
 % Initial guesses for parameters; separate fitting for negative and positive frequencies (down and up flows)
@@ -194,10 +198,13 @@ end
 
 % ---- Loop through directional components and go through the fitting process ---- %
 % for j = ctp
-for j = 1:2 % Fit only negative and positive frequencies (down and up flows)    
+% for j = 1:2 % Fit only negative and positive frequencies (down and up flows)
+for j = 1
     [fbSNR_j, fbSNR_mask_j] = spectralSNR(IQf_FT_separated_masked{j}, IQf_FT_separated{j}, PP, 'half');
     [g1SNR_j, g1SNR_mask_j, g1SNR_express_mask] = g1BasedSNR(g1{j}, PP, 'half');
     % p/n ratio......
+    [pnSNR_j, pnSNR_mask_j] = pnSpectralSNR(IQf_FT_separated_masked, PP, j);
+    overall_mask_j = and( and(or(pnSNR_mask_j, fbSNR_mask_j), or()), )
 end
 
 
