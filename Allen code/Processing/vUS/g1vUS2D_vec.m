@@ -4,11 +4,12 @@
 %   what fitting functions require
 
 % Inputs:
-%   x: v_xgp, v_zgp, p, F (all in SI units)
+%   x: v_xgp, v_zgp, p, optional: [F, DC component] (all in SI units)
 %   tau: time lag vector [any units, probably seconds]
 %   sigma: 1/e values of the PSF shape in x, z [m]
 %   k0: Wavenumber [rad/m]
 %   useF: boolean value --> consider the F parameter or not
+%   useDC: boolean value --> consider the DC parameter (static component) or not
 
 % Outputs:
 %   g1(tau)
