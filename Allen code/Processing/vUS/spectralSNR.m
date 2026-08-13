@@ -16,8 +16,12 @@
 %         if we are using the whole frequency spectrum or just part of it (the
 %         directional filtering)
 
+% Outputs:
+%   fbSNR: frequency-based SNR map (2D: [nz, nx]; 3D: [nx, ny, nz])
+%   fbSNR_mask: frequency-based SNR mask (2D: [nz, nx]; 3D: [nx, ny, nz])
+%   (if type = 'half') fbSNR_express_mask: frequency-based SNR map --> automatic pass if fbSNR > a FIXED threshold (2D: [nz, nx]; 3D: [nx, ny, nz])
 
-function [fbSNR, fbSNR_mask] = spectralSNR(data_FT, data_FT_ref, PP, type)
+function [fbSNR, fbSNR_mask, varargout] = spectralSNR(data_FT, data_FT_ref, PP, type)
     zPix = max(floor(PP.zp * 0.1), 1):floor(PP.zp); % z pixels to consider (avoid NaNs and near-field artifacts)
 
     % Adjust some constants based on the 'type' input
@@ -28,6 +32,7 @@ function [fbSNR, fbSNR_mask] = spectralSNR(data_FT, data_FT_ref, PP, type)
         case 'half'
             const = 0.8;
             inflation = 1.05;
+            express_pass_threshold = 0.6;
     end
 
     switch PP.dimensionality
@@ -47,5 +52,12 @@ function [fbSNR, fbSNR_mask] = spectralSNR(data_FT, data_FT_ref, PP, type)
             fbLinearFit = polyfit(zPix, fbSNR_zAvg(zPix), 1); % Linear fit for this z-averaged and std-subtracted threshold vector
             fbSNR_threshold = repmat(polyval(fbLinearFit, 1:PP.zp)', [PP.xp, PP.yp, 1]) .* inflation; % Evaluate the linear fit at all z pixels and stretch over x, then add an extra 2%
             fbSNR_mask = fbSNR > fbSNR_threshold; % Mask for pixels to keep, according to this frequency-based SNR method
+    end
+
+    % Add the optional output for the express pass mask if the type is
+    % 'half'
+    if strcmp(type, 'half')
+        fbSNR_express_mask = fbSNR > express_pass_threshold;
+        varargout{1} = fbSNR_express_mask;
     end
 end

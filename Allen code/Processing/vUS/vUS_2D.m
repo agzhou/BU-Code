@@ -144,7 +144,7 @@ figure; imagesc(squeeze(mean(abs(IQf_separated{3}), frameDim))); title('All flow
 
 %% Create a struct for all the relevant processing parameters
 dimensionality = 2; % 2D data
-PP = createStruct(zp, xp, nf, nTau, xDim, zDim, fDim, dimensionality); % Processing Parameters ======> adjust as needed
+PP = createStruct(zp, xp, nf, nTau, xDim, zDim, fDim, dimensionality, faxis, freqMask); % Processing Parameters ======> adjust as needed
 
 %% ========= 4. Clean data ========= %%
 
@@ -196,15 +196,32 @@ for j = ctp
     g1_exp{j} = reshape(g1{j}, num_voxels, nTau);
 end
 
+t1i = 2; % Index for tau1 --> 2 for my code, because it calculates g1 starting at tau = 0
+
 % ---- Loop through directional components and go through the fitting process ---- %
 % for j = ctp
 % for j = 1:2 % Fit only negative and positive frequencies (down and up flows)
 for j = 1
-    [fbSNR_j, fbSNR_mask_j] = spectralSNR(IQf_FT_separated_masked{j}, IQf_FT_separated{j}, PP, 'half');
+    % ---- Create masks for this direction's signal ---- %
+    [fbSNR_j, fbSNR_mask_j, fbSNR_express_mask_j] = spectralSNR(IQf_FT_separated_masked{j}, IQf_FT_separated{j}, PP, 'half');
     [g1SNR_j, g1SNR_mask_j, g1SNR_express_mask] = g1BasedSNR(g1{j}, PP, 'half');
-    % p/n ratio......
     [pnSNR_j, pnSNR_mask_j] = pnSpectralSNR(IQf_FT_separated_masked, PP, j);
-    overall_mask_j = and( and(or(pnSNR_mask_j, fbSNR_mask_j), or()), )
+    overall_mask_j = and( and( and(or(pnSNR_mask_j, fbSNR_express_mask_j), or(fbSNR_mask_j, g1SNR_express_mask)), g1SNR_mask_j), overall_mask);
+
+    % ---- Adjust the g1 for this direction's signal ---- %
+    % Create masks for potentially bad pixels
+    g1adj_mask1_j = abs( abs(g1{j}(:, :, t1i)) - abs(g1{j}(:, :, t1i+1)) ) > 2.*abs( abs(g1{j}(:, :, t1i+1)) - abs(g1{j}(:, :, t1i+2)) ); % Flag a pixel if the |g1| drop from tau1 → tau2 is more than double the drop from tau2 → tau3 (is there some extra noise decorrelation in that first interval)
+    g1adj_mask2_j = and( and( abs(g1{j}(:, :, t1i)) > 0.55, abs(g1{j}(:, :, t1i + 1)) < 0.25 ), abs(g1{j}(:, :, t1i + 1)) < abs(g1{j}(:, :, t1i + 2)) ); % (|g1(tau1)| > 0.55) AND (|g1(tau2)| < 0.25) AND (|g1(tau2)| < |g1(tau3)|) --> Flag a pixel if the |g1| at tau1 is high, low at tau2, and then goes back up at tau3 (which would be strange)
+    % g1adj_mask_j = or(g1adj_mask1_j, g1adj_mask2_j);
+    g1adj_mask_j = g1adj_mask2_j; % TESTING
+    % Adjust g1(tau1) for these potentially bad pixels
+    g1tau1_temp_j = (1 - g1adj_mask_j).*squeeze(g1{j}(:, :, t1i)) + (g1adj_mask_j).*( g1{j}(:, :, t1i + 1) + complex( abs(real(g1{j}(:, :, t1i) - g1{j}(:, :, t1i + 1))), imag(g1{j}(:, :, t1i + 1) - g1{j}(:, :, t1i + 2)) ) );
+    % figure; imagesc(abs(g1tau1_temp_j)); clim([0, 1]); colorbar
+    % figure; plot(squeeze(real(g1{j}(74, 132, :))), '-o')
+    % figure; plot(squeeze(abs(g1{j}(93, 174, :))), '-o')
+    % temp = repmat(g1adj_mask_j, [1, 1, nTau]);
+    g1adj_j = g1{j}; g1adj_j(:, :, t1i) = g1tau1_temp_j;
+    figure; plot(squeeze(abs(g1adj_j(93, 174, :))), '-o')
 end
 
 
@@ -214,7 +231,7 @@ end
 
 
 
-% %%
+%%
 % % Create structs that store parameters (including initial guesses) for the vUS fitting
 % 
 % % General stuff
