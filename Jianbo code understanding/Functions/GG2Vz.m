@@ -43,11 +43,18 @@ Tvz=HalfCyc/rFrameItp*2; % period, s
 % CR=ggCR.*iggCR; % threshold criteria
 % CR=CR+(1-CR).*abs(GG(:,1))*2;
 %% Tvz obtained with performing autocorrelation on rGG
+% ACF=aCorr((movmean(rGG',5,2))',nTau*floor(nItp/2), 1);
+% diffACF=(sign(diff(ACF,1,1))==1);
+% [vACF,incsACF]=max(diffACF,[],1);
+% HalfCyc=incsACF(1,:);
+% HalfCyc(vACF==0)=nTau*nItp;
+% Tvz_acf=HalfCyc/rFrameItp*2; % period, s
+
 ACF=aCorr((movmean(real(GG),5,2))',nTau, 1);
 diffACF=(sign(diff(ACF,1,1))==1);
 [vACF,incsACF]=max(diffACF,[],1);
 HalfCyc=incsACF(1,:);
-HalfCyc(vACF==0)=nTau*nItp;
+HalfCyc(vACF==0)=nTau*2;
 Tvz_acf=HalfCyc/PRSSinfo.rFrame*2; % period, s
 % Tvz
 ddGG=diff(dGG,1,1);
@@ -56,5 +63,5 @@ NdGG=sum(ddGG,1);
 Tvz=Tvz.*(NdGG<5)+Tvz_acf.*(NdGG>=5);
 % % Tvz(Tvz<Tdc/5)=Tdc(Tvz<Tdc/5);
 %% III. Vz
-Vz=(((lambda./(2*Tvz).*sign(mean(iGG(1:3,:),1))).')); % absolute value of axial velocity, m/s
-% Vz=reshape(medfilt2(reshape(Vz0,[PRSSinfo.Dim(1),PRSSinfo.Dim(2)]),[3,3]),[PRSSinfo.Dim(1)*PRSSinfo.Dim(2),1]).*CR;
+Vz0=(((lambda./(2*Tvz).*sign(mean(iGG(1:3,:),1))).')); % absolute value of axial velocity, m/s
+Vz=reshape(imgaussfilt(reshape(Vz0,[PRSSinfo.Dim(1),PRSSinfo.Dim(2)]),0.8),[PRSSinfo.Dim(1)*PRSSinfo.Dim(2),1]);

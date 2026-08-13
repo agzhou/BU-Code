@@ -22,7 +22,7 @@
     % Vcz: Color Doppler axial velocity, [nz,nx], mm/s
     % GGf: gg fitting results, [nz,nx, nTau]
  % Bingxue Liu, 20220125
-function [Vz,Vx,pVz,Ms,Mf,R,GGf]=GG2vUS_fit(GG, g1Vz0, Ms0, MfR0, PRSSinfo)
+function [Vz,Vx,pVz,Ms,Mf,R,GGf, GGfid]=GG2vUS_fit(GG, g1Vz0, Ms0, MfR0, PRSSinfo)
 %% O. constant
 lambda0=PRSSinfo.C/PRSSinfo.f0;        % wavlength
 k0 = 2*pi/lambda0;   % wave number
@@ -53,14 +53,20 @@ Fmin_cstrn(:,:,3)=[max(MfI0-0.15, 0) min(MfI0+0.2,1)];   % MfI constrain
 Fmin_cstrn(:,:,4)=[0.5*Vx0 1.3*Vx0];%*tau(end)/(Sigma2(1)); % Vx constrain
 Fmin_cstrn(:,:,5)=sign(Vz0).*[0.6*abs(Vz0) 1.2*abs(Vz0)];  % Vz constrain, mm/s
 Fmin_cstrn(:,:,6)=[0.8*PVz0 min(PVz0*1.3,0.7)]; % PVz constrain
-Fmin_cstrn=double((Fmin_cstrn));
+Fmin_cstrn0=double((Fmin_cstrn));
+Index_cstrn = find(Fmin_cstrn0(:,1,:)>Fmin_cstrn0(:,2,:));
+Fmin_cstrn_lb = Fmin_cstrn0(:,1,:);
+Fmin_cstrn_ub = Fmin_cstrn0(:,2,:);
+Fmin_cstrn_ub(Index_cstrn) = Fmin_cstrn_lb(Index_cstrn);
+Fmin_cstrn(:,1,:) = Fmin_cstrn_lb;
+Fmin_cstrn(:,2,:) = Fmin_cstrn_ub;
 %% V.2 fit complex (g1)
-fitE = @(c) double(sum( abs(c(:,1,1) + c(:,1,2).*exp( -(c(:,1,4).*tau).^2/(Sigma2(1))^2-(c(:,1,5).*tau).^2/(Sigma2(3))^2).*exp(-(k0*tau.*c(:,1,5).*c(:,1,6)).^2).*cos(2*k0*c(:,1,5).*tau)+...
-    1i*c(:,1,3).*exp( -(c(:,1,4).*tau).^2/(Sigma2(1))^2-(c(:,1,5).*tau).^2/(Sigma2(3))^2).*exp(-(k0*tau.*c(:,1,5).*c(:,1,6)).^2).*sin(2*k0*c(:,1,5).*tau)- (GG) ).^2 ,2));
-[fitC, fval] = fmincon(fitE, fitC0, [],[],[],[], ...
+fitE = @(c) double(sum(abs(c(:,1,1) + c(:,1,2).*exp( -(c(:,1,4).*tau).^2/(Sigma2(1))^2-(c(:,1,5).*tau).^2/(Sigma2(3))^2).*exp(-(k0*c(:,1,5).*c(:,1,6).*tau).^2).*cos(2*k0*c(:,1,5).*tau)+...
+    1i*c(:,1,3).*exp( -(c(:,1,4).*tau).^2/(Sigma2(1))^2-(c(:,1,5).*tau).^2/(Sigma2(3))^2).*exp(-(k0*c(:,1,5).*c(:,1,6).*tau).^2).*sin(2*k0*c(:,1,5).*tau)- (GG) ).^2 ,2));
+[fitC, fval] = fmincon(fitE, fitC0,[],[],[],[], ...
     [Fmin_cstrn(:,1,1) Fmin_cstrn(:,1,2) Fmin_cstrn(:,1,3) Fmin_cstrn(:,1,4) Fmin_cstrn(:,1,5) Fmin_cstrn(:,1,6)], ...
     [Fmin_cstrn(:,2,1) Fmin_cstrn(:,2,2) Fmin_cstrn(:,2,3) Fmin_cstrn(:,2,4) Fmin_cstrn(:,2,5) Fmin_cstrn(:,2,6)], ...
-    [], optimset('Display','off','TolFun',1e-6,'TolX',1e-6));%,'ScaleProblem','obj-and-constr'
+    [], optimset('Display','notify','TolFun',1e-6,'TolX',1e-6));%,'ScaleProblem','obj-and-constr'
 
 Ms=reshape(fitC(:,1,1),[nz,nx]); 
 Mf(:,:,1)=reshape(fitC(:,1,2),[nz,nx]);  % MfR
@@ -73,4 +79,6 @@ GGf0=fitC(:,:,1) + fitC(:,:,2).*exp( -(fitC(:,:,4).*tau).^2/(Sigma2(1))^2-(fitC(
     1i*fitC(:,:,3).*exp( -(fitC(:,:,4).*tau).^2/(Sigma2(1))^2-(fitC(:,:,5).*tau).^2/(Sigma2(3))^2).*exp(-(k0*tau.*fitC(:,:,5).*fitC(:,:,6)).^2).*sin(2*k0*fitC(:,:,5).*tau);
 R=((reshape((1-sum(abs(GG-GGf0).^2,2)./sum(abs((GG)-mean(GG,2)).^2,2)),[nz,nx])));  
 GGf=(reshape(GGf0,[nz,nx,nTau]));
+GGf0id = exp( -(fitC(:,:,4).*tau).^2/(Sigma2(1))^2-(fitC(:,:,5).*tau).^2/(Sigma2(3))^2).*exp(-(k0*tau.*fitC(:,:,5).*fitC(:,:,6)).^2).*exp(2*1i*k0*fitC(:,:,5).*tau);
+GGfid = reshape(GGf0id,[nz,nx,nTau]);
 V=(V*1e3); Vz=(Vz*1e3); Vx=(Vx*1e3) ;% mm/s          

@@ -69,15 +69,13 @@ Ms0 = min(max(real(FindCOR(GG2(:,floor(end*1/2):end))),0),max(mean(real(GG2(:,fl
 Me0 =1-abs(GG2(:,1));  MfR0 = max(1-Ms0-Me0,0);
 [g1Vz0, Tvz]=GG2Vz(GG2, PRSSinfo, 10);
 [Vz0,Vx0,pVz0,Ms0,Mf0,R0, GGf0]=GG2vUS_fit(GG2, g1Vz0, Ms0, MfR0, PRSSinfo);
-
-sumGG00 = squeeze(sqrt(abs(-log(abs(GG2(:,15))./abs(GG2(:,5))))));
+sumGG00 = squeeze(sqrt(abs(-log(abs(GG2(:,10))./abs(GG2(:,1))))));
 sumGGV00 = squeeze(abs(GG2(:,1))./(1-abs(GG2(:,1))));
 sumGGFV00 = squeeze((real(GG2(:,1))-(real(GG2(:,10)))));
 sumGG0 = reshape(sumGG00, [PRSSinfo.Dim(1),PRSSinfo.Dim(2)]);
 sumGGV0 = reshape(sumGGV00, [PRSSinfo.Dim(1),PRSSinfo.Dim(2)]);
 sumGGFV0 = reshape(sumGGFV00, [PRSSinfo.Dim(1),PRSSinfo.Dim(2)]);
 sumGGV0_ = squeeze((Mf0(:,:,1))./(1-(Mf0(:,:,1))));
-
 Vz0=(Vz0.*CR0); Vx0=(Vx0.*CR0); % mm/s
 pVz0=(pVz0.*CR0); Ms0=(Ms0.*CR0); Mf0=(Mf0.*CR0); R0=(R0); GGf0=(GGf0);
 if PRSSinfo.rfnScale>1

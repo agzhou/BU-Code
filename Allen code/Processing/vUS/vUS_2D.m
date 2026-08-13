@@ -144,7 +144,8 @@ figure; imagesc(squeeze(mean(abs(IQf_separated{3}), frameDim))); title('All flow
 
 %% Create a struct for all the relevant processing parameters
 dimensionality = 2; % 2D data
-PP = createStruct(zp, xp, nf, nTau, xDim, zDim, fDim, dimensionality, faxis, freqMask); % Processing Parameters ======> adjust as needed
+frameRate = P.frameRate;
+PP = createStruct(zp, xp, nf, nTau, xDim, zDim, fDim, dimensionality, faxis, freqMask, frameRate); % Processing Parameters ======> adjust as needed
 
 %% ========= 4. Clean data ========= %%
 
@@ -207,6 +208,7 @@ for j = 1
     [g1SNR_j, g1SNR_mask_j, g1SNR_express_mask] = g1BasedSNR(g1{j}, PP, 'half');
     [pnSNR_j, pnSNR_mask_j] = pnSpectralSNR(IQf_FT_separated_masked, PP, j);
     overall_mask_j = and( and( and(or(pnSNR_mask_j, fbSNR_express_mask_j), or(fbSNR_mask_j, g1SNR_express_mask)), g1SNR_mask_j), overall_mask);
+    % figure; imagesc(overall_mask_j)
 
     % ---- Adjust the g1 for this direction's signal ---- %
     % Create masks for potentially bad pixels
@@ -217,11 +219,34 @@ for j = 1
     % Adjust g1(tau1) for these potentially bad pixels
     g1tau1_temp_j = (1 - g1adj_mask_j).*squeeze(g1{j}(:, :, t1i)) + (g1adj_mask_j).*( g1{j}(:, :, t1i + 1) + complex( abs(real(g1{j}(:, :, t1i) - g1{j}(:, :, t1i + 1))), imag(g1{j}(:, :, t1i + 1) - g1{j}(:, :, t1i + 2)) ) );
     % figure; imagesc(abs(g1tau1_temp_j)); clim([0, 1]); colorbar
-    % figure; plot(squeeze(real(g1{j}(74, 132, :))), '-o')
-    % figure; plot(squeeze(abs(g1{j}(93, 174, :))), '-o')
+    tp = [93, 174]; % test point
+    % figure; plot(squeeze(real(g1{j}(tp(1), tp(2), :))), '-o')
+    % figure; plot(squeeze(abs(g1{j}(tp(1), tp(2), :))), '-o')
     % temp = repmat(g1adj_mask_j, [1, 1, nTau]);
     g1adj_j = g1{j}; g1adj_j(:, :, t1i) = g1tau1_temp_j;
-    figure; plot(squeeze(abs(g1adj_j(93, 174, :))), '-o')
+    % figure; plot(squeeze(abs(g1adj_j(tp(1), tp(2), :))), '-o')
+    g1adj_stacked_j = stackData(g1adj_j, PP);
+
+    % ---- Find initial guesses for fit parameters, for this direction's signal ---- %
+    % Static (DC) component
+    RotCtr_j = FindCOR( g1adj_stacked_j(:, round(nTau/2):end) ); % [nz*nx, nTau] -- for each pixel, take its last ½ of values (where the complex g1 spiral has theoretically started to slow down and look like a circle) and fit a circle to those points using FindCOR.m. The resulting center point of the fit is theoretically the center/end point of the complex g1 spiral, which represents the steady-state value. Take the real component of that output and use either this value if positive, or 0
+    DCR0_v1_j = max(real(RotCtr_j), 0); % Version 1 of the DC component's Real component
+    DCR0_v2_j = max(mean( real(g1adj_stacked_j(:, floor(end*2/3):end)), 2 ), 0); % Version 2 of the DC component's Real component -- for each pixel, take the temporal mean of the real components of its last ⅓ of values (where there is theoretically a steady-state/plateau), and use either this value if positive, or 0 otherwise.
+    DCR0_j = min(DCR0_v1_j, DCR0_v2_j); % Take the minimum of the two guesses above [nz*nx, nTau]
+    
+    % Absolute "error" due to the noise decorrelation at tau1
+    tau1_decorr_drop_j = 1 - abs(g1adj_stacked_j(:, t1i)); % How much does |g1(tau1)| drop from 1 (This is not used as its own explicit parameter)
+    
+    % Dynamic (noise decorrelation) component -- 'F' in the vUS paper
+    FR_j = max(min(1 - DCR0_j - tau1_decorr_drop_j, 1), 0); % F Real component, clamped to [0, 1]
+
+    % Axial component of the blood flow's group velocity -- v_zgp
+    tauInterpFactor = 10; % factor by which to upsample time lags
+    [Vz0, tau_V] = guessVz0(g1adj_stacked_j, PP, tauInterpFactor);
+
+
+
+
 end
 
 

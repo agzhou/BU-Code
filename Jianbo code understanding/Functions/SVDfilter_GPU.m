@@ -16,9 +16,8 @@ Vrank(:,rank)=Vdesc(:,rank);
 SignalData=gather(reshape(UDelta*Vrank',[nz,nx,nt]));
 %% Noise 
 Vnoise=gpuArray(zeros(size(Vdesc)));
-% Vnoise(:,end-50:end)=Vdesc(:,end-50:end);
-Vnoise(:,end)=Vdesc(:,end);
+Vnoise(:,end-50:end)=Vdesc(:,end-50:end);
 sNoise=gather(reshape(UDelta*Vnoise',[nz,nx,nt]));
-sNoiseMed=medfilt2(abs(squeeze(mean(sNoise,3))),[150 150],'symmetric');%[50,50]
+sNoiseMed=medfilt2(abs(squeeze(mean(sNoise,3))),[50 50],'symmetric');
 Noise=sNoiseMed/min(sNoiseMed(:));
 

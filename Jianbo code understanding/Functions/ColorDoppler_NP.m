@@ -16,9 +16,9 @@ fBlood=fftshift(fft(sIQ,nt,3),3);
 Dirc=sign(sum(squeeze(mean(mean(abs(fBlood),1),2))'.*fCoor));
 HfreqNoise=abs(fBlood(:,:,Dirc*(fCoor)>1500));
 
-% fBlood(abs(fBlood)<(mean(HfreqNoise,3)+5*std(HfreqNoise,[],3)))=0; % thresholding
-fBlood(abs(fBlood)<(max(abs(HfreqNoise),[],3)*1.2))=0; % thresholding
-% fBlood(abs(fBlood)<4*mean(abs(fBlood(abs(fCoor)>1000))))=0; % thresholding
+%%% fBlood(abs(fBlood)<(mean(HfreqNoise,3)+5*std(HfreqNoise,[],3)))=0; % thresholding
+fBlood(abs(fBlood)<(max(abs(HfreqNoise),[],3)*1.3))=0; % thresholding
+%%% fBlood(abs(fBlood)<4*mean(abs(fBlood(abs(fCoor)>1000))))=0; % thresholding
 fD=sum(repmat(permute(fCoor,[1,3,2]),[nz,nx,1]).*abs(fBlood).^2,3)./sum(abs(fBlood).^2,3);
 Vcz=fD.*PRSSinfo.C/(2*PRSSinfo.f0); % axial speed obtained with color Doppler, mm/s
 Vcz(isnan(abs(Vcz)))=0;

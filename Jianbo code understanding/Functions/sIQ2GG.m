@@ -8,7 +8,7 @@
 % Output:
     % GG: g1 of sIQ, [nz,nx,nTau]
 % Jianbo Tang, 20190819
-function [GG, Numer, Denom] = sIQ2GG(sIQ, PRSSinfo)
+function GG = sIQ2GG(sIQ, PRSSinfo)
 
 %% constant total number of samples, nt
 [nz, nx, nxRpt] = size(sIQ) ;

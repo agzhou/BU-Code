@@ -20,16 +20,10 @@ Vrank=zeros(size(Vdesc));
 rank=SignalRank(1):SignalRank(2);
 Vrank(:,rank)=Vdesc(:,rank);
 sIQ=reshape(UDelta*Vrank',[nz,nx,nt]);
-% %% Noise 
-% Vnoise=zeros(size(Vdesc));
-% Vnoise(:,end)=Vdesc(:,end); %end-50
-% Noise=reshape(UDelta*Vnoise',[nz,nx,nt]);
-% sNoiseMed=medfilt2(abs(squeeze(mean(Noise,3))),[150 150],'symmetric');
-% Noise=sNoiseMed/min(sNoiseMed(:));
-
 %% Noise 
 Vnoise=zeros(size(Vdesc));
 Vnoise(:,end-50:end)=Vdesc(:,end-50:end);
 Noise=reshape(UDelta*Vnoise',[nz,nx,nt]);
 sNoiseMed=medfilt2(abs(squeeze(mean(Noise,3))),[50 50],'symmetric');
 Noise=sNoiseMed/min(sNoiseMed(:));
+

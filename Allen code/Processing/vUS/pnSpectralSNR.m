@@ -58,24 +58,24 @@ function [pnSNR, pnSNR_mask] = pnSpectralSNR(data_FT, PP, di)
     denom = sum(abs(data_FT_stacked{3}(:, freqMask_full)) - noise_floor, 2);
     
     % TESTING %
-    numer_test = unstackData(numer, PP);
-    denom_test = unstackData(denom, PP);
-    noise_floor_test = unstackData(noise_floor, PP);
-    figure; imagesc(noise_floor_test)
-    figure; imagesc(numer_test)
-    figure; imagesc(denom_test)
-    tp = [14, 87]; % test pt
-    figure; plot(squeeze(abs(data_FT{3}(tp(1), tp(2), :)))); yline(noise_floor_test(tp(1), tp(2)), 'LineWidth', 2.5, 'Color', 'r')
-    hold on
-    plot(squeeze(abs(data_FT{di}(tp(1), tp(2), :))))
-    hold off
+    % numer_test = unstackData(numer, PP);
+    % denom_test = unstackData(denom, PP);
+    % noise_floor_test = unstackData(noise_floor, PP);
+    % figure; imagesc(noise_floor_test)
+    % figure; imagesc(numer_test)
+    % figure; imagesc(denom_test)
+    % tp = [14, 87]; % test pt
+    % figure; plot(squeeze(abs(data_FT{3}(tp(1), tp(2), :)))); yline(noise_floor_test(tp(1), tp(2)), 'LineWidth', 2.5, 'Color', 'r')
+    % hold on
+    % plot(squeeze(abs(data_FT{di}(tp(1), tp(2), :))))
+    % hold off
 
     % figure; plot(squeeze(abs(data_FT{3}(tp(1), tp(2), :))) - noise_floor_test(tp(1), tp(2))); yline(0, 'LineWidth', 2.5, 'Color', 'r')
     % hold on
     % plot(squeeze(abs(data_FT{di}(tp(1), tp(2), :))) - noise_floor_test(tp(1), tp(2)))
     % hold off
-    numer_test(tp(1), tp(2))
-    denom_test(tp(1), tp(2))
+    % numer_test(tp(1), tp(2))
+    % denom_test(tp(1), tp(2))
 
 
     pnSNR = unstackData(numer ./ denom, PP); % Frequency-band-power based SNR

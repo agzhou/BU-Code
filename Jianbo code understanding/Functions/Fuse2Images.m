@@ -1,12 +1,16 @@
 function Fuse2Images(img_bk,img_olap, cRangeBk,cRangeOlap, xCoor, yCoor, shhold)
-[VzNegCmap, VzPotCmap]=Colormaps_fUS;
-%% 1) create figure and store handle
-hF = figure;
+%% %%%%%%%%%%%%% example %%%%%%%%%%%%%%%%%%%%%%%%
+% xCoor=1:512;
+% zCoor=1:320;
+% figure,Fuse2Images(Vz(:,:,1),Vz(:,:,1),[-30 30],[-30 30],xCoor,zCoor,2.5)
+%% 1) Colormap %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+[VzCmap, VzCmapDn,VzCmapUp]=Colormaps_fUS;
 %% 2) create axes for pcolor and store handle
+axes=gca;
 hAxes1 = axes;
 %set colormap for pcolor axes
 % colormap(hAxesP,Vzcmap);
-colormap(hAxes1,VzPotCmap);
+colormap(hAxes1,VzCmap);
 % plot background figure
 imagesc(xCoor,yCoor,img_bk); 
 %create color bar and set range for color
@@ -16,20 +20,24 @@ axis equal
 axis tight
 xlabel('x [mm]')
 ylabel('z [mm]')
-title('Fused Image')
+colorbar
+% title('Fused Image')
 %% 3) create axes for the overlap axes
+axes=gca;
+hold on
 hAxes2 = axes;
 %set visibility for axes to 'off' so it appears transparent
-axis(hAxes2,'off')
+axis(hAxes2,'on')
 %set colormap for overlap axes
-colormap(VzNegCmap);
+colormap(VzCmap);
 % plot overlap figure
 h1=imagesc(xCoor,yCoor,img_olap);
-alpha(h1,0.6*double((img_olap)>shhold)); % -mean(mean(img_olap)), transparency settings
+alpha(h1,0.9*double((img_olap)>shhold)); % -mean(mean(img_olap)), transparency settings
 caxis(hAxes2,cRangeOlap);
 axis equal
 axis tight
-axis off
+colorbar
+% axis off
 %link the two overlaying axes so they match at all times to remain accurate
 linkaxes([hAxes1,hAxes2]);
 
