@@ -46,9 +46,6 @@
 %           used as k0 = 2*pi/PP.wl). NOTE: as of this writing,
 %           createStruct.m does not populate either field -- add one
 %           (e.g. PP.k0 = 2*pi/P.wl) before calling this function.
-%   tauInterpFactor: accepted for signature compatibility with guessVz0.m
-%       but NOT used -- this method does not need temporal upsampling
-%       (see above), since it is not localizing a single feature.
 %
 % Outputs:
 %   Vz0: [nVoxels, 1], initial guess for axial group velocity [m/s].
@@ -59,7 +56,7 @@
 %        self-consistently as wavelength./(4*Vz0) (Eq. 16) so it can
 %        still be used anywhere tau_V is expected directly. Voxels with
 %        Vz0 == 0 get tau_V = Inf.
-function [Vz0, tau_V] = findVzPhaseDiff(g1_stacked, PP, tauInterpFactor)
+function [Vz0, tau_V] = findVzPhaseDiff(g1_stacked, PP)
     if isfield(PP, 'k0')
         k0 = PP.k0;
     elseif isfield(PP, 'wl')
@@ -82,7 +79,7 @@ function [Vz0, tau_V] = findVzPhaseDiff(g1_stacked, PP, tauInterpFactor)
     % Magnitude-weighted circular mean of the phase-rotation rate
     wsum = sum(w, 2);
     wsum(wsum == 0) = eps; % guard fully decorrelated / no-signal voxels against 0/0
-    rate = sum(w .* dphi, 2) ./ wsum / dt; % [nVoxels, 1], rad/s
+    rate = sum(w .* dphi, 2) ./ wsum / dt; % [nVoxels, 1], rad/s --> rate = (2*k0*Vz*dt)/dt
 
     Vz0 = rate ./ (2*k0); % Eq. 15: phase term is exp(i*2*k0*Vz0*tau)
 

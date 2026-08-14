@@ -242,9 +242,10 @@ for j = 1
     FR_j = max(min(1 - DCR0_j - tau1_decorr_drop_j, 1), 0); % F Real component, clamped to [0, 1]
 
     % Axial component of the blood flow's group velocity -- v_zgp
-    tauInterpFactor = 10; % factor by which to upsample time lags
-    [Vz0, tau_V] = guessVz0(g1adj_stacked_j, PP, tauInterpFactor);
-
+    % tauInterpFactor = 10; % factor by which to upsample time lags
+    % [Vz0, tau_V] = guessVz0(g1adj_stacked_j, PP, tauInterpFactor);
+    
+    [Vz0, tau_V] = findVzPhaseDiff(g1adj_stacked_j, PP);
 
 
 
