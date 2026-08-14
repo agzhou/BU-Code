@@ -145,7 +145,8 @@ figure; imagesc(squeeze(mean(abs(IQf_separated{3}), frameDim))); title('All flow
 %% Create a struct for all the relevant processing parameters
 dimensionality = 2; % 2D data
 frameRate = P.frameRate;
-PP = createStruct(zp, xp, nf, nTau, xDim, zDim, fDim, dimensionality, faxis, freqMask, frameRate); % Processing Parameters ======> adjust as needed
+wl = P.wl;
+PP = createStruct(zp, xp, nf, nTau, xDim, zDim, fDim, dimensionality, faxis, freqMask, frameRate, wl); % Processing Parameters ======> adjust as needed
 
 %% ========= 4. Clean data ========= %%
 
