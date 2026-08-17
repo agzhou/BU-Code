@@ -245,7 +245,13 @@ for j = 1
     % [Vz0, tau_V] = findVzPhaseDiff(stackData(g1{j}, PP), PP); % v_zgp [m/s]
     [Vz0, tau_V] = findVzPhaseDiff(g1adj_stacked_j, PP); % v_zgp [m/s]
 
+    % Mesh method for finding v_xgp0, p0
+    [] = InitvUSParamsWithMesh(Vz0, DCR0_j, FR_j);
     
+    % ---- Fit this direction's signal ---- %
+    anon_fun = @(x) g1vUS2D_residJac(x, tau, sigma, k0, Vz0, real(g1adj_stacked_j), imag(g1adj_stacked_j));
+    opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', true);
+    x = lsqnonlin(anon_fun, x0, lb, ub, opts); % x = [v_xgp, v_zgp, p, F, DC]
 
 
 end
