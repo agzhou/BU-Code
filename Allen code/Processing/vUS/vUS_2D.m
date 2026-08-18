@@ -273,6 +273,7 @@ for j = 1
         % [zi, xi] = 
         if overall_mask_stacked_j(vi)
             x0 = [v_xgp0(vi), v_zgp0(vi), p0(vi), F0(vi), DC0(vi)];
+            % **** NEED TO FIX lb AND ub --> VELOCITIES CAN BE NEGATIVE ****
             lb = [x0(1)*0.5, x0(2)*0.5, max(p0(vi) - 0.2, 0), max(F0(vi) - 0.2, 0), max(DC0(vi) - 0.2, 0)]; % TESTING
             ub = [x0(1)*1.5, x0(2)*1.5, min(p0(vi) + 0.2, 1), min(F0(vi) + 0.2, 1), min(DC0(vi) + 0.2, 1)]; % TESTING
             x = lsqnonlin(anon_fun, x0, lb, ub, opts); % x = [v_xgp, v_zgp, p, F, DC]

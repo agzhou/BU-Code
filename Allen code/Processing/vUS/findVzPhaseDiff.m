@@ -1,3 +1,15 @@
+% NOTE: the frame (sampling) rate must sample at least faster than 2 samples per cycle:
+% phase = 2*k0*vz*tau
+% dphase/dt = 2*k0*vz (cycles/sec)
+% minSampleRate = 2*dphase/dt = 4*k0*vz
+
+% e.g., minSampleRate = 4*(2*pi/(1540/15.625e6))*(50e-3) = 12750 Hz, for a
+% max speed of 50 mm/s, at c = 1540 m/s and 15.625 MHz transducer frequency
+% ALTERNATIVELY:
+% maxVz = sampleRate/(4*k0)
+% e.g., maxVz = 5000/(4*(2*pi/(1540/15.625e6))) = 19.6 mm/s, for a frame
+% rate of 5000 Hz, c = 1540 m/s, and 15.625 MHz transducer frequency
+
 % Description: Estimate the axial group velocity Vz0 (and an equivalent
 % tau_V) from a magnitude-weighted circular mean of adjacent-lag phase
 % differences of g1(tau). Signature-compatible with guessVz0.m (my
