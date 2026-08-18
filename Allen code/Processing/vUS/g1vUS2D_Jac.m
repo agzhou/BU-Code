@@ -1,5 +1,5 @@
 %% Description:
-%   Residual + analytic Jacobian for the FULL 5-parameter joint fit of the
+%   g1 model + analytic Jacobian for the FULL 5-parameter joint fit of the
 %   complex g1(tau) model (Eq. 15 in Jianbo Tang et al., 2020), for use
 %   with lsqnonlin:
 %       fun = @(x) g1vUS2D_residJac(x, tau, sigma, k0, ydataReal, ydataImag);
@@ -8,7 +8,7 @@
 %
 %   Fits the SAME model as g1vUS2D_vec_split.m (which remains the more
 %   readable reference and is what lsqcurvefit needs), just packaged as a
-%   residual+Jacobian pair for lsqnonlin. v_zgp is free here, unlike
+%   value + Jacobian pair for lsqnonlin. v_zgp is free here, unlike
 %   g1vUS2D_vzFixedResidJac.m's separable (v_zgp-fixed) 4-parameter
 %   version -- use this when you want the standard joint fit, or that one
 %   when you have an independent v_zgp estimate (e.g. from
@@ -50,9 +50,9 @@
 %   r: [2*numel(tau), 1] stacked residual, [real part; imaginary part]
 %   J: [2*numel(tau), 5] analytic Jacobian of r w.r.t.
 %      [v_xgp, v_zgp, p, F, DC] (only computed if requested)
-function [r, J] = g1vUS2D_residJac(x, tau, sigma, k0, ydataReal, ydataImag)
+function [g1, J] = g1vUS2D_Jac(x, tau, sigma, k0)
     v_xgp = x(1); v_zgp = x(2); p = x(3); F = x(4); DC = x(5);
-    tau = tau(:); ydataReal = ydataReal(:); ydataImag = ydataImag(:);
+    tau = tau(:);
 
     Ex = exp(-(v_xgp.*tau).^2 ./ (4*sigma(1)^2));
     Ez = exp(-(v_zgp.*tau).^2 ./ (4*sigma(2)^2));
@@ -61,10 +61,12 @@ function [r, J] = g1vUS2D_residJac(x, tau, sigma, k0, ydataReal, ydataImag)
     phase = 2 .* k0 .* v_zgp .* tau;                % now depends on v_zgp
 
     cosP = cos(phase); sinP = sin(phase);
-    gReal = real(DC) + dynamic.*cosP;
-    gImag = imag(DC) + dynamic.*sinP;
+    % gReal = real(DC) + dynamic.*cosP;
+    % gImag = imag(DC) + dynamic.*sinP;
+    % 
+    % r = [gReal - ydataReal; gImag - ydataImag];
 
-    r = [gReal - ydataReal; gImag - ydataImag];
+    g1 = DC + dynamic.*exp(1i.*phase);
 
     if nargout > 1
         n = numel(tau);

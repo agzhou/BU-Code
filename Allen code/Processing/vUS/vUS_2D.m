@@ -146,7 +146,8 @@ figure; imagesc(squeeze(mean(abs(IQf_separated{3}), frameDim))); title('All flow
 dimensionality = 2; % 2D data
 frameRate = P.frameRate;
 wl = P.wl;
-PP = createStruct(zp, xp, nf, nTau, xDim, zDim, fDim, dimensionality, faxis, freqMask, frameRate, wl); % Processing Parameters ======> adjust as needed
+k0 = 2*pi/wl;
+PP = createStruct(zp, xp, nf, nTau, xDim, zDim, fDim, dimensionality, faxis, freqMask, frameRate, wl, k0); % Processing Parameters ======> adjust as needed
 
 %% ========= 4. Clean data ========= %%
 
@@ -209,6 +210,7 @@ for j = 1
     [g1SNR_j, g1SNR_mask_j, g1SNR_express_mask] = g1BasedSNR(g1{j}, PP, 'half');
     [pnSNR_j, pnSNR_mask_j] = pnSpectralSNR(IQf_FT_separated_masked, PP, j);
     overall_mask_j = and( and( and(or(pnSNR_mask_j, fbSNR_express_mask_j), or(fbSNR_mask_j, g1SNR_express_mask)), g1SNR_mask_j), overall_mask);
+    overall_mask_stacked_j = stackData(overall_mask_j, PP);
     % figure; imagesc(overall_mask_j)
 
     % ---- Adjust the g1 for this direction's signal ---- %
@@ -246,14 +248,51 @@ for j = 1
     [Vz0, tau_V] = findVzPhaseDiff(g1adj_stacked_j, PP); % v_zgp [m/s]
 
     % Mesh method for finding v_xgp0, p0
-    [] = InitvUSParamsWithMesh(Vz0, DCR0_j, FR_j);
-    
+    [v_zgp0, v_xgp0, p0, DC0, F0, R20] = InitvUS2DParamsWithMesh(g1adj_stacked_j, Vz0, DCR0_j, FR_j, PP, sigma, tau);
+
     % ---- Fit this direction's signal ---- %
-    anon_fun = @(x) g1vUS2D_residJac(x, tau, sigma, k0, Vz0, real(g1adj_stacked_j), imag(g1adj_stacked_j));
-    opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', true);
-    x = lsqnonlin(anon_fun, x0, lb, ub, opts); % x = [v_xgp, v_zgp, p, F, DC]
+    anon_fun = @(x) g1vUS2D_Jac(x, tau, sigma, PP.k0);
+    % opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', true);
+    opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', false);
 
+    % v_xgp = zeros(PP.zp, PP.xp);
+    % v_zgp = zeros(PP.zp, PP.xp);
+    % p = zeros(PP.zp, PP.xp);
+    % F = zeros(PP.zp, PP.xp);
+    % DC = zeros(PP.zp, PP.xp);
+    v_xgp_stacked = zeros(PP.zp*PP.xp, 1);
+    v_zgp_stacked = zeros(PP.zp*PP.xp, 1);
+    p_stacked = zeros(PP.zp*PP.xp, 1);
+    F_stacked = zeros(PP.zp*PP.xp, 1);
+    DC_stacked = zeros(PP.zp*PP.xp, 1);
 
+    tic
+    % for vi = 1:num_voxels % voxel index
+    % for vi = 1:300
+    for vi = ind
+        % [zi, xi] = 
+        if overall_mask_stacked_j(vi)
+            x0 = [v_xgp0(vi), v_zgp0(vi), p0(vi), F0(vi), DC0(vi)];
+            lb = [x0(1)*0.5, x0(2)*0.5, max(p0(vi) - 0.2, 0), max(F0(vi) - 0.2, 0), max(DC0(vi) - 0.2, 0)]; % TESTING
+            ub = [x0(1)*1.5, x0(2)*1.5, min(p0(vi) + 0.2, 1), min(F0(vi) + 0.2, 1), min(DC0(vi) + 0.2, 1)]; % TESTING
+            x = lsqnonlin(anon_fun, x0, lb, ub, opts); % x = [v_xgp, v_zgp, p, F, DC]
+            v_xgp_stacked(vi) = x(1);
+            v_zgp_stacked(vi) = x(2);
+            p_stacked(vi) = x(3);
+            F_stacked(vi) = x(4);
+            DC_stacked(vi) = x(5);
+        end
+    end
+    toc
+
+    v_xgp = unstackData(v_xgp_stacked, PP);
+    v_zgp = unstackData(v_zgp_stacked, PP);
+    p = unstackData(p_stacked, PP);
+    F = unstackData(F_stacked, PP);
+    DC = unstackData(DC_stacked, PP);
+
+    test = g1vUS2D_Jac(x, tau, sigma, k0);
+    figure; plot(tau, abs(g1adj_stacked_j(vi, :)), tau, abs(test))
 end
 
 

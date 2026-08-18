@@ -20,6 +20,10 @@ function data_stacked = stackData(data_unstacked, PP)
         end
     else % If input data is not a cell (normal matrix)
         ds = size(data_unstacked); % Data size
+        if length(ds) < PP.fDim % Add info in case the expected time dimension doesn't exist
+            ds(PP.fDim) = 1;
+        end
+
         switch PP.dimensionality
             case 2
                 data_stacked = reshape(data_unstacked, [ds(PP.zDim) * ds(PP.xDim), ds(PP.fDim)]);
