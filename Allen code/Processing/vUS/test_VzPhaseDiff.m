@@ -1,7 +1,8 @@
     %% 
-    x = [0.0, 0.05, 0.9, 1, 0];
-    [g1] = awgn(g1vUS2D_vec(x, tau, sigma, k0, true, false), 20).';
+    x = [0.0, 0.05, 0.0, 1, 0];
+    % [g1] = awgn(g1vUS2D_vec(x, tau, sigma, k0, true, false), 20).';
     % [g1] = awgn(g1vUS2D_vec(x, tau, sigma, k0, true, false), 200).';
+    [g1] = g1vUS2D_vec(x, tau, sigma, k0, true, false).';
     figure; plot(g1)
     figure; plot(tau, abs(g1))
 
