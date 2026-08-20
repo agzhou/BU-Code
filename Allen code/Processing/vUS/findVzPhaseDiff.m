@@ -69,7 +69,13 @@
 %        self-consistently as wavelength./(4*Vz0) (Eq. 16) so it can
 %        still be used anywhere tau_V is expected directly. Voxels with
 %        Vz0 == 0 get tau_V = Inf.
-function [Vz0, tau_V] = findVzPhaseDiff(g1_stacked, PP)
+function [Vz0, tau_V] = findVzPhaseDiff(g1_stacked, PP, varargin)
+    
+    if nargin > 2
+        DC = varargin{1}; % Optional input for the static/DC component
+        g1_stacked = g1_stacked - DC;
+    end
+
     if isfield(PP, 'k0')
         k0 = PP.k0;
     elseif isfield(PP, 'wl')

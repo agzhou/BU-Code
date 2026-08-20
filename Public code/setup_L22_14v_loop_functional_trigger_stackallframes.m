@@ -390,7 +390,8 @@ if numGBPerBufferFrame > 2
 end
 
 % if ((maxAcqLength_adjusted + (endDepth-startDepth))*wl / speedOfSound) > 1/PRF
-if ((maxAcqLength_adjusted + (endDepth))*wl / speedOfSound) > 1/PRF
+% if ((maxAcqLength_adjusted + (endDepth))*wl / speedOfSound) > 1/PRF
+if ((2*maxAcqLength_adjusted)*wl / speedOfSound) > 1/PRF
     error('Error: the PRF is too high, it will send the next transmission before the previous transmission reflects from the deepest part of the region')
 
 end

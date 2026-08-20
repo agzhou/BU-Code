@@ -33,6 +33,7 @@ function [g1] = g1T(data, varargin)
             for f = startTau:np % go through each frame to get the g1 at each tau step
                 % numer = mean(conj(data(:, 1:(nf - f + 1))) .* data(:, f:end), frameDim);
                 numer = sum(conj(data(:, 1:(nf - f + 1))) .* data(:, f:end), frameDim) / (nf - f + 1); % This is faster than the mean function
+                % numer = sum(conj(data(:, 1:(nf - f + 1))) .* data(:, f:end), frameDim) / (nf); % This is faster than the mean function
 
                 g1(:, f) = numer ./ denom;
             end
@@ -40,12 +41,14 @@ function [g1] = g1T(data, varargin)
             for f = startTau:np % go through each frame to get the g1 at each tau step
                 % numer = mean(conj(data(:, :, 1:(nf - f + 1))) .* data(:, :, f:end), frameDim);
                 numer = sum(conj(data(:, :, 1:(nf - f + 1))) .* data(:, :, f:end), frameDim) / (nf - f + 1);
+                % numer = sum(conj(data(:, :, 1:(nf - f + 1))) .* data(:, :, f:end), frameDim) / (nf);
                 g1(:, :, f) = numer ./ denom;
             end
         case 4 % 3D
             for f = startTau:np % go through each frame to get the g1 at each tau step
                 % numer = mean(conj(data(:, :, :, 1:(nf - f + 1))) .* data(:, :, :, f:end), frameDim);
                 numer = sum(conj(data(:, :, :, 1:(nf - f + 1))) .* data(:, :, :, f:end), frameDim) / (nf - f + 1);
+                % numer = sum(conj(data(:, :, :, 1:(nf - f + 1))) .* data(:, :, :, f:end), frameDim) / (nf);
                 g1(:, :, :, f) = numer ./ denom;
             end
     end

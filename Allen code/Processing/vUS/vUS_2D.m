@@ -104,9 +104,13 @@ freqMask = abs(faxis) > 1100; % [Hz]
 
 % Create IQf_FT_separated_masked: the Fourier-transformed filtered IQ data,
 % with some frequencies masked out
+IQf_FT_separated_masked = cell(size(IQf_FT_separated));
+IQf_separated_masked = cell(size(IQf_separated));
 for j = ctp
     IQf_FT_separated_masked{j} = IQf_FT_separated{j};
     IQf_FT_separated_masked{j}(:, :, freqMask) = 0;
+
+    IQf_separated_masked{j} = ifft(IQf_FT_separated_masked{j}, nFTpts, PP.fDim);
 end
 % figure; plot(faxis, squeeze(abs(IQf_FT_separated{3}(tp(1), tp(2), :))), '-', 'LineWidth', 2)
 % hold on
@@ -122,6 +126,7 @@ g1_dirty = g1T(IQf_separated{3}, 4); % Use all frequencies
 startTau = 2; % Index for the first tau point (tau1) for subsequent analysis.
 
 nTau = ceil(20e-3 *P.frameRate); % # of time lags to consider; empirically set by assuming all g1 for voxels containing actual flow decay within 10 ms
+% nTau = ceil(100e-3 *P.frameRate); % # of time lags to consider; empirically set by assuming all g1 for voxels containing actual flow decay within 10 ms
 tau = (0:nTau - 1)' ./ P.frameRate; % Time lag vector [s]
 
 % g1neg = g1T(IQf_separated{1}, nTau + startTau - 1); % Add the startTau-1 because the values start at startTau, but we still want nTau points total
@@ -131,7 +136,8 @@ tau = (0:nTau - 1)' ./ P.frameRate; % Time lag vector [s]
 g1 = cell(size(IQf_separated));
 
 for j = ctp
-    g1{j} = g1T(IQf_separated{j}, nTau);
+    % g1{j} = g1T(IQf_separated{j}, nTau); % Use the base filtered IQ
+    g1{j} = g1T(IQf_separated_masked{j}, nTau); % Use the filtered IQ with system noise removed
 end
 
 % Testing
@@ -204,7 +210,7 @@ t1i = 2; % Index for tau1 --> 2 for my code, because it calculates g1 starting a
 % ---- Loop through directional components and go through the fitting process ---- %
 % for j = ctp
 % for j = 1:2 % Fit only negative and positive frequencies (down and up flows)
-for j = 1
+for j = 3
     % ---- Create masks for this direction's signal ---- %
     [fbSNR_j, fbSNR_mask_j, fbSNR_express_mask_j] = spectralSNR(IQf_FT_separated_masked{j}, IQf_FT_separated{j}, PP, 'half');
     [g1SNR_j, g1SNR_mask_j, g1SNR_express_mask] = g1BasedSNR(g1{j}, PP, 'half');
@@ -231,21 +237,23 @@ for j = 1
     g1adj_stacked_j = stackData(g1adj_j, PP);
 
     % ---- Find initial guesses for fit parameters, for this direction's signal ---- %
-    % Static (DC) component
+    % Static (DC) component -- complex valued
     RotCtr_j = FindCOR( g1adj_stacked_j(:, round(nTau/2):end) ); % [nz*nx, nTau] -- for each pixel, take its last ½ of values (where the complex g1 spiral has theoretically started to slow down and look like a circle) and fit a circle to those points using FindCOR.m. The resulting center point of the fit is theoretically the center/end point of the complex g1 spiral, which represents the steady-state value. Take the real component of that output and use either this value if positive, or 0
     DCR0_v1_j = max(real(RotCtr_j), 0); % Version 1 of the DC component's Real component
     DCR0_v2_j = max(mean( real(g1adj_stacked_j(:, floor(end*2/3):end)), 2 ), 0); % Version 2 of the DC component's Real component -- for each pixel, take the temporal mean of the real components of its last ⅓ of values (where there is theoretically a steady-state/plateau), and use either this value if positive, or 0 otherwise.
-    DCR0_j = min(DCR0_v1_j, DCR0_v2_j); % Take the minimum of the two guesses above [nz*nx, nTau]
-    
+    % DCR0_j = min(DCR0_v1_j, DCR0_v2_j); % Take the minimum of the two guesses above [nz*nx, nTau]
+    % DCR0_j = complex(min(real(DCR0_v1_j), real(DCR0_v2_j)), min(imag(DCR0_v1_j), imag(DCR0_v2_j))); % Take the minimum of the two guesses above [nz*nx, nTau]
+    DCR0_j = DCR0_v1_j; % Testing
+
     % Absolute "error" due to the noise decorrelation at tau1
     tau1_decorr_drop_j = 1 - abs(g1adj_stacked_j(:, t1i)); % How much does |g1(tau1)| drop from 1 (This is not used as its own explicit parameter)
     
     % Dynamic (noise decorrelation) component -- 'F' in the vUS paper
-    FR_j = max(min(1 - DCR0_j - tau1_decorr_drop_j, 1), 0); % F Real component, clamped to [0, 1]
+    FR_j = max(min(1 - abs(DCR0_j) - tau1_decorr_drop_j, 1), 0); % F Real component, clamped to [0, 1]
 
     % Axial component of the blood flow's group velocity -- v_zgp
-    % [Vz0, tau_V] = findVzPhaseDiff(stackData(g1{j}, PP), PP); % v_zgp [m/s]
-    [Vz0, tau_V] = findVzPhaseDiff(g1adj_stacked_j, PP); % v_zgp [m/s]
+    [Vz0, tau_V] = findVzPhaseDiff(stackData(g1{j}, PP), PP, DCR0_j); % v_zgp [m/s]
+    % [Vz0, tau_V] = findVzPhaseDiff(g1adj_stacked_j, PP); % v_zgp [m/s]
 
     % Mesh method for finding v_xgp0, p0
     [v_zgp0, v_xgp0, p0, DC0, F0, R20] = InitvUS2DParamsWithMesh(g1adj_stacked_j, Vz0, DCR0_j, FR_j, PP, sigma, tau);
