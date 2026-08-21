@@ -8,6 +8,12 @@
 
 %%
 % function [vUS] = vUS_2D(IQ)
+%% Only use if needed: convert Jianbo/Bingxue's acquisition parameters to something I can use
+% First: manually load an IQ file, like: load('E:\PROJ_tlfUS\IQdata\0806_2021_BL3_vUS_run1(good)\IQ-10-5-5000-1000-1-BL3-1.mat')
+if ~exist('P_old', 'var')
+    P_old = P; clearvars P
+end
+[P] = oldP2P(P_old);
 
 %% Add the Speckle tracking folder to path
 codeDir = cd;
@@ -43,9 +49,10 @@ xDim = 2; % Dimension of the data corresponding to x (lateral direction)
 
 % Mask the region to actually process
 [zpo, xpo, nfo] = size(IQ); % Original sizes
+% figure; imagesc(squeeze(abs(IQ(:, :, 1))))
 % zrange = 1:100;
-% zrange = 1:zpo;
-zrange = 20:140;
+zrange = 1:zpo;
+% zrange = 20:140;
 xrange = 1:xpo;
 % xrange = 40:60;
 IQm = IQ(zrange, xrange, :);
@@ -83,7 +90,7 @@ figure; imagesc(temp .^ 0.5)
 
 % 2.1 Separate positive and negative frequencies
 [IQf_separated, IQf_FT_separated, nFTpts] = separatePosNegFreqs(IQf_HPF); % Outputs are cell arrays in the order of: negative, positive, all frequencies
-frameDim = length(size(IQf)); % Get the dimension corresponding to time/frames
+% frameDim = length(size(IQf)); % Get the dimension corresponding to time/frames
 
 ctp = 1:length(IQf_FT_separated); % Indices of which frequency Components To Process (typically [1, 2, 3]: negative, positive, all)
 ctp_labels = {"Down flows", "Up flows", "All flows"};
@@ -110,7 +117,7 @@ for j = ctp
     IQf_FT_separated_masked{j} = IQf_FT_separated{j};
     IQf_FT_separated_masked{j}(:, :, freqMask) = 0;
 
-    IQf_separated_masked{j} = ifft(IQf_FT_separated_masked{j}, nFTpts, PP.fDim);
+    IQf_separated_masked{j} = ifft(IQf_FT_separated_masked{j}, nFTpts, fDim);
 end
 % figure; plot(faxis, squeeze(abs(IQf_FT_separated{3}(tp(1), tp(2), :))), '-', 'LineWidth', 2)
 % hold on
@@ -144,9 +151,9 @@ end
 figure; plot(tau, squeeze(abs(g1{1}(tp(1), tp(2), :))), '-o')
 figure; plot(tau, squeeze(abs(g1{3}(tp(1), tp(2), :))), '-o')
 
-figure; imagesc(squeeze(mean(abs(IQf_separated{1}), frameDim))); title('Down flow')
-figure; imagesc(squeeze(mean(abs(IQf_separated{2}), frameDim))); title('Up flow')
-figure; imagesc(squeeze(mean(abs(IQf_separated{3}), frameDim))); title('All flow')
+figure; imagesc(squeeze(mean(abs(IQf_separated{1}), fDim))); title('Down flow')
+figure; imagesc(squeeze(mean(abs(IQf_separated{2}), fDim))); title('Up flow')
+figure; imagesc(squeeze(mean(abs(IQf_separated{3}), fDim))); title('All flow')
 
 %% Create a struct for all the relevant processing parameters
 dimensionality = 2; % 2D data
@@ -210,7 +217,7 @@ t1i = 2; % Index for tau1 --> 2 for my code, because it calculates g1 starting a
 % ---- Loop through directional components and go through the fitting process ---- %
 % for j = ctp
 % for j = 1:2 % Fit only negative and positive frequencies (down and up flows)
-for j = 3
+for j = 1
     % ---- Create masks for this direction's signal ---- %
     [fbSNR_j, fbSNR_mask_j, fbSNR_express_mask_j] = spectralSNR(IQf_FT_separated_masked{j}, IQf_FT_separated{j}, PP, 'half');
     [g1SNR_j, g1SNR_mask_j, g1SNR_express_mask] = g1BasedSNR(g1{j}, PP, 'half');

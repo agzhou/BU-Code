@@ -49,9 +49,10 @@ function [P] = oldP2P(P_old)
     P.wl = P_old.vSound / (P_old.frequency * 1e6); % m
 
     P.startDepth = P_old.startDepth;
-    P.startDepthMM = P_old.startDepthMM;
     P.endDepth = P_old.endDepth;
-    P.endDepthMM = P_old.endDepthMM;
+
+    P.startDepthMM = P_old.startDepth * P.wl * 1e3;
+    P.endDepthMM = P_old.endDepth * P.wl * 1e3;
     P.maxAcqLength_adjusted = P_old.maxDepth;
 
     P.samplesPerWave = P_old.nSperWave;

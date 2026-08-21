@@ -20,18 +20,23 @@ vesselness = vesselness2D(PDIA .^ 0.5, sigmas, spacing, tau, brightondark);
 
 figure; imagesc(vesselness)
 
-%%
+%% Calculate vessel angles and other metrics
 vesselnessThreshold = 0.01;
 minBranchLengthPix = 1;
 minSegLengthPix = 3;
 [vessels, dir1, dir2, dir3, vesselness, vesselMask, segLabel, skel] = vesselAngle3D(PDIA, sigmas, spacing, tau, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
 
-%%
+%% Plot the vesselness probability and vessel mask
 figure; imagesc(squeeze(max(vesselness, [], 1))'); colormap parula; colorbar; title('Vesselness probability')
 figure; imagesc(squeeze(max(vesselMask, [], 1))'); title('Vessel mask')
-%%
+
+%% Plot the vessel skeleton
 % figure; h = imagesc(angleMap); colormap hsv; colorbar; axis square; xlabel('x [mm]'); ylabel('z [mm]'); title('Vessel angle'); set(h, 'AlphaData', ~isnan(angleMap)) % make pixels transparent if the angle = NaN
 figure; imagesc(squeeze(max(skel, [], 1))'); title('Vessel skeletons')
 
+%% Plot vessel angles
+c = size(angleMap); % coords
+[X, Y, Z] = meshgrid(1:c(1), 1:c(2), 1:c(3));
+figure; quiver3(X, Y, Z, dir1, dir2, dir3)
 %%
-volumeViewer()
+% volumeViewer(vesselMask)
