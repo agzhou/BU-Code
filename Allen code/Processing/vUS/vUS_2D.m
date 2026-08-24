@@ -117,7 +117,7 @@ for j = ctp
     IQf_FT_separated_masked{j} = IQf_FT_separated{j};
     IQf_FT_separated_masked{j}(:, :, freqMask) = 0;
 
-    IQf_separated_masked{j} = ifft(IQf_FT_separated_masked{j}, nFTpts, fDim);
+    IQf_separated_masked{j} = ifft(ifftshift(IQf_FT_separated_masked{j}, fDim), nFTpts, fDim);
 end
 % figure; plot(faxis, squeeze(abs(IQf_FT_separated{3}(tp(1), tp(2), :))), '-', 'LineWidth', 2)
 % hold on
@@ -217,7 +217,7 @@ t1i = 2; % Index for tau1 --> 2 for my code, because it calculates g1 starting a
 % ---- Loop through directional components and go through the fitting process ---- %
 % for j = ctp
 % for j = 1:2 % Fit only negative and positive frequencies (down and up flows)
-for j = 1
+for j = 2
     % ---- Create masks for this direction's signal ---- %
     [fbSNR_j, fbSNR_mask_j, fbSNR_express_mask_j] = spectralSNR(IQf_FT_separated_masked{j}, IQf_FT_separated{j}, PP, 'half');
     [g1SNR_j, g1SNR_mask_j, g1SNR_express_mask] = g1BasedSNR(g1{j}, PP, 'half');

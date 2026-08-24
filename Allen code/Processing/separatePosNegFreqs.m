@@ -2,7 +2,10 @@
 % (filtered to have the blood signal)
 
 % Output: 
-%   IQf_separated (negative, positive, all)
+%   IQf_separated: 3x1 cell array (negative, positive, all) of directionally-separated IQf values
+%   IQf_FT_separated: 3x1 cell array (negative, positive, all) of directionally-separated, Fourier transformed IQf
+%                     (NOTE: THIS IS ZERO-SHIFTED!!!)
+
 function [IQf_separated, IQf_FT_separated, varargout] = separatePosNegFreqs(IQf)
     % [negativeComponent, positiveComponent, allComponents]
     frameDim = length(size(IQf)); % Usually the frame dimension is the last dimension. 3 for 2D data and 4 for 3D data.
@@ -34,10 +37,13 @@ function [IQf_separated, IQf_FT_separated, varargout] = separatePosNegFreqs(IQf)
     end
     IQf_FT_separated = [{negativeFTComponent}; {positiveFTComponent}; {allFTComponents}];
     
-    negativeComponent = ifft(negativeFTComponent, np, frameDim);
-    positiveComponent = ifft(positiveFTComponent, np, frameDim);
-    allComponents = ifft(allFTComponents, np, frameDim);
+    % Undo the fftshift and perform inverse FFTs to recover the signals
+    negativeComponent = ifft(ifftshift(negativeFTComponent, frameDim), np, frameDim);
+    positiveComponent = ifft(ifftshift(positiveFTComponent, frameDim), np, frameDim);
+    allComponents = ifft(ifftshift(allFTComponents, frameDim), np, frameDim);
 
+    % Crop to the # of frames, since there was padding above to get the #
+    % of FT points to a power of 2 for computational efficiency
     if frameDim == 4 % 3D data
         negativeComponent = negativeComponent(:, :, :, 1:nf);
         positiveComponent = positiveComponent(:, :, :, 1:nf);
