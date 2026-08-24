@@ -105,18 +105,19 @@ for filenum = startFile:endFile
     % clearvars IQ
 
     % Use the IQf with separated negative and positive frequency components
-%     [IQf_separated, IQf_FT_separated] = separatePosNegFreqs(IQf);
-%     [PDI] = calcPowerDoppler(IQf_separated);
-%     [CDI] = calcColorDoppler(IQf_FT_separated, P);
+    [IQf_separated, IQf_FT_separated, nFTpts] = separatePosNegFreqs(IQf); % Outputs are cell arrays in the order of: negative, positive, all frequencies
+    [PDI] = calcPowerDoppler(IQf_separated, noise);
+    [CDI] = calcColorDoppler(IQf_FT_separated, P);
 
     % PDI = sum(abs(IQf) .^ 2, 3) ./ size(IQf, 3);
-    PDI = sum(abs(IQf) .^ 2, 3) ./ size(IQf, 3) ./ noise;
+    % PDI = sum(abs(IQf) .^ 2, 3) ./ size(IQf, 3) ./ noise;
     % figure; imagesc(x_mm, z_mm, squeeze(PDI .^ 0.5)); colormap hot; colorbar; title('Power Doppler'); xlabel('x [mm]'); ylabel('z [mm]')
     % figure; imagesc(x_mm, z_mm, squeeze(abs(IQ(:, :, 1)))); colorbar; title('IQ'); xlabel('x [mm]'); ylabel('z [mm]')
 
 %     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
 %     disp("PDI and CDI for file " + num2str(filenum) + " saved" )
-    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', '-v7.3', '-nocompression');
+    % save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', '-v7.3', '-nocompression');
+    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
 
     disp("fUS result for file " + num2str(filenum) + " saved" )
 %     disp("g1 result for file " + num2str(filenum) + " saved" )

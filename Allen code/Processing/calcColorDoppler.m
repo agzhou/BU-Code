@@ -12,17 +12,24 @@ function [CDI] = calcColorDoppler(IQf_FT_separated, P)
     CDI = cell(size(IQf_FT_separated));
 
     freqDim = length(size(IQf_FT_separated{1})); % Usually the frequency dimension is the last dimension. 3 for 2D data and 4 for 3D data.
+    
+    % Edit 8/24/26: added the below two lines and commented out the switch
+    % below, so the code works with my updated separatePosNegFreqs.m
+    % function. The updated version outputs IQf_FT_separated with the full
+    % frequency range, just some parts are zeroed out.
+    Flim = [-P.frameRate/2, P.frameRate/2];
+    fi = linspace(Flim(1), Flim(2), size(IQf_FT_separated{i}, freqDim)); % frequencies
     for i = 1:length(CDI)
 %     for i = 1
-        switch i
-            case 1 % Negative frequencies
-                Flim = [-P.frameRate/2, 0];
-            case 2 % Positive
-                Flim = [0, P.frameRate/2];
-            case 3 % All
-                Flim = [-P.frameRate/2, P.frameRate/2];
-        end
-        fi = linspace(Flim(1), Flim(2), size(IQf_FT_separated{i}, freqDim)); % frequencies
+        % switch i
+        %     case 1 % Negative frequencies
+        %         Flim = [-P.frameRate/2, 0];
+        %     case 2 % Positive
+        %         Flim = [0, P.frameRate/2];
+        %     case 3 % All
+        %         Flim = [-P.frameRate/2, P.frameRate/2];
+        % end
+        % fi = linspace(Flim(1), Flim(2), size(IQf_FT_separated{i}, freqDim)); % frequencies
         
 %         % Note: this line only works for 3D right now
         if freqDim == 4

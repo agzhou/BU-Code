@@ -265,8 +265,38 @@ for j = 2
     % Mesh method for finding v_xgp0, p0
     [v_zgp0, v_xgp0, p0, DC0, F0, R20] = InitvUS2DParamsWithMesh(g1adj_stacked_j, Vz0, DCR0_j, FR_j, PP, sigma, tau);
 
+    % Testing: vessel angle for v_xgp0
+    spacing = [1, 1];
+    sigmas = [1:0.5:10];
+    tau = 0.5;
+    brightondark = true;
+    vesselnessThreshold = 0.01;
+    minBranchLengthPix = 5;
+    minSegLengthPix = 9;
+    PDI_j = sum(abs(IQf_separated_masked{j}).^2, fDim); % PDI for this direction
+    gamma = 0.5;
+    figure; imagesc(PDI_j .^ gamma)
+    PDI_US_j = imresize(PDI_j, 5, "bilinear");
+    figure; imagesc(PDI_US_j .^ gamma)
+    % PDIN = PDI ./ max(PDIN, [], 'all'); % Normalized PDI [0, 1]
+    % [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(unstackData(Vz03, PP)) .* 1, sigmas, spacing, tau, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
+    [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(PDI_US_j .^ gamma), sigmas, spacing, tau, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
+    figure; imagesc(vesselness)
+    figure; imagesc(skel)
+    figure; imagesc(angleMap); colormap hsv
+
+    PDI3_US = imresize(PDI3, 5, "bilinear");
+    figure; imagesc(PDI3_US .^ gamma)
+    % PDIN = PDI ./ max(PDIN, [], 'all'); % Normalized PDI [0, 1]
+    % [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(unstackData(Vz03, PP)) .* 1, sigmas, spacing, tau, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
+    [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(PDI3_US .^ gamma), sigmas, spacing, tau, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
+    figure; imagesc(vesselness)
+    figure; imagesc(skel)
+    figure; imagesc(angleMap); colormap hsv
+
     % ---- Fit this direction's signal ---- %
-    anon_fun = @(x) g1vUS2D_Jac(x, tau, sigma, PP.k0);
+    % anon_fun = @(x) g1vUS2D_Jac(x, tau, sigma, PP.k0);
+    anon_fun = @(x) g1vUS2D_vec_split(x, tau, sigma, PP.k0, useF, useDC);
     % opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', true);
     opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', false);
 
@@ -289,8 +319,10 @@ for j = 2
         if overall_mask_stacked_j(vi)
             x0 = [v_xgp0(vi), v_zgp0(vi), p0(vi), F0(vi), DC0(vi)];
             % **** NEED TO FIX lb AND ub --> VELOCITIES CAN BE NEGATIVE ****
-            lb = [x0(1)*0.5, x0(2)*0.5, max(p0(vi) - 0.2, 0), max(F0(vi) - 0.2, 0), max(DC0(vi) - 0.2, 0)]; % TESTING
-            ub = [x0(1)*1.5, x0(2)*1.5, min(p0(vi) + 0.2, 1), min(F0(vi) + 0.2, 1), min(DC0(vi) + 0.2, 1)]; % TESTING
+            % lb = [x0(1)*0.5, x0(2)*0.5, max(p0(vi) - 0.2, 0), max(F0(vi) - 0.2, 0), max(DC0(vi) - 0.2, 0)]; % TESTING
+            % ub = [x0(1)*1.5, x0(2)*1.5, min(p0(vi) + 0.2, 1), min(F0(vi) + 0.2, 1), min(DC0(vi) + 0.2, 1)]; % TESTING
+            lb = [x0(1)*(1 - 0.25), x0(2)*(1 - 0.25), max(p0(vi) - 0.2, 0), max(F0(vi) - 0.2, 0), max(DC0(vi) - 0.2, 0)]; % TESTING
+            ub = [x0(1)*(1 + 0.25), x0(2)*(1 + 0.25), min(p0(vi) + 0.2, 1), min(F0(vi) + 0.2, 1), min(DC0(vi) + 0.2, 1)]; % TESTING
             x = lsqnonlin(anon_fun, x0, lb, ub, opts); % x = [v_xgp, v_zgp, p, F, DC]
             v_xgp_stacked(vi) = x(1);
             v_zgp_stacked(vi) = x(2);
