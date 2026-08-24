@@ -18,7 +18,6 @@ function [CDI] = calcColorDoppler(IQf_FT_separated, P)
     % function. The updated version outputs IQf_FT_separated with the full
     % frequency range, just some parts are zeroed out.
     Flim = [-P.frameRate/2, P.frameRate/2];
-    fi = linspace(Flim(1), Flim(2), size(IQf_FT_separated{i}, freqDim)); % frequencies
     for i = 1:length(CDI)
 %     for i = 1
         % switch i
@@ -30,7 +29,8 @@ function [CDI] = calcColorDoppler(IQf_FT_separated, P)
         %         Flim = [-P.frameRate/2, P.frameRate/2];
         % end
         % fi = linspace(Flim(1), Flim(2), size(IQf_FT_separated{i}, freqDim)); % frequencies
-        
+        fi = linspace(Flim(1), Flim(2), size(IQf_FT_separated{i}, freqDim)); % frequencies
+
 %         % Note: this line only works for 3D right now
         if freqDim == 4
             fi = repmat(permute(fi, [1, 4, 3, 2]), size(IQf_FT_separated{i}, 1), size(IQf_FT_separated{i}, 2), size(IQf_FT_separated{i}, 3), 1);

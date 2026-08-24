@@ -83,6 +83,7 @@ clearvars procParamsPrompt procParamsDefaults procParamsUserInput
 
 %% 3. Loop through files: Clutter Filtering and Power Doppler calculation
 for filenum = startFile:endFile
+% for filenum = endFile:-1:startFile
 % for filenum = 2:endFile
 % for filenum = startFile
 % for filenum = 1
@@ -128,6 +129,47 @@ end
 % savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'tau1_index_CBF', 'tau2_index_CBF', 'tau1_index_CBV');
 save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
 % savefast([savepath, 'PDI_CDI_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
+
+%% 4. Store all the PDI across the experiment into one cell array - one cell for each directional component
+% load([savepath, 'PDI_CDI-', num2str(1), '.mat'], 'PDI', 'CDI')
+load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI', 'CDI')
+% load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI')
+% PDIallSF = cell([length(PDI), endFile - startFile + 1]); % Matrix with the CBVi for every superframe
+PDIallSF = cell([size(PDI)]); 
+% PDIallSF = zeros([size(PDI), endFile - startFile + 1]); % Matrix with the CBVi for every superframe
+% PDIallSF(:,  1) = PDI;
+% PDIallSF(:, :, 1) = PDI;
+CDIallSF = cell([size(CDI)]); % Matrix with the CBVi for every superframe
+% CDIallSF(:,  1) = CDI;
+
+% for filenum = startFile + 1:endFile
+for filenum = startFile:endFile
+%     load([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI')
+    load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'CDI')
+    % load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI')
+%     PDI = load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI')
+%     CDI = load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'CDI')
+
+    for j = 1:3
+        PDIallSF{j} = cat(3, PDIallSF{j}, PDI{j});
+        CDIallSF{j} = cat(3, CDIallSF{j}, CDI{j});
+    end
+
+    % if iscell(PDI)
+    %     PDIallSF(:, :, filenum) = PDI{3};
+    % else
+    %     PDIallSF(:, :, filenum) = PDI;
+    % end
+end
+
+%% Average the PDI and CDI across all superframes
+PDIA = cell(size(PDIallSF));
+CDIA = cell(size(CDIallSF));
+fDim = 3; % Frequency dimension
+for j = 1:3
+    PDIA{j} = mean(PDIallSF{j}, fDim);
+    CDIA{j} = mean(CDIallSF{j}, fDim);
+end
 
 %% 4. Store all the PDI across the experiment into one matrix
 % load([savepath, 'PDI_CDI-', num2str(1), '.mat'], 'PDI', 'CDI')

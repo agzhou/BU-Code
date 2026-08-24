@@ -51,8 +51,8 @@ xDim = 2; % Dimension of the data corresponding to x (lateral direction)
 [zpo, xpo, nfo] = size(IQ); % Original sizes
 % figure; imagesc(squeeze(abs(IQ(:, :, 1))))
 % zrange = 1:100;
-zrange = 1:zpo;
-% zrange = 20:140;
+% zrange = 1:zpo;
+zrange = 20:140;
 xrange = 1:xpo;
 % xrange = 40:60;
 IQm = IQ(zrange, xrange, :);
@@ -198,6 +198,52 @@ PP = createStruct(zp, xp, nf, nTau, xDim, zDim, fDim, dimensionality, faxis, fre
 overall_mask = and( or(fbSNR_mask, g1SNR_express_mask), g1SNR_mask);
 figure; imagesc(overall_mask); title('Overall whole-frequency-spectrum mask')
 
+%% TESTING: get vessel angle from superframe-averaged PDI (or CDI?) maps
+% Load the averaged PDI and CDI maps
+[PDIA_CDIA_filename, PDIA_CDIA_pathname, ~] = uigetfile('*.mat', 'Select the averaged PDI and CDI file');
+load([PDIA_CDIA_pathname, PDIA_CDIA_filename])
+
+j = 3;
+
+% USF = 5; % Upsampling factor
+% spacing = [1, 1];
+% sigmas = [1*USF:1:5*USF];
+% tau = 0.5;
+% brightondark = true;
+% vesselnessThreshold = 0.05;
+% minBranchLengthPix = 2*USF;
+% minSegLengthPix = 2*USF;
+% gamma = 0.5;
+% % figure; imagesc(PDIA{j} .^ gamma)
+% PDI_US_j = imresize(PDIA{j}, USF, "bilinear");
+% % figure; imagesc(PDI_US_j .^ gamma)
+% % PDIN = PDI ./ max(PDIN, [], 'all'); % Normalized PDI [0, 1]
+% % [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(unstackData(Vz03, PP)) .* 1, sigmas, spacing, tau, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
+% [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(PDI_US_j .^ gamma), sigmas, spacing, tau, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
+% figure; imagesc(vesselness); axis square
+% figure; imagesc(vesselMask); axis square
+% figure; imagesc(skel); axis square
+% figure; h = imagesc(angleMap); colormap hsv; colorbar; axis square; xlabel('x [mm]'); ylabel('z [mm]'); title('Vessel angle'); set(h, 'AlphaData', ~isnan(angleMap)) % make pixels transparent if the angle = NaN
+
+spacing = [1, 1];
+sigmas = [1:0.5:3];
+tau = 0.5;
+brightondark = true;
+vesselnessThreshold = 0.05;
+minBranchLengthPix = 5;
+minSegLengthPix = 3;
+% PDIN = PDI ./ max(PDIN, [], 'all'); % Normalized PDI [0, 1]
+% [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(unstackData(Vz03, PP)) .* 1, sigmas, spacing, tau, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
+% [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(PDIA{j}(zrange, xrange) .^ gamma), sigmas, spacing, tau, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
+[vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(CDIA{j}(zrange, xrange)), sigmas, spacing, tau, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
+% test = CDIA{3}; test(test >0 ) = 0; test = abs(test);
+% [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(test(zrange, xrange), sigmas, spacing, tau, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
+% figure; imagesc(vesselness)
+% figure; imagesc(vesselMask)
+% figure; imagesc(skel)
+figure; h = imagesc(angleMap); colormap hsv; colorbar; axis equal; xlabel('x'); ylabel('z'); title('Vessel angle'); set(h, 'AlphaData', ~isnan(angleMap)) % make pixels transparent if the angle = NaN
+vesselAngles = deg2rad(angleMap); % Vessel angles [rad]
+
 %% ========= 5. Fit vUS ========= %%
 % Initial guesses for parameters; separate fitting for negative and positive frequencies (down and up flows)
 
@@ -261,38 +307,17 @@ for j = 2
     % Axial component of the blood flow's group velocity -- v_zgp
     [Vz0, tau_V] = findVzPhaseDiff(stackData(g1{j}, PP), PP, DCR0_j); % v_zgp [m/s]
     % [Vz0, tau_V] = findVzPhaseDiff(g1adj_stacked_j, PP); % v_zgp [m/s]
+    figure; imagesc(unstackData(Vz0, PP)); colormap(VzCmap)
+    
+    % Testing: vessel angle for v_xgp0
+    Vx0 = Vz0 .* tan(stackData(vesselAngles, PP));
+    figure; hx = imagesc(unstackData(Vx0, PP)); set(hx, 'AlphaData', ~isnan(unstackData(Vx0, PP))); clim([0, 0.03]); colormap("turbo");
 
     % Mesh method for finding v_xgp0, p0
     [v_zgp0, v_xgp0, p0, DC0, F0, R20] = InitvUS2DParamsWithMesh(g1adj_stacked_j, Vz0, DCR0_j, FR_j, PP, sigma, tau);
 
-    % Testing: vessel angle for v_xgp0
-    spacing = [1, 1];
-    sigmas = [1:0.5:10];
-    tau = 0.5;
-    brightondark = true;
-    vesselnessThreshold = 0.01;
-    minBranchLengthPix = 5;
-    minSegLengthPix = 9;
-    PDI_j = sum(abs(IQf_separated_masked{j}).^2, fDim); % PDI for this direction
-    gamma = 0.5;
-    figure; imagesc(PDI_j .^ gamma)
-    PDI_US_j = imresize(PDI_j, 5, "bilinear");
-    figure; imagesc(PDI_US_j .^ gamma)
-    % PDIN = PDI ./ max(PDIN, [], 'all'); % Normalized PDI [0, 1]
-    % [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(unstackData(Vz03, PP)) .* 1, sigmas, spacing, tau, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
-    [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(PDI_US_j .^ gamma), sigmas, spacing, tau, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
-    figure; imagesc(vesselness)
-    figure; imagesc(skel)
-    figure; imagesc(angleMap); colormap hsv
-
-    PDI3_US = imresize(PDI3, 5, "bilinear");
-    figure; imagesc(PDI3_US .^ gamma)
-    % PDIN = PDI ./ max(PDIN, [], 'all'); % Normalized PDI [0, 1]
-    % [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(unstackData(Vz03, PP)) .* 1, sigmas, spacing, tau, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
-    [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(PDI3_US .^ gamma), sigmas, spacing, tau, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
-    figure; imagesc(vesselness)
-    figure; imagesc(skel)
-    figure; imagesc(angleMap); colormap hsv
+    
+    
 
     % ---- Fit this direction's signal ---- %
     % anon_fun = @(x) g1vUS2D_Jac(x, tau, sigma, PP.k0);
