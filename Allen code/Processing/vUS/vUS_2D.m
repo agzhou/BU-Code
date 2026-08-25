@@ -242,7 +242,8 @@ minSegLengthPix = 3;
 % figure; imagesc(vesselMask)
 % figure; imagesc(skel)
 figure; h = imagesc(angleMap); colormap hsv; colorbar; axis equal; xlabel('x'); ylabel('z'); title('Vessel angle'); set(h, 'AlphaData', ~isnan(angleMap)) % make pixels transparent if the angle = NaN
-vesselAngles = deg2rad(angleMap); % Vessel angles [rad]
+% vesselAngles = deg2rad(angleMap); % Vessel angles [rad]
+vesselAngles = angleMap; % Vessel angles [deg]
 
 %% ========= 5. Fit vUS ========= %%
 % Initial guesses for parameters; separate fitting for negative and positive frequencies (down and up flows)
@@ -310,8 +311,8 @@ for j = 3
     figure; imagesc(unstackData(Vz0, PP)); colormap(VzCmap); axis equal; colorbar
     
     % Testing: vessel angle for v_xgp0
-    Vx0 = Vz0 .* tan(stackData(vesselAngles, PP));
-    figure; hx = imagesc(unstackData(Vx0, PP)); set(hx, 'AlphaData', ~isnan(unstackData(Vx0, PP))); clim([0, 0.03]); colormap("turbo"); colorbar; axis equal
+    Vx0 = Vz0 .* tand(stackData(vesselAngles, PP));
+    figure; hx = imagesc(abs(unstackData(Vx0, PP))); set(hx, 'AlphaData', ~isnan(unstackData(Vx0, PP))); clim([0, 0.03]); colormap("turbo"); colorbar; axis equal; title('|v_{xgp,0}|')
 
     % Mesh method for finding v_xgp0, p0
     % [v_zgp0, v_xgp0, p0, DC0, F0, R20] = InitvUS2DParamsWithMesh(g1adj_stacked_j, Vz0, DCR0_j, FR_j, PP, sigma, tau);
