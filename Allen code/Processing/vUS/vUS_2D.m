@@ -263,7 +263,7 @@ t1i = 2; % Index for tau1 --> 2 for my code, because it calculates g1 starting a
 % ---- Loop through directional components and go through the fitting process ---- %
 % for j = ctp
 % for j = 1:2 % Fit only negative and positive frequencies (down and up flows)
-for j = 2
+for j = 3
     % ---- Create masks for this direction's signal ---- %
     [fbSNR_j, fbSNR_mask_j, fbSNR_express_mask_j] = spectralSNR(IQf_FT_separated_masked{j}, IQf_FT_separated{j}, PP, 'half');
     [g1SNR_j, g1SNR_mask_j, g1SNR_express_mask] = g1BasedSNR(g1{j}, PP, 'half');
@@ -305,13 +305,13 @@ for j = 2
     FR_j = max(min(1 - abs(DCR0_j) - tau1_decorr_drop_j, 1), 0); % F Real component, clamped to [0, 1]
 
     % Axial component of the blood flow's group velocity -- v_zgp
-    [Vz0, tau_V] = findVzPhaseDiff(stackData(g1{j}, PP), PP, DCR0_j); % v_zgp [m/s]
+    [Vz0, tau_V] = findVzPhaseDiff(stackData(g1{j}, PP), PP); % v_zgp [m/s]
     % [Vz0, tau_V] = findVzPhaseDiff(g1adj_stacked_j, PP); % v_zgp [m/s]
-    figure; imagesc(unstackData(Vz0, PP)); colormap(VzCmap)
+    figure; imagesc(unstackData(Vz0, PP)); colormap(VzCmap); axis equal; colorbar
     
     % Testing: vessel angle for v_xgp0
     Vx0 = Vz0 .* tan(stackData(vesselAngles, PP));
-    figure; hx = imagesc(unstackData(Vx0, PP)); set(hx, 'AlphaData', ~isnan(unstackData(Vx0, PP))); clim([0, 0.03]); colormap("turbo");
+    figure; hx = imagesc(unstackData(Vx0, PP)); set(hx, 'AlphaData', ~isnan(unstackData(Vx0, PP))); clim([0, 0.03]); colormap("turbo"); colorbar; axis equal
 
     % Mesh method for finding v_xgp0, p0
     % [v_zgp0, v_xgp0, p0, DC0, F0, R20] = InitvUS2DParamsWithMesh(g1adj_stacked_j, Vz0, DCR0_j, FR_j, PP, sigma, tau);
