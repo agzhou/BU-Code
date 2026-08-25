@@ -314,14 +314,21 @@ for j = 2
     figure; hx = imagesc(unstackData(Vx0, PP)); set(hx, 'AlphaData', ~isnan(unstackData(Vx0, PP))); clim([0, 0.03]); colormap("turbo");
 
     % Mesh method for finding v_xgp0, p0
-    [v_zgp0, v_xgp0, p0, DC0, F0, R20] = InitvUS2DParamsWithMesh(g1adj_stacked_j, Vz0, DCR0_j, FR_j, PP, sigma, tau);
-
+    % [v_zgp0, v_xgp0, p0, DC0, F0, R20] = InitvUS2DParamsWithMesh(g1adj_stacked_j, Vz0, DCR0_j, FR_j, PP, sigma, tau);
+    
+    % **** TO DO: create a function that looks at the confidence in the
+    % angle-based Vx0, and outputs an updated Vx0 if needed, plus searches
+    % for the best p0 ****
     
     
 
     % ---- Fit this direction's signal ---- %
     % anon_fun = @(x) g1vUS2D_Jac(x, tau, sigma, PP.k0);
     anon_fun = @(x) g1vUS2D_vec_split(x, tau, sigma, PP.k0, useF, useDC);
+
+    % **** TO DO: edit anon_fun to have the correct output structure 
+    % (complex-valued function), AND subtract the experimental data!!!!
+
     % opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', true);
     opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', false);
 
@@ -341,11 +348,9 @@ for j = 2
     % for vi = 1:300
     for vi = ind
         % [zi, xi] = 
-        if overall_mask_stacked_j(vi)
+        if overall_mask_stacked_j(vi) % Fit only voxels we believe have high signal quality
             x0 = [v_xgp0(vi), v_zgp0(vi), p0(vi), F0(vi), DC0(vi)];
-            % **** NEED TO FIX lb AND ub --> VELOCITIES CAN BE NEGATIVE ****
-            % lb = [x0(1)*0.5, x0(2)*0.5, max(p0(vi) - 0.2, 0), max(F0(vi) - 0.2, 0), max(DC0(vi) - 0.2, 0)]; % TESTING
-            % ub = [x0(1)*1.5, x0(2)*1.5, min(p0(vi) + 0.2, 1), min(F0(vi) + 0.2, 1), min(DC0(vi) + 0.2, 1)]; % TESTING
+            % **** Check lb AND ub --> VELOCITIES CAN BE NEGATIVE ****
             lb = [x0(1)*(1 - 0.25), x0(2)*(1 - 0.25), max(p0(vi) - 0.2, 0), max(F0(vi) - 0.2, 0), max(DC0(vi) - 0.2, 0)]; % TESTING
             ub = [x0(1)*(1 + 0.25), x0(2)*(1 + 0.25), min(p0(vi) + 0.2, 1), min(F0(vi) + 0.2, 1), min(DC0(vi) + 0.2, 1)]; % TESTING
             x = lsqnonlin(anon_fun, x0, lb, ub, opts); % x = [v_xgp, v_zgp, p, F, DC]
