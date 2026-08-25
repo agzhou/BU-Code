@@ -155,6 +155,12 @@ figure; imagesc(squeeze(mean(abs(IQf_separated{1}), fDim))); title('Down flow')
 figure; imagesc(squeeze(mean(abs(IQf_separated{2}), fDim))); title('Up flow')
 figure; imagesc(squeeze(mean(abs(IQf_separated{3}), fDim))); title('All flow')
 
+% Create new variables for experimental g1, with spatial dimensions stacked
+g1_exp = cell(size(IQf_separated)); % Cell array of experimental g1 data with spatial dimensions vectorized/stacked
+for j = ctp
+    g1_exp{j} = reshape(g1{j}, num_voxels, nTau);
+end
+
 %% Create a struct for all the relevant processing parameters
 dimensionality = 2; % 2D data
 frameRate = P.frameRate;
@@ -227,17 +233,17 @@ j = 3;
 
 spacing = [1, 1];
 sigmas = [1:0.5:3];
-tau = 0.5;
+tau_va = 0.5;
 brightondark = true;
 vesselnessThreshold = 0.05;
 minBranchLengthPix = 5;
 minSegLengthPix = 3;
 % PDIN = PDI ./ max(PDIN, [], 'all'); % Normalized PDI [0, 1]
-% [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(unstackData(Vz03, PP)) .* 1, sigmas, spacing, tau, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
-% [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(PDIA{j}(zrange, xrange) .^ gamma), sigmas, spacing, tau, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
-[vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(CDIA{j}(zrange, xrange)), sigmas, spacing, tau, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
+% [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(unstackData(Vz03, PP)) .* 1, sigmas, spacing, tau_va, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
+% [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(PDIA{j}(zrange, xrange) .^ gamma), sigmas, spacing, tau_va, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
+[vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(CDIA{j}(zrange, xrange)), sigmas, spacing, tau_va, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
 % test = CDIA{3}; test(test >0 ) = 0; test = abs(test);
-% [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(test(zrange, xrange), sigmas, spacing, tau, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
+% [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(test(zrange, xrange), sigmas, spacing, tau_va, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
 % figure; imagesc(vesselness)
 % figure; imagesc(vesselMask)
 % figure; imagesc(skel)
@@ -253,18 +259,12 @@ vesselAngles = angleMap; % Vessel angles [deg]
 ps = size(IQf); ps = ps(1:end-1); % Plane size [voxels]
 num_voxels = size(IQf, 1)*size(IQf, 2);
 
-% Create new variables for experimental g1, with spatial dimensions stacked
-g1_exp = cell(size(IQf_separated)); % Cell array of experimental g1 data with spatial dimensions vectorized/stacked
-for j = ctp
-    g1_exp{j} = reshape(g1{j}, num_voxels, nTau);
-end
-
 t1i = 2; % Index for tau1 --> 2 for my code, because it calculates g1 starting at tau = 0
 
 % ---- Loop through directional components and go through the fitting process ---- %
 % for j = ctp
 % for j = 1:2 % Fit only negative and positive frequencies (down and up flows)
-for j = 3
+for j = 1
     % ---- Create masks for this direction's signal ---- %
     [fbSNR_j, fbSNR_mask_j, fbSNR_express_mask_j] = spectralSNR(IQf_FT_separated_masked{j}, IQf_FT_separated{j}, PP, 'half');
     [g1SNR_j, g1SNR_mask_j, g1SNR_express_mask] = g1BasedSNR(g1{j}, PP, 'half');
@@ -315,7 +315,7 @@ for j = 3
     figure; hx = imagesc(abs(unstackData(Vx0, PP))); set(hx, 'AlphaData', ~isnan(unstackData(Vx0, PP))); clim([0, 0.03]); colormap("turbo"); colorbar; axis equal; title('|v_{xgp,0}|')
 
     % Mesh method for finding v_xgp0, p0
-    % [v_zgp0, v_xgp0, p0, DC0, F0, R20] = InitvUS2DParamsWithMesh(g1adj_stacked_j, Vz0, DCR0_j, FR_j, PP, sigma, tau);
+    [v_zgp0, v_xgp0, p0, DC0, F0, R20] = InitvUS2DParamsWithMesh(g1adj_stacked_j, Vz0, DCR0_j, FR_j, PP, sigma, tau);
     
     % **** TO DO: create a function that looks at the confidence in the
     % angle-based Vx0, and outputs an updated Vx0 if needed, plus searches
@@ -325,11 +325,12 @@ for j = 3
 
     % ---- Fit this direction's signal ---- %
     % anon_fun = @(x) g1vUS2D_Jac(x, tau, sigma, PP.k0);
-    anon_fun = @(x) g1vUS2D_vec_split(x, tau, sigma, PP.k0, useF, useDC);
-
+    
     % **** TO DO: edit anon_fun to have the correct output structure 
     % (complex-valued function), AND subtract the experimental data!!!!
 
+    useF = true;
+    useDC = true;
     % opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', true);
     opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', false);
 
@@ -345,15 +346,26 @@ for j = 3
     DC_stacked = zeros(PP.zp*PP.xp, 1);
 
     tic
-    % for vi = 1:num_voxels % voxel index
+    g1_exp_j = stackData(g1{j}, PP);
+    vesselAngleMask = ~isnan(stackData(vesselAngles, PP)); % Mask to avoid NaN voxels in the vessel angle mask
+
+    for vi = 1:num_voxels % voxel index
     % for vi = 1:300
-    for vi = ind
+    % for vi = ind
         % [zi, xi] = 
-        if overall_mask_stacked_j(vi) % Fit only voxels we believe have high signal quality
-            x0 = [v_xgp0(vi), v_zgp0(vi), p0(vi), F0(vi), DC0(vi)];
+        % if overall_mask_stacked_j(vi) & vesselAngleMask(vi) % Fit only voxels we believe have high signal quality
+        if vesselAngleMask(vi) % Fit only voxels we believe have high signal quality
+            % x0 = [v_xgp0(vi), v_zgp0(vi), p0(vi), F0(vi), DC0(vi)];
+            x0 = [Vx0(vi), Vz0(vi), p0(vi), F0(vi), DC0(vi)];
             % **** Check lb AND ub --> VELOCITIES CAN BE NEGATIVE ****
-            lb = [x0(1)*(1 - 0.25), x0(2)*(1 - 0.25), max(p0(vi) - 0.2, 0), max(F0(vi) - 0.2, 0), max(DC0(vi) - 0.2, 0)]; % TESTING
-            ub = [x0(1)*(1 + 0.25), x0(2)*(1 + 0.25), min(p0(vi) + 0.2, 1), min(F0(vi) + 0.2, 1), min(DC0(vi) + 0.2, 1)]; % TESTING
+            lb = [x0(1) - 0.25*abs(x0(1)), x0(2) - 0.25*abs(x0(2)), max(p0(vi) - 0.2, 0), max(F0(vi) - 0.2, 0), max(DC0(vi) - 0.2, 0)]; % TESTING
+            ub = [x0(1) + 0.25*abs(x0(1)), x0(2) + 0.25*abs(x0(2)), min(p0(vi) + 0.2, 1), min(F0(vi) + 0.2, 1), min(DC0(vi) + 0.2, 1)]; % TESTING
+
+            g1_exp_j_vi = g1_exp_j(vi, :); g1_exp_j_vi = g1_exp_j_vi(:);
+            g1_exp_split_j_vi = [real(g1_exp_j_vi), imag(g1_exp_j_vi)];
+            anon_fun = @(x) g1vUS2D_vec_split(x, tau, sigma, PP.k0, useF, useDC) - g1_exp_split_j_vi;
+
+
             x = lsqnonlin(anon_fun, x0, lb, ub, opts); % x = [v_xgp, v_zgp, p, F, DC]
             v_xgp_stacked(vi) = x(1);
             v_zgp_stacked(vi) = x(2);
@@ -370,10 +382,16 @@ for j = 3
     F = unstackData(F_stacked, PP);
     DC = unstackData(DC_stacked, PP);
 
-    test = g1vUS2D_Jac(x, tau, sigma, k0);
-    figure; plot(tau, abs(g1adj_stacked_j(vi, :)), tau, abs(test))
+    % % test = g1vUS2D_Jac(x, tau, sigma, PP.k0);
+    % test = g1vUS2D_vec(x, tau, sigma, PP.k0, useF, useDC);
+    % figure; plot(tau, abs(g1_exp_j(vi, :)), tau, abs(test))
+    % figure; plot(test, '-o'); hold on; plot(g1_exp_j(vi, :), '-x'); hold off; legend('Fit', 'Data')
 end
 
+%% 
+v = sqrt(v_xgp.^2 + v_zgp.^2);
+figure; imagesc(v); clim([0, 0.05]); colormap turbo; axis equal; colorbar
+figure; imagesc(unstackData(sqrt(Vx0.^2 + Vz0.^2), PP)); clim([0, 0.05]); colormap turbo; axis equal; colorbar
 
 
 
