@@ -327,9 +327,9 @@ for j = 1
     g1_exp_j = stackData(g1{j}, PP);
     % vesselAngleMask = ~isnan(stackData(vesselAngles, PP)); % Mask to avoid NaN voxels in the vessel angle mask
 
-    % for vi = 1:num_voxels % voxel index
+    for vi = 1:num_voxels % voxel index
     % for vi = 1:300
-    for vi = ind
+    % for vi = ind
         % [zi, xi] = 
         if overall_mask_stacked_j(vi)
         % if overall_mask_stacked_j(vi) & vesselAngleMask(vi) % Fit only voxels we believe have high signal quality
@@ -358,15 +358,17 @@ for j = 1
     F = unstackData(F_stacked, PP);
     DC = unstackData(DC_stacked, PP);
 
-    test = g1ModelSimplified2D_vec(x, tau, PP.k0, useF, useDC);
-    figure; plot(tau, abs(g1_exp_j(vi, :)), tau, abs(test))
+    % test = g1ModelSimplified2D_vec(x, tau, PP.k0, useF, useDC);
+    % figure; plot(tau, abs(g1_exp_j(vi, :)), tau, abs(test))
     % figure; plot(test, '-o'); hold on; plot(g1_exp_j(vi, :), '-x'); hold off; legend('Fit', 'Data')
 end
 
 %% 
-v = sqrt(v_xgp.^2 + v_zgp.^2);
-figure; imagesc(v); clim([0, 0.05]); colormap turbo; axis equal; colorbar
-figure; imagesc(unstackData(sqrt(Vx0.^2 + Vz0.^2), PP)); clim([0, 0.05]); colormap turbo; axis equal; colorbar
+% v = sqrt(v_xgp.^2 + v_zgp.^2);
+BFi = 1 ./ tauC;
+BFi(isinf(BFi)) = NaN;
+figure; imagesc(BFi); colormap turbo; axis equal; colorbar; clim([prctile(BFi(:), 5), prctile(BFi(:), 95)])
+% figure; imagesc(unstackData(sqrt(Vx0.^2 + Vz0.^2), PP)); clim([0, 0.05]); colormap turbo; axis equal; colorbar
 
 
 
