@@ -1,3 +1,5 @@
+%% Description: test for how effectively my new g1 model can be fit
+
 %% Add path to the erfz code -- error function with complex inputs
 codeDir = cd;
 codeDir_split = split(string(codeDir), filesep);
@@ -7,8 +9,8 @@ addpath(genpath(ErrorFunctionCodePath))
 
 %% Parameters for testing
 v_xgp = 0.005; % m/s
-v_zgp = 0.005; % m/s
-tau = 0:1/5000:20e-3; % s
+v_zgp = 0.01; % m/s
+tau = (0:1/5000:20e-3).'; % s
 c0 = 1540; % m/s
 fc = 15.625e6; % Hz
 lambda0 = c0./fc; % m
@@ -43,3 +45,31 @@ plot(g1_old, '-x', 'LineWidth', 2)
 hold off
 axis square
 legend('Uniform velocity probability distribution', 'Gaussian velocity probability distribution')
+
+%% Fitting test - can we recover the ground truth parameters
+tau_mask = 2:length(tau); % Don't fit at tau = 0, which results in a NaN
+% g1_exp = g1_erf(tau_mask);
+% SNR_dB = 30;
+SNR_dB = 50;
+g1_exp = awgn(g1_erf(tau_mask), SNR_dB);
+g1_exp_split = [real(g1_exp), imag(g1_exp)]; % Can add noise if desired
+fun_new = @(x) vUS_2D_erf_vec_split(x, tau(tau_mask), k0, sigma) - g1_exp_split;
+
+lb = [0, -50e-3, 0];
+ub = [50e-3, 50e-3, 1];
+x0 = [0.0001, 0.0001, 1]; % v_xgp0, v_zgp0, F guesses [m/s]
+
+x = lsqnonlin(fun_new, x0, lb, ub);
+
+%% Plot fitting results
+% |g1|
+g1_fitted_erf = vUS_2D_erf_vec(x, tau, k0, sigma);
+figure
+plot(tau(tau_mask).*1e3, abs(g1_exp), '-o', 'LineWidth', 2)
+hold on
+plot(tau.*1e3, abs(g1_fitted_erf), '-x', 'LineWidth', 2)
+hold off
+xlabel('Time lag [ms]')
+ylabel('|g1|')
+legend("Noisy model data: v_{xgp} = "+num2str(v_xgp*1e3)+" mm/s, v_{zgp} = "+num2str(v_zgp*1e3) + " mm/s", "Fit: v_{xgp} = "+num2str(x(1)*1e3)+"mm/s, v_{zgp} = "+num2str(x(2)*1e3) + " mm/s")
+title("Signal with Gaussian white noise added; SNR: " + num2str(SNR_dB) + " dB")

@@ -1,20 +1,9 @@
 % Description: initialize vUS (2D) parameters with the mesh --> R^2 method
 % as in the vUS paper (the 2D analog of the v_xgp/p mesh search inside
-% Jianbo's GG2vUS.m). Only v_xgp and p are searched here -- v_zgp (from
+% Jianbo's GG2vUS.m). Only v_xgp is searched here -- v_zgp (from
 % findVzPhaseDiff.m), DC, and F already have trusted independent initial
 % estimates and are held FIXED during this search, matching GG2vUS.m's
 % own approach of holding its Ms/Mf guesses fixed while meshing vx/p.
-%
-% Efficiency note: naively broadcasting a [nPix, nVxCandidates,
-% nPCandidates, nTau] model tensor for a full image is prohibitively
-% large (e.g. ~613M elements / ~10GB as complex doubles for a 20,000-pixel
-% image with the default grid below) -- this instead loops over the
-% (v_xgp, p) mesh points (a few hundred, not per-pixel) and reduces each
-% candidate's [nPix, nTau] model curve down to a per-pixel R^2
-% immediately, keeping a running best-R^2 (and the (v_xgp, p) achieving
-% it) per pixel rather than ever storing the full tensor. Peak memory is
-% O(nPix x nTau), the same order as the input g1 data itself, regardless
-% of how fine the v_xgp/p grid is.
 %
 % Inputs:
 %   g1: [nPix, nTauFit] complex g1(tau) data (spatial dims stacked). Pass
@@ -34,13 +23,15 @@
 %   tau: [nTauFit,1] (or [1,nTauFit]) time lag vector [s], matching g1's columns
 %
 % Outputs:
-%   v_zgp: [nPix,1] -- v_zgp0, median-filtered (if applicable); unchanged
-%          otherwise. This function does not search over v_zgp.
-%   v_xgp, p: [nPix,1] -- the (v_xgp, p) mesh point maximizing R^2 per pixel
-%   DC, F: [nPix,1] -- DC0/F0 passed through (F is median-filtered like v_zgp0)
-%   R2: [nPix,1] -- the achieved R^2 (Eq. 17) at the chosen (v_xgp, p) per pixel
-function [v_zgp, v_xgp, p, DC, F, R2] = InitvUS2DParamsWithMesh(g1, v_zgp0, DC0, F0, PP, sigma, tau)
+%   v_xgp [nVox,1] -- the v_xgp maximizing R^2 per pixel
+%   R2: [nVox,1] -- the achieved R^2 (Eq. 17) at the chosen v_xgp0 per pixel
+function [v_xgp, R2] = InitVx0WithMesh2D(g1, v_zgp0, DC0, F0, PP, sigma, tau)
     nPix = size(g1, 1);
+    tau_mask = 2:PP.nTau;
+    % Avoid NaNs on tau = 0
+    tau = tau(tau_mask);
+    g1 = g1(:, tau_mask);
+
     tau = reshape(tau, 1, []); % row, [1, nTauFit], for broadcasting against [nPix, nTauFit] data
 
     if isfield(PP, 'k0')
@@ -72,36 +63,26 @@ function [v_zgp, v_xgp, p, DC, F, R2] = InitvUS2DParamsWithMesh(g1, v_zgp0, DC0,
     v_xgp_bounds = [0, 30].*1e-3; % Bounds for v_xgp values [m/s]
     v_xgp_step = 1*1e-3; % Step for v_xgp grid [m/s]
     v_xgp_vec = v_xgp_bounds(1):v_xgp_step:v_xgp_bounds(2);
-    p_vec = linspace(0, 1, 10); % p vector of values from 0-1
-    nVx = numel(v_xgp_vec); nP = numel(p_vec);
+    nVx = numel(v_xgp_vec); % # of Vx guesses, per voxel
 
     % R^2 denominator (Eq. 17) depends only on the observed data -- compute once
-    % ydataDev = sum(abs(g1 - mean(g1,2)).^2, 2); % [nPix,1]
+    % ydataDev = sum(abs(g1 - mean(g1, 2)).^2, 2); % [nPix,1]
     ydataDev = mean(abs(g1 - mean(g1, 2)), 2).^2; % [nPix,1]
     ydataDev(ydataDev == 0) = eps;
 
-    bestR2 = -inf(nPix,1);
-    v_xgp = zeros(nPix,1);
-    p = zeros(nPix,1);
+    bestR2 = -Inf(nPix, 1);
+    v_xgp = zeros(nPix, 1);
 
-    zVec = v_zgp.*tau; % [nPix, nTauFit], reused across every (v_xgp,p) candidate
-    envelopeZphase = exp(1i*2*k0*zVec); % [nPix, nTauFit], v_xgp/p-independent, reused across every candidate
+    for vxi = 1:nVx % Loop through Vx values
+        Vx_vxi = v_xgp_vec(vxi);
 
-    for iVx = 1:nVx
-        vxCand = v_xgp_vec(iVx);
-        envelopeX = exp(-(vxCand.*tau).^2 ./ (4*sigma(1)^2)); % [1, nTauFit] -- p-independent, hoisted out of the inner loop
-        for iP = 1:nP
-            pCand = p_vec(iP);
-            envelope = envelopeX .* exp(-(v_zgp.*tau).^2 ./ (4*sigma(2)^2) - (pCand.*zVec.*k0).^2); % [nPix, nTauFit]
-            g1_model = DC + F.*envelope.*envelopeZphase; % [nPix, nTauFit]
+        g1_model = vUS_2D_erf(tau, k0, sigma, Vx_vxi, v_zgp, F); % [nPix, nTauFit]
 
-            R2cand = 1 - sum(abs(g1 - g1_model).^2, 2) ./ ydataDev; % [nPix,1]
+        R2_vxi = 1 - mean(abs(g1 - g1_model).^2, 2) ./ ydataDev; % [nPix,1]
 
-            improved = R2cand > bestR2;
-            bestR2(improved) = R2cand(improved);
-            v_xgp(improved) = vxCand;
-            p(improved) = pCand;
-        end
+        improved_voxels = R2_vxi > bestR2;
+        bestR2(improved_voxels) = R2_vxi(improved_voxels);
+        v_xgp(improved_voxels) = Vx_vxi;
     end
 
     R2 = bestR2;

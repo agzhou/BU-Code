@@ -44,4 +44,4 @@ hold on
 % plot(g1_old, '-x', 'LineWidth', 2)
 hold off
 axis square
-legend('Uniform velocity probability distribution', 'Gaussian velocity probability distribution')
+% legend('Uniform velocity probability distribution', 'Gaussian velocity probability distribution')
