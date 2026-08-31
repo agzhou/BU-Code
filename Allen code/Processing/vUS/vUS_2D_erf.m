@@ -16,16 +16,19 @@
 %   v_zgp: z group velocity [m/s]
    
 %%
-function [g1] = vUS_2D_erf(tau, k0, sigma, v_xgp, v_zgp, F)
+function [g1] = vUS_2D_erf(tau, k0, sigma, v_xgp, v_zgp, F, DC)
     if nargin < 6
         F = 1;
+    end
+    if nargin < 7
+        DC = 0;
     end
     M = v_xgp.^2./sigma(1)^2 + v_zgp.^2./sigma(2)^2;
 
     % g1 = -1/2 .* sqrt(pi./M)./tau .* exp(-4 .* k0^2 .* v_zgp^2 ./ M) .* ...
     %      ( erfz(sqrt(M).*tau - 2.*1i.*k0.*v_zgp ./ sqrt(M)) + ...
     %      erfz(2.*1i.*k0.*v_zgp ./ sqrt(M)));
-    g1 = F .* 1/2 .* sqrt(pi./M)./tau .* exp(-4 .* k0^2 .* v_zgp.^2 ./ M) .* ...
+    g1 = DC + F .* 1/2 .* sqrt(pi./M)./tau .* exp(-4 .* k0^2 .* v_zgp.^2 ./ M) .* ...
          ( erfz(sqrt(M).*tau - 2.*1i.*k0.*v_zgp ./ sqrt(M)) - ...
          erfz(-2.*1i.*k0.*v_zgp ./ sqrt(M)));
 

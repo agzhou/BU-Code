@@ -76,7 +76,7 @@ function [v_xgp, R2] = InitVx0WithMesh2D(g1, v_zgp0, DC0, F0, PP, sigma, tau)
     for vxi = 1:nVx % Loop through Vx values
         Vx_vxi = v_xgp_vec(vxi);
 
-        g1_model = vUS_2D_erf(tau, k0, sigma, Vx_vxi, v_zgp, F); % [nPix, nTauFit]
+        g1_model = vUS_2D_erf(tau, k0, sigma, Vx_vxi, v_zgp, F, DC); % [nPix, nTauFit]
 
         R2_vxi = 1 - mean(abs(g1 - g1_model).^2, 2) ./ ydataDev; % [nPix,1]
 
