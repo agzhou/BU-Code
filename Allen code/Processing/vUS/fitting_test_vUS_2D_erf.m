@@ -8,9 +8,10 @@ ErrorFunctionCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_spli
 addpath(genpath(ErrorFunctionCodePath))
 
 %% Parameters for testing
-v_xgp = 0.005; % m/s
+v_xgp = 0.02; % m/s
 v_zgp = 0.01; % m/s
 tau = (0:1/5000:20e-3).'; % s
+nTau = length(tau);
 c0 = 1540; % m/s
 fc = 15.625e6; % Hz
 lambda0 = c0./fc; % m
@@ -73,3 +74,60 @@ xlabel('Time lag [ms]')
 ylabel('|g1|')
 legend("Noisy model data: v_{xgp} = "+num2str(v_xgp*1e3)+" mm/s, v_{zgp} = "+num2str(v_zgp*1e3) + " mm/s", "Fit: v_{xgp} = "+num2str(x(1)*1e3)+"mm/s, v_{zgp} = "+num2str(x(2)*1e3) + " mm/s")
 title("Signal with Gaussian white noise added; SNR: " + num2str(SNR_dB) + " dB")
+
+%% Sensitivity to SNR analysis
+tau_mask = 2:length(tau); % Don't fit at tau = 0, which results in a NaN
+SNR_dB = 20;
+numSamples = 100; % Number of datasets/curves to fit to, with different noise seeds
+
+lb = [0, -50e-3, 0, 0];
+ub = [50e-3, 50e-3, 1, 1];
+x0 = [0.0001, 0.0001, 1, 0]; % v_xgp0, v_zgp0, F, DC guesses [m/s]
+opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', false);
+
+x = zeros(numSamples, length(x0));
+
+for si = 1:numSamples
+    g1_exp = awgn(g1_erf(tau_mask), SNR_dB);
+    g1_exp_split = [real(g1_exp), imag(g1_exp)]; % Can add noise if desired
+    fun_new = @(x) vUS_2D_erf_vec_split(x, tau(tau_mask), k0, sigma) - g1_exp_split;
+
+    x(si, :) = lsqnonlin(fun_new, x0, lb, ub, opts);
+end
+
+%% Calculate stats
+x_mean = mean(x, 1);
+x_std = std(x, 0, 1);
+
+%% Plot fitting results with stats
+% |g1|
+% g1_fitted_mean_erf = vUS_2D_erf_vec(x_mean, tau, k0, sigma); % Calculate the g1 model using the mean fit parameter
+% g1_fitted_minus1std_erf = vUS_2D_erf_vec(x_mean - x_std, tau, k0, sigma);
+
+% Calculate all the fit results for each Monte Carlo sample/iteration/repeat
+g1_fitted_erf = zeros(numSamples, nTau - 1);
+for si = 1:numSamples
+    g1_fitted_erf(si, :) = vUS_2D_erf_vec(x(si, :), tau(tau_mask), k0, sigma);
+end
+
+% Calculate the mean and std across each Monte Carlo repeat, per time lag
+g1_fitted_erf_mean = mean(abs(g1_fitted_erf), 1);
+g1_fitted_erf_std = std(abs(g1_fitted_erf), 0, 1);
+
+g1_fitted_erf_plus1std = g1_fitted_erf_mean + g1_fitted_erf_std;
+g1_fitted_erf_minus1std = g1_fitted_erf_mean - g1_fitted_erf_std;
+fill_x = [tau(tau_mask).', fliplr(tau(tau_mask).')].*1e3;
+fill_y = [abs(g1_fitted_erf_plus1std), fliplr(abs(g1_fitted_erf_minus1std))];
+
+figure
+% plot(tau(tau_mask).*1e3, abs(g1_exp), '-o', 'LineWidth', 2)
+plot(tau(tau_mask).*1e3, abs(g1_erf(tau_mask)), '-o', 'LineWidth', 2)
+hold on
+plot(tau(tau_mask).*1e3, abs(g1_fitted_erf_mean), '-x', 'LineWidth', 2)
+fill(fill_x, fill_y, 'g', 'FaceAlpha', 0.2)
+hold off
+xlabel('Time lag [ms]')
+ylabel('|g1|')
+legend("Ground truth: v_{xgp} = "+num2str(v_xgp*1e3)+" mm/s, v_{zgp} = "+num2str(v_zgp*1e3) + " mm/s", "Mean fit: v_{xgp} = "+num2str(x_mean(1)*1e3)+"mm/s, v_{zgp} = "+num2str(x_mean(2)*1e3) + " mm/s", "+/- 1 s.d.")
+% legend("Noisy model data: v_{xgp} = "+num2str(v_xgp*1e3)+" mm/s, v_{zgp} = "+num2str(v_zgp*1e3) + " mm/s", "Fit: v_{xgp} = "+num2str(x(1)*1e3)+"mm/s, v_{zgp} = "+num2str(x(2)*1e3) + " mm/s")
+title("Signal with Gaussian white noise added; SNR: " + num2str(SNR_dB) + " dB; fit results for " + num2str(numSamples) + " repeats")

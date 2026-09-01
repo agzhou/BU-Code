@@ -349,23 +349,25 @@ for j = 3
     F_stacked = zeros(PP.zp*PP.xp, 1);
     DC_stacked = zeros(PP.zp*PP.xp, 1);
 
-    tic
+    
     g1_exp_j = stackData(g1{j}, PP);
-    vesselAngleMask = ~isnan(stackData(vesselAngles, PP)); % Mask to avoid NaN voxels in the vessel angle mask
+    % vesselAngleMask = ~isnan(stackData(vesselAngles, PP)); % Mask to avoid NaN voxels in the vessel angle mask
 
-    % for vi = 1:num_voxels % voxel index
+    tic
+    for vi = 1:num_voxels % voxel index
     % for vi = 1:300
-    for vi = ind
+    % for vi = ind
         % [zi, xi] = 
+        if overall_mask_stacked(vi)
         % if overall_mask_stacked_j(vi) & vesselAngleMask(vi) % Fit only voxels we believe have high signal quality
-        if vesselAngleMask(vi) % Fit only voxels we believe have high signal quality
+        % if vesselAngleMask(vi) % Fit only voxels we believe have high signal quality
             x0 = [Vx0(vi), Vz0(vi), FR0_j(vi), DCR0_j(vi)];
             % x0 = [Vx0(vi), Vz0(vi), F0(vi)];
             % **** Check lb AND ub --> VELOCITIES CAN BE NEGATIVE ****
             % lb = [x0(1) - 0.25*abs(x0(1)), x0(2) - 0.25*abs(x0(2)), max(F0(vi) - 0.2, 0), max(DC0(vi) - 0.2, 0)]; % TESTING
             % ub = [x0(1) + 0.25*abs(x0(1)), x0(2) + 0.25*abs(x0(2)), min(F0(vi) + 0.2, 1), min(DC0(vi) + 0.2, 1)]; % TESTING
-            lb = [0, x0(2) - 0.25*abs(x0(2)), max(F0(vi) - 0.2, 0), 0]; % TESTING
-            ub = [30e-3, x0(2) + 0.25*abs(x0(2)), min(F0(vi) + 0.2, 1), 1]; % TESTING
+            lb = [0, -30e-3, 0, 0]; % TESTING
+            ub = [30e-3, 30e3, 1, 1]; % TESTING
             
             % % lb = [x0(1) - 1*abs(x0(1)), x0(2) - 0.25*abs(x0(2)), max(F0(vi) - 0.5, 0)]; % TESTING
             % ub = [x0(1) + 1*abs(x0(1)), x0(2) + 0.25*abs(x0(2)), min(F0(vi) + 0.5, 1)]; % TESTING
@@ -386,9 +388,8 @@ for j = 3
 
     v_xgp = unstackData(v_xgp_stacked, PP);
     v_zgp = unstackData(v_zgp_stacked, PP);
-    p = unstackData(p_stacked, PP);
     F = unstackData(F_stacked, PP);
-    % DC = unstackData(DC_stacked, PP);
+    DC = unstackData(DC_stacked, PP);
 
     test = vUS_2D_erf_vec(x, tau, PP.k0, sigma);
     figure; plot(tau, abs(g1_exp_j(vi, :)), tau, abs(test))
@@ -401,7 +402,7 @@ figure; imagesc(v); clim([0, 0.05]); colormap turbo; axis equal; colorbar
 figure; imagesc(unstackData(sqrt(Vx0.^2 + Vz0.^2), PP)); clim([0, 0.05]); colormap turbo; axis equal; colorbar
 
 %%
-tp = [12, 103];
+tp = [15, 105];
 ind = sub2ind(ps, tp(1), tp(2))
 test = vUS_2D_erf(tau, PP.k0, sigma, v_xgp(tp(1), tp(2)), v_zgp(tp(1), tp(2)), F(tp(1), tp(2)));
 figure; plot(tau, abs(g1_exp_j(ind, :)), tau, abs(test))
