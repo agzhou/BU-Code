@@ -51,18 +51,20 @@ legend('Uniform velocity probability distribution', 'Gaussian velocity probabili
 tau_mask = 2:length(tau); % Don't fit at tau = 0, which results in a NaN
 % g1_exp = g1_erf(tau_mask);
 % SNR_dB = 30;
-SNR_dB = 50;
+SNR_dB = 100;
 g1_exp = awgn(g1_erf(tau_mask), SNR_dB);
 g1_exp_split = [real(g1_exp), imag(g1_exp)]; % Can add noise if desired
-fun_new = @(x) vUS_2D_erf_vec_split(x, tau(tau_mask), k0, sigma) - g1_exp_split;
+% fun_new = @(x) vUS_2D_erf_vec_split(x, tau(tau_mask), k0, sigma) - g1_exp_split;
+fun_new = @(x) vUS_2D_OF(x, tau(tau_mask), k0, sigma, g1_exp_split);
 
-lb = [0, -50e-3, 0];
-ub = [50e-3, 50e-3, 1];
-x0 = [0.0001, 0.0001, 1]; % v_xgp0, v_zgp0, F guesses [m/s]
+lb = [0, -50e-3, 0, 0];
+ub = [50e-3, 50e-3, 1, 1];
+x0 = [0.0001, 0.0001, 1, 0]; % v_xgp0, v_zgp0, F, DC guesses [m/s]
 
-x = lsqnonlin(fun_new, x0, lb, ub);
+opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', true);
+x = lsqnonlin(fun_new, x0, lb, ub, opts);
 
-%% Plot fitting results
+% Plot fitting results
 % |g1|
 g1_fitted_erf = vUS_2D_erf_vec(x, tau, k0, sigma);
 figure
@@ -77,20 +79,22 @@ title("Signal with Gaussian white noise added; SNR: " + num2str(SNR_dB) + " dB")
 
 %% Sensitivity to SNR analysis
 tau_mask = 2:length(tau); % Don't fit at tau = 0, which results in a NaN
-SNR_dB = 3;
+SNR_dB = 20;
 numSamples = 100; % Number of datasets/curves to fit to, with different noise seeds
 
 lb = [0, -50e-3, 0, 0];
 ub = [50e-3, 50e-3, 1, 1];
 x0 = [0.0001, 0.0001, 1, 0]; % v_xgp0, v_zgp0, F, DC guesses [m/s]
-opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', false);
+% opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', false);
+opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', true);
 
 x = zeros(numSamples, length(x0));
 
 for si = 1:numSamples
     g1_exp = awgn(g1_erf(tau_mask), SNR_dB);
     g1_exp_split = [real(g1_exp), imag(g1_exp)]; % Can add noise if desired
-    fun_new = @(x) vUS_2D_erf_vec_split(x, tau(tau_mask), k0, sigma) - g1_exp_split;
+    % fun_new = @(x) vUS_2D_erf_vec_split(x, tau(tau_mask), k0, sigma) - g1_exp_split;
+    fun_new = @(x) vUS_2D_OF(x, tau(tau_mask), k0, sigma, g1_exp_split);
 
     x(si, :) = lsqnonlin(fun_new, x0, lb, ub, opts);
 end
