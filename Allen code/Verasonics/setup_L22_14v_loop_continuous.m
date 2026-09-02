@@ -120,7 +120,7 @@ endDepth = endDepthMM/1e3/wl; % end depth in wavelengths
 % angpitch = wl / (Trans.spacingMm*Trans.numelements / 2 / 1e3);
 % angles = -(na - 1) / 2 * angpitch : angpitch : (na - 1) / 2 * angpitch
 %% enable time tag
-TimeTagEna = 0;
+TimeTagEna = 1;
 % 0: disable
 % 1: enable but don't reset counter
 % 2: enable and reset counter
@@ -609,7 +609,8 @@ end
 % 13. Control superframe rate
 scInd = scInd + 1;
 SeqControl(scInd).command = 'timeToNextAcq';
-SeqControl(scInd).argument = (1/sfRate - 1/frameRate*numFramesPerSF) * 1e6 + SeqControl(1).argument; % [us]
+% SeqControl(scInd).argument = (1/sfRate - (1/frameRate*numFramesPerSF)) * 1e6 + SeqControl(1).argument; % [us]
+SeqControl(scInd).argument = (1/sfRate - ((1/frameRate*numFramesPerSF) - SeqControl(4).argument/1e6)) * 1e6; % [us]
 
 if useTriggers
     n = 1;

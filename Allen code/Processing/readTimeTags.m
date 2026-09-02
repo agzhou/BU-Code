@@ -6,10 +6,10 @@
 
 %% Load parameters
 
-datapath = "G:\Allen\Data\04-01-2025 functional acq testing\";
+datapath = "G:\test2\";
 
 % RFName = "RF-5-11-2000-500-1-1.mat";
-RFName = "RF-5-11-1000-180-1-1.mat";
+RFName = "RF-5-11-400-400-1-1.mat";
 % RFName = "RF-5-11-500-500-1-1.mat";
 % RFName = "RF-5-11-1000-500-1-1.mat";
 % RFName = "RF-5-11-400-500-1-1.mat";
@@ -21,7 +21,8 @@ RFcount = countFiles(RFName,datapath);
 fileInfo = strsplit(RFName,'-');
 timeTags = zeros(RFcount, 1);
 
-startTimeTag = load(datapath + 'startTimeTag.mat').('timetag'); % Time tag at the very start of the experiment
+% startTimeTag = load(datapath + 'startTimeTag.mat').('timetag'); % Time tag at the very start of the experiment
+startTimeTag = load(datapath + RFName).('timetag');
 
 for iFile = 1:RFcount
 % for iFile = 1:1

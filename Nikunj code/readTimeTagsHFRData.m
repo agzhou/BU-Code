@@ -7,13 +7,16 @@
 
 % FilePath = "G:\Allen\Data\04-01-2025 functional acq testing\";
 % FilePath = "F:\Allen\Data\test\";
-FilePath = "L:\Ultrasound data from 05-27-2025 to\07-07-2025 AZ01 ULM RC15gV continuous\";
+% FilePath = "L:\Ultrasound data from 05-27-2025 to\07-07-2025 AZ01 ULM RC15gV continuous\";
 % FilePath = "G:\Nikunj\test1\";
+FilePath = "G:\test2\";
 
 RFPath = FilePath;
 % RFName = "RF-5-11-2000-500-1-1.mat";
 % RFName = "RF-5-11-1000-180-1-1.mat";
-RFName = "RF-5-11-100-100-1-1.mat";
+% RFName = "RF-5-11-100-100-1-1.mat";
+RFName = "RF-5-11-400-400-1-1.mat";
+
 
 % RFName = "RF-5-11-500-500-1-1.mat";
 % RFName = "RF-5-11-100-100-1-1.mat";
