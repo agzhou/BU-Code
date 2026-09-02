@@ -37,6 +37,8 @@ parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterD
 ADC_sampleMode = 'BS67BW'; % ADC sampling mode
 spw_guess = 1.3333; % Samples per wave guess
 
+sfRate = 1; % Superframe rate [Hz]
+
 % Store the user inputs for parameters into the corresponding variables
 initialVoltage = str2double(parameterUserInput{1});
 startDepthMM = str2double(parameterUserInput{2});
@@ -112,7 +114,7 @@ endDepth = endDepthMM/1e3/wl;
 % angpitch = wl / (Trans.spacingMm*Trans.numelements / 2 / 1e3);
 % angles = -(na - 1) / 2 * angpitch : angpitch : (na - 1) / 2 * angpitch
 %% enable time tag
-TimeTagEna = 0;
+TimeTagEna = 2;
 % 0: disable
 % 1: enable but don't reset counter
 % 2: enable and reset counter
@@ -634,6 +636,12 @@ else
     SeqControl(scInd).argument = 10000000; % 10 s
 end
 
+% 13. Control superframe rate
+scInd = scInd + 1;
+SeqControl(scInd).command = 'timeToNextAcq';
+% SeqControl(scInd).argument = (1/sfRate - (1/frameRate*numFramesPerSF)) * 1e6 + SeqControl(1).argument; % [us]
+SeqControl(scInd).argument = (1/sfRate - ((1/frameRate*numFramesPerSF) - SeqControl(4).argument/1e6)) * 1e6; % [us]
+
 if useTriggers
     n = 1;
     Event(n).info = 'Wait for external trigger to start the acquisition sequence';
@@ -688,7 +696,8 @@ for nbuf = 1:numBuffers
 
     % Don't worry about timeToNextAcq while saving the superframe
 %     Event(n).seqControl = [scInd - 1, scInd];
-    Event(n).seqControl = [4, scInd - 1, scInd]; % Change 2/13/26
+    % Event(n).seqControl = [4, scInd - 1, scInd]; % Change 2/13/26
+    Event(n).seqControl = [13, scInd - 1, scInd]; % Change 9/2/26
 
 %     Event(n).seqControl = [scInd];
 %     Event(n).seqControl = [6, scInd];

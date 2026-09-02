@@ -31,6 +31,8 @@ parameterDefaults = {'20', '2', '10', '30000', '350', '11', '5', '13.6', '1540',
 ADC_sampleMode = 'BS67BW'; % ADC sampling mode
 spw_guess = 1.3333; % Samples per wave guess
 
+sfRate = 1; % Superframe rate [Hz]
+
 % Store the user inputs for parameters into the corresponding variables
 initialVoltage = str2double(parameterUserInput{1});
 startDepthMM = str2double(parameterUserInput{2});
@@ -105,7 +107,7 @@ endDepth = endDepthMM/1e3/wl;
 % angpitch = wl / (Trans.spacingMm*Trans.numelements / 2 / 1e3);
 % angles = -(na - 1) / 2 * angpitch : angpitch : (na - 1) / 2 * angpitch
 %% enable time tag
-TimeTagEna = 0;
+TimeTagEna = 2;
 % 0: disable
 % 1: enable but don't reset counter
 % 2: enable and reset counter
