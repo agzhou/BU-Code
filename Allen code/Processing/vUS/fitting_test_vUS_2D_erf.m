@@ -8,7 +8,7 @@ ErrorFunctionCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_spli
 addpath(genpath(ErrorFunctionCodePath))
 
 %% Parameters for testing
-v_xgp = 0.02; % m/s
+v_xgp = 0.005; % m/s
 v_zgp = 0.01; % m/s
 tau = (0:1/5000:20e-3).'; % s
 nTau = length(tau);
@@ -77,7 +77,7 @@ title("Signal with Gaussian white noise added; SNR: " + num2str(SNR_dB) + " dB")
 
 %% Sensitivity to SNR analysis
 tau_mask = 2:length(tau); % Don't fit at tau = 0, which results in a NaN
-SNR_dB = 20;
+SNR_dB = 3;
 numSamples = 100; % Number of datasets/curves to fit to, with different noise seeds
 
 lb = [0, -50e-3, 0, 0];
@@ -95,11 +95,11 @@ for si = 1:numSamples
     x(si, :) = lsqnonlin(fun_new, x0, lb, ub, opts);
 end
 
-%% Calculate stats
+% Calculate stats
 x_mean = mean(x, 1);
 x_std = std(x, 0, 1);
 
-%% Plot fitting results with stats
+% Plot fitting results with stats
 % |g1|
 % g1_fitted_mean_erf = vUS_2D_erf_vec(x_mean, tau, k0, sigma); % Calculate the g1 model using the mean fit parameter
 % g1_fitted_minus1std_erf = vUS_2D_erf_vec(x_mean - x_std, tau, k0, sigma);
