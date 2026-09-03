@@ -1,4 +1,3 @@
-% ********************** TIMING NOT WORKING **********************
 %% Description
 % Actual continuous acquisition and saving of RF data with the L22-14v probe
 % Saves all defined # of frames in one file

@@ -1,9 +1,13 @@
 %% Description: semi-automatically calculate the ultrasound PSF shape in 3D, taking in simulation data
 
 %% Load simulation data and parameters (assuming Verasonics)
-load('G:\My Drive\Data\PSF Simulations\L22-14v PSF sim - 17 angles from -10 to 10 deg\params.mat')
-load('G:\My Drive\Data\PSF Simulations\L22-14v PSF sim - 17 angles from -10 to 10 deg\PData.mat')
-load('G:\My Drive\Data\PSF Simulations\L22-14v PSF sim - 17 angles from -10 to 10 deg\PSF.mat')
+% datapath = "G:\My Drive\Data\PSF Simulations\L22-14v PSF sim - 17 angles from -10 to 10 deg\";
+datapath = uigetdir('G:\', 'Select the data path');
+datapath = [datapath, '\'];
+
+load([datapath, 'params.mat'])
+load([datapath, 'PData.mat'])
+load([datapath, 'PSF.mat'])
 
 %% Plot the data
 figure; imagesc(abs(IQ)); title('xz plane'); colormap gray
