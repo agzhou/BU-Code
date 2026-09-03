@@ -283,7 +283,7 @@ t1i = 2; % Index for tau1 --> 2 for my code, because it calculates g1 starting a
 % ---- Loop through directional components and go through the fitting process ---- %
 % for j = ctp
 % for j = 1:2 % Fit only negative and positive frequencies (down and up flows)
-for j = 1
+for j = 3
     % % ---- Create masks for this direction's signal ---- %
     % [fbSNR_j, fbSNR_mask_j, fbSNR_express_mask_j] = spectralSNR(IQf_FT_separated_masked{j}, IQf_FT_separated{j}, PP, 'half');
     % [g1SNR_j, g1SNR_mask_j, g1SNR_express_mask] = g1BasedSNR(g1{j}, PP, 'half');
@@ -369,9 +369,9 @@ for j = 1
     g1_exp_j = stackData(g1{j}, PP);
 
     tic
-    for vi = 1:num_voxels % voxel index
+    % for vi = 1:num_voxels % voxel index
     % for vi = 1:300
-    % for vi = ind
+    for vi = ind
         % [zi, xi] = 
         % if overall_mask_stacked(vi)
         % if overall_mask_stacked_j(vi) & vesselAngleMask(vi) % Fit only voxels we believe have high signal quality
@@ -415,9 +415,9 @@ for j = 1
     F = unstackData(F_stacked, PP);
     DC = unstackData(DC_stacked, PP);
 
-    % test = vUS_2D_erf_vec(x, tau, PP.k0, sigma);
-    % figure; plot(tau, abs(g1_exp_j(vi, :)), tau, abs(test))
-    % figure; plot(test, '-o'); hold on; plot(g1_exp_j(vi, :), '-x'); hold off; legend('Fit', 'Data'); axis equal; xlim([-1, 1]); ylim([-1, 1])
+    test = vUS_2D_erf_vec(x, tau, PP.k0, sigma);
+    figure; plot(tau, abs(g1_exp_j(vi, :)), tau, abs(test))
+    figure; plot(test, '-o'); hold on; plot(g1_exp_j(vi, :), '-x'); hold off; legend('Fit', 'Data'); axis equal; xlim([-1, 1]); ylim([-1, 1])
 end
 
 %% Visualize total fitted speed
