@@ -35,11 +35,17 @@ HPF.order = 4; % Butterworth filter order
 % sigma = [113, 999999, 151].*1e-6; % 1/e PSF values [m] for the L22-14v probe at 15.625 MHz and 17 angles from -10 to 10 deg. The y component is set to some arbitrary positive number but it won't really be used. (G:\My Drive\Data\PSF Simulations\L22-14v PSF sim - 17 angles from -10 to 10 deg)
 % sigma = [113, 151].*1e-6; % 1/e PSF values (x, z) [m] for the L22-14v probe at 15.625 MHz and 17 angles from -10 to 10 deg. The y component is set to some arbitrary positive number but it won't really be used. (G:\My Drive\Data\PSF Simulations\L22-14v PSF sim - 17 angles from -10 to 10 deg)
 % sigma = [41.6564, 52.3236].*1e-6; % Intensity-based 1/e PSF values (x, z) [m] for the L22-14v probe at 15.625 MHz and 17 angles from -10 to 10 deg. The y component is set to some arbitrary positive number but it won't really be used. (G:\My Drive\Data\PSF Simulations\L22-14v PSF sim - 17 angles from -10 to 10 deg)
-sigma = [58.9110, 73.9967].*1e-6; % Field-based 1/e PSF values (x, z) [m] for the L22-14v probe at 15.625 MHz and 17 angles from -10 to 10 deg. The y component is set to some arbitrary positive number but it won't really be used. (G:\My Drive\Data\PSF Simulations\L22-14v PSF sim - 17 angles from -10 to 10 deg)
+
+sigma = [60.5514, 73.9511].*1e-6; % Field-based 1/e PSF values (x, z) [m] for the L22-14v probe at 15.625 MHz and 5 angles from -6 to 6 deg
+% sigma = [59.7130, 73.6471].*1e-6; % Field-based 1/e PSF values (x, z) [m] for the L22-14v probe at 15.625 MHz and 9 angles from -8 to 8 deg
+% sigma = [58.9110, 73.9967].*1e-6; % Field-based 1/e PSF values (x, z) [m] for the L22-14v probe at 15.625 MHz and 17 angles from -10 to 10 deg. The y component is set to some arbitrary positive number but it won't really be used. (G:\My Drive\Data\PSF Simulations\L22-14v PSF sim - 17 angles from -10 to 10 deg)
 
 fDim = 3; % Dimension of the data corresponding to frequency (or time)
 zDim = 1; % Dimension of the data corresponding to z (axial direction)
 xDim = 2; % Dimension of the data corresponding to x (lateral direction)
+
+% Load Jianbo's colormaps
+[VzCmap, VzCmapDn, VzCmapUp, pdiCmapUp, PhtmCmap] = Colormaps_fUS;
 
 %% Add path to the erfz code -- error function with complex inputs
 codeDir = cd;
@@ -209,6 +215,7 @@ PP = createStruct(zp, xp, nf, nTau, xDim, zDim, fDim, dimensionality, faxis, fre
 
 % 4.3 Create the overall whole-frequency-spectrum mask (of pixels to keep)
 overall_mask = and( or(fbSNR_mask, g1SNR_express_mask), g1SNR_mask);
+overall_mask_stacked = stackData(overall_mask, PP);
 figure; imagesc(overall_mask); title('Overall whole-frequency-spectrum mask')
 
 %% TESTING: get vessel angle from superframe-averaged PDI (or CDI?) maps
@@ -258,6 +265,11 @@ figure; h = imagesc(angleMap); colormap hsv; colorbar; axis equal; xlabel('x'); 
 % vesselAngles = deg2rad(angleMap); % Vessel angles [rad]
 vesselAngles = angleMap; % Vessel angles [deg]
 
+vesselAngleMask = ~isnan(stackData(vesselAngles, PP)); % Mask to avoid NaN voxels in the vessel angle mask
+
+
+figure; imagesc(CDIA{3}); colormap(VzCmap); axis equal; colorbar
+
 %% ========= 5. Fit vUS ========= %%
 % Initial guesses for parameters; separate fitting for negative and positive frequencies (down and up flows)
 
@@ -271,40 +283,43 @@ t1i = 2; % Index for tau1 --> 2 for my code, because it calculates g1 starting a
 % ---- Loop through directional components and go through the fitting process ---- %
 % for j = ctp
 % for j = 1:2 % Fit only negative and positive frequencies (down and up flows)
-for j = 3
-    % ---- Create masks for this direction's signal ---- %
-    [fbSNR_j, fbSNR_mask_j, fbSNR_express_mask_j] = spectralSNR(IQf_FT_separated_masked{j}, IQf_FT_separated{j}, PP, 'half');
-    [g1SNR_j, g1SNR_mask_j, g1SNR_express_mask] = g1BasedSNR(g1{j}, PP, 'half');
-    [pnSNR_j, pnSNR_mask_j] = pnSpectralSNR(IQf_FT_separated_masked, PP, j);
-    overall_mask_j = and( and( and(or(pnSNR_mask_j, fbSNR_express_mask_j), or(fbSNR_mask_j, g1SNR_express_mask)), g1SNR_mask_j), overall_mask);
-    overall_mask_stacked_j = stackData(overall_mask_j, PP);
-    % figure; imagesc(overall_mask_j)
+for j = 1
+    % % ---- Create masks for this direction's signal ---- %
+    % [fbSNR_j, fbSNR_mask_j, fbSNR_express_mask_j] = spectralSNR(IQf_FT_separated_masked{j}, IQf_FT_separated{j}, PP, 'half');
+    % [g1SNR_j, g1SNR_mask_j, g1SNR_express_mask] = g1BasedSNR(g1{j}, PP, 'half');
+    % [pnSNR_j, pnSNR_mask_j] = pnSpectralSNR(IQf_FT_separated_masked, PP, j);
+    % overall_mask_j = and( and( and(or(pnSNR_mask_j, fbSNR_express_mask_j), or(fbSNR_mask_j, g1SNR_express_mask)), g1SNR_mask_j), overall_mask);
+    % overall_mask_stacked_j = stackData(overall_mask_j, PP);
+    % % figure; imagesc(overall_mask_j)
 
-    % ---- Adjust the g1 for this direction's signal ---- %
-    % Create masks for potentially bad pixels
-    g1adj_mask1_j = abs( abs(g1{j}(:, :, t1i)) - abs(g1{j}(:, :, t1i+1)) ) > 2.*abs( abs(g1{j}(:, :, t1i+1)) - abs(g1{j}(:, :, t1i+2)) ); % Flag a pixel if the |g1| drop from tau1 → tau2 is more than double the drop from tau2 → tau3 (is there some extra noise decorrelation in that first interval)
-    g1adj_mask2_j = and( and( abs(g1{j}(:, :, t1i)) > 0.55, abs(g1{j}(:, :, t1i + 1)) < 0.25 ), abs(g1{j}(:, :, t1i + 1)) < abs(g1{j}(:, :, t1i + 2)) ); % (|g1(tau1)| > 0.55) AND (|g1(tau2)| < 0.25) AND (|g1(tau2)| < |g1(tau3)|) --> Flag a pixel if the |g1| at tau1 is high, low at tau2, and then goes back up at tau3 (which would be strange)
-    % g1adj_mask_j = or(g1adj_mask1_j, g1adj_mask2_j);
-    g1adj_mask_j = g1adj_mask2_j; % TESTING
-    % Adjust g1(tau1) for these potentially bad pixels
-    g1tau1_temp_j = (1 - g1adj_mask_j).*squeeze(g1{j}(:, :, t1i)) + (g1adj_mask_j).*( g1{j}(:, :, t1i + 1) + complex( abs(real(g1{j}(:, :, t1i) - g1{j}(:, :, t1i + 1))), imag(g1{j}(:, :, t1i + 1) - g1{j}(:, :, t1i + 2)) ) );
-    % figure; imagesc(abs(g1tau1_temp_j)); clim([0, 1]); colorbar
-    tp = [93, 174]; % test point
-    % figure; plot(squeeze(real(g1{j}(tp(1), tp(2), :))), '-o')
-    % figure; plot(squeeze(abs(g1{j}(tp(1), tp(2), :))), '-o')
-    % temp = repmat(g1adj_mask_j, [1, 1, nTau]);
-    g1adj_j = g1{j}; g1adj_j(:, :, t1i) = g1tau1_temp_j;
-    % figure; plot(squeeze(abs(g1adj_j(tp(1), tp(2), :))), '-o')
-    g1adj_stacked_j = stackData(g1adj_j, PP);
+    % % ---- Adjust the g1 for this direction's signal ---- %
+    % % Create masks for potentially bad pixels
+    % g1adj_mask1_j = abs( abs(g1{j}(:, :, t1i)) - abs(g1{j}(:, :, t1i+1)) ) > 2.*abs( abs(g1{j}(:, :, t1i+1)) - abs(g1{j}(:, :, t1i+2)) ); % Flag a pixel if the |g1| drop from tau1 → tau2 is more than double the drop from tau2 → tau3 (is there some extra noise decorrelation in that first interval)
+    % g1adj_mask2_j = and( and( abs(g1{j}(:, :, t1i)) > 0.55, abs(g1{j}(:, :, t1i + 1)) < 0.25 ), abs(g1{j}(:, :, t1i + 1)) < abs(g1{j}(:, :, t1i + 2)) ); % (|g1(tau1)| > 0.55) AND (|g1(tau2)| < 0.25) AND (|g1(tau2)| < |g1(tau3)|) --> Flag a pixel if the |g1| at tau1 is high, low at tau2, and then goes back up at tau3 (which would be strange)
+    % % g1adj_mask_j = or(g1adj_mask1_j, g1adj_mask2_j);
+    % g1adj_mask_j = g1adj_mask2_j; % TESTING
+    % % Adjust g1(tau1) for these potentially bad pixels
+    % g1tau1_temp_j = (1 - g1adj_mask_j).*squeeze(g1{j}(:, :, t1i)) + (g1adj_mask_j).*( g1{j}(:, :, t1i + 1) + complex( abs(real(g1{j}(:, :, t1i) - g1{j}(:, :, t1i + 1))), imag(g1{j}(:, :, t1i + 1) - g1{j}(:, :, t1i + 2)) ) );
+    % % figure; imagesc(abs(g1tau1_temp_j)); clim([0, 1]); colorbar
+    % % tp = [93, 174]; % test point
+    % % figure; plot(squeeze(real(g1{j}(tp(1), tp(2), :))), '-o')
+    % % figure; plot(squeeze(abs(g1{j}(tp(1), tp(2), :))), '-o')
+    % % temp = repmat(g1adj_mask_j, [1, 1, nTau]);
+    % g1adj_j = g1{j}; g1adj_j(:, :, t1i) = g1tau1_temp_j;
+    % % figure; plot(squeeze(abs(g1adj_j(tp(1), tp(2), :))), '-o')
+    % g1adj_stacked_j = stackData(g1adj_j, PP);
+
+    % TESTING
+    g1adj_stacked_j = stackData(g1{j}, PP);
 
     % ---- Find initial guesses for fit parameters, for this direction's signal ---- %
     % Static (DC) component -- complex valued
     RotCtr_j = FindCOR( g1adj_stacked_j(:, round(nTau/2):end) ); % [nz*nx, nTau] -- for each pixel, take its last ½ of values (where the complex g1 spiral has theoretically started to slow down and look like a circle) and fit a circle to those points using FindCOR.m. The resulting center point of the fit is theoretically the center/end point of the complex g1 spiral, which represents the steady-state value. Take the real component of that output and use either this value if positive, or 0
     DCR0_v1_j = max(real(RotCtr_j), 0); % Version 1 of the DC component's Real component
     DCR0_v2_j = max(mean( real(g1adj_stacked_j(:, floor(end*2/3):end)), 2 ), 0); % Version 2 of the DC component's Real component -- for each pixel, take the temporal mean of the real components of its last ⅓ of values (where there is theoretically a steady-state/plateau), and use either this value if positive, or 0 otherwise.
-    % DCR0_j = min(DCR0_v1_j, DCR0_v2_j); % Take the minimum of the two guesses above [nz*nx, nTau]
+    DCR0_j = min(DCR0_v1_j, DCR0_v2_j); % Take the minimum of the two guesses above [nz*nx, nTau]
     % DCR0_j = complex(min(real(DCR0_v1_j), real(DCR0_v2_j)), min(imag(DCR0_v1_j), imag(DCR0_v2_j))); % Take the minimum of the two guesses above [nz*nx, nTau]
-    DCR0_j = DCR0_v1_j; % Testing
+    % DCR0_j = DCR0_v1_j; % Testing
 
     % Absolute "error" due to the noise decorrelation at tau1
     tau1_decorr_drop_j = 1 - abs(g1adj_stacked_j(:, t1i)); % How much does |g1(tau1)| drop from 1 (This is not used as its own explicit parameter)
@@ -315,12 +330,13 @@ for j = 3
     % Axial component of the blood flow's group velocity -- v_zgp
     [Vz0, tau_V] = findVzPhaseDiff(stackData(g1{j}, PP), PP); % v_zgp [m/s]
     % [Vz0, tau_V] = findVzPhaseDiff(g1adj_stacked_j, PP); % v_zgp [m/s]
-    figure; imagesc(unstackData(Vz0, PP)); colormap(VzCmap); axis equal; colorbar
+    % figure; imagesc(unstackData(Vz0, PP)); colormap(VzCmap); axis equal; colorbar
     
     % Mesh method for finding v_xgp0
     % [v_zgp0, v_xgp0, p0, DC0, F0, R20] = InitvUS2DParamsWithMesh(g1adj_stacked_j, Vz0, DCR0_j, FR_j, PP, sigma, tau);
-    [Vx0, R2_Vx0] = InitVx0WithMesh2D(stackData(g1{j}, PP), Vz0, DCR0_j, FR0_j, PP, sigma, tau);
-    figure; imagesc(unstackData(Vx0, PP)); axis equal; colorbar
+    % [Vx0, R2_Vx0] = InitVx0WithMesh2D(stackData(g1{j}, PP), Vz0, DCR0_j, FR0_j, PP, sigma, tau);
+    Vx0 = ones(size(Vz0)).* 5e-3; % TESTING: uniform initial v_xgp guess
+    % figure; imagesc(unstackData(Vx0, PP)); axis equal; colorbar
 
     % **** TO DO: create a function that looks at the confidence in the
     % angle-based Vx0, and outputs an updated Vx0 if needed, plus searches
@@ -336,8 +352,8 @@ for j = 3
 
     useF = true;
     useDC = true;
-    % opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', true);
-    opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', false);
+    opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', true);
+    % opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', false);
 
     % v_xgp = zeros(PP.zp, PP.xp);
     % v_zgp = zeros(PP.zp, PP.xp);
@@ -351,37 +367,45 @@ for j = 3
 
     
     g1_exp_j = stackData(g1{j}, PP);
-    % vesselAngleMask = ~isnan(stackData(vesselAngles, PP)); % Mask to avoid NaN voxels in the vessel angle mask
 
     tic
     for vi = 1:num_voxels % voxel index
     % for vi = 1:300
     % for vi = ind
         % [zi, xi] = 
-        if overall_mask_stacked(vi)
+        % if overall_mask_stacked(vi)
         % if overall_mask_stacked_j(vi) & vesselAngleMask(vi) % Fit only voxels we believe have high signal quality
-        % if vesselAngleMask(vi) % Fit only voxels we believe have high signal quality
+        if vesselAngleMask(vi) % Fit only voxels we believe have high signal quality
             x0 = [Vx0(vi), Vz0(vi), FR0_j(vi), DCR0_j(vi)];
             % x0 = [Vx0(vi), Vz0(vi), F0(vi)];
             % **** Check lb AND ub --> VELOCITIES CAN BE NEGATIVE ****
             % lb = [x0(1) - 0.25*abs(x0(1)), x0(2) - 0.25*abs(x0(2)), max(F0(vi) - 0.2, 0), max(DC0(vi) - 0.2, 0)]; % TESTING
             % ub = [x0(1) + 0.25*abs(x0(1)), x0(2) + 0.25*abs(x0(2)), min(F0(vi) + 0.2, 1), min(DC0(vi) + 0.2, 1)]; % TESTING
             lb = [0, -30e-3, 0, 0]; % TESTING
-            ub = [30e-3, 30e3, 1, 1]; % TESTING
+            ub = [30e-3, 30e-3, 1, 1]; % TESTING
             
             % % lb = [x0(1) - 1*abs(x0(1)), x0(2) - 0.25*abs(x0(2)), max(F0(vi) - 0.5, 0)]; % TESTING
             % ub = [x0(1) + 1*abs(x0(1)), x0(2) + 0.25*abs(x0(2)), min(F0(vi) + 0.5, 1)]; % TESTING
 
             g1_exp_j_vi = g1_exp_j(vi, :); g1_exp_j_vi = g1_exp_j_vi(:);
             g1_exp_split_j_vi = [real(g1_exp_j_vi), imag(g1_exp_j_vi)];
-            tau_inds = 2:PP.nTau;
-            anon_fun = @(x) vUS_2D_erf_vec_split(x, tau(tau_inds), PP.k0, sigma) - g1_exp_split_j_vi(tau_inds, :);
+            % tau_inds = 2:PP.nTau;
+            % TESTING!!!!!!!!!!!!!!!!
+            tau_inds = 2:PP.nTau/2;
+
+            % anon_fun = @(x) vUS_2D_erf_vec_split(x, tau(tau_inds), PP.k0, sigma) - g1_exp_split_j_vi(tau_inds, :);
+            
+            anon_fun = @(x) vUS_2D_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :)); % Jacobian version
+            % tau_cropped = tau(tau_inds);
+            % OF_weight = (max(tau_cropped) - tau_cropped).^2;
+            % OF_weight = OF_weight./max(OF_weight); % Objective function weighting: trust residuals from earlier time lags more
+            % anon_fun = @(x) vUS_2D_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :), OF_weight); % Jacobian version
 
             x = lsqnonlin(anon_fun, x0, lb, ub, opts); % x = [v_xgp, v_zgp, p, F, DC]
             v_xgp_stacked(vi) = x(1);
             v_zgp_stacked(vi) = x(2);
             F_stacked(vi) = x(3);
-            % DC_stacked(vi) = x(4);
+            DC_stacked(vi) = x(4);
         end
     end
     toc
@@ -391,15 +415,22 @@ for j = 3
     F = unstackData(F_stacked, PP);
     DC = unstackData(DC_stacked, PP);
 
-    test = vUS_2D_erf_vec(x, tau, PP.k0, sigma);
-    figure; plot(tau, abs(g1_exp_j(vi, :)), tau, abs(test))
-    figure; plot(test, '-o'); hold on; plot(g1_exp_j(vi, :), '-x'); hold off; legend('Fit', 'Data')
+    % test = vUS_2D_erf_vec(x, tau, PP.k0, sigma);
+    % figure; plot(tau, abs(g1_exp_j(vi, :)), tau, abs(test))
+    % figure; plot(test, '-o'); hold on; plot(g1_exp_j(vi, :), '-x'); hold off; legend('Fit', 'Data'); axis equal; xlim([-1, 1]); ylim([-1, 1])
 end
 
 %% Visualize total fitted speed
 v = sqrt(v_xgp.^2 + v_zgp.^2);
 figure; imagesc(v); clim([0, 0.05]); colormap turbo; axis equal; colorbar
 figure; imagesc(unstackData(sqrt(Vx0.^2 + Vz0.^2), PP)); clim([0, 0.05]); colormap turbo; axis equal; colorbar
+
+%% Visualize fitted v_zgp
+figure; imagesc(v_zgp); colormap(VzCmap); axis equal; colorbar
+% figure; imagesc(abs(v_zgp)); colormap(VzCmapDn); axis equal; colorbar
+
+%% Visualize fitted v_xgp
+figure; imagesc(v_xgp); colormap('parula'); axis equal; colorbar
 
 %%
 tp = [15, 105];

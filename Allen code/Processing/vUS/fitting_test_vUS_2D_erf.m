@@ -44,7 +44,9 @@ plot(g1_erf, '-o', 'LineWidth', 2)
 hold on
 plot(g1_old, '-x', 'LineWidth', 2)
 hold off
-axis square
+axis equal
+xlim([-1, 1])
+ylim([-1, 1])
 legend('Uniform velocity probability distribution', 'Gaussian velocity probability distribution')
 
 %% Fitting test - can we recover the ground truth parameters
