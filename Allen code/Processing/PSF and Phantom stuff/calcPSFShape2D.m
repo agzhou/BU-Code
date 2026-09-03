@@ -1,4 +1,5 @@
 %% Description: semi-automatically calculate the ultrasound PSF shape in 3D, taking in simulation data
+clearvars
 
 %% Load simulation data and parameters (assuming Verasonics)
 % datapath = "G:\My Drive\Data\PSF Simulations\L22-14v PSF sim - 17 angles from -10 to 10 deg\";
