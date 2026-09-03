@@ -13,13 +13,21 @@
 % add adjustable pixel spacing
 % Add some regexp thing to automatically get the # of raw data files in the folder
 
+%% Add some paths
+codeDir = cd;
+codeDir_split = split(string(codeDir), filesep);
+% AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "Allen code"))), '\') + "\Verasonics");
+AllenReconCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\Reconstruction\");
+addpath(genpath(AllenReconCodePath))
 %% Activate the Verasonics folder
 clearvars
 
 cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
+% cd '\\ad\eng\users\a\g\agzhou\Desktop\Vantage-5.0.1-p1'
+% cd 'C:\Users\agzhou\Vantage-4.9.7-2505271400'
 % cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 % cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
-addpath 'C:\Users\BOAS-US\Documents\GitHub\BU-Code\Allen code\Reconstruction'
+% addpath 'C:\Users\BOAS-US\Documents\GitHub\BU-Code\Allen code\Reconstruction'
 
 activate
 clearvars
