@@ -460,7 +460,8 @@ makeParameterStructureSmall_functional;
 
 %% New Event structure
 
-Resource.VDAS.dmaTimeout = 1000;
+% Resource.VDAS.dmaTimeout = 1000;
+Resource.VDAS.dmaTimeout = 10000;
 % Flow:
 % 1. Transmit (TX)
 % 2. Receive (Receive)

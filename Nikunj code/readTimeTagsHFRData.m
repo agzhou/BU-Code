@@ -9,14 +9,16 @@
 % FilePath = "F:\Allen\Data\test\";
 % FilePath = "L:\Ultrasound data from 05-27-2025 to\07-07-2025 AZ01 ULM RC15gV continuous\";
 % FilePath = "G:\Nikunj\test1\";
-FilePath = "G:\test2\";
+% FilePath = "G:\test3\";
+FilePath = "G:\Allen\Data\09-04-2026 MS05 L22-14v continuous fUS\"
 
 RFPath = FilePath;
 % RFName = "RF-5-11-2000-500-1-1.mat";
 % RFName = "RF-5-11-1000-180-1-1.mat";
 % RFName = "RF-5-11-100-100-1-1.mat";
-RFName = "RF-5-11-400-400-1-1.mat";
-
+% RFName = "RF-5-11-400-400-1-1.mat";
+% RFName = "RF-5-5-1000-1000-1-1.mat";
+RFName = "RF-6-5-800-800-1-1.mat"
 
 % RFName = "RF-5-11-500-500-1-1.mat";
 % RFName = "RF-5-11-100-100-1-1.mat";

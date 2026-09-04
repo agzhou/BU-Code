@@ -75,6 +75,9 @@ TW_acq = TW;
 % Receive_acq = Receive;
 % Receive = Receive(1:numFramesPerBuffer * na * pair);
 % Receive = P_unstacked.Receive;
+Resource_acq = Resource;
+Receive_acq = Receive;
+Receive = Receive(1:numFramesPerBuffer * na);
 clear Event Process Recon ReconInfo SeqControl Trans TW TX
 
 
@@ -93,6 +96,7 @@ clear Event Process Recon ReconInfo SeqControl Trans TW TX
 % Resource.RcvBuffer.rowsPerFrame = rpf;
 % 
 % Resource.RcvBuffer.numFrames = numFramesPerBuffer;
+Resource.RcvBuffer = Resource_acq.RcvBuffer(1);
 Resource.RcvBuffer.lastFrame = 1; % reset the counter
 Resource.Parameters.simulateMode = 2; % Enable mode 2, which processes data in the buffers
 
@@ -255,9 +259,9 @@ end
 
 save([Mcr_savepath, 'PData'], 'PData') % Save the PData structure
 
-for Mcr_filenum = Mcr_startFile:Mcr_endFile
+% for Mcr_filenum = Mcr_startFile:Mcr_endFile
 % for Mcr_filenum = 142:Mcr_endFile
-% for Mcr_filenum = [1]
+for Mcr_filenum = [1]
     tic
 
     load([Mcr_datapath, Mcr_filenameStructure, num2str(Mcr_filenum)], 'RcvData');
