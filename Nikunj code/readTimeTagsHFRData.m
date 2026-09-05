@@ -10,7 +10,9 @@
 % FilePath = "L:\Ultrasound data from 05-27-2025 to\07-07-2025 AZ01 ULM RC15gV continuous\";
 % FilePath = "G:\Nikunj\test1\";
 % FilePath = "G:\test3\";
-FilePath = "G:\Allen\Data\09-04-2026 MS05 L22-14v continuous fUS\"
+% FilePath = "G:\Allen\Data\09-04-2026 MS05 L22-14v continuous fUS\"
+FilePath = uigetdir('G:\', 'Select the RF data path');
+FilePath = string([FilePath, '\']);
 
 RFPath = FilePath;
 % RFName = "RF-5-11-2000-500-1-1.mat";
@@ -18,7 +20,9 @@ RFPath = FilePath;
 % RFName = "RF-5-11-100-100-1-1.mat";
 % RFName = "RF-5-11-400-400-1-1.mat";
 % RFName = "RF-5-5-1000-1000-1-1.mat";
-RFName = "RF-6-5-800-800-1-1.mat"
+% RFName = "RF-6-5-800-800-1-1.mat"
+[RFName, ~, ~] = uigetfile('*.mat', 'Select the first RF file', [RFPath]);
+RFName = string(RFName);
 
 % RFName = "RF-5-11-500-500-1-1.mat";
 % RFName = "RF-5-11-100-100-1-1.mat";
@@ -48,17 +52,20 @@ for iFile = 1:RFcount
 end
 
 %% Plot Time tags
-chk = timeTags(1:end);
-figure; plot(chk)
-title('TimeTags')
-chk2 = chk - chk(1);
+RFTimeTags_raw = timeTags(1:end);
+figure; plot(RFTimeTags_raw)
+title('Raw TimeTags')
+RFTimeTags = RFTimeTags_raw - RFTimeTags_raw(1);
 figure
-plot(chk2)
+plot(RFTimeTags)
 title('TimeTags from zero')
 
-chk3 = diff(chk);
-figure; plot(chk3); title('difference')
+RFTimeTags_diff = diff(RFTimeTags_raw);
+figure; plot(RFTimeTags_diff); title('difference')
 % chk4 = find(chk3 > 0.1)
+
+%% Save the (RF) frame timing data
+save(FilePath + "RFTimeTagData.mat", 'RFTimeTags_raw', 'RFTimeTags', "RFTimeTags_diff", 'RFcount')
 
 %% Test
 getTimeStamp(double(RFData(1:2,1,12)))/4e4
