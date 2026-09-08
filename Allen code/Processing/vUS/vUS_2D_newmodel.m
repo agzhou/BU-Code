@@ -384,6 +384,7 @@ for j = 3
     useF = true;
     useDC = true;
     opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', true);
+    % opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', true, 'Algorithm', 'levenberg-marquardt');
     % opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', false);
 
     % v_xgp = zeros(PP.zp, PP.xp);
@@ -422,20 +423,21 @@ for j = 3
             g1_exp_split_j_vi = [real(g1_exp_j_vi), imag(g1_exp_j_vi)];
             % tau_inds = 2:PP.nTau;
             % TESTING!!!!!!!!!!!!!!!!
-            tau_inds = 2:PP.nTau/2;
+            % tau_inds = 2:PP.nTau/2;
+            tau_inds = 2:round(PP.nTau/5);
 
             % anon_fun = @(x) vUS_2D_erf_vec_split(x, tau(tau_inds), PP.k0, sigma) - g1_exp_split_j_vi(tau_inds, :);
             
-            % anon_fun = @(x) vUS_2D_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :)); % Jacobian version
+            anon_fun = @(x) vUS_2D_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :)); % Jacobian version
             % tau_cropped = tau(tau_inds);
             % OF_weight = (max(tau_cropped) - tau_cropped).^2;
             % OF_weight = OF_weight./max(OF_weight); % Objective function weighting: trust residuals from earlier time lags more
             % anon_fun = @(x) vUS_2D_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :), OF_weight); % Jacobian version
 
-            anon_fun = @(x) vUS_2D_OF_nonsplit(x, tau(tau_inds), PP.k0, sigma, g1_exp_j_vi(tau_inds, :)); % Jacobian version
+            % anon_fun = @(x) vUS_2D_OF_nonsplit(x, tau(tau_inds), PP.k0, sigma, g1_exp_j_vi(tau_inds, :)); % Jacobian version
 
-            % x = lsqnonlin(anon_fun, x0, lb, ub, opts); % x = [v_xgp, v_zgp, p, F, DC]
-            x = lsqnonlin(anon_fun, x0, [], [], opts); % x = [v_xgp, v_zgp, p, F, DC]
+            x = lsqnonlin(anon_fun, x0, lb, ub, opts); % x = [v_xgp, v_zgp, p, F, DC]
+            % x = lsqnonlin(anon_fun, x0, [], [], opts); % x = [v_xgp, v_zgp, p, F, DC]
 
             v_xgp_stacked(vi) = x(1);
             v_zgp_stacked(vi) = x(2);
@@ -450,7 +452,7 @@ for j = 3
     F = unstackData(F_stacked, PP);
     DC = unstackData(DC_stacked, PP);
 
-    test = vUS_2D_erf_vec(real(x), tau, PP.k0, sigma);
+    test = vUS_2D_erf_vec(x, tau, PP.k0, sigma);
     figure; plot(tau, abs(g1_exp_j(vi, :)), tau, abs(test))
     figure; plot(g1_exp_j(vi, :), '-x'); hold on; plot(test, '-o'); hold off; legend('Data', 'Fit'); axis equal; xlim([-1, 1]); ylim([-1, 1])
 
