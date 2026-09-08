@@ -22,6 +22,34 @@ codeDir_split = split(string(codeDir), filesep);
 AllenProcessingCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\Processing\");
 addpath(genpath(AllenProcessingCodePath))
 
+%% Load data and things
+if ~exist('IQpath', 'var')
+    IQpath = uigetdir('D:\Allen\Data\', 'Select the IQ data path');
+    IQpath = [IQpath, '\'];
+end
+
+% Load acquisition parameters: params.mat
+if ~exist('P', 'var')
+    % Choose and load the params.mat file (from the acquisition)
+    [params_filename, params_pathname, ~] = uigetfile('*.mat', 'Select the params file', [IQpath, '..\params.mat']);
+    load([params_pathname, params_filename])
+end
+
+% load some chunk of continuous superframes
+IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
+
+startFile = 1; endFile = 1;
+nsfpe = (endFile - startFile + 1)*P.numFramesPerBuffer;% Number of superframes per ensemble
+load([IQpath, IQfilenameStructure, num2str(startFile)])
+IQle = []; % long ensemble IQ
+
+for fi = startFile:endFile
+    load([IQpath, IQfilenameStructure, num2str(fi)])
+    IQle = cat(3, IQle, IQ);
+end
+
+IQ = IQle; clearvars IQle
+
 %% Set up the High Pass Filter (parameters from the 2020 vUS paper)
 HPF.fc = 25; % Cutoff frequency [Hz]
 % 25 Hz corresponds to 1 mm/s
