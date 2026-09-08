@@ -13,6 +13,11 @@ if ~exist('P', 'var')
     load([params_pathname, params_filename])
 end
 
+% Load reconstruction parameters: PData.mat
+if ~exist('PData', 'var')
+    load([IQpath, 'PData.mat'])
+end
+
 % load some chunk of continuous superframes
 IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 
@@ -112,3 +117,57 @@ figure; plot(faxis, abs(testpt_g1_FT)); xlabel('Frequency [Hz]'); ylabel('|FFT(c
 g1_FT = fftshift(fft(g1, nsfpe, 3)); % FFT for every pixel
 g1_FT_avg = squeeze(mean(g1_FT, [1, 2]));
 figure; plot(faxis, abs(g1_FT_avg)); xlabel('Frequency [Hz]'); ylabel('|FFT(clutter filtered IQ)|')
+
+
+
+
+
+
+
+
+
+%% Motion field testing
+
+test1 = squeeze(abs(IQ(:, :, 1)));
+test2 = squeeze(abs(IQ(:, :, 300)));
+dx = PData.PDelta(1)*P.wl; dz = PData.PDelta(3)*P.wl;
+[dzMap, dxMap, zCenters, xCenters, peakCorr, failed] = findMotionField2D(test1, test2, dz, dx);
+
+figure; quiver(xCenters, zCenters, dxMap, dzMap)
+
+%%
+test = squeeze(abs(IQ(:, :, 1:800)));
+[dzSeries, dxSeries, peakCorrSeries, failedSeries, zCenters, xCenters] = computeMotionFieldSeries2D(test, dz, dx);
+outFilename = 'C:\Users\Allen\Desktop\Temp directory for lab data\09-04-2026 combined fUS + ULM MS05 L22-14v\800 Hz continuous fUS\test.mp4';
+writeMotionFieldVideo2D(outFilename, test(:, :, 1:end-1), zCenters, xCenters, dzSeries, dxSeries, failedSeries, dz, dx)
+
+%%
+ixc = calcIXC(IQ(:, :, 1:end));
+ixca = calcIXC(abs(IQ(:, :, 1:end)));
+t = 0:1/P.frameRate:1/P.frameRate * (nsfpe - 1);
+
+figure; plot(t, 1 - abs(ixc))
+
+ixcf = calcIXC(IQf(:, :, 1:100));
+figure; plot(t, 1 - abs(ixcf))
+
+%% Frequency filtering test
+% Goal: filter out the known ~7 Hz cardiac
+
+% Set up a High Pass Filter
+HPF.fc = 10; % Cutoff frequency [Hz]
+% 10 Hz corresponds to 0.4928 mm/s at 15.625 MHz
+
+HPF.fs = P.frameRate; % Sampling frequency [Hz]
+HPF.order = 4; % Butterworth filter order
+
+[HPF.b, HPF.a] = butter(HPF.order, HPF.fc/(HPF.fs/2), 'high');
+
+% Apply it on some data
+HPF.dim = length(size(IQf)); % Operate on the time dimension
+IQf_HPF = filter(HPF.b, HPF.a, IQf, [], HPF.dim);
+
+% Calculate g1 after high pass filtering
+tic
+g1_HPF = g1T(IQf_HPF, nTau);
+toc

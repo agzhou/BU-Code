@@ -8,6 +8,7 @@ function [ixc] = calcIXC(IQ)
     ixc_threshold = 0.99; % Threshold for re-calculating ixc with different reference frames until most of it is above this value
 
     nf = size(IQ, length(size(IQ))); % # of frames (assumed to be the last dimension)
+    d = length(size(IQ)) - 1; % Dimensionality of the data (2 for 2D, 3 for 3D);
     ixc = zeros(nf, 1); % Image cross correlation (to the first frame)
 
     ref_frame = 1; % Starting reference frame number
@@ -16,12 +17,14 @@ function [ixc] = calcIXC(IQ)
     while ref_frame <= nf & sum(ixc >= ixc_threshold) < round(nf/2) % Loop through possible reference frames
         ixc = zeros(nf, 1); % Image cross correlation (to the first frame)
 
-        iref = squeeze(IQ(:, :, :, ref_frame)); % reference volume
+        % iref = squeeze(IQ(:, :, :, ref_frame)); % reference volume
+        iref = getFrame(IQ, ref_frame, d);
         rss_iref = sqrt(sum(abs(iref).^2, 'all')); % root sum? square of the reference volume
         % tic
         for fi = 1:nf
         % for fi = 1
-            ifi = squeeze(IQ(:, :, :, fi)); % image #fi
+            % ifi = squeeze(IQ(:, :, :, fi)); % image #fi
+            ifi = getFrame(IQ, fi, d);
             rss_ifi = sqrt(sum(abs(ifi).^2, 'all')); % root sum? square of volume #fi
     
             % ixc(fi) = sum( (ifi - mean(ifi, "all")) .* conj(iref - mean(iref, "all")), "all") ./ (rss_iref * rss_ifi);  
@@ -48,12 +51,14 @@ function [ixc] = calcIXC(IQ)
     if best_frame_num == nf
         ixc = zeros(nf, 1); % Image cross correlation (to the first frame)
 
-        iref = squeeze(IQ(:, :, :, best_frame_num)); % reference volume
+        % iref = squeeze(IQ(:, :, :, best_frame_num)); % reference volume
+        iref = getFrame(IQ, best_frame_num, d);
         rss_iref = sqrt(sum(abs(iref).^2, 'all')); % root sum? square of the reference volume
         % tic
         for fi = 1:nf
         % for fi = 1
-            ifi = squeeze(IQ(:, :, :, fi)); % image #fi
+            % ifi = squeeze(IQ(:, :, :, fi)); % image #fi
+            ifi = getFrame(IQ, fi, d);
             rss_ifi = sqrt(sum(abs(ifi).^2, 'all')); % root sum? square of volume #fi
     
             % ixc(fi) = sum( (ifi - mean(ifi, "all")) .* conj(iref - mean(iref, "all")), "all") ./ (rss_iref * rss_ifi);  
@@ -63,4 +68,17 @@ function [ixc] = calcIXC(IQ)
         end
     end
 
+end
+
+%% Helper functions
+% Get the frame 'fn' from data 'data', with data of dimensionality d (2 for
+% 2D, 3 for 3D)
+function [frame] = getFrame(data, fn, d)
+    switch d
+        case 2 % 2D
+            frame = squeeze(data(:, :, fn));
+        case 3 % 3D
+            frame = squeeze(data(:, :, :, fn));
+    end
+    
 end
