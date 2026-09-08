@@ -35,7 +35,7 @@ if ~exist('P', 'var')
     load([params_pathname, params_filename])
 end
 
-% load some chunk of continuous superframes
+%% (Only if using continuous data) load some chunk of continuous superframes
 IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 
 startFile = 1; endFile = 1;
@@ -82,6 +82,9 @@ codeDir_split = split(string(codeDir), filesep);
 ErrorFunctionCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\ErrorFunction\");
 addpath(genpath(ErrorFunctionCodePath))
 
+ProcessingCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\Processing\");
+addpath(genpath(ProcessingCodePath))
+
 %% ========= 1. Preprocessing ========= %%
 % IQ = squeeze(complex(IData, QData));
 % clearvars IData QData
@@ -92,8 +95,8 @@ addpath(genpath(ErrorFunctionCodePath))
 [zpo, xpo, nfo] = size(IQ); % Original sizes
 % figure; imagesc(squeeze(abs(IQ(:, :, 1))))
 % zrange = 1:100;
-% zrange = 1:zpo;
-zrange = 20:140;
+zrange = 1:zpo;
+% zrange = 20:140;
 xrange = 1:xpo;
 % xrange = 40:60;
 IQm = IQ(zrange, xrange, :);
@@ -119,8 +122,8 @@ IQf_HPF = filter(HPF.b, HPF.a, IQf, [], HPF.dim);
 
 % Testing
 % figure; imagesc(squeeze(abs(IQf(:, :, 1))))
-temp = sum(abs(IQf).^2, 3);
-figure; imagesc(temp .^ 0.5)
+tempPDI = sum(abs(IQf).^2, 3);
+figure; imagesc(tempPDI .^ 0.5)
 % tp = [128, 39]; % Test point
 % tp = [87, 26]; % Test point
 % figure; plot(squeeze(abs(IQf_HPF(tp(1), tp(2), :))))
@@ -401,9 +404,9 @@ for j = 3
     % for vi = 1:300
     for vi = ind
         % [zi, xi] = 
-        % if overall_mask_stacked(vi)
+        if overall_mask_stacked(vi)
         % if overall_mask_stacked_j(vi) & vesselAngleMask(vi) % Fit only voxels we believe have high signal quality
-        if vesselAngleMask(vi) % Fit only voxels we believe have high signal quality
+        % if vesselAngleMask(vi) % Fit only voxels we believe have high signal quality
             x0 = [Vx0(vi), Vz0(vi), FR0_j(vi), DCR0_j(vi)];
             % x0 = [Vx0(vi), Vz0(vi), F0(vi)];
             % **** Check lb AND ub --> VELOCITIES CAN BE NEGATIVE ****
@@ -423,13 +426,17 @@ for j = 3
 
             % anon_fun = @(x) vUS_2D_erf_vec_split(x, tau(tau_inds), PP.k0, sigma) - g1_exp_split_j_vi(tau_inds, :);
             
-            anon_fun = @(x) vUS_2D_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :)); % Jacobian version
+            % anon_fun = @(x) vUS_2D_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :)); % Jacobian version
             % tau_cropped = tau(tau_inds);
             % OF_weight = (max(tau_cropped) - tau_cropped).^2;
             % OF_weight = OF_weight./max(OF_weight); % Objective function weighting: trust residuals from earlier time lags more
             % anon_fun = @(x) vUS_2D_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :), OF_weight); % Jacobian version
 
-            x = lsqnonlin(anon_fun, x0, lb, ub, opts); % x = [v_xgp, v_zgp, p, F, DC]
+            anon_fun = @(x) vUS_2D_OF_nonsplit(x, tau(tau_inds), PP.k0, sigma, g1_exp_j_vi(tau_inds, :)); % Jacobian version
+
+            % x = lsqnonlin(anon_fun, x0, lb, ub, opts); % x = [v_xgp, v_zgp, p, F, DC]
+            x = lsqnonlin(anon_fun, x0, [], [], opts); % x = [v_xgp, v_zgp, p, F, DC]
+
             v_xgp_stacked(vi) = x(1);
             v_zgp_stacked(vi) = x(2);
             F_stacked(vi) = x(3);
@@ -443,9 +450,10 @@ for j = 3
     F = unstackData(F_stacked, PP);
     DC = unstackData(DC_stacked, PP);
 
-    test = vUS_2D_erf_vec(x, tau, PP.k0, sigma);
+    test = vUS_2D_erf_vec(real(x), tau, PP.k0, sigma);
     figure; plot(tau, abs(g1_exp_j(vi, :)), tau, abs(test))
-    figure; plot(test, '-o'); hold on; plot(g1_exp_j(vi, :), '-x'); hold off; legend('Fit', 'Data'); axis equal; xlim([-1, 1]); ylim([-1, 1])
+    figure; plot(g1_exp_j(vi, :), '-x'); hold on; plot(test, '-o'); hold off; legend('Data', 'Fit'); axis equal; xlim([-1, 1]); ylim([-1, 1])
+
 end
 
 %% Visualize total fitted speed
