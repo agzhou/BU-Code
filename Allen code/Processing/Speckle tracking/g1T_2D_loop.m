@@ -56,6 +56,7 @@ HPF.order = 4; % Butterworth filter order
 %% Go through superframes and process
 IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 for fi = startFile:endFile
+% for fi = 2:endFile
     load([IQpath, IQfilenameStructure, num2str(fi)], 'IQ'); % Load IQ data
 
     % ========= 1. Preprocessing ========= %%
@@ -68,8 +69,8 @@ for fi = startFile:endFile
     [zpo, xpo, nfo] = size(IQ); % Original sizes
     % figure; imagesc(squeeze(abs(IQ(:, :, 1))))
     % zrange = 1:100;
-    zrange = 1:zpo;
-    % zrange = 20:140;
+    % zrange = 1:zpo;
+    zrange = 20:130;
     xrange = 1:xpo;
     % xrange = 40:60;
     IQm = IQ(zrange, xrange, :);
@@ -89,9 +90,9 @@ for fi = startFile:endFile
     % 
     % [IQf, noise] = applySVs1D(IQm, CM, SVs, V, sv_threshold_lower, sv_threshold_upper);
 
-    [CM, EVs, V_sort] = getSVs1D(IQ);
+    [CM, EVs, V_sort] = getSVs1D(IQm);
     disp('SVs decomposed')
-    [IQf, noise] = applySVs1D(IQ, CM, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
+    [IQf, noise] = applySVs1D(IQm, CM, EVs, V_sort, sv_threshold_lower, sv_threshold_upper);
     disp('SVD filtered images put together')
     
     % 1.2 High pass filter (apply to the post-SVD clutter filtered data)
@@ -180,13 +181,15 @@ for fi = startFile:endFile
     end
 
     % save([savepath, 'g1-', num2str(fi), '.mat'], 'g1', 'IQf_separated', 'IQf_FT_separated')
-    % save([savepath, 'g1-', num2str(fi), '.mat'], 'g1')
-    save([savepath, 'g1-', num2str(fi), '.mat'], 'g1', 'g1_noHPF')
+    save([savepath, 'g1-', num2str(fi), '.mat'], 'g1')
+    % save([savepath, 'g1-', num2str(fi), '.mat'], 'g1', 'g1_noHPF')
     % save([savepath, 'g1-', num2str(fi), '.mat'], 'g1', 'IQf_separated_masked', 'IQf_FT_separated_masked')
 end
 save([savepath, 'g1_proc_params.mat'], 'nFTpts', 'nTau', 'tau', 'startTau', 'faxis')
-save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
+save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'zrange', 'xrange');
 
+[VzCmap, VzCmapDn, VzCmapUp, pdiCmapUp, PhtmCmap] = Colormaps_fUS;
+% figure; imagesc(CDI{3}); colormap(VzCmap); axis equal; colorbar
 % pixelTimeseriesGUI(g1{3}, squeeze(abs(g1{3}(:, :, 2))), 'ComplexMode', 'abs')
 
 %% Testing
