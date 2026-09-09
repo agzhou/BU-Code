@@ -35,14 +35,14 @@ zDim = 1; % Dimension of the data corresponding to z (axial direction)
 xDim = 2; % Dimension of the data corresponding to x (lateral direction)
 
 % Prompt for parameter user input
-parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound'};};
+parameterPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound'};
 parameterDefaults = {'1', '', '20', num2str(P.numFramesPerBuffer)};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 startFile = str2double(parameterUserInput{1}); % File to start reconstructing from
 endFile = str2double(parameterUserInput{2});   % File to stop reconstructing on
-sv_threshold_lower = str2double(procParamsUserInput{3});
-sv_threshold_upper = str2double(procParamsUserInput{4});
+sv_threshold_lower = str2double(parameterUserInput{3});
+sv_threshold_upper = str2double(parameterUserInput{4});
 
 %% Set up the High Pass Filter (parameters from the 2020 vUS paper)
 HPF.fc = 25; % Cutoff frequency [Hz]
@@ -58,7 +58,7 @@ IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2
 for fi = startFile:endFile
     load([IQpath, IQfilenameStructure, num2str(fi)], 'IQ'); % Load IQ data
 
-    %% ========= 1. Preprocessing ========= %%
+    % ========= 1. Preprocessing ========= %%
     % IQ = squeeze(complex(IData, QData));
     % clearvars IData QData
     
@@ -108,7 +108,7 @@ for fi = startFile:endFile
     % figure; plot(squeeze(real(IQf(tp(1), tp(2), :))))
     % figure; plot(squeeze(real(IQf_HPF(tp(1), tp(2), :))))
     
-    %% ========= 2. Directional flow filtering ========= %%
+    % ========= 2. Directional flow filtering ========= %%
     
     % 2.1 Separate positive and negative frequencies
     [IQf_separated, IQf_FT_separated, nFTpts] = separatePosNegFreqs(IQf_HPF); % Outputs are cell arrays in the order of: negative, positive, all frequencies
@@ -146,15 +146,13 @@ for fi = startFile:endFile
     % % plot(faxis, squeeze(abs(IQf_FT_separated_masked{3}(tp(1), tp(2), :))), '--', 'LineWidth', 1)
     % % hold off
     
-    %%
+    % PDI and CDI
     [PDI] = calcPowerDoppler(IQf_separated, noise);
     [CDI] = calcColorDoppler(IQf_FT_separated, P);
 
     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
-    
-    % savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'tau1_index_CBF', 'tau2_index_CBF', 'tau1_index_CBV');
-   
-    %% 3. Calculate g1
+       
+    % 3. Calculate g1
     % startTau = 1; % Index for the first tau point (tau1) for subsequent analysis. Changed this from 2 to 1 on 7/8/26 because I changed the g1T.m function to output g1 starting from tau = tau1 instead of tau = 0.
     startTau = 2; % Index for the first tau point (tau1) for subsequent analysis.
     
@@ -177,4 +175,30 @@ for fi = startFile:endFile
     % save([savepath, 'g1-', num2str(fi), '.mat'], 'g1', 'IQf_separated_masked', 'IQf_FT_separated_masked')
 end
 save([savepath, 'g1_proc_params.mat'], 'nFTpts', 'nTau', 'tau', 'startTau', 'freqMask', 'faxis')
- save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
+save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
+
+%% Testing
+% Load a few superframes of the g1 and take the average
+g1_sum = cell(3, 1);
+si = 1; % Start index
+ei = 85; % End index
+for fi = si:ei
+    load([savepath, 'g1-', num2str(fi), '.mat'], 'g1')
+
+    for j = 1:3
+        if isempty(g1_sum{j})
+            g1_sum{j} = g1{j};
+        else
+            g1_sum{j} = g1_sum{j} + g1{j};
+        end
+    end
+end
+
+%%
+g1_avg = cell(size(g1_sum));
+nfie = ei - si + 1; % # of files in ensemble
+for j = 1:3
+    g1_avg{j} = g1_sum{j} ./ nfie;
+end
+
+pixelTimeseriesGUI(g1_avg{3}, squeeze(abs(g1_avg{3}(:, :, 2))), 'ComplexMode', 'abs')
