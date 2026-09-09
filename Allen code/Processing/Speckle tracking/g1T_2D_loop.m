@@ -111,6 +111,8 @@ for fi = startFile:endFile
     % ========= 2. Directional flow filtering ========= %%
     
     % 2.1 Separate positive and negative frequencies
+    [IQf_separated_noHPF, IQf_FT_separated_noHPF, nFTpts_noHPF] = separatePosNegFreqs(IQf); % Outputs are cell arrays in the order of: negative, positive, all frequencies
+
     [IQf_separated, IQf_FT_separated, nFTpts] = separatePosNegFreqs(IQf_HPF); % Outputs are cell arrays in the order of: negative, positive, all frequencies
     % frameDim = length(size(IQf)); % Get the dimension corresponding to time/frames
     
@@ -150,7 +152,7 @@ for fi = startFile:endFile
     [PDI] = calcPowerDoppler(IQf_separated, noise);
     [CDI] = calcColorDoppler(IQf_FT_separated, P);
 
-    save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
+    save([savepath, 'PDI_CDI-', num2str(fi), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
        
     % 3. Calculate g1
     % startTau = 1; % Index for the first tau point (tau1) for subsequent analysis. Changed this from 2 to 1 on 7/8/26 because I changed the g1T.m function to output g1 starting from tau = tau1 instead of tau = 0.
@@ -165,13 +167,17 @@ for fi = startFile:endFile
     
     % Store g1 for each frequency component in a cell array
     g1 = cell(size(IQf_separated));
+    g1_noHPF = cell(size(IQf_separated_noHPF));
     
     for j = ctp
         g1{j} = g1T(IQf_separated{j}, nTau); % Use the base filtered IQ
+        g1_noHPF{j} = g1T(IQf_separated_noHPF{j}, nTau); % Use the base filtered IQ
         % g1{j} = g1T(IQf_separated_masked{j}, nTau); % Use the filtered IQ with system noise removed
     end
 
-    save([savepath, 'g1-', num2str(fi), '.mat'], 'g1', 'IQf_separated', 'IQf_FT_separated')
+    % save([savepath, 'g1-', num2str(fi), '.mat'], 'g1', 'IQf_separated', 'IQf_FT_separated')
+    % save([savepath, 'g1-', num2str(fi), '.mat'], 'g1')
+    save([savepath, 'g1-', num2str(fi), '.mat'], 'g1', 'g1_noHPF')
     % save([savepath, 'g1-', num2str(fi), '.mat'], 'g1', 'IQf_separated_masked', 'IQf_FT_separated_masked')
 end
 save([savepath, 'g1_proc_params.mat'], 'nFTpts', 'nTau', 'tau', 'startTau', 'freqMask', 'faxis')
