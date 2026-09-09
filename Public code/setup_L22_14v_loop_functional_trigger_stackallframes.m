@@ -106,7 +106,7 @@ endDepth = endDepthMM/1e3/wl; % end depth in wavelengths
 % angpitch = wl / (Trans.spacingMm*Trans.numelements / 2 / 1e3);
 % angles = -(na - 1) / 2 * angpitch : angpitch : (na - 1) / 2 * angpitch
 %% enable time tag
-TimeTagEna = 0;
+TimeTagEna = 1;
 % 0: disable
 % 1: enable but don't reset counter
 % 2: enable and reset counter
@@ -225,11 +225,14 @@ TPC.hv = initialVoltage;
 % Need a TX structure for each unique transmit action in the imaging
 % sequence
 
-emitElem = ones(1, Trans.numelements);
-% nTrans = 120;
-% emitElem=kaiser(Resource.Parameters.numTransmit, 1)';
-% emitElem(1:(128-nTrans)/2) = 0;
-% emitElem(end-(128-nTrans)/2+1:end) = 0;
+% Uniform apodization
+% emitElem = ones(1, Trans.numelements);
+
+% Transmit apodization, taken from Jianbo's script
+nTrans = 120;
+emitElem=kaiser(Resource.Parameters.numTransmit, 1)';
+emitElem(1:(128-nTrans)/2) = 0;
+emitElem(end-(128-nTrans)/2+1:end) = 0;
 
 % na transmissions of a plane wave
 % column elements
@@ -241,7 +244,6 @@ for n = 1:na
     TX(n).Steer = [angles(n), 0];
     TX(n).Delay = computeTXDelays(TX(n));
 end
-
 
 %% Define Time Gain Control waveform (TGC)
 % Accounts for decrease in amplitude of echoes for longer distance traveled

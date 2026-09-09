@@ -111,8 +111,9 @@ for fi = startFile:endFile
     % ========= 2. Directional flow filtering ========= %%
     
     % 2.1 Separate positive and negative frequencies
-    [IQf_separated_noHPF, IQf_FT_separated_noHPF, nFTpts_noHPF] = separatePosNegFreqs(IQf); % Outputs are cell arrays in the order of: negative, positive, all frequencies
+    [IQ_separated, IQ_FT_separated, ~] = separatePosNegFreqs(IQ); % Outputs are cell arrays in the order of: negative, positive, all frequencies
 
+    [IQf_separated_noHPF, IQf_FT_separated_noHPF, nFTpts_noHPF] = separatePosNegFreqs(IQf); % Outputs are cell arrays in the order of: negative, positive, all frequencies
     [IQf_separated, IQf_FT_separated, nFTpts] = separatePosNegFreqs(IQf_HPF); % Outputs are cell arrays in the order of: negative, positive, all frequencies
     % frameDim = length(size(IQf)); % Get the dimension corresponding to time/frames
     
@@ -166,10 +167,13 @@ for fi = startFile:endFile
     % g1pos = g1T(IQf_separated{2}, nTau + startTau - 1); % Add the startTau-1 because the values start at startTau, but we still want nTau points total
     
     % Store g1 for each frequency component in a cell array
+    g1_raw = cell(size(IQ_separated));
     g1 = cell(size(IQf_separated));
     g1_noHPF = cell(size(IQf_separated_noHPF));
     
     for j = ctp
+        % g1_raw{j} = g1T(IQ_separated{j}, nTau); % Use the base filtered IQ
+
         g1{j} = g1T(IQf_separated{j}, nTau); % Use the base filtered IQ
         g1_noHPF{j} = g1T(IQf_separated_noHPF{j}, nTau); % Use the base filtered IQ
         % g1{j} = g1T(IQf_separated_masked{j}, nTau); % Use the filtered IQ with system noise removed
