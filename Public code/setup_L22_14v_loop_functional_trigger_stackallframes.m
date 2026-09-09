@@ -26,12 +26,15 @@ savepath = uigetdir('G:\', 'Select the save path');
 savepath = [savepath, '\'];
 
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use air puff (0-no, 1-yes)'}; % 'Save RF data (0-no, 1-yes)', 
-% parameterDefaults = {'20', '0', '10', '50000', '5000', '5', '5', '15.625', '1540', '0', '1', '500', '0'};
+parameterDefaults = {'20', '0', '8', '45000', '5000', '5', '5', '15.625', '1540', '0', '1', '800', '0'};
 % parameterDefaults = {'20', '0', '8', '50000', '1000', '17', '10', '15.625', '1540', '0', '1', '200', '1'};
 % parameterDefaults = {'20', '0', '8', '50000', '5000', '5', '5', '18.5', '1540', '0', '1', '1000', '1'};
-parameterDefaults = {'20', '0', '8', '50000', '5000', '9', '8', '18.5', '1540', '0', '1', '400', '1'};
+% parameterDefaults = {'20', '0', '8', '50000', '5000', '9', '8', '18.5', '1540', '0', '1', '400', '1'};
 % parameterDefaults = {'20', '2', '10', '50000', '2000', '17', '16', '15.625', '1540', '0', '1', '200', '0'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
+
+apertureMM = 12.8; % Use some subset of the probe elements [mm]
+% apertureMM = 8;
 
 sfRate = 1; % Superframe rate [Hz]
 
@@ -101,6 +104,12 @@ wl = Resource.Parameters.speedOfSound / Trans.frequency / 1e6; % Wavelength, in 
 
 startDepth = startDepthMM/1e3/wl; % start depth in wavelengths
 endDepth = endDepthMM/1e3/wl; % end depth in wavelengths
+
+%% Set the active aperture
+apertureTotalMM = Trans.spacingMm * Trans.numelements; % Total available probe aperture [mm]
+% apertureElem = floor(apertureMM/apertureTotalMM * Trans.numelements);
+apertureElem = floor(apertureMM / Trans.spacingMm); % Number of active elements
+if mod(apertureElem, 2) ~= 0, error('Number of active elements must be even'), end
 
 %% angles
 % angpitch = wl / (Trans.spacingMm*Trans.numelements / 2 / 1e3);
@@ -220,19 +229,20 @@ TW(1).Parameters = [tw.A, tw.B, tw.C, tw.D];
 % described in the Sequence Programming Manual.
 
 TPC.hv = initialVoltage;
+
 %% Transmit action - TX structure
 
 % Need a TX structure for each unique transmit action in the imaging
 % sequence
 
-% Uniform apodization
-% emitElem = ones(1, Trans.numelements);
+% emitElem = ones(1, Trans.numelements); % Uniform apodization
+% nTrans = 120;
+% emitElem=kaiser(Resource.Parameters.numTransmit, 1)';
+% emitElem(1:(128-nTrans)/2) = 0;
+% emitElem(end-(128-nTrans)/2+1:end) = 0;
 
-% Transmit apodization, taken from Jianbo's script
-nTrans = 120;
-emitElem=kaiser(Resource.Parameters.numTransmit, 1)';
-emitElem(1:(128-nTrans)/2) = 0;
-emitElem(end-(128-nTrans)/2+1:end) = 0;
+activeElem = kaiser(apertureElem).';
+emitElem = [zeros(1, (Trans.numelements-apertureElem)/2), activeElem, zeros(1, (Trans.numelements-apertureElem)/2)];
 
 % na transmissions of a plane wave
 % column elements
@@ -245,15 +255,16 @@ for n = 1:na
     TX(n).Delay = computeTXDelays(TX(n));
 end
 
+
 %% Define Time Gain Control waveform (TGC)
 % Accounts for decrease in amplitude of echoes for longer distance traveled
 
 % TGC curve definition
 % TGC.CntrlPts = [0 785.2216 1023 1023 1023 1023 1023 1023];
-TGC.CntrlPts = [1023 1023 1023 1023 1023 1023 1023 1023];
+% TGC.CntrlPts = [1023 1023 1023 1023 1023 1023 1023 1023];
 % TGC.CntrlPts = [750,820,880,910,970,980,1000,1000]; % From Bingxue/Jianbo code
-
-% TGC(1).CntrlPts = [500,590,650,710,770,830,890,950]; % 0 to 1023, minimum to maximum gain
+TGC.CntrlPts = [590,650,710,770,830,890,950,1010];
+% TGC.CntrlPts = [500,590,650,710,770,830,890,950]; % 0 to 1023, minimum to maximum gain
                                                      % Values represent the
                                                      % gain at increasing
                                                      % depth in the
@@ -275,10 +286,12 @@ BPF1 = [ -0.00009 -0.00128 +0.00104 +0.00085 +0.00159 +0.00244 -0.00955 ...
          +0.01358 +0.06165 +0.00735 +0.09698 -0.27612 -0.10144 +0.48608 ];
 
 
-rcvElem = ones(1, Trans.numelements);
+% rcvElem = ones(1, Trans.numelements);
 % nRcv = 120;
 % rcvElem(1:(128-nRcv)/2)=0;
 % rcvElem((end-(128-nRcv)/2+1):end)=0;
+rcvElem = [zeros(1, (Trans.numelements-apertureElem)/2), ones(1, apertureElem), zeros(1, (Trans.numelements-apertureElem)/2)];
+
 
 maxAcqLength = ceil(sqrt(endDepth^2 + (numElements*Trans.spacing)^2)); % account for the longest distance an echo could travel
 Receive = repmat(struct('Apod', rcvElem, ... 

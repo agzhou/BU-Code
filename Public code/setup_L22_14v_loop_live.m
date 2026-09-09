@@ -36,6 +36,9 @@ probe_freq = str2double(parameterUserInput{7});
 simMode = str2double(parameterUserInput{8});
 saveIQDataFlag = str2double(parameterUserInput{9});
 
+apertureMM = 7; % Use some subset of the probe elements [mm]
+% apertureMM = 12.8; % Use some subset of the probe elements [mm]
+
 supFrameIndex = 0;
 runVSX = 1;
 movePointsOrNot = 0; % Media movePoints on or off
@@ -69,6 +72,12 @@ Trans.units = 'wavelengths'; % or mm
 Trans = computeTrans(Trans); % Generate required attributes for the probe into the Trans structure; e.g., the transducer element positions
 
 wl = Resource.Parameters.speedOfSound / Trans.frequency / 1e6; % Wavelength, in m
+
+%% Set the active aperture
+apertureTotalMM = Trans.spacingMm * Trans.numelements; % Total available probe aperture [mm]
+% apertureElem = floor(apertureMM/apertureTotalMM * Trans.numelements);
+apertureElem = floor(apertureMM / Trans.spacingMm); % Number of active elements
+if mod(apertureElem, 2) ~= 0, error('Number of active elements must be even'), end
 
 %% enable time tag
 % TimeTagEna = 2;
@@ -150,10 +159,13 @@ TPC.hv = initialVoltage; % Set the probe voltage
 % Need a TX structure for each unique transmit action in the imaging
 % sequence
 
+activeElem = kaiser(apertureElem).';
+emitElem = [zeros(1, (Trans.numelements-apertureElem)/2), activeElem, zeros(1, (Trans.numelements-apertureElem)/2)];
+
 TX = repmat(struct('waveform', 1, ...
                    'focus', 0, ... % plane wave
                    'Steer', [0.0, 0.0], ... % theta, alpha (beam angle projected in xz from +z axis, beam angle wrt xz)
-                   'Apod', ones(1, Trans.numelements)), 1, na);
+                   'Apod', emitElem), 1, na);
 for n = 1:na
     TX(n).Steer = [angles(n), 0];
     TX(n).Delay = computeTXDelays(TX(n));
@@ -163,6 +175,7 @@ end
 % Accounts for decrease in amplitude of echoes for longer distance traveled
 
 % TGC curve definition
+% TGC(1).CntrlPts = [750,820,880,910,970,980,1000,1000]; % From Bingxue/Jianbo code
 %TGC(1).CntrlPts = [500,590,650,710,770,830,890,950]; % 0 to 1023, minimum to maximum gain
 TGC(1).CntrlPts = [590,650,710,770,830,890,950,1010]; % 0 to 1023, minimum to maximum gain
                                                      % Values represent the
@@ -201,7 +214,9 @@ maxAcqLength = ceil(sqrt(endDepth^2 + (numElements*Trans.spacing)^2)); % account
 % nspa = 128 * ceil(nspa/128); % # samples per acquisition
 % maxAcqLength_adjusted = nspa / spw / 2;
 
-Receive = repmat(struct('Apod', ones(1, Trans.numelements), ...
+rcvElem = [zeros(1, (Trans.numelements-apertureElem)/2), ones(1, apertureElem), zeros(1, (Trans.numelements-apertureElem)/2)];
+
+Receive = repmat(struct('Apod', rcvElem, ...
                         'startDepth', startDepth, ...
                         'endDepth', maxAcqLength + startDepth, ... % change 9/12/24, was previously just maxAcqLength
                         'TGC', 1, ...

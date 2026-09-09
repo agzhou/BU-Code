@@ -16,6 +16,12 @@ else
     P.numFramesPerBuffer = numFramesPerSF;
 end
 
+if exist('apertureMM', 'var')
+    P.apertureMM = apertureMM;
+    P.apertureElem = apertureElem;
+    P.apertureTotalMM = apertureTotalMM;
+end
+
 if exist('sfRate', 'var')
     P.sfRate = sfRate;
 end
