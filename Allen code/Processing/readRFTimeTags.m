@@ -5,40 +5,29 @@
 
 %% Load parameters
 
-% FilePath = "G:\Allen\Data\04-01-2025 functional acq testing\";
-% FilePath = "F:\Allen\Data\test\";
-% FilePath = "L:\Ultrasound data from 05-27-2025 to\07-07-2025 AZ01 ULM RC15gV continuous\";
-% FilePath = "G:\Nikunj\test1\";
-% FilePath = "G:\test3\";
-% FilePath = "G:\Allen\Data\09-04-2026 MS05 L22-14v continuous fUS\"
 FilePath = uigetdir('G:\', 'Select the RF data path');
 FilePath = string([FilePath, '\']);
 
 RFPath = FilePath;
 
-load(FilePath + "params.mat")
-% RFName = "RF-5-11-2000-500-1-1.mat";
-% RFName = "RF-5-11-1000-180-1-1.mat";
-% RFName = "RF-5-11-100-100-1-1.mat";
-% RFName = "RF-5-11-400-400-1-1.mat";
-% RFName = "RF-5-5-1000-1000-1-1.mat";
-% RFName = "RF-6-5-800-800-1-1.mat"
+load(FilePath + "params.mat") % Load acquisition parameters
+
 [RFName, ~, ~] = uigetfile('*.mat', 'Select the first RF file', [RFPath]);
 RFName = string(RFName);
 
-% RFName = "RF-5-11-500-500-1-1.mat";
-% RFName = "RF-5-11-100-100-1-1.mat";
+RFcount = countFiles(RFName, RFPath); % Count # of RF files in the path
 
-%% Define Load path and save path for RF and IQ respectively
-RFcount = countFiles(RFName,RFPath);
-
-
-%% Main Beamforming Loop
+%% Main Loop
 fileInfo = strsplit(RFName,'-');
-timeTags = zeros(str2double(fileInfo{5}), P.Resource.Parameters.numRcvChannels, RFcount);
+
+% Framewise time tags
+RFtimeTags = zeros(str2double(fileInfo{5}), P.Resource.Parameters.numRcvChannels, RFcount);
+
+% Superframe-wise time tags (stacked frames)
+% RFtimeTags = zeros(1, P.Resource.Parameters.numRcvChannels, RFcount);
+
 for iFile = 1:RFcount
 % for iFile = 1:4
-    
 
     iFileInfo = fileInfo;
     iFileInfo{end} = [num2str(iFile), '.mat'];
@@ -49,7 +38,7 @@ for iFile = 1:RFcount
     RFData = load(fullfile(RFPath, iFileName),'RcvData').('RcvData');
     disp('Data loaded!');
 
-    timeTags(:, :, iFile) = readTimeTags(RFData);
+    RFtimeTags(:, :, iFile) = readTimeTags(RFData);
 
 end
 
@@ -61,15 +50,16 @@ end
 % figure
 % plot(RFTimeTags)
 % title('TimeTags from zero')
+% RFTimeTags_diff = diff(RFTimeTags_raw);
+% figure; plot(RFTimeTags_diff); title('difference')
+% % chk4 = find(chk3 > 0.1)
 
-genSliderV2(timeTags) % Plot the time tags per channel, for each superframe
-
-RFTimeTags_diff = diff(RFTimeTags_raw);
-figure; plot(RFTimeTags_diff); title('difference')
-% chk4 = find(chk3 > 0.1)
+genSliderV2(RFtimeTags) % Plot the time tags per channel, for each superframe
+figure; imagesc(squeeze(RFtimeTags(:, :, 1))); colorbar; xlabel('Channel index'); ylabel('Frame')
 
 %% Save the (RF) frame timing data
-save(FilePath + "RFTimeTagData.mat", 'RFTimeTags_raw', 'RFTimeTags', "RFTimeTags_diff", 'RFcount')
+% save(FilePath + "RFTimeTags.mat", 'RFTimeTags_raw', 'RFTimeTags', "RFTimeTags_diff", 'RFcount')
+save(FilePath + "RFTimeTagsPerChannel.mat", 'RFtimeTags', 'RFcount')
 
 %% Test
 getTimeStamp(double(RFData(1:2,1,12)))/4e4
