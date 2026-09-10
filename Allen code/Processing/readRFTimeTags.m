@@ -21,10 +21,10 @@ RFcount = countFiles(RFName, RFPath); % Count # of RF files in the path
 fileInfo = strsplit(RFName,'-');
 
 % Framewise time tags
-RFtimeTags = zeros(str2double(fileInfo{5}), P.Resource.Parameters.numRcvChannels, RFcount);
+% RFtimeTags = zeros(str2double(fileInfo{5}), P.Resource.Parameters.numRcvChannels, RFcount);
 
 % Superframe-wise time tags (stacked frames)
-% RFtimeTags = zeros(1, P.Resource.Parameters.numRcvChannels, RFcount);
+RFtimeTags = zeros(1, P.Resource.Parameters.numRcvChannels, RFcount);
 
 for iFile = 1:RFcount
 % for iFile = 1:4
@@ -56,6 +56,7 @@ end
 
 genSliderV2(RFtimeTags) % Plot the time tags per channel, for each superframe
 figure; imagesc(squeeze(RFtimeTags(:, :, 1))); colorbar; xlabel('Channel index'); ylabel('Frame')
+figure; imagesc(diff(squeeze(RFtimeTags), 1, 2).')
 
 %% Save the (RF) frame timing data
 % save(FilePath + "RFTimeTags.mat", 'RFTimeTags_raw', 'RFTimeTags', "RFTimeTags_diff", 'RFcount')

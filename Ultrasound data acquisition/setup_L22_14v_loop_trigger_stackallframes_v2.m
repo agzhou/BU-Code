@@ -1,6 +1,7 @@
+% **** THIS VERSION WILL EVENTUALLY USE MULTIPLE BUFFERS **** %
 
 %% 0. Description
-% Continuous acquisition and saving of RF data with the L22-14v probe
+% Acquisition and saving of RF data with the L22-14v probe.
 % CPWC, stacks all frames per superframe in one transfer/file
 % Uses saveRcvData external function for saving
 % Starts on an external trigger
@@ -13,8 +14,8 @@ clearvars
 codeDir = cd;
 codeDir_split = split(string(codeDir), filesep);
 % AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "Allen code"))), '\') + "\Verasonics");
-AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\Verasonics");
-addpath(AllenVerasonicsCodePath)
+AcquisitionCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Ultrasound data acquisition");
+addpath(AcquisitionCodePath)
 
 addpath('C:\Users\BOAS-US\Documents\GitHub\BU-Code\Allen code\Air Puff\')
 
@@ -22,21 +23,20 @@ cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
 % cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
 activate
 
-savepath = uigetdir('G:\', 'Select the save path');
+savepath = uigetdir('F:\', 'Select the save path');
 savepath = [savepath, '\'];
 
-parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use air puff (0-no, 1-yes)'}; % 'Save RF data (0-no, 1-yes)', 
-parameterDefaults = {'20', '0', '8', '45000', '5000', '5', '5', '15.625', '1540', '0', '1', '800', '0'};
-% parameterDefaults = {'20', '0', '8', '50000', '1000', '17', '10', '15.625', '1540', '0', '1', '200', '1'};
-% parameterDefaults = {'20', '0', '8', '50000', '5000', '5', '5', '18.5', '1540', '0', '1', '1000', '1'};
-% parameterDefaults = {'20', '0', '8', '50000', '5000', '9', '8', '18.5', '1540', '0', '1', '400', '1'};
-% parameterDefaults = {'20', '2', '10', '50000', '2000', '17', '16', '15.625', '1540', '0', '1', '200', '0'};
+parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use air puff (0-no, 1-yes)', 'Probe connector', 'SSD write speed [GB/s]', 'Probe aperture [mm]', 'Time per superframe [s]'}; % 'Save RF data (0-no, 1-yes)', 
+parameterDefaults = {'20', '0', '8', '45000', '5000', '5', '6', '15.625', '1540', '0', '1', '1000', '0', 'UTA-260D', '1.45', '12.8', '1.5'}; % 1.45 GB/s is the default for the current Samsung MZVKW1T0HMLH-000L7 drives
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
-apertureMM = 12.8; % Use some subset of the probe elements [mm]
+apertureMM = str2double(parameterUserInput{16});
+% apertureMM = 12.8; % Use some subset of the probe elements [mm]
 % apertureMM = 8;
 
-sfRate = 1; % Superframe rate [Hz]
+TimePerSF = str2double(parameterUserInput{17});
+
+sfRate = 1/TimePerSF; % Superframe rate [Hz]
 
 % Store the user inputs for parameters into the corresponding variables
 initialVoltage = str2double(parameterUserInput{1});
@@ -55,6 +55,11 @@ if mod(numFramesPerSF, 2) ~= 0
     error('# of frames per SF must be even')
 end
 useTriggers = str2double(parameterUserInput{13});
+connectorPlate = parameterUserInput{14};
+% Maximum PCIe DMA rate for the Vantage 256 is 6.6 GB/s, but the connector
+% type can affect this
+DMARate = getDMARate(connectorPlate);
+SSDWriteRate = str2double(parameterUserInput{15});
 
 % tagtest = Hardware.enableAcquisitionTimeTagging(1);
 bufferIndex = 0;
@@ -302,7 +307,8 @@ BPF1 = [ -0.00009 -0.00128 +0.00104 +0.00085 +0.00159 +0.00244 -0.00955 ...
 rcvElem = [zeros(1, (Trans.numelements-apertureElem)/2), ones(1, apertureElem), zeros(1, (Trans.numelements-apertureElem)/2)];
 
 
-maxAcqLength = ceil(sqrt(endDepth^2 + (numElements*Trans.spacing)^2)); % account for the longest distance an echo could travel
+% maxAcqLength = ceil(sqrt(endDepth^2 + (numElements*Trans.spacing)^2)); % account for the longest distance an echo could travel
+maxAcqLength = ceil(sqrt(endDepth^2 + (apertureMM/1e3/wl)^2)); % account for the longest distance an echo could travel
 Receive = repmat(struct('Apod', rcvElem, ... 
                         'startDepth', startDepth, ...
                         'endDepth', maxAcqLength, ... % 'endDepth', maxAcqLength + startDepth, ...
@@ -403,7 +409,9 @@ end
 Resource.Parameters.verbose = 2; % Describe errors in varying levels
 % Resource.InterBuffer(1).pagesPerFrame = pair*na*numSubFrames; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-numSamplesInBuffer = Resource.RcvBuffer(1).rowsPerFrame * Resource.RcvBuffer(1).colsPerFrame * Resource.RcvBuffer(1).numFrames
+% numSamplesPerFrame = Resource.RcvBuffer(1).rowsPerFrame * Resource.RcvBuffer(1).colsPerFrame; % This should be all frames within a superframe
+numSamplesPerSubFrame = Resource.RcvBuffer(1).rowsPerFrame / numFramesPerSF * Resource.RcvBuffer(1).colsPerFrame; % This should be all frames within a superframe
+numSamplesInBuffer = Resource.RcvBuffer(1).rowsPerFrame * Resource.RcvBuffer(1).colsPerFrame * Resource.RcvBuffer(1).numFrames % There is one "frame" per buffer that holds all frames in a superframe
 numGBInBuffer = numSamplesInBuffer ./ 1024^3 * 2 % # samples * (2 bytes per int16 sample) 
 numSamplesPerBufferFrame = Resource.RcvBuffer(1).rowsPerFrame * Resource.RcvBuffer(1).colsPerFrame
 numGBPerBufferFrame = numSamplesPerBufferFrame ./ 1024^3 * 2 % # samples * (2 bytes per int16 sample) 
@@ -418,6 +426,22 @@ end
 if ((2*maxAcqLength_adjusted)*wl / speedOfSound) > 1/PRF
     error('Error: the PRF is too high, it will send the next transmission before the previous transmission reflects from the deepest part of the region')
 
+end
+
+%% Check for if the superframe size and superframe rate are incompatible
+DMATime = numGBInBuffer/DMARate; % Time to DMA one superframe [s]
+AcqTime = numFramesPerSF / frameRate; % Time to acquire on superframe [s]
+SFTime = 1/sfRate; % Nominal time per superframe [s]
+SSDWriteTime = numGBInBuffer/SSDWriteRate; % Theoretical time to write one superframe to disk [s]
+
+% disp("Time to acquire and DMA: " + num2str(AcqTime + DMATime) + "s")
+disp("Time to acquire, DMA, and write to disk: " + num2str(AcqTime + DMATime + SSDWriteTime) + "s")
+numFramesPerSFPossible = SFTime / [1/frameRate + numSamplesPerSubFrame / 1024^3 * 2 *(1/DMARate + 1/SSDWriteRate)]; % # of possible frames per superframe under these acquisition settings
+if (SFTime - AcqTime - DMATime) < 0
+    error("There is not enough time to acquire and DMA the amount of frames specified, according to the superframe rate")
+elseif (SFTime - AcqTime - DMATime - SSDWriteTime) < 0
+    disp("**** Number of frames possible with the set acquisition rates: " + num2str(numFramesPerSFPossible) + "****")
+    error("There is not enough time to acquire, DMA, and save to disk the amount of frames specified, according to the superframe rate")
 end
 
 %% Process structures
@@ -630,15 +654,13 @@ for nbuf = 1
 
     end
 
-    % Transfer the previously acquired frame
+    % Transfer the previously acquired superframe
     scInd = scInd + 1; 
-    SeqControl(scInd).command = 'transferToHost'; % Transfer every frame
+    SeqControl(scInd).command = 'transferToHost'; % Transfer all stacked subframes at once
 %         Event(n).seqControl = [4, 5, scInd]; % includes some noop
 %         Event(n).seqControl = [4, scInd];
-
-    % includes the waitForTransferComplete
     scInd = scInd + 1;
-    SeqControl(scInd).command = 'waitForTransferComplete';
+    SeqControl(scInd).command = 'waitForTransferComplete'; % includes the waitForTransferComplete
     SeqControl(scInd).argument = scInd - 1;
 %     Event(n).seqControl = [4, scInd - 1, scInd];
     % Event(n).seqControl = [scInd - 1, scInd];
@@ -653,8 +675,27 @@ for nbuf = 1
         Event(n).recon = 0;
         Event(n).process = nbuf + nprevproc; 
 %         Event(n).seqControl = 7; 
-%         Event(n).seqControl = 0; 
-        Event(n).seqControl = 11; 
+        Event(n).seqControl = 0; 
+        % Event(n).seqControl = 11; % Sync hardware and software... Don't know if this is necessary
+        
+        % % Make sure the saving is done before transferring more data to the
+        % % same buffer
+        % scInd = scInd + 1;
+        % SeqControl(scInd).command = 'markTransferProcessed'; % Clear the waitForTransferComplete flag once the data for one buffer is saved
+        % SeqControl(scInd).argument = scInd - 2; % Refer to the last transferToHost command
+        % Event(n).seqControl = scInd;
+
+        n = n + 1;
+    
+        Event(n).info = 'Make sure the data is done saving before transferring the next - reset the waitForTransferComplete flag';
+        Event(n).tx = 0; 
+        Event(n).rcv = 0; 
+        Event(n).recon = 0;
+        Event(n).process = 0;
+        scInd = scInd + 1;
+        SeqControl(scInd).command = 'markTransferProcessed'; % Clear the waitForTransferComplete flag once the data for one buffer is saved
+        SeqControl(scInd).argument = scInd - 2; % Refer to the last transferToHost command
+        Event(n).seqControl = [scInd, 11];
     end
 
 end
@@ -755,7 +796,7 @@ if useTriggers
     savefast([savepath, 'triggerData.mat'], 'inScanData', 'timeStamp', 'triggerTime')
 end
 clearvars RcvData
-save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
+% save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
 
 %% **** Callback routines used by UIControls (UI) ****
 

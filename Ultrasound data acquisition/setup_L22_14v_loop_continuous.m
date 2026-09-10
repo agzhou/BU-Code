@@ -24,8 +24,8 @@ activate
 savepath = uigetdir('G:\', 'Select the save path');
 savepath = [savepath, '\'];
 
-parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Number of buffers', 'Use accelerometer (0-no, 1-yes)', 'Use air puff (0-no, 1-yes)', 'Probe connector'}; % 'Save RF data (0-no, 1-yes)', 
-parameterDefaults = {'20', '0', '8', '50000', '400', '11', '5', '15.625', '1540', '0', '1', '400', '2', '0', '0', 'UTA 260D'};
+parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Number of buffers', 'Use accelerometer (0-no, 1-yes)', 'Use air puff (0-no, 1-yes)', 'Probe connector', 'SSD write speed [GB/s]'}; % 'Save RF data (0-no, 1-yes)', 
+parameterDefaults = {'20', '0', '8', '50000', '400', '11', '5', '15.625', '1540', '0', '1', '400', '2', '0', '0', 'UTA-260D', '1.2'};
 
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
@@ -58,15 +58,11 @@ if useTriggers
     error("Code is currently not set up for accelerometer use")
 end
 useAirPuff = str2double(parameterUserInput{15});
-connectorPlate = str2double(parameterUserInput{16});
+connectorPlate = parameterUserInput{16};
 % Maximum PCIe DMA rate for the Vantage 256 is 6.6 GB/s, but the connector
 % type can affect this
-switch connectorPlate
-    case 'UTA 260D'
-        DMARate = 3.3; % [GB/s]
-    case 'UTA 260S'
-        DMARate = 6.6; % [GB/s]
-end
+DMARate = getDMARate(connectorPlate);
+SSDWriteRate = str2double(parameterUserInput{17});
 
 bufferIndex = 0;
 runVSX = 1;
