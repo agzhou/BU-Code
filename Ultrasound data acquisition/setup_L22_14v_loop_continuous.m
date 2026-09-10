@@ -24,8 +24,8 @@ activate
 savepath = uigetdir('G:\', 'Select the save path');
 savepath = [savepath, '\'];
 
-parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Number of buffers', 'Use accelerometer (0-no, 1-yes)', 'Use air puff (0-no, 1-yes)'}; % 'Save RF data (0-no, 1-yes)', 
-parameterDefaults = {'20', '0', '8', '50000', '400', '11', '5', '15.625', '1540', '0', '1', '400', '2', '0', '0'};
+parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Number of buffers', 'Use accelerometer (0-no, 1-yes)', 'Use air puff (0-no, 1-yes)', 'Probe connector'}; % 'Save RF data (0-no, 1-yes)', 
+parameterDefaults = {'20', '0', '8', '50000', '400', '11', '5', '15.625', '1540', '0', '1', '400', '2', '0', '0', 'UTA 260D'};
 
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
@@ -58,6 +58,15 @@ if useTriggers
     error("Code is currently not set up for accelerometer use")
 end
 useAirPuff = str2double(parameterUserInput{15});
+connectorPlate = str2double(parameterUserInput{16});
+% Maximum PCIe DMA rate for the Vantage 256 is 6.6 GB/s, but the connector
+% type can affect this
+switch connectorPlate
+    case 'UTA 260D'
+        DMARate = 3.3; % [GB/s]
+    case 'UTA 260S'
+        DMARate = 6.6; % [GB/s]
+end
 
 bufferIndex = 0;
 runVSX = 1;
@@ -505,11 +514,11 @@ else
 end
 SeqControl(scInd).condition = 'exitAfterJump'; % Normally, jumping auto returns to Matlab if it returns to the first event, but not for other events
 
-% 4. Define the frame/volume rate
+% 4. Define the frame rate
 timePerFrame = SeqControl(scInd - 2).argument * na * 1;     % Time to acquire all the acquisitions for one frame/volume based on PRF (us)
 frameTimeGap = 1 / frameRate * 1e6 - timePerFrame + SeqControl(scInd-2).argument;      % Add delays to account for the frame/volume rate set above. % Add delays to account for the frame/volume rate set above. Add the PRF time because this value replaces one of those delays too.
 
-timePerTransferSeconds = numGBPerBufferFrame / 6.6;  % Maximum PCIe speed for the Vantage 256 is 6.6 GB/s
+timePerTransferSeconds = numGBPerBufferFrame / DMARate;
 frameTimeGapDMALimit = timePerTransferSeconds * 1e6; % Minimum DMA time given the estimated frame size [us]
 frameRateDMALimit = 1/(frameTimeGapDMALimit * 1e-6); % Maximum frame rate allowed by the DMA rate [Hz]
 
@@ -533,7 +542,7 @@ else
     SeqControl(scInd).argument = frameTimeGap;
 end
 
-% 5. Set up a frame/volume rate noop
+% 5. Set up a frame rate noop (currently unused)
 scInd = scInd + 1;
 SeqControl(scInd).command = 'noop';                     % no operation
 frame_noop_time_us = SeqControl(scInd - 1).argument;
@@ -560,7 +569,7 @@ SeqControl(scInd).command = 'timeToNextAcq';
 %     SeqControl(scInd).argument = bufferTimeGap;
 % end
 
-% 7. buffer rate noop
+% 7. buffer rate noop (currently unused)
 scInd = scInd + 1;
 SeqControl(scInd).command = 'noop'; % jump to
 buffer_noop_time_us = SeqControl(scInd - 1).argument;
@@ -570,8 +579,9 @@ SeqControl(scInd).condition = 'Hw&Sw'; % need to enable the noop in hardware
 % 8. Sync for aligning the hardware to when the data is done saving
 scInd = scInd + 1;
 SeqControl(scInd).command = 'sync';
-SeqControl(scInd).argument = 30000000; % 30 s
+% SeqControl(scInd).argument = 30000000; % 30 s
 % SeqControl(scInd).argument = 1000000 * vts.delay_s*5; % Timeout set to 5x the input delay just in case
+SeqControl(scInd).argument = 1e6 * sfRate*5; % Timeout set to 5x the superframe rate just in case
 
 % 9. Trigger input
 scInd = scInd + 1;
@@ -612,6 +622,7 @@ SeqControl(scInd).command = 'timeToNextAcq';
 % SeqControl(scInd).argument = (1/sfRate - (1/frameRate*numFramesPerSF)) * 1e6 + SeqControl(1).argument; % [us]
 SeqControl(scInd).argument = (1/sfRate - ((1/frameRate*numFramesPerSF) - SeqControl(4).argument/1e6)) * 1e6; % [us]
 
+
 if useTriggers
     n = 1;
     Event(n).info = 'Wait for external trigger to start the acquisition sequence';
@@ -651,7 +662,8 @@ for nbuf = 1:numBuffers
 
     end
 
-    % New location
+    % New location: waitForTransferComplete pauses any Processing until
+    % this flag is checked
     scInd = scInd + 1;
     SeqControl(scInd).command = 'waitForTransferComplete'; % Pause the software sequencer (so we don't save the buffer at the end before it's done transferring)
     SeqControl(scInd).argument = scInd - 1;
@@ -670,7 +682,11 @@ for nbuf = 1:numBuffers
         Event(n).recon = 0;
         Event(n).process = nbuf + nprevproc; % Switch between buffers
 %         Event(n).seqControl = 8;
-        Event(n).seqControl = 0; % We don't want to sync the HW + SW for continuous acq
+        
+        scInd = scInd + 1;
+        SeqControl(scInd).command = 'markTransferProcessed'; % Clear the waitForTransferComplete flag once the data for one buffer is saved
+        SeqControl(scInd).argument = scInd - 1; % 2??
+        Event(n).seqControl = scInd; % We don't want to sync the HW + SW for continuous acq
     end
 
 end
