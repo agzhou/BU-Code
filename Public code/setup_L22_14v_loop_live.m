@@ -36,7 +36,7 @@ probe_freq = str2double(parameterUserInput{7});
 simMode = str2double(parameterUserInput{8});
 saveIQDataFlag = str2double(parameterUserInput{9});
 
-apertureMM = 7; % Use some subset of the probe elements [mm]
+apertureMM = 8; % Use some subset of the probe elements [mm]
 % apertureMM = 12.8; % Use some subset of the probe elements [mm]
 
 supFrameIndex = 0;

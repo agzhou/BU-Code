@@ -5,7 +5,7 @@
 % Note: update the savepath variable as needed
 
 % Collects nbuf buffers of nf frames to keep the continuous data flow
-
+warning('markTransferProcessed stuff is not validated/tested')
 %% 1. Specify system parameters
 clearvars
 
