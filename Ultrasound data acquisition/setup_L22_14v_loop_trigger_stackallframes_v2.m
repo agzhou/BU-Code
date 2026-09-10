@@ -27,7 +27,7 @@ savepath = uigetdir('F:\', 'Select the save path');
 savepath = [savepath, '\'];
 
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use air puff (0-no, 1-yes)', 'Probe connector', 'SSD write speed [GB/s]', 'Probe aperture [mm]', 'Time per superframe [s]'}; % 'Save RF data (0-no, 1-yes)', 
-parameterDefaults = {'20', '0', '8', '45000', '5000', '5', '6', '15.625', '1540', '0', '1', '1000', '0', 'UTA-260D', '1.45', '12.8', '1.5'}; % 1.45 GB/s is the default for the current Samsung MZVKW1T0HMLH-000L7 drives
+parameterDefaults = {'25', '0', '8', '45000', '5000', '5', '6', '15.625', '1540', '0', '1', '1000', '0', 'UTA-260D', '1.45', '12.8', '1.5'}; % 1.45 GB/s is the default for the current Samsung MZVKW1T0HMLH-000L7 drives
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 apertureMM = str2double(parameterUserInput{16});
@@ -745,36 +745,36 @@ if useTriggers
 end
 
 %% Initialize time tagging if enabled
-% import com.verasonics.hal.hardware.*
-% switch TimeTagEna
-%     case 0
-%         % disable time tag
-%         rc = Hardware.enableAcquisitionTimeTagging(false);
-%         if ~rc
-%             error('Error from enableAcqTimeTagging')
-%         end
-%         tagstr = 'off';
-%     case 1
-%         % enable time tag
-%         rc = Hardware.enableAcquisitionTimeTagging(true);
-%         if ~rc
-%             error('Error from enableAcqTimeTagging')
-%         end
-%         tagstr = 'on';
-%         disp('**** Time tagging enabled on mode 1 ****')
-%     case 2
-%         % enable time tag and reset counter
-%         rc = Hardware.enableAcquisitionTimeTagging(true);
-%         if ~rc
-%             error('Error from enableAcqTimeTagging')
-%         end
-%         rc = Hardware.setTimeTaggingAttributes(false, true); % reset hardware counter to 0 (otherwise, it continuously counts up from system bootup until it gets to 107,000s - see p37 of User Manual
-%         if ~rc
-%             error('Error from setTimeTaggingAttributes')
-%         end
-%         tagstr = 'on, reset';
-%         disp('**** Time tagging enabled on mode 2 ****')
-% end
+import com.verasonics.hal.hardware.*
+switch TimeTagEna
+    case 0
+        % disable time tag
+        rc = Hardware.enableAcquisitionTimeTagging(false);
+        if ~rc
+            error('Error from enableAcqTimeTagging')
+        end
+        tagstr = 'off';
+    case 1
+        % enable time tag
+        rc = Hardware.enableAcquisitionTimeTagging(true);
+        if ~rc
+            error('Error from enableAcqTimeTagging')
+        end
+        tagstr = 'on';
+        disp('**** Time tagging enabled on mode 1 ****')
+    case 2
+        % enable time tag and reset counter
+        rc = Hardware.enableAcquisitionTimeTagging(true);
+        if ~rc
+            error('Error from enableAcqTimeTagging')
+        end
+        rc = Hardware.setTimeTaggingAttributes(false, true); % reset hardware counter to 0 (otherwise, it continuously counts up from system bootup until it gets to 107,000s - see p37 of User Manual
+        if ~rc
+            error('Error from setTimeTaggingAttributes')
+        end
+        tagstr = 'on, reset';
+        disp('**** Time tagging enabled on mode 2 ****')
+end
 
 %% Run VSX automatically and make parameter structure for RF file naming
 
@@ -802,48 +802,48 @@ clearvars RcvData
 
 %% Time tag callback test
 
-% function TimeTagCallback(~, ~, UIValue)
-%     import com.verasonics.hal.hardware.*
-%     TimeTagEna = round(UIValue);
-%     VDAS = evalin('base', 'VDAS');
-%     switch TimeTagEna
-%         case 0
-%             if VDAS % can't execute this command if HW is not present
-%                 % disable time tag
-%                 rc = Hardware.enableAcquisitionTimeTagging(false);
-%                 if ~rc
-%                     error('Error from enableAcqTimeTagging')
-%                 end
-%             end
-%             tagstr = 'off';
-%         case 1
-%             if VDAS
-%                 % enable time tag
-%                 rc = Hardware.enableAcquisitionTimeTagging(true);
-%                 if ~rc
-%                     error('Error from enableAcqTimeTagging')
-%                 end
-%             end
-%             tagstr = 'on';
-%         case 2
-%             if VDAS
-%                 % enable time tag and reset counter
-%                 rc = Hardware.enableAcquisitionTimeTagging(true);
-%                 if ~rc
-%                     error('Error from enableAcqTimeTagging')
-%                 end
-%                 rc = Hardware.setTimeTaggingAttributes(false, true); % reset hardware counter to 0 (otherwise, it continuously counts up from system bootup until it gets to 107,000s - see p37 of User Manual
-%                 if ~rc
-%                     error('Error from setTimeTaggingAttributes')
-%                 end
-%             end
-%             tagstr = 'on, reset';
-%     end
-%     % display at the GUI slider value
-%     h = findobj('Tag', 'UserB5Edit');
-%     set(h,'String', tagstr);
-%     assignin('base', 'TimeTagEna', TimeTagEna);
-% end
+function TimeTagCallback(~, ~, UIValue)
+    import com.verasonics.hal.hardware.*
+    TimeTagEna = round(UIValue);
+    VDAS = evalin('base', 'VDAS');
+    switch TimeTagEna
+        case 0
+            if VDAS % can't execute this command if HW is not present
+                % disable time tag
+                rc = Hardware.enableAcquisitionTimeTagging(false);
+                if ~rc
+                    error('Error from enableAcqTimeTagging')
+                end
+            end
+            tagstr = 'off';
+        case 1
+            if VDAS
+                % enable time tag
+                rc = Hardware.enableAcquisitionTimeTagging(true);
+                if ~rc
+                    error('Error from enableAcqTimeTagging')
+                end
+            end
+            tagstr = 'on';
+        case 2
+            if VDAS
+                % enable time tag and reset counter
+                rc = Hardware.enableAcquisitionTimeTagging(true);
+                if ~rc
+                    error('Error from enableAcqTimeTagging')
+                end
+                rc = Hardware.setTimeTaggingAttributes(false, true); % reset hardware counter to 0 (otherwise, it continuously counts up from system bootup until it gets to 107,000s - see p37 of User Manual
+                if ~rc
+                    error('Error from setTimeTaggingAttributes')
+                end
+            end
+            tagstr = 'on, reset';
+    end
+    % display at the GUI slider value
+    h = findobj('Tag', 'UserB5Edit');
+    set(h,'String', tagstr);
+    assignin('base', 'TimeTagEna', TimeTagEna);
+end
 
 %% **** Callback routines used by External function definition (EF) ****
 % 
