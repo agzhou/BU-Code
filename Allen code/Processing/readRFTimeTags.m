@@ -1,0 +1,128 @@
+% Check Time tags
+
+% clearvars
+% close all
+
+%% Load parameters
+
+% FilePath = "G:\Allen\Data\04-01-2025 functional acq testing\";
+% FilePath = "F:\Allen\Data\test\";
+% FilePath = "L:\Ultrasound data from 05-27-2025 to\07-07-2025 AZ01 ULM RC15gV continuous\";
+% FilePath = "G:\Nikunj\test1\";
+% FilePath = "G:\test3\";
+% FilePath = "G:\Allen\Data\09-04-2026 MS05 L22-14v continuous fUS\"
+FilePath = uigetdir('G:\', 'Select the RF data path');
+FilePath = string([FilePath, '\']);
+
+RFPath = FilePath;
+
+load(FilePath + "params.mat")
+% RFName = "RF-5-11-2000-500-1-1.mat";
+% RFName = "RF-5-11-1000-180-1-1.mat";
+% RFName = "RF-5-11-100-100-1-1.mat";
+% RFName = "RF-5-11-400-400-1-1.mat";
+% RFName = "RF-5-5-1000-1000-1-1.mat";
+% RFName = "RF-6-5-800-800-1-1.mat"
+[RFName, ~, ~] = uigetfile('*.mat', 'Select the first RF file', [RFPath]);
+RFName = string(RFName);
+
+% RFName = "RF-5-11-500-500-1-1.mat";
+% RFName = "RF-5-11-100-100-1-1.mat";
+
+%% Define Load path and save path for RF and IQ respectively
+RFcount = countFiles(RFName,RFPath);
+
+
+%% Main Beamforming Loop
+fileInfo = strsplit(RFName,'-');
+timeTags = zeros(str2double(fileInfo{5}), P.Resource.Parameters.numRcvChannels, RFcount);
+for iFile = 1:RFcount
+% for iFile = 1:4
+    
+
+    iFileInfo = fileInfo;
+    iFileInfo{end} = [num2str(iFile), '.mat'];
+    iFileName = strjoin(iFileInfo, '-');
+    
+    % Load IQ Data
+    disp(['Loading data: ', iFileName]);
+    RFData = load(fullfile(RFPath, iFileName),'RcvData').('RcvData');
+    disp('Data loaded!');
+
+    timeTags(:, :, iFile) = readTimeTags(RFData);
+
+end
+
+%% Plot Time tags
+% RFTimeTags_raw = timeTags(1:end);
+% figure; plot(RFTimeTags_raw)
+% title('Raw TimeTags')
+% RFTimeTags = RFTimeTags_raw - RFTimeTags_raw(1);
+% figure
+% plot(RFTimeTags)
+% title('TimeTags from zero')
+
+genSliderV2(timeTags) % Plot the time tags per channel, for each superframe
+
+RFTimeTags_diff = diff(RFTimeTags_raw);
+figure; plot(RFTimeTags_diff); title('difference')
+% chk4 = find(chk3 > 0.1)
+
+%% Save the (RF) frame timing data
+save(FilePath + "RFTimeTagData.mat", 'RFTimeTags_raw', 'RFTimeTags', "RFTimeTags_diff", 'RFcount')
+
+%% Test
+getTimeStamp(double(RFData(1:2,1,12)))/4e4
+
+%% Helper Functions
+function [fileCount] = countFiles(fileName,filePath)
+
+    fileInfo = strsplit(fileName, '-');
+
+    % This keeps everything except the last numeric component
+    prefix = strjoin(fileInfo(1:end-1), '-'); 
+    
+    % Construct the search pattern
+    searchPattern = fullfile(filePath, prefix + "-*.mat"); % Wildcard for different numbers
+    
+    % Get a list of matching files
+    fileList = dir(searchPattern);
+    
+    % Count the number of matching files
+    fileCount = numel(fileList);
+
+
+end
+
+% Output the RF time tags, for each channel
+function [timeTags] = readTimeTags(RFData)
+    
+    timeTags = zeros(size(RFData, 3), size(RFData, 2)); % # frames x # channels timetag matrix
+    for frmCount = 1:size(RFData, 3)
+        for channelInd = 1:size(RFData, 2)
+            timeStamp = getTimeStamp(double(RFData(1:2, channelInd, frmCount)));
+            % the 32 bit time tag counter increments every 25 usec, so we have to scale
+            % by 25 * 1e-6 to convert to a value in seconds
+    
+            timeTags(frmCount, channelInd) = timeStamp/4e4;
+        end
+    end
+end
+
+function [tStamp] = getTimeStamp(W)
+
+    % get time tag from first two samples
+    % time tag is 32 bit unsigned interger value, with 16 LS bits in sample 1
+    % and 16 MS bits in sample 2.  Note RDatain is in signed INT16 format so must
+    % convert to double in unsigned format before scaling and adding
+    for i=1:2
+        if W(i) < 0
+            % translate 2's complement negative values to their unsigned integer
+            % equivalents
+            W(i) = W(i) + 65536;
+        end
+    end
+    tStamp = W(1) + 65536 * W(2);
+
+end
+
