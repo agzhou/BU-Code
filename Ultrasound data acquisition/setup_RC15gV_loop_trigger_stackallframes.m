@@ -26,16 +26,17 @@ activate
 savepath = uigetdir('G:\', 'Select the save path');
 savepath = [savepath, '\'];
 
-parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use air puff (0-no, 1-yes)'}; % 'Save RF data (0-no, 1-yes)', 
-% parameterDefaults = {'5', '0', '10', '40000', '2000', '11', '5', '13.6', '1540', '0', '0', '1000'};
-% parameterDefaults = {'5', '0', '10', '50000', '2000', '11', '5', '13.6', '1540', '0', '1', '500'};
+parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use air puff (0-no, 1-yes)', 'ADC Sampling Mode (50, 67, 100, 200% of center frequency)', }; % 'Save RF data (0-no, 1-yes)', 
+
 parameterDefaults = {'30', '0', '8', '60000', '2500', '11', '5', '13.6', '1540', '0', '1', '496', '0'};
-% parameterDefaults = {'20', '0', '8', '56000', '2500', '11', '5', '13.6', '1540', '0', '1', '296', '0'};
-% parameterDefaults = {'20', '0', '20', '30000', '1000', '11', '5', '13.6', '1540', '0', '1', '80'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
-ADC_sampleMode = 'BS67BW';
-spw_guess = 1.3333;
+ADC_sampleModeNumber = str2double(parameterUserInput{14}); % Options: 50, 67, 100, 200 (% of center frequency)
+ADC_sampleMode = getADCSampleMode(ADC_sampleModeNumber);
+spw_guess = ADC_sampleModeNumber/200 * 4; % Guess for the number of samples per wavelength
+
+% ADC_sampleMode = 'BS67BW';
+% spw_guess = 1.3333;
 
 % ADC_sampleMode = 'BS100BW';
 % spw_guess = 2;
