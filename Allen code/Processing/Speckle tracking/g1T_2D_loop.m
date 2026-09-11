@@ -57,6 +57,7 @@ HPF.order = 4; % Butterworth filter order
 IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 for fi = startFile:endFile
 % for fi = 2:endFile
+% for fi = 1
     load([IQpath, IQfilenameStructure, num2str(fi)], 'IQ'); % Load IQ data
 
     % ========= 1. Preprocessing ========= %%
@@ -154,7 +155,7 @@ for fi = startFile:endFile
     [PDI] = calcPowerDoppler(IQf_separated, noise);
     [CDI] = calcColorDoppler(IQf_FT_separated, P);
 
-    save([savepath, 'PDI_CDI-', num2str(fi), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
+    save([savepath, 'PDI_CDI-', num2str(fi), '.mat'], 'PDI', 'CDI', 'noise', '-v7.3', '-nocompression');
        
     % 3. Calculate g1
     % startTau = 1; % Index for the first tau point (tau1) for subsequent analysis. Changed this from 2 to 1 on 7/8/26 because I changed the g1T.m function to output g1 starting from tau = tau1 instead of tau = 0.
@@ -184,12 +185,13 @@ for fi = startFile:endFile
     save([savepath, 'g1-', num2str(fi), '.mat'], 'g1')
     % save([savepath, 'g1-', num2str(fi), '.mat'], 'g1', 'g1_noHPF')
     % save([savepath, 'g1-', num2str(fi), '.mat'], 'g1', 'IQf_separated_masked', 'IQf_FT_separated_masked')
+    disp("Data processed for file " + num2str(fi))
 end
 save([savepath, 'g1_proc_params.mat'], 'nFTpts', 'nTau', 'tau', 'startTau', 'faxis')
 save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'zrange', 'xrange');
 
 [VzCmap, VzCmapDn, VzCmapUp, pdiCmapUp, PhtmCmap] = Colormaps_fUS;
-% figure; imagesc(CDI{3}); colormap(VzCmap); axis equal; colorbar
+% figure; imagesc(CDI{3}); colormap(VzCmap); colorbar; axis equal
 % pixelTimeseriesGUI(g1{3}, squeeze(abs(g1{3}(:, :, 2))), 'ComplexMode', 'abs')
 
 %% Testing
