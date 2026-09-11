@@ -131,8 +131,8 @@ save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_uppe
 % savefast([savepath, 'PDI_CDI_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
 
 %% 4. Store all the PDI across the experiment into one cell array - one cell for each directional component
-% load([savepath, 'PDI_CDI-', num2str(1), '.mat'], 'PDI', 'CDI')
-load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI', 'CDI')
+load([savepath, 'PDI_CDI-', num2str(1), '.mat'], 'PDI', 'CDI')
+% load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI', 'CDI')
 % load([savepath, 'fUSdata-', num2str(1), '.mat'], 'PDI')
 % PDIallSF = cell([length(PDI), endFile - startFile + 1]); % Matrix with the CBVi for every superframe
 PDIallSF = cell([size(PDI)]); 
@@ -144,14 +144,14 @@ CDIallSF = cell([size(CDI)]); % Matrix with the CBVi for every superframe
 
 % for filenum = startFile + 1:endFile
 for filenum = startFile:endFile
-%     load([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI')
-    load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'CDI')
+    load([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', 'noise')
+    % load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'CDI')
     % load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI')
 %     PDI = load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI')
 %     CDI = load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'CDI')
 
     for j = 1:3
-        PDIallSF{j} = cat(3, PDIallSF{j}, PDI{j});
+        PDIallSF{j} = cat(3, PDIallSF{j}, PDI{j}./noise);
         CDIallSF{j} = cat(3, CDIallSF{j}, CDI{j});
     end
 
@@ -170,6 +170,11 @@ for j = 1:3
     PDIA{j} = mean(PDIallSF{j}, fDim);
     CDIA{j} = mean(CDIallSF{j}, fDim);
 end
+
+%% Save the PDI and CDI superframe average
+save([savepath, 'PDIA_CDIA.mat'], 'PDIA', 'CDIA')
+
+
 
 %% 4. Store all the PDI across the experiment into one matrix
 % load([savepath, 'PDI_CDI-', num2str(1), '.mat'], 'PDI', 'CDI')

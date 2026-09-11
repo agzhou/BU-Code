@@ -198,7 +198,7 @@ save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_uppe
 % Load a few superframes of the g1 and take the average
 g1_sum = cell(3, 1);
 si = 1; % Start index
-ei = 85; % End index
+ei = 10; % End index
 for fi = si:ei
     load([savepath, 'g1-', num2str(fi), '.mat'], 'g1')
 
@@ -217,5 +217,5 @@ nfie = ei - si + 1; % # of files in ensemble
 for j = 1:3
     g1_avg{j} = g1_sum{j} ./ nfie;
 end
-
+save([savepath, 'g1_avg.mat'], 'g1_avg')
 pixelTimeseriesGUI(g1_avg{3}, squeeze(abs(g1_avg{3}(:, :, 2))), 'ComplexMode', 'abs')
