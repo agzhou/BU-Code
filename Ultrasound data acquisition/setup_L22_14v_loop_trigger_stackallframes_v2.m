@@ -26,17 +26,9 @@ activate
 savepath = uigetdir('F:\', 'Select the save path');
 savepath = [savepath, '\'];
 
-parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use air puff (0-no, 1-yes)', 'Probe connector', 'SSD write speed [GB/s]', 'Probe aperture [mm]', 'Time per superframe [s]'}; % 'Save RF data (0-no, 1-yes)', 
-parameterDefaults = {'25', '0', '8', '45000', '5000', '5', '6', '15.625', '1540', '0', '1', '1000', '0', 'UTA-260D', '1.45', '12.8', '1.5'}; % 1.45 GB/s is the default for the current Samsung MZVKW1T0HMLH-000L7 drives
+parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use air puff (0-no, 1-yes)', 'Probe connector', 'SSD write speed [GB/s]', 'Probe aperture [mm]', 'Time per superframe [s]', 'ADC Sampling Mode (50, 67, 100, 200% of center frequency)'}; % 'Save RF data (0-no, 1-yes)', 
+parameterDefaults = {'30', '0', '8', '45000', '5000', '5', '6', '15.625', '1540', '0', '1', '1000', '0', 'UTA-260D', '1.45', '12.8', '1.5', '200'}; % 1.45 GB/s is the default for the current Samsung MZVKW1T0HMLH-000L7 drives
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
-
-apertureMM = str2double(parameterUserInput{16});
-% apertureMM = 12.8; % Use some subset of the probe elements [mm]
-% apertureMM = 8;
-
-TimePerSF = str2double(parameterUserInput{17});
-
-sfRate = 1/TimePerSF; % Superframe rate [Hz]
 
 % Store the user inputs for parameters into the corresponding variables
 initialVoltage = str2double(parameterUserInput{1});
@@ -60,6 +52,14 @@ connectorPlate = parameterUserInput{14};
 % type can affect this
 DMARate = getDMARate(connectorPlate);
 SSDWriteRate = str2double(parameterUserInput{15});
+apertureMM = str2double(parameterUserInput{16});
+% apertureMM = 12.8; % Use some subset of the probe elements [mm]
+% apertureMM = 8;
+TimePerSF = str2double(parameterUserInput{17});
+sfRate = 1/TimePerSF; % Superframe rate [Hz]
+
+ADC_sampleModeNumber = str2double(parameterUserInput{18}); % Options: 50, 67, 100, 200 (% of center frequency)
+[ADC_sampleMode, spw_guess] = getADCSampleMode(ADC_sampleModeNumber);
 
 % tagtest = Hardware.enableAcquisitionTimeTagging(1);
 bufferIndex = 0;
@@ -316,7 +316,7 @@ Receive = repmat(struct('Apod', rcvElem, ...
                         'bufnum', 1, ...
                         'framenum', 1, ...
                         'acqNum', 1, ...
-                        'sampleMode', 'NS200BW', ...
+                        'sampleMode', ADC_sampleMode, ...
                         'mode', 0, ...
                         'callMediaFunc', 0, ...
                         'LowPassCoef', [], ...
@@ -362,7 +362,7 @@ if strcmp(Receive(1).sampleMode,'custom')
     error('No handling of condition for custom Receive sampling. Refer to VsUpdate line 712 to implement');
 else
     fs = 4*Trans.frequency;
-    samplesPerWave = 4;
+    samplesPerWave = spw_guess;
 end
 
 % if statement included to match verasonics automatic extension to

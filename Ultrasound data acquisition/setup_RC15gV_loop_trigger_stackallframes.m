@@ -1,4 +1,5 @@
 
+warning('Need to fix data racing, aperture')
 %% 0. Description
 % Continuous acquisition and saving of RF data with the RC15gV probe
 % CPWC, stacks all frames per superframe in one transfer/file
@@ -13,8 +14,9 @@ clearvars
 
 codeDir = cd;
 codeDir_split = split(string(codeDir), filesep);
-AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\Verasonics");
-addpath(AllenVerasonicsCodePath)
+% AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\Verasonics");
+AcquisitionCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Ultrasound data acquisition");
+addpath(AcquisitionCodePath)
 
 addpath('C:\Users\BOAS-US\Documents\GitHub\BU-Code\Allen code\Air Puff\')
 
@@ -26,14 +28,9 @@ activate
 savepath = uigetdir('G:\', 'Select the save path');
 savepath = [savepath, '\'];
 
-parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use air puff (0-no, 1-yes)', 'ADC Sampling Mode (50, 67, 100, 200% of center frequency)', }; % 'Save RF data (0-no, 1-yes)', 
-
-parameterDefaults = {'30', '0', '8', '60000', '2500', '11', '5', '13.6', '1540', '0', '1', '496', '0'};
+parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use air puff (0-no, 1-yes)', 'Probe connector', 'SSD write speed [GB/s]', 'Probe aperture [mm]', 'Time per superframe [s]', 'ADC Sampling Mode (50, 67, 100, 200% of center frequency)'}; % 'Save RF data (0-no, 1-yes)', 
+parameterDefaults = {'30', '0', '8', '60000', '2500', '11', '5', '13.6', '1540', '0', '1', '500', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '200'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
-
-ADC_sampleModeNumber = str2double(parameterUserInput{14}); % Options: 50, 67, 100, 200 (% of center frequency)
-ADC_sampleMode = getADCSampleMode(ADC_sampleModeNumber);
-spw_guess = ADC_sampleModeNumber/200 * 4; % Guess for the number of samples per wavelength
 
 % ADC_sampleMode = 'BS67BW';
 % spw_guess = 1.3333;
@@ -58,6 +55,21 @@ if mod(numFramesPerSF, 2) ~= 0
     error('# of frames per SF must be even')
 end
 useTriggers = str2double(parameterUserInput{13});
+connectorPlate = parameterUserInput{14};
+% Maximum PCIe DMA rate for the Vantage 256 is 6.6 GB/s, but the connector
+% type can affect this
+DMARate = getDMARate(connectorPlate);
+SSDWriteRate = str2double(parameterUserInput{15});
+apertureMM = str2double(parameterUserInput{16});
+% apertureMM = 12.8; % Use some subset of the probe elements [mm]
+% apertureMM = 8;
+TimePerSF = str2double(parameterUserInput{17});
+sfRate = 1/TimePerSF; % Superframe rate [Hz]
+
+ADC_sampleModeNumber = str2double(parameterUserInput{18}); % Options: 50, 67, 100, 200 (% of center frequency)
+[ADC_sampleMode, spw_guess] = getADCSampleMode(ADC_sampleModeNumber);
+
+
 
 % tagtest = Hardware.enableAcquisitionTimeTagging(1);
 bufferIndex = 0;
@@ -288,7 +300,8 @@ end
 
 % TGC curve definition
 % TGC.CntrlPts = [0 785.2216 1023 1023 1023 1023 1023 1023];
-TGC.CntrlPts = [1023 1023 1023 1023 1023 1023 1023 1023];
+% TGC.CntrlPts = [1023 1023 1023 1023 1023 1023 1023 1023];
+TGC.CntrlPts = [590,650,710,770,830,890,950,1010];
 % TGC(1).CntrlPts = [500,590,650,710,770,830,890,950]; % 0 to 1023, minimum to maximum gain
                                                      % Values represent the
                                                      % gain at increasing

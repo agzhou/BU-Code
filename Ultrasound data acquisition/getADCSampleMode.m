@@ -1,7 +1,7 @@
 % Description: return the ADC sample mode type for Verasonics hardware.
 % Input is the sample mode number: 50, 67, 100, 200%
 
-function ADC_sampleMode = getADCSampleMode(ADC_sampleModeNumber)
+function [ADC_sampleMode, samplesPerWave_guess] = getADCSampleMode(ADC_sampleModeNumber)
     switch ADC_sampleModeNumber
         case 50
             ADC_sampleMode = 'BS50BW';
@@ -12,3 +12,4 @@ function ADC_sampleMode = getADCSampleMode(ADC_sampleModeNumber)
         case 200
             ADC_sampleMode = 'NS200BW';
     end
+    samplesPerWave_guess = ADC_sampleModeNumber/200 * 4; % Guess for the number of samples per wavelength
