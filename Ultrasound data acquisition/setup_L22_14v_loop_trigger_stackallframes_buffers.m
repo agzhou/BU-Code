@@ -91,7 +91,6 @@ Resource.Parameters.numRcvChannels = numChannels; % number of receive channels
 % Resource.Parameters.connector = 1; % transducer connector to use since the current plate for the 256 bit system is split into two 128 bit connectors. 1 is left and 2 is right
 Resource.Parameters.speedOfSound = speedOfSound; % speed of sound in m/s, the 1540 is for average human tissue
 
-
 % Resource.Parameters.waitForProcessing = 1;
 %  the hardware will wait before each ‘transferToHost’ for the software to finish 
 % processing the previous frame transferred to the host. When software asks for the most 
@@ -100,6 +99,7 @@ Resource.Parameters.speedOfSound = speedOfSound; % speed of sound in m/s, the 15
 % previously acquired frame and to start acquiring the next.  Acquisition, data transfer and 
 % processing are then all occurring at the same time, but using different data - a process 
 % known as pipelining.
+
 %% 1.5. Specify the functional stimulus parameters (if using)
 if useTriggers
     [apis, vts, daqrate, numTrials] = functionalParameterInputPrompt;
@@ -250,6 +250,7 @@ TPC.hv = initialVoltage;
 % Need a TX structure for each unique transmit action in the imaging
 % sequence
 
+% Define transmit element apodization
 % emitElem = ones(1, Trans.numelements); % Uniform apodization
 % nTrans = 120;
 % emitElem=kaiser(Resource.Parameters.numTransmit, 1)';
@@ -299,7 +300,7 @@ BPF1 = [ -0.00009 -0.00128 +0.00104 +0.00085 +0.00159 +0.00244 -0.00955 ...
          +0.00079 -0.00476 +0.01108 +0.02103 -0.01892 +0.00281 -0.05206 ...
          +0.01358 +0.06165 +0.00735 +0.09698 -0.27612 -0.10144 +0.48608 ];
 
-
+% Define receive element apodization
 % rcvElem = ones(1, Trans.numelements);
 % nRcv = 120;
 % rcvElem(1:(128-nRcv)/2)=0;
@@ -405,7 +406,6 @@ end
 % 
 % end
 
-
 Resource.Parameters.verbose = 2; % Describe errors in varying levels
 % Resource.InterBuffer(1).pagesPerFrame = pair*na*numSubFrames; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -425,7 +425,6 @@ end
 % if ((maxAcqLength_adjusted + (endDepth))*wl / speedOfSound) > 1/PRF
 if ((2*maxAcqLength_adjusted)*wl / speedOfSound) > 1/PRF
     error('Error: the PRF is too high, it will send the next transmission before the previous transmission reflects from the deepest part of the region')
-
 end
 
 %% Check for if the superframe size and superframe rate are incompatible
@@ -494,7 +493,7 @@ SeqControl(scInd).command = 'timeToNextAcq'; % In us, allowed range is from 10 -
 
 timePerAcq = 1 / PRF * 1e6; % time step according to the PRF [us]
 
-timePerAcqLimits = [10, 4190000];
+timePerAcqLimits = [10, 4190000]; % Verasonics hardware limits for timetoNextAcq [us]
 if timePerAcq < timePerAcqLimits(1)
     warning('Shot acquisition time too short, setting to minimum of 10 us')
     SeqControl(scInd).argument = timePerAcqLimits(1); 
@@ -537,31 +536,33 @@ else
     SeqControl(scInd).argument = frameTimeGap;
 end
 
-% frame/volume rate noop (deprecated)
+% 5. frame/volume rate noop (deprecated)
 scInd = scInd + 1;
 SeqControl(scInd).command = 'noop';                     % no operation
 frame_noop_time_us = SeqControl(scInd - 1).argument;
 SeqControl(scInd).argument = frame_noop_time_us / 200 * 1e3;  % (value*200nsec; max. value is 2^25 - 1 for 6.7 sec)
 SeqControl(scInd).condition = 'Hw&Sw';                  % need to enable the noop in hardware
 
-% buffer rate (deprecated)
+% 6. buffer rate (deprecated)
 
 % need to change this to be consistent with the if blocks above
 timePerBuffer = 1 / frameRate * numFramesPerSF * 1e6;                 % Time to acquire all the frames within one buffer (us)
-bufferTimeGap = timePerBuffer / bufferDutyCycle - timePerBuffer;          % Add delay to account for the buffer rate duty cycle set above
+% bufferTimeGap = timePerBuffer / bufferDutyCycle - timePerBuffer;          % Add delay to account for the buffer rate duty cycle set above
 
 scInd = scInd + 1;
 SeqControl(scInd).command = 'timeToNextAcq';
 
-if bufferTimeGap < timePerAcqLimits(1)
-    warning('Buffer delay time too short, setting to minimum of 10 us')
-    SeqControl(scInd).argument = timePerAcqLimits(1); 
-elseif bufferTimeGap > timePerAcqLimits(2)
-    warning('Buffer delay time too long, setting to maximum of 4190000 us')
-    SeqControl(scInd).argument = timePerAcqLimits(2);
-else
-    SeqControl(scInd).argument = bufferTimeGap;
-end
+SeqControl(scInd).argument = timePerAcqLimits(2); % dummy statement
+
+% if bufferTimeGap < timePerAcqLimits(1)
+%     warning('Buffer delay time too short, setting to minimum of 10 us')
+%     SeqControl(scInd).argument = timePerAcqLimits(1); 
+% elseif bufferTimeGap > timePerAcqLimits(2)
+%     warning('Buffer delay time too long, setting to maximum of 4190000 us')
+%     SeqControl(scInd).argument = timePerAcqLimits(2);
+% else
+%     SeqControl(scInd).argument = bufferTimeGap;
+% end
 
 % 7. buffer rate noop (deprecated)
 scInd = scInd + 1;
@@ -579,7 +580,7 @@ SeqControl(scInd).condition = 'Trigger_2_Rising'; % Which trigger in port and ty
 % SeqControl(scInd).argument = 19; % see p137
 % SeqControl(scInd).condition = 'extTrigger'; % need to enable the noop in hardware
 
-% Trigger output
+% 9. Trigger output
 % "Generates external 1 microsecond active low output on the TRIG OUT BNC
 %  connector. A delay can be set in the argument field." (p138)
 scInd = scInd + 1;
@@ -587,18 +588,18 @@ SeqControl(scInd).command = 'triggerOut';
 % SeqControl(scInd).argument = 0; % 0-255. Each increment of 1 corresponds to 250 ms. The default is 0 and means to wait indefinitely.
 SeqControl(scInd).condition = 'syncNone'; % syncNone -> generate the trigger asap after the scheduled time
 
-% Sync to make the software sequencer also wait for the trigger input
+% 10. Sync to make the software sequencer also wait for the trigger input
 scInd = scInd + 1;
 SeqControl(scInd).command = 'sync';
 SeqControl(scInd).argument = 10000000; % 10 s
 
-% Sync for aligning the hardware to when the data is done saving and to make the software sequencer also wait for the trigger input
+% 11. Sync for aligning the hardware to when the data is done saving and to make the software sequencer also wait for the trigger input
 scInd = scInd + 1;
 SeqControl(scInd).command = 'sync';
 if useTriggers
     SeqControl(scInd).argument = 1e6 * vts.delay_s*5; % Timeout set to 5x the input delay just in case
 else
-    SeqControl(scInd).argument = 20*1e6; % 10 s
+    SeqControl(scInd).argument = 20*1e6; % 20 s
 end
 
 % 12. Control superframe rate
@@ -665,14 +666,14 @@ for nbuf = 1:numBuffers
     SeqControl(scInd).command = 'transferToHost'; % Transfer all stacked subframes at once
 %         Event(n).seqControl = [4, 5, scInd]; % includes some noop
 %         Event(n).seqControl = [4, scInd];
-    scInd = scInd + 1;
-
+    
     % Pause only the software sequencer, until the DMA is complete
+    scInd = scInd + 1;
     SeqControl(scInd).command = 'waitForTransferComplete'; % includes the waitForTransferComplete
     SeqControl(scInd).argument = scInd - 1;
 %     Event(n).seqControl = [4, scInd - 1, scInd];
     % Event(n).seqControl = [scInd - 1, scInd];
-    Event(n).seqControl = [12, scInd - 1, scInd];
+    Event(n).seqControl = [12, scInd - 1, scInd]; % Superframe rate control
 
     if saveRcvDataFlag
         n = n + 1;
@@ -811,48 +812,48 @@ clearvars RcvData
 
 %% Time tag callback test
 
-function TimeTagCallback(~, ~, UIValue)
-    import com.verasonics.hal.hardware.*
-    TimeTagEna = round(UIValue);
-    VDAS = evalin('base', 'VDAS');
-    switch TimeTagEna
-        case 0
-            if VDAS % can't execute this command if HW is not present
-                % disable time tag
-                rc = Hardware.enableAcquisitionTimeTagging(false);
-                if ~rc
-                    error('Error from enableAcqTimeTagging')
-                end
-            end
-            tagstr = 'off';
-        case 1
-            if VDAS
-                % enable time tag
-                rc = Hardware.enableAcquisitionTimeTagging(true);
-                if ~rc
-                    error('Error from enableAcqTimeTagging')
-                end
-            end
-            tagstr = 'on';
-        case 2
-            if VDAS
-                % enable time tag and reset counter
-                rc = Hardware.enableAcquisitionTimeTagging(true);
-                if ~rc
-                    error('Error from enableAcqTimeTagging')
-                end
-                rc = Hardware.setTimeTaggingAttributes(false, true); % reset hardware counter to 0 (otherwise, it continuously counts up from system bootup until it gets to 107,000s - see p37 of User Manual
-                if ~rc
-                    error('Error from setTimeTaggingAttributes')
-                end
-            end
-            tagstr = 'on, reset';
-    end
-    % display at the GUI slider value
-    h = findobj('Tag', 'UserB5Edit');
-    set(h,'String', tagstr);
-    assignin('base', 'TimeTagEna', TimeTagEna);
-end
+% function TimeTagCallback(~, ~, UIValue)
+%     import com.verasonics.hal.hardware.*
+%     TimeTagEna = round(UIValue);
+%     VDAS = evalin('base', 'VDAS');
+%     switch TimeTagEna
+%         case 0
+%             if VDAS % can't execute this command if HW is not present
+%                 % disable time tag
+%                 rc = Hardware.enableAcquisitionTimeTagging(false);
+%                 if ~rc
+%                     error('Error from enableAcqTimeTagging')
+%                 end
+%             end
+%             tagstr = 'off';
+%         case 1
+%             if VDAS
+%                 % enable time tag
+%                 rc = Hardware.enableAcquisitionTimeTagging(true);
+%                 if ~rc
+%                     error('Error from enableAcqTimeTagging')
+%                 end
+%             end
+%             tagstr = 'on';
+%         case 2
+%             if VDAS
+%                 % enable time tag and reset counter
+%                 rc = Hardware.enableAcquisitionTimeTagging(true);
+%                 if ~rc
+%                     error('Error from enableAcqTimeTagging')
+%                 end
+%                 rc = Hardware.setTimeTaggingAttributes(false, true); % reset hardware counter to 0 (otherwise, it continuously counts up from system bootup until it gets to 107,000s - see p37 of User Manual
+%                 if ~rc
+%                     error('Error from setTimeTaggingAttributes')
+%                 end
+%             end
+%             tagstr = 'on, reset';
+%     end
+%     % display at the GUI slider value
+%     h = findobj('Tag', 'UserB5Edit');
+%     set(h,'String', tagstr);
+%     assignin('base', 'TimeTagEna', TimeTagEna);
+% end
 
 %% **** Callback routines used by External function definition (EF) ****
 % 
