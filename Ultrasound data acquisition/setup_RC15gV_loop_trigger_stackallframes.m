@@ -34,10 +34,18 @@ savepath = uigetdir('F:\', 'Select the save path');
 savepath = [savepath, '\'];
 
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use air puff (0-no, 1-yes)', 'Probe connector', 'SSD write speed [GB/s]', 'Probe aperture [mm]', 'Time per superframe [s]', 'ADC Sampling Mode (50, 67, 100, 200% of center frequency)', 'Number of buffers'}; % 'Save RF data (0-no, 1-yes)', 
+% -- 5 x 2 angles -- %
 % 200% BW, fewer frames per buffer
-parameterDefaults = {'30', '0', '8', '47000', '4900', '5', '6', '13.6', '1540', '0', '1', '360', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '200', '3'};
+% parameterDefaults = {'30', '1', '8', '47000', '4900', '5', '6', '13.6', '1540', '0', '1', '400', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '200', '3'};
 % 67% BW, more frames per buffer
-% parameterDefaults = {'30', '0', '8', '47000', '4900', '5', '6', '13.6', '1540', '0', '1', '1000', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
+% parameterDefaults = {'30', '1', '8', '47000', '4900', '5', '6', '13.6', '1540', '0', '1', '1000', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
+
+% -- 11 x 2 angles -- %
+% 200% BW, fewer frames per buffer
+% parameterDefaults = {'30', '1', '8', '47000', '2000', '11', '6', '13.6', '1540', '0', '1', '180', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '200', '3'};
+% 67% BW, more frames per buffer
+parameterDefaults = {'30', '1', '8', '47000', '2000', '11', '6', '13.6', '1540', '0', '1', '490', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
+
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % ADC_sampleMode = 'BS67BW';
@@ -385,7 +393,6 @@ numGBInBuffer = numSamplesInBuffer ./ 1024^3 * 2 % # samples * (2 bytes per int1
 numSamplesPerBufferFrame = Resource.RcvBuffer(1).rowsPerFrame * Resource.RcvBuffer(1).colsPerFrame
 numGBPerBufferFrame = numSamplesPerBufferFrame ./ 1024^3 * 2 % # samples * (2 bytes per int16 sample) 
 
-if numGBPerBufferFrame > 2
     warning('Buffer size per frame is too large (> 2 GB), exiting')
     return
 end
