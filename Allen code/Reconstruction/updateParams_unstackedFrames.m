@@ -36,6 +36,7 @@ function [P_unstacked] = updateParams_unstackedFrames(P)
             % Redefine the parameters structure with the unstacked parameters
             if exist('rcvChunkSize', 'var')
                 P_unstacked = P;
+                P_unstacked.Resource.RcvBuffer = P.Resource.RcvBuffer(1); % Change 9/14/26: adjust if P has multiple RcvBuffers
                 P_unstacked.numFramesPerBuffer = P.numFramesPerBuffer;
                 P_unstacked.Resource.RcvBuffer.numFrames = P_unstacked.numFramesPerBuffer;
                 P_unstacked.Resource.RcvBuffer.rowsPerFrame = nspf;
@@ -43,9 +44,9 @@ function [P_unstacked] = updateParams_unstackedFrames(P)
             else
                 P_unstacked = P;
                 P_unstacked.numFramesPerBuffer = nsf;
-%                 if length(P_unstacked.Resource.RcvBuffer) > 1 % Edit 1/14/26 to account for if there are multiple RcvBuffers (e.g., for continuous acquisition)
-%                     P_unstacked.Resource.RcvBuffer = P_unstacked.Resource.RcvBuffer(end);
-%                 end
+                if length(P_unstacked.Resource.RcvBuffer) > 1 % Edit 1/14/26 to account for if there are multiple RcvBuffers (e.g., for continuous acquisition)
+                    P_unstacked.Resource.RcvBuffer = P_unstacked.Resource.RcvBuffer(1);
+                end
                 P_unstacked.Resource.RcvBuffer.numFrames = nsf;
                 P_unstacked.Resource.RcvBuffer.rowsPerFrame = nspf;
                 P_unstacked.Receive = updateReceiveStructure_RCA(P_unstacked);
@@ -64,6 +65,9 @@ function [P_unstacked] = updateParams_unstackedFrames(P)
             else
                 P_unstacked = P;
                 P_unstacked.numFramesPerBuffer = nsf;
+                if length(P_unstacked.Resource.RcvBuffer) > 1 % Edit 1/14/26 to account for if there are multiple RcvBuffers (e.g., for continuous acquisition)
+                    P_unstacked.Resource.RcvBuffer = P_unstacked.Resource.RcvBuffer(1);
+                end
                 P_unstacked.Resource.RcvBuffer.numFrames = nsf;
                 P_unstacked.Resource.RcvBuffer.rowsPerFrame = nspf;
                 P_unstacked.Receive = updateReceiveStructure_LA(P_unstacked);
