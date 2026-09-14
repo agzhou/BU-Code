@@ -5,7 +5,7 @@
 
 %% Load parameters
 
-FilePath = uigetdir('G:\', 'Select the RF data path');
+FilePath = uigetdir('F:\', 'Select the RF data path');
 FilePath = string([FilePath, '\']);
 
 RFPath = FilePath;
