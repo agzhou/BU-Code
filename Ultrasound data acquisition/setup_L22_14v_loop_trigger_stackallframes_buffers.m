@@ -444,11 +444,15 @@ disp("Time to DMA and write to disk: " + num2str(DMATime + SSDWriteTime) + "s")
 
 % disp("Time to acquire and DMA: " + num2str(AcqTime + DMATime) + "s")
 % disp("Time to acquire, DMA, and write to disk: " + num2str(AcqTime + DMATime + SSDWriteTime) + "s")
-numFramesPerSFPossible = SFTime / [numSamplesPerSubFrame / 1024^3 * 2 *(1/DMARate + 1/SSDWriteRate)]; % # of possible frames per superframe under these acquisition settings
-if (SFTime - DMATime) < 0
+% numFramesPerSFPossible = SFTime / [numSamplesPerSubFrame / 1024^3 * 2 *(1/DMARate + 1/SSDWriteRate)]; % # of possible frames per superframe under these acquisition settings
+numFramesPerSFPossible = SFTime / [numSamplesPerSubFrame / 1024^3 * 2 *(1/SSDWriteRate)]; % # of possible frames per superframe under these acquisition settings: should theoretically be fine up to SF time = SSD write time for one buffer
+
+% if (SFTime - DMATime) < 0
+if DMATime > numBuffers*SFTime
     error("There is not enough time to acquire and DMA the amount of frames specified, according to the superframe rate")
-elseif (SFTime - DMATime - SSDWriteTime) < 0
-    disp("**** Number of frames possible with the set acquisition rates: " + num2str(numFramesPerSFPossible) + "****")
+% elseif (SFTime - DMATime - SSDWriteTime) < 0
+elseif SFTime < SSDWriteTime
+    disp("**** Number of frames possible with the set acquisition rates: " + num2str(min(numFramesPerSFPossible, 2/numGBPerBufferFrame * numFramesPerSF)) + "****")
     error("There is not enough time to acquire, DMA, and save to disk the amount of frames specified, according to the superframe rate")
 end
 

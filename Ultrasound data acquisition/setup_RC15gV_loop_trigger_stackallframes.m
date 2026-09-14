@@ -1,6 +1,6 @@
 % **** USE MULTIPLE BUFFERS **** %
 
-warning('Need to fix data racing, aperture')
+% warning('Need to fix data racing, aperture')
 %% 0. Description
 % Continuous acquisition and saving of RF data with the RC15gV probe
 % CPWC, stacks all frames per superframe in one transfer/file
@@ -30,11 +30,14 @@ cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
 % cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
 activate
 
-savepath = uigetdir('G:\', 'Select the save path');
+savepath = uigetdir('F:\', 'Select the save path');
 savepath = [savepath, '\'];
 
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use air puff (0-no, 1-yes)', 'Probe connector', 'SSD write speed [GB/s]', 'Probe aperture [mm]', 'Time per superframe [s]', 'ADC Sampling Mode (50, 67, 100, 200% of center frequency)', 'Number of buffers'}; % 'Save RF data (0-no, 1-yes)', 
-parameterDefaults = {'30', '0', '8', '60000', '2500', '11', '5', '13.6', '1540', '0', '1', '500', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '200', '3'};
+% 200% BW, fewer frames per buffer
+parameterDefaults = {'30', '0', '8', '47000', '4900', '5', '6', '13.6', '1540', '0', '1', '360', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '200', '3'};
+% 67% BW, more frames per buffer
+% parameterDefaults = {'30', '0', '8', '47000', '4900', '5', '6', '13.6', '1540', '0', '1', '1000', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % ADC_sampleMode = 'BS67BW';
@@ -130,6 +133,8 @@ wl = Resource.Parameters.speedOfSound / Trans.frequency / 1e6; % Wavelength, in 
 
 startDepth = startDepthMM/1e3/wl; % start depth in wavelengths
 endDepth = endDepthMM/1e3/wl; % end depth in wavelengths
+
+numElements = Trans.numelements/2; % the structure gives # row elements + # column elements
 
 %% Set the active aperture
 apertureTotalMM = Trans.spacingMm * (Trans.numelements/2); % Total available probe aperture [mm]
@@ -259,7 +264,9 @@ RcvProfile.antiAliasCutoff = 20; % Low pass filter at 20 MHz (RC15gV bandwidth g
 % Define receive element apodization (for the rows or columns)
 rcvElem = [zeros(1, ((Trans.numelements/2) - apertureElem)/2), activeElem, zeros(1, ((Trans.numelements/2) - apertureElem)/2)];
 
-maxAcqLength = ceil(sqrt(endDepth^2 + 2*(numElements*Trans.spacing)^2)); % account for the longest distance an echo could travel
+% maxAcqLength = ceil(sqrt(endDepth^2 + 2*(numElements*Trans.spacing)^2)); % account for the longest distance an echo could travel
+maxAcqLength = ceil(sqrt(endDepth^2 + 2*(apertureMM/1e3/wl)^2)); % account for the longest distance an echo could travel
+
 Receive = repmat(struct('Apod', zeros(1, Trans.numelements), ... % Initialize all elements to 0 apod initially, set below
                         'startDepth', startDepth, ...
                         'endDepth', maxAcqLength, ...
@@ -401,11 +408,15 @@ disp("Time to DMA and write to disk: " + num2str(DMATime + SSDWriteTime) + "s")
 
 % disp("Time to acquire and DMA: " + num2str(AcqTime + DMATime) + "s")
 % disp("Time to acquire, DMA, and write to disk: " + num2str(AcqTime + DMATime + SSDWriteTime) + "s")
-numFramesPerSFPossible = SFTime / [numSamplesPerSubFrame / 1024^3 * 2 *(1/DMARate + 1/SSDWriteRate)]; % # of possible frames per superframe under these acquisition settings
-if (SFTime - DMATime) < 0
+% numFramesPerSFPossible = SFTime / [numSamplesPerSubFrame / 1024^3 * 2 *(1/DMARate + 1/SSDWriteRate)]; % # of possible frames per superframe under these acquisition settings
+numFramesPerSFPossible = SFTime / [numSamplesPerSubFrame / 1024^3 * 2 *(1/SSDWriteRate)]; % # of possible frames per superframe under these acquisition settings
+
+% if (SFTime - DMATime) < 0
+if DMATime > numBuffers*SFTime
     error("There is not enough time to acquire and DMA the amount of frames specified, according to the superframe rate")
-elseif (SFTime - DMATime - SSDWriteTime) < 0
-    disp("**** Number of frames possible with the set acquisition rates: " + num2str(numFramesPerSFPossible) + "****")
+% elseif (SFTime - DMATime - SSDWriteTime) < 0
+elseif SFTime < SSDWriteTime
+    disp("**** Number of frames possible with the set acquisition rates: " + num2str(min(numFramesPerSFPossible, 2/numGBPerBufferFrame * numFramesPerSF)) + "****")
     error("There is not enough time to acquire, DMA, and save to disk the amount of frames specified, according to the superframe rate")
 end
 
@@ -489,11 +500,13 @@ scInd = scInd + 1;
 SeqControl(scInd).command = 'timeToNextAcq';
 
 if frameTimeGap < timePerAcqLimits(1)
-    warning('Frame delay time too short, setting to minimum of 10 us')
-    SeqControl(scInd).argument = timePerAcqLimits(1); 
+    % warning('Frame delay time too short, setting to minimum of 10 us')
+    % SeqControl(scInd).argument = timePerAcqLimits(1);
+    error('Frame delay time too short: minimum is 10 us')
 elseif frameTimeGap > timePerAcqLimits(2)
-    warning('Frame delay time too long, setting to maximum of 4190000 us')
-    SeqControl(scInd).argument = timePerAcqLimits(2);
+    % warning('Frame delay time too long, setting to maximum of 4190000 us')
+    % SeqControl(scInd).argument = timePerAcqLimits(2);
+    error('Frame delay time too long: maximum is 4190000 us')
 else
     SeqControl(scInd).argument = frameTimeGap;
 end
