@@ -63,7 +63,7 @@ figure; imagesc(diff(squeeze(RFtimeTags), 1, 2).')
 save(FilePath + "RFTimeTagsPerChannel.mat", 'RFtimeTags', 'RFcount')
 
 %% Test
-getTimeStamp(double(RFData(1:2,1,12)))/4e4
+% getTimeStamp(double(RFData(1:2,1,12)))/4e4
 
 %% Helper Functions
 function [fileCount] = countFiles(fileName,filePath)
