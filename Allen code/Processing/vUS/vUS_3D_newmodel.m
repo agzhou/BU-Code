@@ -159,7 +159,7 @@ IQf_FT_separated_masked = cell(size(IQf_FT_separated));
 IQf_separated_masked = cell(size(IQf_separated));
 for j = ctp
     IQf_FT_separated_masked{j} = IQf_FT_separated{j};
-    IQf_FT_separated_masked{j}(:, :, freqMask) = 0;
+    IQf_FT_separated_masked{j}(:, :, :, freqMask) = 0;
 
     IQf_separated_masked{j} = ifft(ifftshift(IQf_FT_separated_masked{j}, fDim), nFTpts, fDim);
 end
@@ -191,13 +191,13 @@ for j = ctp
     g1{j} = g1T(IQf_separated_masked{j}, nTau); % Use the filtered IQ with system noise removed
 end
 
-% Testing
-figure; plot(tau, squeeze(abs(g1{1}(tp(1), tp(2), :))), '-o')
-figure; plot(tau, squeeze(abs(g1{3}(tp(1), tp(2), :))), '-o')
-
-figure; imagesc(squeeze(mean(abs(IQf_separated{1}), fDim))); title('Down flow')
-figure; imagesc(squeeze(mean(abs(IQf_separated{2}), fDim))); title('Up flow')
-figure; imagesc(squeeze(mean(abs(IQf_separated{3}), fDim))); title('All flow')
+% % Testing
+% figure; plot(tau, squeeze(abs(g1{1}(tp(1), tp(2), :))), '-o')
+% figure; plot(tau, squeeze(abs(g1{3}(tp(1), tp(2), :))), '-o')
+% 
+% figure; imagesc(squeeze(mean(abs(IQf_separated{1}), fDim))); title('Down flow')
+% figure; imagesc(squeeze(mean(abs(IQf_separated{2}), fDim))); title('Up flow')
+% figure; imagesc(squeeze(mean(abs(IQf_separated{3}), fDim))); title('All flow')
 
 % Create new variables for experimental g1, with spatial dimensions stacked
 g1_exp = cell(size(IQf_separated)); % Cell array of experimental g1 data with spatial dimensions vectorized/stacked
