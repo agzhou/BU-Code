@@ -77,6 +77,8 @@ RFTimeTags_allSFStacked = reshape(permute(RFtimeTags, [2, 1, 3]), [P.Resource.Pa
 % genSliderV2(RFtimeTags) % Plot the time tags per channel, for each superframe
 % figure; imagesc(squeeze(RFtimeTags(:, :, 1))); colorbar; xlabel('Channel index'); ylabel('Frame')
 % figure; imagesc(diff(squeeze(RFtimeTags), 1, 2).')
+figure; imagesc(RFTimeTags_allSFStacked); xlabel('Frame number'); ylabel('Channel number'); cb = colorbar; cb.Label.String = 'Time tag [s]';
+figure; plot(RFTimeTags_allSFStacked(1, :)); xlabel('Frame number'); ylabel('Time tag for channel 1 [s]')
 
 %% Save the (RF) frame timing data
 % save(FilePath + "RFTimeTags.mat", 'RFTimeTags_raw', 'RFTimeTags', "RFTimeTags_diff", 'RFcount')
