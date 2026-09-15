@@ -24,7 +24,22 @@ fileInfo = strsplit(RFName,'-');
 % RFtimeTags = zeros(str2double(fileInfo{5}), P.Resource.Parameters.numRcvChannels, RFcount);
 
 % Superframe-wise time tags (stacked frames)
-RFtimeTags = zeros(1, P.Resource.Parameters.numRcvChannels, RFcount);
+% RFtimeTags = zeros(1, P.Resource.Parameters.numRcvChannels, RFcount);
+RFtimeTags = zeros(P.numFramesPerBuffer, P.Resource.Parameters.numRcvChannels, RFcount);
+
+% Get the start and end sample indices for the RF, for each subframe
+startSamples = zeros(P.numFramesPerBuffer, 1);
+endSamples = zeros(P.numFramesPerBuffer, 1);
+% warning('Per-frame code for stacked RF timetags only works for linear array right now; need to do P.na*2 for RCA...')
+for iFrame = 1:P.numFramesPerBuffer
+    if isequal(P.Trans.name, 'L22-14v')
+        startSamples(iFrame) = Receive((iFrame-1)*P.na + 1).startSample;
+        endSamples(iFrame) = Receive((iFrame-1)*P.na + 1).endSample;
+    elseif isequal(P.Trans.name, 'RC15gV')
+        startSamples(iFrame) = Receive((iFrame-1)*P.na*2 + 1).startSample;
+        endSamples(iFrame) = Receive((iFrame-1)*P.na*2 + 1).endSample;
+    end
+end
 
 for iFile = 1:RFcount
 % for iFile = 1:4
@@ -37,10 +52,13 @@ for iFile = 1:RFcount
     disp(['Loading data: ', iFileName]);
     RFData = load(fullfile(RFPath, iFileName),'RcvData').('RcvData');
     disp('Data loaded!');
-
-    RFtimeTags(:, :, iFile) = readTimeTags(RFData);
-
+    
+    for iFrame = 1:P.numFramesPerBuffer
+        RFtimeTags(iFrame, :, iFile) = readTimeTags(RFData(startSamples(iFrame):endSamples(iFrame), :));
+    end
 end
+
+RFTimeTags_allSFStacked = reshape(permute(RFtimeTags, [2, 1, 3]), [P.Resource.Parameters.numRcvChannels, P.numFramesPerBuffer*RFcount]); % Save a version of the RF timetags where all the frames are stacked
 
 %% Plot Time tags
 % RFTimeTags_raw = timeTags(1:end);
@@ -54,13 +72,15 @@ end
 % figure; plot(RFTimeTags_diff); title('difference')
 % % chk4 = find(chk3 > 0.1)
 
-genSliderV2(RFtimeTags) % Plot the time tags per channel, for each superframe
-figure; imagesc(squeeze(RFtimeTags(:, :, 1))); colorbar; xlabel('Channel index'); ylabel('Frame')
-figure; imagesc(diff(squeeze(RFtimeTags), 1, 2).')
+
+
+% genSliderV2(RFtimeTags) % Plot the time tags per channel, for each superframe
+% figure; imagesc(squeeze(RFtimeTags(:, :, 1))); colorbar; xlabel('Channel index'); ylabel('Frame')
+% figure; imagesc(diff(squeeze(RFtimeTags), 1, 2).')
 
 %% Save the (RF) frame timing data
 % save(FilePath + "RFTimeTags.mat", 'RFTimeTags_raw', 'RFTimeTags', "RFTimeTags_diff", 'RFcount')
-save(FilePath + "RFTimeTagsPerChannel.mat", 'RFtimeTags', 'RFcount')
+save(FilePath + "RFTimeTagsPerChannel.mat", 'RFtimeTags', 'RFTimeTags_allSFStacked', 'RFcount')
 
 %% Test
 % getTimeStamp(double(RFData(1:2,1,12)))/4e4
