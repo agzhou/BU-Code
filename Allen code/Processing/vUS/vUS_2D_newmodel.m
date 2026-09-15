@@ -440,7 +440,8 @@ for j = 3
 
             % tau_inds = 2:PP.nTau; % Which time lags to fit over
             % TESTING!!!!!!!!!!!!!!!!
-            tau_inds = 2:PP.nTau/2;
+            % tau_inds = 2:PP.nTau/2;
+            tau_inds = 2:11
             % tau_inds = 2:round(PP.nTau/5);
             % tau_cropped = tau(tau_inds);
 
