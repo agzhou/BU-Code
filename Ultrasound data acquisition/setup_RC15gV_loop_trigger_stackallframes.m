@@ -393,6 +393,7 @@ numGBInBuffer = numSamplesInBuffer ./ 1024^3 * 2 % # samples * (2 bytes per int1
 numSamplesPerBufferFrame = Resource.RcvBuffer(1).rowsPerFrame * Resource.RcvBuffer(1).colsPerFrame
 numGBPerBufferFrame = numSamplesPerBufferFrame ./ 1024^3 * 2 % # samples * (2 bytes per int16 sample) 
 
+if numGBPerBufferFrame > 2.00
     warning('Buffer size per frame is too large (> 2 GB), exiting')
     return
 end
