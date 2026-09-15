@@ -114,6 +114,7 @@ disp('SVs decomposed')
 
 %     SSM = plotSSM(U, true);
 
+% sv_threshold_lower = 20; sv_threshold_upper = size(IQm, fDim);
 [IQf, noise] = applySVs2D(IQm, CM, SVs, V, sv_threshold_lower, sv_threshold_upper);
 
 % 1.2 High pass filter (apply to the post-SVD clutter filtered data)
@@ -201,17 +202,17 @@ end
 
 % Create new variables for experimental g1, with spatial dimensions stacked
 g1_exp = cell(size(IQf_separated)); % Cell array of experimental g1 data with spatial dimensions vectorized/stacked
-num_voxels = size(g1{3}, zDim)*size(g1{3}, xDim);
+num_voxels = size(g1{3}, xDim)*size(g1{3}, yDim)*size(g1{3}, zDim);
 for j = ctp
     g1_exp{j} = reshape(g1{j}, num_voxels, nTau);
 end
 
 %% Create a struct for all the relevant processing parameters
-dimensionality = 2; % 2D data
+dimensionality = 3; % 2D data
 frameRate = P.frameRate;
 wl = P.wl;
 k0 = 2*pi/wl;
-PP = createStruct(zp, xp, nf, nTau, xDim, zDim, fDim, dimensionality, faxis, freqMask, frameRate, wl, k0); % Processing Parameters ======> adjust as needed
+PP = createStruct(xp, yp, zp, nf, nTau, xDim, yDim, zDim, fDim, dimensionality, faxis, freqMask, frameRate, wl, k0); % Processing Parameters ======> adjust as needed
 
 %% ========= 4. Clean data ========= %%
 
@@ -308,8 +309,8 @@ figure; imagesc(CDIA{3}); colormap(VzCmap); axis equal; colorbar
 
 % CHANGE THIS LATER, WHEN I ACTUALLY IMPLEMENT VOXEL SCREENING!!!!!!!!!!!!!!!!!!
 % num_voxels = size(g1neg, 1)*size(g1neg, 2)*size(g1neg, 3);
-ps = size(IQf); ps = ps(1:end-1); % Plane size [voxels]
-num_voxels = size(IQf, 1)*size(IQf, 2);
+vs = size(IQf_HPF); vs = vs(1:end-1); % Volume size [voxels]
+num_voxels = prod(vs);
 
 t1i = 2; % Index for tau1 --> 2 for my code, because it calculates g1 starting at tau = 0
 
@@ -364,7 +365,8 @@ for j = 3
     [Vz0, tau_V] = findVzPhaseDiff(stackData(g1{j}, PP), PP); % v_zgp [m/s]
     % [Vz0, tau_V] = findVzPhaseDiff(g1adj_stacked_j, PP); % v_zgp [m/s]
     % figure; imagesc(unstackData(Vz0, PP)); colormap(VzCmap); axis equal; colorbar; clim([-30e-3, 30e-3])
-    
+    % volumeViewer(abs(unstackData(Vz0, PP)))
+
     % Mesh method for finding v_xgp0
     % [v_zgp0, v_xgp0, p0, DC0, F0, R20] = InitvUS2DParamsWithMesh(g1adj_stacked_j, Vz0, DCR0_j, FR_j, PP, sigma, tau);
     % [Vx0, R2_Vx0] = InitVx0WithMesh2D(stackData(g1{j}, PP), Vz0, DCR0_j, FR0_j, PP, sigma, tau);

@@ -46,11 +46,15 @@ function [fbSNR, fbSNR_mask, varargout] = spectralSNR(data_FT, data_FT_ref, PP, 
         case 3 % 3D
             % fbSNR = sum(abs(IQf_FT_separated_masked{3}(zPix, :, :)), fDim) ./ sum(abs(IQf_FT_separated{3}(zPix, :, :)), fDim); % Frequency-based SNR
             fbSNR = sum(abs(data_FT(:, :, :, :)), PP.fDim) ./ sum(abs(data_FT_ref(:, :, :, :)), PP.fDim); % Frequency-based SNR
+            if any(isnan(fbSNR), 'all')
+                fbSNR(isnan(fbSNR)) = 0;
+                warning('There are NaNs in the fbSNR matrix, setting values for those voxels to 0')
+            end
 
             warning('CHECK THE BELOW SOURCE CODE --> IS IT VALID TO GO OVER X AND Y TOGETHER??')
-            fbSNR_zAvg = squeeze(mean(fbSNR, [PP.xDim, PP.yDim])) - const*(1 + ([1:PP.zp]./(5*PP.zp)).^2)' .* std(fbSNR, 0, [PP.xDim, PP.yDim]); % Average the frequency-based SNR across the lateral dimensions (x, y), to get an average value for each depth value (z)
+            fbSNR_zAvg = squeeze(mean(fbSNR, [PP.xDim, PP.yDim])) - const*(1 + ([1:PP.zp]./(5*PP.zp)).^2)' .* squeeze(std(fbSNR, 0, [PP.xDim, PP.yDim])); % Average the frequency-based SNR across the lateral dimensions (x, y), to get an average value for each depth value (z)
             fbLinearFit = polyfit(zPix, fbSNR_zAvg(zPix), 1); % Linear fit for this z-averaged and std-subtracted threshold vector
-            fbSNR_threshold = repmat(polyval(fbLinearFit, 1:PP.zp)', [PP.xp, PP.yp, 1]) .* inflation; % Evaluate the linear fit at all z pixels and stretch over x, then add an extra 2%
+            fbSNR_threshold = repmat(permute(polyval(fbLinearFit, 1:PP.zp)', [2, 3, 1]), [PP.xp, PP.yp, 1]) .* inflation; % Evaluate the linear fit at all z pixels and stretch over x, then add an extra 2%
             fbSNR_mask = fbSNR > fbSNR_threshold; % Mask for pixels to keep, according to this frequency-based SNR method
     end
 
