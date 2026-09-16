@@ -313,6 +313,10 @@ num_voxels = size(IQf, 1)*size(IQf, 2);
 
 t1i = 2; % Index for tau1 --> 2 for my code, because it calculates g1 starting at tau = 0
 
+% Set parameters for findTayDecayed.m
+absolute_tau_ss_cutoff_s = 10e-3;
+too_fast_decay_s = 1e-3; 
+
 % ---- Loop through directional components and go through the fitting process ---- %
 % for j = ctp
 % for j = 1:2 % Fit only negative and positive frequencies (down and up flows)
@@ -371,6 +375,11 @@ for j = 3
     Vx0 = ones(size(Vz0)).* 5e-3; % TESTING: uniform initial v_xgp guess
     % figure; imagesc(unstackData(Vx0, PP)); axis equal; colorbar
 
+    % Adaptively find the tau range to fit over for each pixel, and another
+    % quality mask
+    [tau_decayed_ind, voxel_quality] = findTauDecayed(g1_exp{j}, tau, t1i, absolute_tau_ss_cutoff_s, too_fast_decay_s);
+
+
     % **** TO DO: create a function that looks at the confidence in the
     % angle-based Vx0, and outputs an updated Vx0 if needed, plus searches
     % for the best p0 ****
@@ -410,7 +419,8 @@ for j = 3
 
     % Choose the mask to use to fit certain pixels or not
     % maskToUse = overall_mask_stacked; 
-    maskToUse = and(vesselAngleMask, stackData(temp_g1_tau1_mask, PP));
+    % maskToUse = and(vesselAngleMask, stackData(temp_g1_tau1_mask, PP));
+    maskToUse = voxel_quality;
     % figure; imagesc(unstackData(maskToUse, PP))
 
     for vi = 1:num_voxels % voxel index
@@ -441,7 +451,8 @@ for j = 3
             % tau_inds = 2:PP.nTau; % Which time lags to fit over
             % TESTING!!!!!!!!!!!!!!!!
             % tau_inds = 2:PP.nTau/2;
-            tau_inds = 2:11
+            % tau_inds = 2:11
+            tau_inds = t1i:tau_decayed_ind(vi); % Adaptive tau cropping
             % tau_inds = 2:round(PP.nTau/5);
             % tau_cropped = tau(tau_inds);
 

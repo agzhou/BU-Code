@@ -20,39 +20,55 @@
 %                  voxel is bad.
 
 function [tau_decayed_ind, voxel_quality] = findTauDecayed(g1, tau, tau1_ind, absolute_tau_ss_cutoff_s, too_fast_decay_s)
-    % Crop data to consider only tau1:nTau
-    tau = tau(tau1_ind:end);
-    g1 = g1(:, tau1_ind:end);
-
+    
+    % Check input
     if size(g1, 2) == 1
         warning('Check the g1 input: should be of size [nVoxels, nTau]')
     end
     numVoxels = size(g1, 1);
 
-    % Convert cutoffs/thresholds to indices
-    absolute_tau_ss_cutoff_ind = find(tau >= absolute_tau_ss_cutoff_s, 1, 'first');
-    too_fast_decay_s_ind = find(tau >= too_fast_decay_s, 1, 'first');
-
+    % Crop data to consider only tau1:nTau
+    tau = tau(tau1_ind:end);
+    g1 = g1(:, tau1_ind:end);
+    
+    % Get some parameters and stuff used downstream
     nTau = length(tau); % # of time lags provided
     ag1 = abs(g1); % Get magnitude
     ag1_smoothed = movmean(ag1, 3, 2); % Smooth the |g1| over time a little
+
+    % Convert cutoffs/thresholds to indices
+    absolute_tau_ss_cutoff_ind = find(tau >= absolute_tau_ss_cutoff_s, 1, 'first');
+    if absolute_tau_ss_cutoff_ind > nTau
+        error('absolute_tau_ss_cutoff_s must be <= tau_max')
+    end
+    too_fast_decay_s_ind = find(tau >= too_fast_decay_s, 1, 'first');
 
     % First metric: when the |g1| reaches the "steady-state" value for the
     %               first time
     tau_ss = max(round(nTau*2/3), absolute_tau_ss_cutoff_ind); % A safe guess for when the g1 has approached steady state
     ag1_ss = median(ag1(:, tau_ss:end), 2); % Define the steady-state value for each voxel as the median over some tau range
 
-    tau_decayed_ind_1 = ones(numVoxels, 1);
+    tau_decayed_ind_1 = ones(numVoxels, 1).*nTau;
     for vi = 1:numVoxels
-        tau_decayed_ind_1(vi) = find(ag1_smoothed(vi, :) < ag1_ss(vi), 1, 'first');
+        first_ss_ind = find(ag1_smoothed(vi, :) <= ag1_ss(vi), 1, 'first');
+        if ~isempty(first_ss_ind) % Only store the index if the condition is ever met - should never need this if statement, but just in case...
+            tau_decayed_ind_1(vi) = first_ss_ind;
+        end
     end
     
     % Second metric: when the |g1| decays to 10% of its initial value at
     %                tau = tau1
-    ag1_decay_threshold = 0.1 .* ag1(:, 1); % tau1 is at index 1, since it was all cropped earlier in the function
+    % ag1_decay_threshold = max(0.1 .* ag1(:, 1), ones(numVoxels, 1).*0.05); % tau1 is at index 1, since it was all cropped earlier in the function
+    ag1_decay_threshold = max(0.1 .* ag1(:, 1), ag1_ss + 0.05); % tau1 is at index 1, since it was all cropped earlier in the function
     tau_decayed_ind_2 = ones(numVoxels, 1);
     for vi = 1:numVoxels
-        tau_decayed_ind_2(vi) = find(ag1_smoothed(vi, :) < ag1_decay_threshold(vi), 1, 'first');
+        temp = find(ag1_smoothed(vi, :) <= ag1_decay_threshold(vi), 1, 'first');
+        
+        if ~isempty(temp) % Only store the index if the condition is ever met - should never need this if statement, but just in case...
+            tau_decayed_ind_2(vi) = temp;
+        % else
+        %     disp(vi)
+        end
     end
 
     tau_decayed_ind = min(tau_decayed_ind_1, tau_decayed_ind_2); % Take the minimum of guesses #1 and #2
