@@ -493,15 +493,15 @@ end
 
 %% Visualize total fitted speed
 v = sqrt(v_tgp.^2 + v_zgp.^2);
-figure; imagesc(squeeze(max(v, [], 1))); clim([0, min(prctile(v, 99, 'all'), 40e-3)]); colormap turbo; axis equal; colorbar
+figure; imagesc(squeeze(max(v, [], 1))); clim([0, min(prctile(v, 99, 'all'), 40e-3)]); colormap turbo; axis equal; axis tight; colorbar
 % figure; imagesc(unstackData(sqrt(Vx0.^2 + Vz0.^2), PP)); clim([0, 0.04]); colormap turbo; axis equal; colorbar
 
 %% Visualize fitted v_zgp
-figure; imagesc(v_zgp); colormap(VzCmap); axis equal; colorbar; clim([-.030, 0.030])
+figure; imagesc(squeeze(max(v_zgp, [], 1))); colormap(VzCmap); axis equal; axis tight; colorbar; clim([-.030, 0.030])
 % figure; imagesc(abs(v_zgp)); colormap(VzCmapDn); axis equal; colorbar
 
 %% Visualize fitted v_xgp
-figure; imagesc(v_tgp); colormap(VzCmapDn); clim([0, min(prctile(v_tgp, 99, 'all'), 40e-3)]); axis equal; colorbar
+figure; imagesc(squeeze(max(v_tgp, [], 1))); colormap(VzCmapDn); clim([0, min(prctile(v_tgp, 99, 'all'), 40e-3)]); axis equal; axis tight; colorbar
 
 %% Calculate the fitted g1 curves for each valid pixel
 g1_model = zeros(num_voxels, nTau);
