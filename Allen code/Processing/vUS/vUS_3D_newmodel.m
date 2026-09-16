@@ -61,7 +61,9 @@ HPF.order = 4; % Butterworth filter order
 
 %% Define some parameters
 
-sigma = [428.6226, 428.6226, 126.2191].*1e-6; % Field-based 1/e PSF values (x, z) [m] for the RC15gV probe at 13.6 MHz and 11 x 2 angles from -5 to 5 deg (G:\My Drive\Data\RC15gV PSF sim - 11 angles from -5 to 5 deg)
+% sigma = [428.6226, 428.6226, 126.2191].*1e-6; % Field-based 1/e PSF values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 11 x 2 angles from -5 to 5 deg (G:\My Drive\Data\RC15gV PSF sim - 11 angles from -5 to 5 deg)
+% sigma = [344.7673, 344.7673, 125.5386].*1e-6; % Field-based 1/e PSF values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 11 x 2 angles from -6 to 6 deg
+sigma = [368.1124, 368.1124, 126.4505].*1e-6; % Field-based 1/e PSF values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 5 x 2 angles from -6 to 6 deg
 
 xDim = 1; % Dimension of the data corresponding to x (lateral direction)
 yDim = 2; % Dimension of the data corresponding to y (lateral direction)
@@ -116,10 +118,12 @@ disp('SVs decomposed')
 
 % sv_threshold_lower = 20; sv_threshold_upper = size(IQm, fDim);
 [IQf, noise] = applySVs2D(IQm, CM, SVs, V, sv_threshold_lower, sv_threshold_upper);
+clearvars CM U S V
 
 % 1.2 High pass filter (apply to the post-SVD clutter filtered data)
 HPF.dim = length(size(IQf)); % Operate on the time dimension
 IQf_HPF = filter(HPF.b, HPF.a, IQf, [], HPF.dim);
+
 
 % Testing
 % figure; imagesc(squeeze(abs(IQf(:, :, 1))))
@@ -130,6 +134,7 @@ figure; imagesc(squeeze(max(tempPDI, [], 1))' .^ 0.5)
 % figure; plot(squeeze(abs(IQf_HPF(tp(1), tp(2), :))))
 % figure; plot(squeeze(real(IQf(tp(1), tp(2), :))))
 % figure; plot(squeeze(real(IQf_HPF(tp(1), tp(2), :))))
+clearvars IQm IQf
 
 %% ========= 2. Directional flow filtering ========= %%
 
@@ -191,6 +196,8 @@ for j = ctp
     % g1{j} = g1T(IQf_separated{j}, nTau); % Use the base filtered IQ
     g1{j} = g1T(IQf_separated_masked{j}, nTau); % Use the filtered IQ with system noise removed
 end
+
+% voxelTimeseriesGUI(g1{3}, tempPDI.^0.5, 'ComplexMode', 'abs')
 
 % % Testing
 % figure; plot(tau, squeeze(abs(g1{1}(tp(1), tp(2), :))), '-o')
@@ -367,17 +374,28 @@ for j = 3
     % figure; imagesc(unstackData(Vz0, PP)); colormap(VzCmap); axis equal; colorbar; clim([-30e-3, 30e-3])
     % volumeViewer(abs(unstackData(Vz0, PP)))
 
-    % Mesh method for finding v_xgp0
+    % Mesh method for finding v_tgp0
     % [v_zgp0, v_xgp0, p0, DC0, F0, R20] = InitvUS2DParamsWithMesh(g1adj_stacked_j, Vz0, DCR0_j, FR_j, PP, sigma, tau);
     % [Vx0, R2_Vx0] = InitVx0WithMesh2D(stackData(g1{j}, PP), Vz0, DCR0_j, FR0_j, PP, sigma, tau);
-    Vx0 = ones(size(Vz0)).* 5e-3; % TESTING: uniform initial v_xgp guess
+    Vt0 = ones(size(Vz0)).* 5e-3; % TESTING: uniform initial v_xgp guess
     % figure; imagesc(unstackData(Vx0, PP)); axis equal; colorbar
 
     % **** TO DO: create a function that looks at the confidence in the
-    % angle-based Vx0, and outputs an updated Vx0 if needed, plus searches
+    % angle-based Vt0, and outputs an updated Vt0 if needed, plus searches
     % for the best p0 ****
     
-    
+    % Set parameters for findTauDecayed.m
+    absolute_tau_ss_cutoff_s = 10e-3;
+    too_fast_decay_s = 1e-3; 
+
+    % Adaptively find the tau range to fit over for each pixel, and another
+    % quality mask
+    [tau_decayed_ind, voxel_quality] = findTauDecayed(g1_exp{j}, tau, t1i, absolute_tau_ss_cutoff_s, too_fast_decay_s);
+    % volumeViewer(unstackData(voxel_quality, PP))
+
+    % Another mask
+    temp_g1_tau1_mask = squeeze(abs(g1_exp{j}(:, t1i))) > 0.3; % Note: this does not account for the static component
+    % volumeViewer(unstackData(temp_g1_tau1_mask, PP))
 
     % ---- Fit this direction's signal ---- %
     % anon_fun = @(x) g1vUS2D_Jac(x, tau, sigma, PP.k0);
@@ -396,24 +414,19 @@ for j = 3
     % p = zeros(PP.zp, PP.xp);
     % F = zeros(PP.zp, PP.xp);
     % DC = zeros(PP.zp, PP.xp);
-    v_xgp_stacked = zeros(PP.zp*PP.xp, 1);
-    v_zgp_stacked = zeros(PP.zp*PP.xp, 1);
-    F_stacked = zeros(PP.zp*PP.xp, 1);
-    DC_stacked = zeros(PP.zp*PP.xp, 1);
-
-    
-    g1_exp_j = stackData(g1{j}, PP);
+    v_tgp_stacked = zeros(num_voxels, 1);
+    v_zgp_stacked = zeros(num_voxels, 1);
+    F_stacked = zeros(num_voxels, 1);
+    DC_stacked = zeros(num_voxels, 1);
 
     tic
     % ind = sub2ind(ps, 23, 187)
 
-    temp_g1_tau1_mask = squeeze(abs(g1{j}(:, :, t1i))) > 0.1;
-    % figure; imagesc(temp_g1_tau1_mask)
-
     % Choose the mask to use to fit certain pixels or not
     % maskToUse = overall_mask_stacked; 
-    maskToUse = and(vesselAngleMask, stackData(temp_g1_tau1_mask, PP));
-    % figure; imagesc(unstackData(maskToUse, PP))
+    % maskToUse = and(vesselAngleMask, stackData(temp_g1_tau1_mask, PP));
+    maskToUse = and(voxel_quality, temp_g1_tau1_mask);
+    % volumeViewer(unstackData(maskToUse, PP))
 
     for vi = 1:num_voxels % voxel index
     % for vi = 1:300
@@ -424,32 +437,29 @@ for j = 3
         % if overall_mask_stacked(vi)
         % if overall_mask_stacked_j(vi) & vesselAngleMask(vi) % Fit only voxels we believe have high signal quality
         % if vesselAngleMask(vi) % Fit only voxels we believe have high signal quality
-            x0 = [Vx0(vi), Vz0(vi), FR0_j(vi), DCR0_j(vi)];
-            % x0 = [Vx0(vi), Vz0(vi), F0(vi)];
+            % x0 = [Vt0(vi), Vz0(vi), FR0_j(vi), DCR0_j(vi)];
+            x0 = [Vt0(vi), Vz0(vi), 1, 0];
             % **** Check lb AND ub --> VELOCITIES CAN BE NEGATIVE ****
             % lb = [x0(1) - 0.25*abs(x0(1)), x0(2) - 0.25*abs(x0(2)), max(F0(vi) - 0.2, 0), max(DC0(vi) - 0.2, 0)]; % TESTING
             % ub = [x0(1) + 0.25*abs(x0(1)), x0(2) + 0.25*abs(x0(2)), min(F0(vi) + 0.2, 1), min(DC0(vi) + 0.2, 1)]; % TESTING
             % lb = [0, -30e-3, 0, 0]; % TESTING
             % ub = [30e-3, 30e-3, 1, 1]; % TESTING
             lb = [0, x0(2) - 0.01, 0, 0]; % TESTING
-            ub = [30e-3, x0(2) + 0.01, 1, 1]; % TESTING
+            ub = [sqrt(2)*30e-3, x0(2) + 0.01, 1, 1]; % TESTING
             
             % % lb = [x0(1) - 1*abs(x0(1)), x0(2) - 0.25*abs(x0(2)), max(F0(vi) - 0.5, 0)]; % TESTING
             % ub = [x0(1) + 1*abs(x0(1)), x0(2) + 0.25*abs(x0(2)), min(F0(vi) + 0.5, 1)]; % TESTING
 
-            g1_exp_j_vi = g1_exp_j(vi, :); g1_exp_j_vi = g1_exp_j_vi(:);
+            g1_exp_j_vi = g1_exp{j}(vi, :); g1_exp_j_vi = g1_exp_j_vi(:);
             g1_exp_split_j_vi = [real(g1_exp_j_vi), imag(g1_exp_j_vi)];
 
-            % tau_inds = 2:PP.nTau; % Which time lags to fit over
-            % TESTING!!!!!!!!!!!!!!!!
-            tau_inds = 2:PP.nTau/2;
-            % tau_inds = 2:round(PP.nTau/5);
-            % tau_cropped = tau(tau_inds);
+            % Adaptive tau cropping
+            tau_inds = t1i:tau_decayed_ind(vi);
 
             % anon_fun = @(x) vUS_2D_erf_vec_split(x, tau(tau_inds), PP.k0, sigma) - g1_exp_split_j_vi(tau_inds, :);
             
             % Base residual function
-            anon_fun = @(x) vUS_2D_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :)); % Jacobian version
+            anon_fun = @(x) vUS_3D_TC_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :)); % Jacobian version
             
             % Weighted residuals function
             % rw_pow = 1; % Residual weighting power (1: linear, 2: quadratic, etc.)
@@ -462,7 +472,7 @@ for j = 3
             x = lsqnonlin(anon_fun, x0, lb, ub, opts); % x = [v_xgp, v_zgp, F, DC]
             % x = lsqnonlin(anon_fun, x0, [], [], opts); % x = [v_xgp, v_zgp, F, DC]
 
-            v_xgp_stacked(vi) = x(1);
+            v_tgp_stacked(vi) = x(1);
             v_zgp_stacked(vi) = x(2);
             F_stacked(vi) = x(3);
             DC_stacked(vi) = x(4);
@@ -470,20 +480,20 @@ for j = 3
     end
     toc
 
-    v_xgp = unstackData(v_xgp_stacked, PP);
+    v_tgp = unstackData(v_tgp_stacked, PP);
     v_zgp = unstackData(v_zgp_stacked, PP);
     F = unstackData(F_stacked, PP);
     DC = unstackData(DC_stacked, PP);
 
-    test = vUS_2D_erf_vec(x, tau, PP.k0, sigma);
-    figure; plot(tau, abs(g1_exp_j(vi, :)), tau, abs(test))
-    figure; plot(g1_exp_j(vi, :), '-x'); hold on; plot(test, '-o'); hold off; legend('Data', 'Fit'); axis equal; xlim([-1, 1]); ylim([-1, 1])
+    test = vUS_3D_erf_TC_vec(x, tau, PP.k0, sigma);
+    figure; plot(tau, abs(g1_exp{j}(vi, :)), tau, abs(test))
+    figure; plot(g1_exp{j}(vi, :), '-x'); hold on; plot(test, '-o'); hold off; legend('Data', 'Fit'); axis equal; xlim([-1, 1]); ylim([-1, 1])
 
 end
 
 %% Visualize total fitted speed
-v = sqrt(v_xgp.^2 + v_zgp.^2);
-figure; imagesc(v); clim([0, min(prctile(v, 99, 'all'), 40e-3)]); colormap turbo; axis equal; colorbar
+v = sqrt(v_tgp.^2 + v_zgp.^2);
+figure; imagesc(squeeze(max(v, [], 1))); clim([0, min(prctile(v, 99, 'all'), 40e-3)]); colormap turbo; axis equal; colorbar
 % figure; imagesc(unstackData(sqrt(Vx0.^2 + Vz0.^2), PP)); clim([0, 0.04]); colormap turbo; axis equal; colorbar
 
 %% Visualize fitted v_zgp
@@ -491,21 +501,21 @@ figure; imagesc(v_zgp); colormap(VzCmap); axis equal; colorbar; clim([-.030, 0.0
 % figure; imagesc(abs(v_zgp)); colormap(VzCmapDn); axis equal; colorbar
 
 %% Visualize fitted v_xgp
-figure; imagesc(v_xgp); colormap(VzCmapDn); clim([0, min(prctile(v_xgp, 99, 'all'), 40e-3)]); axis equal; colorbar
+figure; imagesc(v_tgp); colormap(VzCmapDn); clim([0, min(prctile(v_tgp, 99, 'all'), 40e-3)]); axis equal; colorbar
 
 %% Calculate the fitted g1 curves for each valid pixel
 g1_model = zeros(num_voxels, nTau);
 for vi = 1:num_voxels % voxel index
     if maskToUse(vi) % If the voxel was fitted
-        x = [v_xgp_stacked(vi), v_zgp_stacked(vi), F_stacked(vi), DC_stacked(vi)];
-        g1_model(vi, :) = vUS_2D_erf_vec(x, tau, PP.k0, sigma);
+        x = [v_tgp_stacked(vi), v_zgp_stacked(vi), F_stacked(vi), DC_stacked(vi)];
+        g1_model(vi, :) = vUS_3D_erf_TC_vec(x, tau, PP.k0, sigma);
     end
 end
 
 g1_model = unstackData(g1_model, PP);
 
 %% Visualize the experimental vs. fitted g1
-pixelTimeseriesGUI({g1{3}, g1_model}, v, 'DataNames', {'Data', 'Fit'}, 'ComplexMode', 'abs', 'Colormap', 'turbo')
+voxelTimeseriesGUI({g1{3}, g1_model}, v, 'DataNames', {'Data', 'Fit'}, 'ComplexMode', 'abs', 'Colormap', 'turbo')
 
 %% Testing: visualize vUS results
 vUS_speed = cell(size(vUS));

@@ -313,7 +313,7 @@ num_voxels = size(IQf, 1)*size(IQf, 2);
 
 t1i = 2; % Index for tau1 --> 2 for my code, because it calculates g1 starting at tau = 0
 
-% Set parameters for findTayDecayed.m
+% Set parameters for findTauDecayed.m
 absolute_tau_ss_cutoff_s = 10e-3;
 too_fast_decay_s = 1e-3; 
 
@@ -414,7 +414,7 @@ for j = 3
     tic
     % ind = sub2ind(ps, 23, 187)
 
-    temp_g1_tau1_mask = squeeze(abs(g1{j}(:, :, t1i))) > 0.1;
+    temp_g1_tau1_mask = squeeze(abs(g1{j}(:, :, t1i))) > 0.1; % Note: this does not account for the static component
     % figure; imagesc(temp_g1_tau1_mask)
 
     % Choose the mask to use to fit certain pixels or not
@@ -493,15 +493,15 @@ end
 
 %% Visualize total fitted speed
 v = sqrt(v_xgp.^2 + v_zgp.^2);
-figure; imagesc(v); clim([0, min(prctile(v, 99, 'all'), 40e-3)]); colormap turbo; axis equal; colorbar
+figure; imagesc(v); clim([0, min(prctile(v, 99, 'all'), 40e-3)]); colormap turbo; axis equal; axis tight; colorbar
 % figure; imagesc(unstackData(sqrt(Vx0.^2 + Vz0.^2), PP)); clim([0, 0.04]); colormap turbo; axis equal; colorbar
 
 %% Visualize fitted v_zgp
-figure; imagesc(v_zgp); colormap(VzCmap); axis equal; colorbar; clim([-.030, 0.030])
+figure; imagesc(v_zgp); colormap(VzCmap); axis equal; axis tight; colorbar; clim([-.030, 0.030])
 % figure; imagesc(abs(v_zgp)); colormap(VzCmapDn); axis equal; colorbar
 
 %% Visualize fitted v_xgp
-figure; imagesc(v_xgp); colormap(VzCmapDn); clim([0, min(prctile(v_xgp, 99, 'all'), 40e-3)]); axis equal; colorbar
+figure; imagesc(v_xgp); colormap(VzCmapDn); clim([0, min(prctile(v_xgp, 99, 'all'), 40e-3)]); axis equal; axis tight; colorbar
 
 %% Calculate the fitted g1 curves for each valid pixel
 g1_model = zeros(num_voxels, nTau);
