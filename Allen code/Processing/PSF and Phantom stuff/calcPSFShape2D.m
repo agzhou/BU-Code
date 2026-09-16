@@ -10,8 +10,11 @@ load([datapath, 'params.mat'])
 load([datapath, 'PData.mat'])
 load([datapath, 'PSF.mat'])
 
+%% Define coordinates
+[x_mm, z_mm] = getReconCoords2D(PData, P);
+
 %% Plot the data
-figure; imagesc(abs(IQ)); title('xz plane'); colormap gray
+figure; imagesc(z_mm, x_mm, abs(IQ)); title('xz plane'); colormap gray; xlabel('x [mm]'); ylabel('z [mm]'); axis equal; axis tight
 
 %% Get the position of the point scatterer - assuming there is only one scatterer
 pos_wl = P.Media.MP(1, 1:3); % Position in wavelengths

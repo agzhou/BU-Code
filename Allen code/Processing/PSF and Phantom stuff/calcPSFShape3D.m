@@ -12,8 +12,12 @@ load([datapath, 'params.mat'])
 load([datapath, 'PData.mat'])
 load([datapath, 'PSF.mat'])
 
+%% Define coordinates
+[x_mm, y_mm, z_mm] = getReconCoords3D(PData, P);
+
 %% Plot the data
-figure; imagesc(squeeze(max(abs(IQ), [], 1))'); title('xz MIP'); colormap gray
+figure; imagesc(x_mm, z_mm, squeeze(max(abs(IQ), [], 1))'); title('xz MIP'); colormap gray; xlabel('x [mm]'); ylabel('z [mm]'); axis equal; axis tight
+figure; imagesc(x_mm, y_mm, squeeze(max(abs(IQ), [], 3))'); title('xy MIP'); colormap gray; xlabel('x [mm]'); ylabel('y [mm]'); axis equal; axis tight
 
 %% Get the position of the point scatterer - assuming there is only one scatterer
 pos_wl = P.Media.MP(1, 1:3); % Position in wavelengths
