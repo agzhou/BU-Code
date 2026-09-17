@@ -702,11 +702,40 @@ for j = 3
     F_combined = unstackData(F_combined_stacked, PP);
     DC_combined = unstackData(DC_combined_stacked, PP);
 
-    test = vUS_3D_combined_split(x_combined, tau, PP.k0);
+    test_split = vUS_3D_combined_split(x_combined, tau, PP.k0);
+    test = complex(test_split(:, 1), test_split(:, 2));
     figure; plot(tau, abs(g1_exp{j}(vi, :)), tau, abs(test))
     figure; plot(g1_exp{j}(vi, :), '-x'); hold on; plot(test, '-o'); hold off; legend('Data', 'Fit'); axis equal; xlim([-1, 1]); ylim([-1, 1])
 
 end
+
+%% Visualizations for the combined version
+% Total fitted speed
+v = sqrt(v_tgp.^2 + v_zgp.^2);
+figure; imagesc(squeeze(max(v, [], 1))); clim([0, min(prctile(v, 99, 'all'), 40e-3)]); colormap turbo; axis equal; axis tight; colorbar
+% figure; imagesc(unstackData(sqrt(Vx0.^2 + Vz0.^2), PP)); clim([0, 0.04]); colormap turbo; axis equal; colorbar
+
+% Fitted v_zgp_combined
+figure; imagesc(squeeze(max(v_zgp_combined, [], 1))); colormap(VzCmap); axis equal; axis tight; colorbar; clim([-.030, 0.030])
+% figure; imagesc(abs(v_zgp)); colormap(VzCmapDn); axis equal; colorbar
+
+% Fitted C
+figure; imagesc(squeeze(max(C, [], 1))); colormap(VzCmapDn); clim([0, prctile(C, 99, 'all')]); axis equal; axis tight; colorbar
+
+% Calculate the fitted g1 curves for each valid pixel
+g1_model_combined = zeros(num_voxels, nTau);
+for vi = 1:num_voxels % voxel index
+    if maskToUse(vi) % If the voxel was fitted
+        x_combined = [C(vi), v_zgp_combined_stacked(vi), F_combined_stacked(vi), DC_combined_stacked(vi)];
+        temp = vUS_3D_combined_split(x_combined, tau, PP.k0);
+        g1_model_combined(vi, :) = complex(temp(:, 1), temp(:, 2));
+    end
+end
+
+g1_model_combined = unstackData(g1_model_combined, PP);
+
+% Visualize the experimental vs. fitted g1
+voxelTimeseriesGUI({g1{3}, g1_model_combined}, v_zgp_combined, 'DataNames', {'Data', 'Fit'}, 'ComplexMode', 'abs', 'Colormap', 'turbo')
 
 %% Overlay up and down flows
 
