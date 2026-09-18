@@ -33,14 +33,14 @@ endSamples = zeros(P.numFramesPerBuffer, 1);
 % warning('Per-frame code for stacked RF timetags only works for linear array right now; need to do P.na*2 for RCA...')
 for iFrame = 1:P.numFramesPerBuffer
     if isequal(P.Trans.name, 'L22-14v')
-        startSamples(iFrame) = Receive((iFrame-1)*P.na + 1).startSample;
-        endSamples(iFrame) = Receive((iFrame-1)*P.na + 1).endSample;
+        startSamples(iFrame) = P.Receive((iFrame-1)*P.na + 1).startSample;
+        endSamples(iFrame) = P.Receive((iFrame-1)*P.na + 1).endSample;
     elseif isequal(P.Trans.name, 'RC15gV')
-        startSamples(iFrame) = Receive((iFrame-1)*P.na*2 + 1).startSample;
-        endSamples(iFrame) = Receive((iFrame-1)*P.na*2 + 1).endSample;
+        startSamples(iFrame) = P.Receive((iFrame-1)*P.na*2 + 1).startSample;
+        endSamples(iFrame) = P.Receive((iFrame-1)*P.na*2 + 1).endSample;
     end
 end
-
+%%
 for iFile = 1:RFcount
 % for iFile = 1:4
 
