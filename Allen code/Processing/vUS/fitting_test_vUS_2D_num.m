@@ -20,10 +20,11 @@ fmax = a^2 * (k + 2) ./ k;
 % Calculate g1 model
 g1 = zeros(length(tau), 1); % Initialize g1 vector
 x = [v_xgp, v_zgp, F, DC, k, a]; % Parameter vector
-for ti = 1:length(tau)
-    t = tau(ti);
-    g1(ti) = integral(vUS_2D_num_vec(x, t, k0, sigma), fmin, fmax);
-end
+% for ti = 1:length(tau)
+%     t = tau(ti);
+%     g1(ti) = integral(vUS_2D_num_vec(x, t, k0, sigma), fmin, fmax);
+% end
+g1(ti) = integral(vUS_2D_num_vec(x, tau, k0, sigma), fmin, fmax, 'ArrayValued', true);
 
 % plot result
 figure; plot(tau, abs(g1), 'LineWidth', 2), xlabel('tau'); ylabel('|g1|')
@@ -39,12 +40,13 @@ g1 = cell(length(k), 1);
 
 for ki = 1:length(k)
     x = [v_xgp, v_zgp, F, DC, k(ki), a]; % Parameter vector
-    temp_g1 = zeros(length(tau), 1); % Initialize g1 vector
-    for ti = 1:length(tau)
-        t = tau(ti);
-        temp_g1(ti) = integral(vUS_2D_num_vec(x, t, k0, sigma), fmin(ki), fmax(ki));
-    end
-    g1{ki} = temp_g1;
+    % temp_g1 = zeros(length(tau), 1); % Initialize g1 vector
+    % for ti = 1:length(tau)
+    %     t = tau(ti);
+    %     temp_g1(ti) = integral(vUS_2D_num_vec(x, t, k0, sigma), fmin(ki), fmax(ki));
+    % end
+    % g1{ki} = temp_g1;
+    g1{ki} = integral(vUS_2D_num_vec(x, tau, k0, sigma), fmin(ki), fmax(ki), 'ArrayValued', true);
 end
 
 % Plot
