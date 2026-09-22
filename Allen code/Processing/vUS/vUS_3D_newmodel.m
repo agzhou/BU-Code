@@ -105,25 +105,26 @@ clearvars IQ
 %     [PP, EVs, V_sort] = getSVs2D(IQ);
 [xp, yp, zp, nf] = size(IQm);
 
-CM = reshape(IQm, [xp*yp*zp, nf]); % Covariance matrix
-tic
-%     [U, S, V] = svd(PP); % Already sorted in decreasing order
-[U, S, V] = svd(CM, 'econ'); % Already sorted in decreasing order
-SVs = diag(S);
-%     disp('Full SVD done')
-toc
-disp('SVs decomposed')
+% CM = reshape(IQm, [xp*yp*zp, nf]); % Covariance matrix
+% tic
+% %     [U, S, V] = svd(PP); % Already sorted in decreasing order
+% [U, S, V] = svd(CM, 'econ'); % Already sorted in decreasing order
+% SVs = diag(S);
+% %     disp('Full SVD done')
+% toc
+% disp('SVs decomposed')
 
 %     SSM = plotSSM(U, true);
 
-% sv_threshold_lower = 20; sv_threshold_upper = size(IQm, fDim);
-[IQf, noise] = applySVs2D(IQm, CM, SVs, V, sv_threshold_lower, sv_threshold_upper);
-clearvars CM U S V
+[CM, EVs, V] = getSVs2D(IQm);
+% sv_threshold_lower = 30; sv_threshold_upper = size(IQm, fDim);
+% [IQf, noise] = applySVs2D(IQm, CM, SVs, V, sv_threshold_lower, sv_threshold_upper);
+[IQf, noise] = applySVs2D(IQm, CM, EVs, V, sv_threshold_lower, sv_threshold_upper);
+% clearvars CM U S V
 
 % 1.2 High pass filter (apply to the post-SVD clutter filtered data)
 HPF.dim = length(size(IQf)); % Operate on the time dimension
 IQf_HPF = filter(HPF.b, HPF.a, IQf, [], HPF.dim);
-
 
 % Testing
 % figure; imagesc(squeeze(abs(IQf(:, :, 1))))
@@ -192,10 +193,12 @@ tau = (0:nTau - 1)' ./ P.frameRate; % Time lag vector [s]
 % Store g1 for each frequency component in a cell array
 g1 = cell(size(IQf_separated));
 
+tic
 for j = ctp
-    % g1{j} = g1T(IQf_separated{j}, nTau); % Use the base filtered IQ
-    g1{j} = g1T(IQf_separated_masked{j}, nTau); % Use the filtered IQ with system noise removed
+    % g1{j} = g1T_fft(IQf_separated{j}, nTau); % Use the base filtered IQ
+    g1{j} = g1T_fft(IQf_separated_masked{j}, nTau); % Use the filtered IQ with system noise removed
 end
+toc
 
 % voxelTimeseriesGUI(g1{3}, tempPDI.^0.5, 'ComplexMode', 'abs')
 
@@ -503,7 +506,7 @@ figure; imagesc(squeeze(max(v_zgp, [], 1))); colormap(VzCmap); axis equal; axis 
 % figure; imagesc(abs(v_zgp)); colormap(VzCmapDn); axis equal; colorbar
 
 %% Visualize fitted v_tgp
-figure; imagesc(squeeze(max(v_tgp, [], 1))); colormap(VzCmapDn); clim([0, min(prctile(v_tgp, 99, 'all'), 40e-3)]); axis equal; axis tight; colorbar; title("v_{tgp}")
+figure; imagesc(squeeze(max(v_tgp, [], 1))); colormap(VzCmapDn); axis equal; axis tight; colorbar; title("v_{tgp}")
 
 %% Visualize fitted k (bluntness)
 figure; imagesc(squeeze(max(k, [], 1))); colormap(VzCmapDn); clim([2, min(prctile(k, 99, 'all'), 3)]); axis equal; axis tight; colorbar

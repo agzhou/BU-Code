@@ -29,6 +29,7 @@ function [g1] = g1T_fft(data, varargin)
     denom = mean(conj(data) .* data, frameDim); % temporal (frame) average
 
     L = 2^nextpow2(nf + np - 1); % zero-pad enough to avoid circular wraparound for lags 0..np-1
+    % L = 2^nextpow2(nf); % TESTING
     F = fft(data, L, frameDim);
     C = ifft(F .* conj(F), L, frameDim); % C(...,m+1) = sum_{t=1}^{nf-m} data(t+m)*conj(data(t)), m = 0..L-1
 
