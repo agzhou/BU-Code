@@ -371,7 +371,7 @@ for j = 3
     % Axial component of the blood flow's group velocity -- v_zgp
     [Vz0, tau_V] = findVzPhaseDiff(stackData(g1{j}, PP), PP); % v_zgp [m/s]
     % [Vz0, tau_V] = findVzPhaseDiff(g1adj_stacked_j, PP); % v_zgp [m/s]
-    % figure; imagesc(unstackData(Vz0, PP)); colormap(VzCmap); axis equal; colorbar; clim([-30e-3, 30e-3])
+    % figure; imagesc(squeeze(max(unstackData(Vz0, PP), [], 1))'); colormap(VzCmap); axis equal; colorbar; clim([-30e-3, 30e-3])
     % volumeViewer(abs(unstackData(Vz0, PP)))
 
     % Mesh method for finding v_tgp0
@@ -405,9 +405,8 @@ for j = 3
 
     useF = true;
     useDC = true;
-    opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', true);
-    % opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', true, 'Algorithm', 'levenberg-marquardt');
-    % opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', false);
+    % opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', true);
+    opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', false);
 
     % v_xgp = zeros(PP.zp, PP.xp);
     % v_zgp = zeros(PP.zp, PP.xp);
@@ -418,8 +417,10 @@ for j = 3
     v_zgp_stacked = zeros(num_voxels, 1);
     F_stacked = zeros(num_voxels, 1);
     DC_stacked = zeros(num_voxels, 1);
+    k_stacked = zeros(num_voxels, 1);
+    a_stacked = zeros(num_voxels, 1);
 
-    tic
+    
     % ind = sub2ind(ps, 23, 187)
 
     % Choose the mask to use to fit certain pixels or not
@@ -428,6 +429,7 @@ for j = 3
     maskToUse = and(voxel_quality, temp_g1_tau1_mask);
     % volumeViewer(unstackData(maskToUse, PP))
 
+    tic
     for vi = 1:num_voxels % voxel index
     % for vi = 1:300
     % for vi = ind
@@ -438,36 +440,32 @@ for j = 3
         % if overall_mask_stacked_j(vi) & vesselAngleMask(vi) % Fit only voxels we believe have high signal quality
         % if vesselAngleMask(vi) % Fit only voxels we believe have high signal quality
             % x0 = [Vt0(vi), Vz0(vi), FR0_j(vi), DCR0_j(vi)];
-            x0 = [Vt0(vi), Vz0(vi), 1, 0];
+            x0 = [Vt0(vi), Vz0(vi), 1, 0, 2.5, 1];
             % **** Check lb AND ub --> VELOCITIES CAN BE NEGATIVE ****
             % lb = [x0(1) - 0.25*abs(x0(1)), x0(2) - 0.25*abs(x0(2)), max(F0(vi) - 0.2, 0), max(DC0(vi) - 0.2, 0)]; % TESTING
             % ub = [x0(1) + 0.25*abs(x0(1)), x0(2) + 0.25*abs(x0(2)), min(F0(vi) + 0.2, 1), min(DC0(vi) + 0.2, 1)]; % TESTING
             % lb = [0, -30e-3, 0, 0]; % TESTING
             % ub = [30e-3, 30e-3, 1, 1]; % TESTING
-            lb = [0, x0(2) - 0.01, 0, 0]; % TESTING
-            ub = [sqrt(2)*30e-3, x0(2) + 0.01, 1, 1]; % TESTING
-            
-            % % lb = [x0(1) - 1*abs(x0(1)), x0(2) - 0.25*abs(x0(2)), max(F0(vi) - 0.5, 0)]; % TESTING
-            % ub = [x0(1) + 1*abs(x0(1)), x0(2) + 0.25*abs(x0(2)), min(F0(vi) + 0.5, 1)]; % TESTING
+            % lb = [0, x0(2) - 0.01, 0, 0]; % TESTING
+            % ub = [sqrt(2)*30e-3, x0(2) + 0.01, 1, 1]; % TESTING
+            lb = [0, x0(2) - 0.01, 0, 0, 2, 0]; % TESTING
+            ub = [sqrt(2)*30e-3, x0(2) + 0.01, 1, 1, 3, 1]; % TESTING
 
             g1_exp_j_vi = g1_exp{j}(vi, :); g1_exp_j_vi = g1_exp_j_vi(:);
             g1_exp_split_j_vi = [real(g1_exp_j_vi), imag(g1_exp_j_vi)];
 
             % Adaptive tau cropping
+            % tau_inds = t1i:round(nTau/3); % testing
             tau_inds = t1i:tau_decayed_ind(vi);
-
-            % anon_fun = @(x) vUS_2D_erf_vec_split(x, tau(tau_inds), PP.k0, sigma) - g1_exp_split_j_vi(tau_inds, :);
             
             % Base residual function
-            anon_fun = @(x) vUS_3D_TC_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :)); % Jacobian version
+            anon_fun = @(x) vUS_3D_num_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :)); % Jacobian version
             
             % Weighted residuals function
             % rw_pow = 1; % Residual weighting power (1: linear, 2: quadratic, etc.)
             % OF_weight = (max(tau_cropped) - tau_cropped).^rw_pow;
             % OF_weight = OF_weight./max(OF_weight); % Objective function weighting: trust residuals from earlier time lags more
-            % anon_fun = @(x) vUS_2D_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :), OF_weight); % Jacobian version
-
-            % anon_fun = @(x) vUS_2D_OF_nonsplit(x, tau(tau_inds), PP.k0, sigma, g1_exp_j_vi(tau_inds, :)); % Jacobian version
+            % anon_fun = @(x) vUS_3D_num_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :), OF_weight); % Jacobian version
 
             x = lsqnonlin(anon_fun, x0, lb, ub, opts); % x = [v_xgp, v_zgp, F, DC]
             % x = lsqnonlin(anon_fun, x0, [], [], opts); % x = [v_xgp, v_zgp, F, DC]
@@ -476,6 +474,8 @@ for j = 3
             v_zgp_stacked(vi) = x(2);
             F_stacked(vi) = x(3);
             DC_stacked(vi) = x(4);
+            k_stacked(vi) = x(5);
+            a_stacked(vi) = x(6);
         end
     end
     toc
@@ -484,8 +484,10 @@ for j = 3
     v_zgp = unstackData(v_zgp_stacked, PP);
     F = unstackData(F_stacked, PP);
     DC = unstackData(DC_stacked, PP);
+    k = unstackData(k_stacked, PP);
+    a = unstackData(a_stacked, PP);
 
-    test = vUS_3D_erf_TC_vec(x, tau, PP.k0, sigma);
+    test = vUS_3D_num_wrapper(x, tau, PP.k0, sigma);
     figure; plot(tau, abs(g1_exp{j}(vi, :)), tau, abs(test))
     figure; plot(g1_exp{j}(vi, :), '-x'); hold on; plot(test, '-o'); hold off; legend('Data', 'Fit'); axis equal; xlim([-1, 1]); ylim([-1, 1])
 
@@ -497,18 +499,21 @@ figure; imagesc(squeeze(max(v, [], 1))); clim([0, min(prctile(v, 99, 'all'), 40e
 % figure; imagesc(unstackData(sqrt(Vx0.^2 + Vz0.^2), PP)); clim([0, 0.04]); colormap turbo; axis equal; colorbar
 
 %% Visualize fitted v_zgp
-figure; imagesc(squeeze(max(v_zgp, [], 1))); colormap(VzCmap); axis equal; axis tight; colorbar; clim([-.030, 0.030])
+figure; imagesc(squeeze(max(v_zgp, [], 1))); colormap(VzCmap); axis equal; axis tight; colorbar; clim([-.030, 0.030]); title("v_{zgp}")
 % figure; imagesc(abs(v_zgp)); colormap(VzCmapDn); axis equal; colorbar
 
-%% Visualize fitted v_xgp
-figure; imagesc(squeeze(max(v_tgp, [], 1))); colormap(VzCmapDn); clim([0, min(prctile(v_tgp, 99, 'all'), 40e-3)]); axis equal; axis tight; colorbar
+%% Visualize fitted v_tgp
+figure; imagesc(squeeze(max(v_tgp, [], 1))); colormap(VzCmapDn); clim([0, min(prctile(v_tgp, 99, 'all'), 40e-3)]); axis equal; axis tight; colorbar; title("v_{tgp}")
+
+%% Visualize fitted k (bluntness)
+figure; imagesc(squeeze(max(k, [], 1))); colormap(VzCmapDn); clim([2, min(prctile(k, 99, 'all'), 3)]); axis equal; axis tight; colorbar
 
 %% Calculate the fitted g1 curves for each valid pixel
 g1_model = zeros(num_voxels, nTau);
 for vi = 1:num_voxels % voxel index
     if maskToUse(vi) % If the voxel was fitted
-        x = [v_tgp_stacked(vi), v_zgp_stacked(vi), F_stacked(vi), DC_stacked(vi)];
-        g1_model(vi, :) = vUS_3D_erf_TC_vec(x, tau, PP.k0, sigma);
+        x = [v_tgp_stacked(vi), v_zgp_stacked(vi), F_stacked(vi), DC_stacked(vi), k_stacked(vi), a_stacked(vi)];
+        g1_model(vi, :) = vUS_3D_num_wrapper(x, tau, PP.k0, sigma);
     end
 end
 
