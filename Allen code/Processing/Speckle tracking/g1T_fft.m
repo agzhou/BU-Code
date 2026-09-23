@@ -17,6 +17,12 @@
 %   padding to L >= nf + np - 1 covers every lag this function returns.
 
 function [g1] = g1T_fft(data, varargin)
+    % Reduce memory use if possible
+    if max(max(abs(real(data)), [], 'all'), max(abs(imag(data)), [], 'all')) <= flintmax('single')
+        data = single(data);
+    else
+        warning('data contains values higher than a single can represent, g1T_fft will use double precision')
+    end
     frameDim = ndims(data);
     nf = size(data, frameDim);
 
