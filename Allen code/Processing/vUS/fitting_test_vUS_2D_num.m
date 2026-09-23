@@ -13,8 +13,8 @@ sigma = [58.9110, 73.9967].*1e-6; % Field-based 1/e PSF values (x, z) [m] for th
 F = 1; DC = 0;
 
 %% Set the flow profile parameters and calculate the g1 model (single curve)
-a = 1;
-k = 2;
+a = 0.8;
+k = 2.5;
 % fmin = 0;
 % fmax = a^2 * (k + 2) ./ k;
 [fmin, fmax] = calc_f_integration_limits(k, a);
@@ -26,13 +26,13 @@ x = [v_xgp, v_zgp, F, DC, k, a]; % Parameter vector
 %     t = tau(ti);
 %     g1(ti) = integral(vUS_2D_num_vec(x, t, k0, sigma), fmin, fmax);
 % end
-g1(ti) = integral(vUS_2D_num_vec(x, tau, k0, sigma), fmin, fmax, 'ArrayValued', true);
+g1 = integral(vUS_2D_num_vec(x, tau, k0, sigma), fmin, fmax, 'ArrayValued', true);
 
 % plot result
 figure; plot(tau, abs(g1), 'LineWidth', 2), xlabel('tau'); ylabel('|g1|')
 
 %% Sweep over the flow profile parameters (only k for now)
-a = 1;
+a = 0.4;
 k = [2:0.2:3];
 % fmin = zeros(length(k), 1);
 % fmax = a^2 * (k + 2) ./ k;
@@ -55,13 +55,13 @@ end
 % Plot
 figure; hold on
 for ki = 1:length(k)
-    plot(tau.*1e3, abs(g1{ki}), 'LineWidth', 2), xlabel('tau [ms]'); ylabel('|g1|'); title('|g1| at different values of k')
+    plot(tau.*1e3, abs(g1{ki}), 'LineWidth', 2), xlabel('tau [ms]'); ylabel('|g1|'); title("|g1| at different values of k and a = " + num2str(a))
 end
 legend(num2str(k.'))
 
 figure; hold on
 for ki = 1:length(k)
-    plot(g1{ki}, 'LineWidth', 2), title('g1 at different values of k')
+    plot(g1{ki}, 'LineWidth', 2), title("g1 at different values of k and a = " + num2str(a))
 end
 axis equal; xlim([-1, 1]); ylim([-1, 1]); 
 legend(num2str(k.'), 'Location', 'southeast')

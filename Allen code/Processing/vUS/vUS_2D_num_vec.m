@@ -28,7 +28,8 @@ function [Ifh] = vUS_2D_num_vec(x, tau, k0, sigma)
     v_xgp = x(1); v_zgp = x(2); F = x(3); DC = x(4); k = x(5); a = x(6);
     M = v_xgp.^2./sigma(1)^2 + v_zgp.^2./sigma(2)^2;
 
-    Ifh = @(f) 2./(a.^4*(k+2)) .* exp(-M.*tau.^2 ./4 .* f.^2 + 2.*1i.*k0.*v_zgp.*tau .*f) .* (1 - f.* k./(a.^2*(k+2))).^ (2./k - 1);
+
+    Ifh = @(f) 2./(a.^2 .* k) .* (1 - 2./(k+2).*a.^k) .* exp(-M.*tau.^2 ./4 .* f.^2 + 2.*1i.*k0.*v_zgp.*tau .*f) .* (1 - f.* (1 - 2./(k+2).*a.^k)).^ (2./k - 1);
 
 end
 

@@ -37,7 +37,7 @@ function [Ifh] = vUS_3D_num_vec(x, tau, k0, sigma)
     M = v_tgp.^2./sigma(1)^2 + v_zgp.^2./sigma(3)^2;
 
     % Output the g1 model integrand as an anonymous function [handle] of f
-    Ifh = @(f) 2./(a.^4*(k+2)) .* exp(-M.*tau.^2 ./4 .* f.^2 + 2.*1i.*k0.*v_zgp.*tau .*f) .* (1 - f.* k./(a.^2*(k+2))).^ (2./k - 1);
+    Ifh = @(f) 2./(a.^2 .* k) .* (1 - 2./(k+2).*a.^k) .* exp(-M.*tau.^2 ./4 .* f.^2 + 2.*1i.*k0.*v_zgp.*tau .*f) .* (1 - f.* (1 - 2./(k+2).*a.^k)).^ (2./k - 1);
 
 end
 

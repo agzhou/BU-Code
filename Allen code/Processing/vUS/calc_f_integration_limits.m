@@ -3,7 +3,7 @@
 
 function [fmin, fmax] = calc_f_integration_limits(k, a)
 
-    fmin = 0;
-    fmax = a^2 * (k + 2) / k;
+    fmin = (1-a.^k) .* (k+2)./(k+2-2.*a.^k);
+    fmax = (k+2)./(k+2-2.*a.^k);
 
 end
