@@ -335,9 +335,9 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
 %     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
 %     disp("PDI and CDI for file " + num2str(filenum) + " saved" )
     % save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', '-v7.3', '-nocompression');
-    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'CDI', 'g1', '-v7.3', '-nocompression');
+    save([Mcr_savepath, 'fUSdata-', num2str(Mcr_filenum), '.mat'], 'PDI', 'CDI', 'g1', '-v7.3', '-nocompression');
 
-    disp("fUS data for file " + num2str(filenum) + " saved" )
+    disp("fUS data for file " + num2str(Mcr_filenum) + " saved" )
 %     disp("g1 result for file " + num2str(filenum) + " saved" )
 
     % ixc = calcIXC_simple(IQ);
@@ -349,5 +349,6 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
     clearvars IQ
     
     % pause(10) % Pause for safety of inter-superframe memory issues
-
+    
+     % voxelTimeseriesGUI(g1{3}, PDI{3}.^0.5, 'ComplexMode', 'abs')
 end
