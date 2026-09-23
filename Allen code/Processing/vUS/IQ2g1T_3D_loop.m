@@ -117,9 +117,9 @@ for filenum = startFile:endFile
     zrange = 10:110;
     voxelRange = {xrange, yrange, zrange};
     
-    tic
+    % tic
     [PDI, CDI, g1] = IQ2g1T_3D(IQ, P, voxelRange, sv_threshold_lower, sv_threshold_upper, HPF, nTau);
-    toc
+    % toc
 
     % save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'CDI', 'g1', 'noise', '-v7.3', '-nocompression');
     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'CDI', 'g1', '-v7.3', '-nocompression');
