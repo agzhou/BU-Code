@@ -128,6 +128,8 @@ for filenum = startFile:endFile
 %     disp("g1 result for file " + num2str(filenum) + " saved" )
 
     toc
+
+    clearvars PDI CDI g1 IQ
     
 end
 % savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'tau1_index_CBF', 'tau2_index_CBF', 'tau1_index_CBV');

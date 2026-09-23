@@ -12,7 +12,7 @@ function [PDI, CDI, g1, noise] = IQ2g1T_3D(IQ, P, voxelRange, sv_threshold_lower
     [CM, EVs, V] = getSVs2D(IQ);
     % disp('SVs decomposed')
     % [IQf, noise] = applySVs2D_accel(IQ, CM, EVs, V, sv_threshold_lower, sv_threshold_upper);
-    [IQf, noise] = applySVs2D_accel(IQ, CM, EVs, V, sv_threshold_lower, sv_threshold_upper);
+    [IQf] = applySVs2D_accel(IQ, CM, EVs, V, sv_threshold_lower, sv_threshold_upper);
     % disp('SVD filtered images put together')
     clearvars CM EVs V IQ
 
@@ -28,6 +28,7 @@ function [PDI, CDI, g1, noise] = IQ2g1T_3D(IQ, P, voxelRange, sv_threshold_lower
     % [PDI] = calcPowerDoppler(IQf_separated, noise);
     [PDI] = calcPowerDoppler(IQf_separated);
     [CDI] = calcColorDoppler(IQf_FT_separated, P);
+    clearvars IQf_FT_separated
 
     % PDI = sum(abs(IQf) .^ 2, 3) ./ size(IQf, 3);
     % PDI = sum(abs(IQf) .^ 2, 3) ./ size(IQf, 3) ./ noise;
