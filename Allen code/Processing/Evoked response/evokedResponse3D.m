@@ -67,6 +67,7 @@ for sftt = sfStarts.'
     xshade = [sftt + sfWidth, sftt + sfWidth, sftt, sftt];
     patch(xshade, yshade, 'g', 'FaceAlpha', .3) % Plot the shaded region
 end
+clearvars xshade yshade maxValue minValue
 
 % Determine which superframes are present while the stimulus is on
 
@@ -85,4 +86,9 @@ save([TDsavepath, 'TD.mat'], 'TD')
 % here...
 
 % For now, go through only PDI and CDI
+trialsToUse = [1, 2, 3];
+for trialInd = trialsToUse
+    
+end
+
 
