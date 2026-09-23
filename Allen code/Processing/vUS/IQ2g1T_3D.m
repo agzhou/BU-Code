@@ -1,4 +1,4 @@
-function [PDI, CDI, g1] = IQ2g1T_3D(IQ, P, voxelRange, sv_threshold_lower, sv_threshold_upper, HPF, nTau)
+function [PDI, CDI, g1, noise] = IQ2g1T_3D(IQ, P, voxelRange, sv_threshold_lower, sv_threshold_upper, HPF, nTau)
 
     % Mask the IQ to some region (according to the function input)
     xrange = voxelRange{1};
@@ -11,7 +11,8 @@ function [PDI, CDI, g1] = IQ2g1T_3D(IQ, P, voxelRange, sv_threshold_lower, sv_th
     
     [CM, EVs, V] = getSVs2D(IQ);
     % disp('SVs decomposed')
-    [IQf, noise] = applySVs2D(IQ, CM, EVs, V, sv_threshold_lower, sv_threshold_upper);
+    % [IQf, noise] = applySVs2D_accel(IQ, CM, EVs, V, sv_threshold_lower, sv_threshold_upper);
+    [IQf, noise] = applySVs2D_accel(IQ, CM, EVs, V, sv_threshold_lower, sv_threshold_upper);
     % disp('SVD filtered images put together')
     clearvars CM EVs V IQ
 
@@ -24,7 +25,8 @@ function [PDI, CDI, g1] = IQ2g1T_3D(IQ, P, voxelRange, sv_threshold_lower, sv_th
 
     % Use the IQf with separated negative and positive frequency components
     [IQf_separated, IQf_FT_separated, nFTpts] = separatePosNegFreqs(IQf_HPF); % Outputs are cell arrays in the order of: negative, positive, all frequencies
-    [PDI] = calcPowerDoppler(IQf_separated, noise);
+    % [PDI] = calcPowerDoppler(IQf_separated, noise);
+    [PDI] = calcPowerDoppler(IQf_separated);
     [CDI] = calcColorDoppler(IQf_FT_separated, P);
 
     % PDI = sum(abs(IQf) .^ 2, 3) ./ size(IQf, 3);
@@ -36,7 +38,7 @@ function [PDI, CDI, g1] = IQ2g1T_3D(IQ, P, voxelRange, sv_threshold_lower, sv_th
     % Store g1 for each frequency component in a cell array
     g1 = cell(size(IQf_separated));
     
-    for j = ctp
+    for j = 1:length(g1)
         g1{j} = g1T_fft(IQf_separated{j}, nTau); % Use the base filtered IQ
         % g1{j} = g1T_fft(IQf_separated_masked{j}, nTau); % Use the filtered IQ with system noise removed
     end

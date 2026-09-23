@@ -118,12 +118,10 @@ for filenum = startFile:endFile
     voxelRange = {xrange, yrange, zrange};
     
     tic
-    [PDI, CDI, g1] = IQ2g1T_3D(IQ, P, voxelRange, sv_threshold_lower, sv_threshold_upper, HPF);
+    [PDI, CDI, g1] = IQ2g1T_3D(IQ, P, voxelRange, sv_threshold_lower, sv_threshold_upper, HPF, nTau);
     toc
 
-%     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
-%     disp("PDI and CDI for file " + num2str(filenum) + " saved" )
-    % save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', '-v7.3', '-nocompression');
+    % save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'CDI', 'g1', 'noise', '-v7.3', '-nocompression');
     save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'CDI', 'g1', '-v7.3', '-nocompression');
 
     disp("fUS data for file " + num2str(filenum) + " saved" )
