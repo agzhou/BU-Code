@@ -15,7 +15,7 @@ if ~exist('P_old', 'var')
 end
 [P] = oldP2P(P_old);
 
-%% Add the Speckle tracking folder to path
+%% Add the Processing folder to path
 codeDir = cd;
 codeDir_split = split(string(codeDir), filesep);
 % AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "Allen code"))), '\') + "\Verasonics");
@@ -61,9 +61,10 @@ HPF.order = 4; % Butterworth filter order
 
 %% Define some parameters
 
-% sigma = [428.6226, 428.6226, 126.2191].*1e-6; % Field-based 1/e PSF values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 11 x 2 angles from -5 to 5 deg (G:\My Drive\Data\RC15gV PSF sim - 11 angles from -5 to 5 deg)
-% sigma = [344.7673, 344.7673, 125.5386].*1e-6; % Field-based 1/e PSF values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 11 x 2 angles from -6 to 6 deg
-sigma = [368.1124, 368.1124, 126.4505].*1e-6; % Field-based 1/e PSF values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 5 x 2 angles from -6 to 6 deg
+% Define the sigma values, from simulations
+% sigma = [121.8936, 121.8936, 44.3846].*1e-6; % Field-based sigma values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 11 x 2 angles from -5 to 5 deg (G:\My Drive\Data\RC15gV PSF sim - 11 angles from -5 to 5 deg)
+% sigma = [151.5410, 151.5410, 44.6252].*1e-6; % Field-based sigma values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 11 x 2 angles from -6 to 6 deg
+sigma = [130.1474, 130.1474, 44.7070].*1e-6; % Field-based sigma values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 5 x 2 angles from -6 to 6 deg
 
 xDim = 1; % Dimension of the data corresponding to x (lateral direction)
 yDim = 2; % Dimension of the data corresponding to y (lateral direction)
