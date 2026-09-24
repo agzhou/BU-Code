@@ -519,15 +519,15 @@ end
 
 %% Visualize total fitted speed
 v = sqrt(v_tgp.^2 + v_zgp.^2);
-figure; imagesc(squeeze(max(v, [], 1))); clim([0, min(prctile(v, 99, 'all'), 40e-3)]); colormap turbo; axis equal; axis tight; colorbar
+figure; imagesc(squeeze(max(v, [], 1))); clim([0, min(prctile(v(v>0), 99, 'all'), 40e-3)]); colormap turbo; axis equal; axis tight; colorbar
 % figure; imagesc(unstackData(sqrt(Vx0.^2 + Vz0.^2), PP)); clim([0, 0.04]); colormap turbo; axis equal; colorbar
 
 %% Visualize fitted v_zgp
-figure; imagesc(squeeze(max(v_zgp, [], 1))); colormap(VzCmap); axis equal; axis tight; colorbar; clim([-.030, 0.030]); title("v_{zgp}")
+figure; imagesc(squeeze(max(v_zgp, [], 1))'); colormap(VzCmap); axis equal; axis tight; colorbar; clim([-.030, 0.030]); title("v_{zgp}")
 % figure; imagesc(abs(v_zgp)); colormap(VzCmapDn); axis equal; colorbar
 
 %% Visualize fitted v_tgp
-figure; imagesc(squeeze(max(v_tgp, [], 1))); colormap(VzCmapDn); axis equal; axis tight; colorbar; title("v_{tgp}")
+figure; imagesc(squeeze(max(v_tgp, [], 1))'); colormap(VzCmapDn); axis equal; axis tight; colorbar; title("v_{tgp}")
 
 %% Visualize fitted k (bluntness)
 figure; imagesc(squeeze(max(k, [], 1))); colormap(VzCmapDn); clim([2, min(prctile(k, 99, 'all'), 3)]); axis equal; axis tight; colorbar
@@ -537,7 +537,8 @@ g1_model = zeros(num_voxels, nTau);
 for vi = 1:num_voxels % voxel index
     if maskToUse(vi) % If the voxel was fitted
         x = [v_tgp_stacked(vi), v_zgp_stacked(vi), F_stacked(vi), DC_stacked(vi), k_stacked(vi), a_stacked(vi)];
-        g1_model(vi, :) = vUS_3D_num_wrapper(x, tau, PP.k0, sigma);
+        % g1_model(vi, :) = vUS_3D_num_wrapper(x, tau, PP.k0, sigma);
+        g1_model(vi, :) = vUS_3D_quad_vec(x, tau, k0, sigma, s, w);
     end
 end
 
@@ -550,6 +551,8 @@ voxelTimeseriesGUI({g1{3}, g1_model}, v, 'DataNames', {'Data', 'Fit'}, 'ComplexM
 figure; histogram(a(a>0)); title('a')
 figure; histogram(k(k>0)); title('k')
 figure; histogram(v_tgp(v_tgp > 0)); title("v_{tgp}")
+figure; histogram(v_zgp(v_zgp > 0)); title("v_{zgp}")
+
 %% Testing: visualize vUS results
 vUS_speed = cell(size(vUS));
 for j = ctp
