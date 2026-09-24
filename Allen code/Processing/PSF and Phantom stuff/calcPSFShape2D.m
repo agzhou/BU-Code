@@ -1,6 +1,12 @@
 %% Description: semi-automatically calculate the ultrasound PSF shape in 3D, taking in simulation data
 clearvars
 
+%% Add the Processing folder to path
+codeDir = cd;
+codeDir_split = split(string(codeDir), filesep);
+AllenProcessingCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\Processing\");
+addpath(genpath(AllenProcessingCodePath))
+
 %% Load simulation data and parameters (assuming Verasonics)
 % datapath = "G:\My Drive\Data\PSF Simulations\L22-14v PSF sim - 17 angles from -10 to 10 deg\";
 datapath = uigetdir('G:\', 'Select the data path');
@@ -62,28 +68,29 @@ legend('Gaussian fit', 'Simulated')
 [FWHM_GF_units(3)] = fwhm(zPSF_pixel_inds_GF, zPSF_GF_values);
 
 % % FWHM values: calculate directly from the fit parameters
-% [FWHM_GF_units(1)] = xPSF_GF.c1;
+% [FWHM_GF_units(1)] = xPSF_GF.c1 * _;
 % [FWHM_GF_units(2)] = NaN;
-% [FWHM_GF_units(3)] = zPSF_GF.c1;
+% [FWHM_GF_units(3)] = zPSF_GF.c1 * _;
 
 % FWHM_wl = FWHM_GF_units .* PData.PDelta ./ gfit_pixel_spacing;
 FWHM_wl = FWHM_GF_units .* PData.PDelta;
 FWHM_um = FWHM_wl .* P.wl .* 1e6;
 
-% % 1/e values: calculate from the fitted Gaussian's curve
-% [OOE_GF_units(1)] = fw_anymax(xPSF_pixel_inds_GF, xPSF_GF_values, 1/exp(1));
-% [OOE_GF_units(2)] = NaN;
-% [OOE_GF_units(3)] = fw_anymax(zPSF_pixel_inds_GF, zPSF_GF_values, 1/exp(1));
+% sigma (field): calculate from the fitted Gaussian's curve 1/e values
+% [sigma_field_GF_units(1)] = fw_anymax(xPSF_pixel_inds_GF, xPSF_GF_values, 1/exp(1)) / 2 / sqrt(2);
+% [sigma_field_GF_units(2)] = NaN;
+% [sigma_field_GF_units(3)] = fw_anymax(zPSF_pixel_inds_GF, zPSF_GF_values, 1/exp(1)) / 2 / sqrt(2);
 
-% 1/e values (field): get directly from the fit parameters
-[OOE_GF_units(1)] = xPSF_GF.c1;
-[OOE_GF_units(2)] = NaN;
-[OOE_GF_units(3)] = zPSF_GF.c1;
+% sigma (field): get directly from the fit parameters
+%   Matlab's Gauss1 model form: g(x) = a1*exp(-((x-b1)/c1)^2) --> we want sigma = c1 / sqrt(2)
+[sigma_field_GF_units(1)] = xPSF_GF.c1 / sqrt(2);
+[sigma_field_GF_units(2)] = NaN;
+[sigma_field_GF_units(3)] = zPSF_GF.c1 / sqrt(2);
 
-% OOE_wl = OOE_GF_units .* PData.PDelta ./ gfit_pixel_spacing;
-OOE_wl = OOE_GF_units .* PData.PDelta;
-OOE_um = OOE_wl .* P.wl .* 1e6;
+% sigma_field_wl = sigma_field_GF_units .* PData.PDelta ./ gfit_pixel_spacing;
+sigma_field_wl = sigma_field_GF_units .* PData.PDelta;
+sigma_field_um = sigma_field_wl .* P.wl .* 1e6;
 
-% 1/e values (intensity)
-sigma_um = OOE_um ./ sqrt(2);
+% sigma values (intensity)
+sigma_intensity_um = sigma_field_um ./ sqrt(2);
 

@@ -1,4 +1,11 @@
 %% Description: semi-automatically calculate the ultrasound PSF shape in 3D, taking in simulation data
+clearvars
+
+%% Add the Processing folder to path
+codeDir = cd;
+codeDir_split = split(string(codeDir), filesep);
+AllenProcessingCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\Processing\");
+addpath(genpath(AllenProcessingCodePath))
 
 %% Load simulation data and parameters (assuming Verasonics)
 % load('G:\My Drive\Data\PSF Simulations\RC15gV PSF sim - 11 angles from -5 to 5 deg\params.mat')
@@ -31,6 +38,7 @@ pos_rc = round((pos_wl + abs(PData.Origin)) ./ PData.PDelta + 1); % Position in 
 %% Define some parameters for the Gaussian PSF fit
 gfit_pixel_spacing = 0.01;
 fit_type = 'gauss2'; % Use a two-term Gaussian for the fit
+% fit_type = 'gauss1'; % Use a one-term Gaussian for the fit
 
 %% Get x PSF and plot
 xPSF = squeeze(abs(IQ(pos_rc(1), :, pos_rc(3)))); % 1D x PSF
@@ -82,23 +90,23 @@ FWHM_wl = FWHM_GF_units .* PData.PDelta;
 % FWHM_um = FWHM_wl .* P.wl ./ 1e6;
 FWHM_um = FWHM_wl .* P.wl .* 1e6;
 
-%1/e values (field)
+% Sigma values (field)
 if strcmp(fit_type, 'gauss1')
         % Get directly from the fit parameters if we use a single Gaussian
-        [OOE_GF_units(1)] = xPSF_GF.c1;
-        [OOE_GF_units(2)] = yPSF_GF.c1;
-        [OOE_GF_units(3)] = zPSF_GF.c1;
+        %   Matlab's Gauss1 model form: g(x) = a1*exp(-((x-b1)/c1)^2) --> we want sigma = c1 / sqrt(2)
+        [sigma_field_GF_units(1)] = xPSF_GF.c1 / sqrt(2);
+        [sigma_field_GF_units(2)] = yPSF_GF.c1 / sqrt(2);
+        [sigma_field_GF_units(3)] = zPSF_GF.c1 / sqrt(2);
 else % Otherwise, calculate it manually
-    [OOE_GF_units(1)] = fw_anymax(xPSF_pixel_inds_GF, xPSF_GF_values, 1/exp(1));
-    [OOE_GF_units(2)] = fw_anymax(yPSF_pixel_inds_GF, yPSF_GF_values, 1/exp(1));
-    [OOE_GF_units(3)] = fw_anymax(zPSF_pixel_inds_GF, zPSF_GF_values, 1/exp(1));
+    [sigma_field_GF_units(1)] = fw_anymax(xPSF_pixel_inds_GF, xPSF_GF_values, 1/exp(1)) / 2 / sqrt(2); % fw_anymax is the full-width, so divide by 2, and then by sqrt(2) to get sigma
+    [sigma_field_GF_units(2)] = fw_anymax(yPSF_pixel_inds_GF, yPSF_GF_values, 1/exp(1)) / 2 / sqrt(2);
+    [sigma_field_GF_units(3)] = fw_anymax(zPSF_pixel_inds_GF, zPSF_GF_values, 1/exp(1)) / 2 / sqrt(2);
 
 end
 
-% OOE_wl = OOE_GF_units .* PData.PDelta ./ gfit_pixel_spacing;
-OOE_wl = OOE_GF_units .* PData.PDelta;
-% OOE_um = OOE_wl .* P.wl ./ 1e6;
-OOE_um = OOE_wl .* P.wl .* 1e6;
+% sigma_field_wl = sigma_field_GF_units .* PData.PDelta ./ gfit_pixel_spacing;
+sigma_field_wl = sigma_field_GF_units .* PData.PDelta;
+sigma_field_um = sigma_field_wl .* P.wl .* 1e6;
 
-% 1/e values (intensity)
-sigma_um = OOE_um ./ sqrt(2);
+% Sigma values (intensity)
+sigma_intensity_um = sigma_field_um ./ sqrt(2);
