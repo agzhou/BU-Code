@@ -77,8 +77,8 @@ fDim = 4; % Dimension of the data corresponding to frequency (or time)
 codeDir = cd;
 codeDir_split = split(string(codeDir), filesep);
 % AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "Allen code"))), '\') + "\Verasonics");
-ErrorFunctionCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\ErrorFunction\");
-addpath(genpath(ErrorFunctionCodePath))
+% ErrorFunctionCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\ErrorFunction\");
+% addpath(genpath(ErrorFunctionCodePath))
 
 ProcessingCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\Processing\");
 addpath(genpath(ProcessingCodePath))
@@ -196,9 +196,13 @@ g1 = cell(size(IQf_separated));
 tic
 for j = ctp
     % g1{j} = g1T_fft(IQf_separated{j}, nTau); % Use the base filtered IQ
-    g1{j} = g1T_fft(IQf_separated_masked{j}, nTau); % Use the filtered IQ with system noise removed
+    g1{j} = double(g1T_fft(IQf_separated_masked{j}, nTau)); % Use the filtered IQ with system noise removed
 end
 toc
+
+% for j = ctp
+%     g1{j} = double(g1{j});
+% end
 
 % voxelTimeseriesGUI(g1{3}, tempPDI.^0.5, 'ComplexMode', 'abs')
 
@@ -211,7 +215,7 @@ toc
 % figure; imagesc(squeeze(mean(abs(IQf_separated{3}), fDim))); title('All flow')
 
 % Create new variables for experimental g1, with spatial dimensions stacked
-g1_exp = cell(size(IQf_separated)); % Cell array of experimental g1 data with spatial dimensions vectorized/stacked
+g1_exp = cell(size(g1)); % Cell array of experimental g1 data with spatial dimensions vectorized/stacked
 num_voxels = size(g1{3}, xDim)*size(g1{3}, yDim)*size(g1{3}, zDim);
 for j = ctp
     g1_exp{j} = reshape(g1{j}, num_voxels, nTau);
@@ -222,7 +226,8 @@ dimensionality = 3; % 2D data
 frameRate = P.frameRate;
 wl = P.wl;
 k0 = 2*pi/wl;
-PP = createStruct(xp, yp, zp, nf, nTau, xDim, yDim, zDim, fDim, dimensionality, faxis, freqMask, frameRate, wl, k0); % Processing Parameters ======> adjust as needed
+% PP = createStruct(xp, yp, zp, nf, nTau, xDim, yDim, zDim, fDim, dimensionality, faxis, freqMask, frameRate, wl, k0); % Processing Parameters ======> adjust as needed
+PP = createStruct(xp, yp, zp, nf, nTau, xDim, yDim, zDim, fDim, dimensionality, frameRate, wl, k0); % Processing Parameters ======> adjust as needed
 
 %% ========= 4. Clean data ========= %%
 
@@ -406,10 +411,10 @@ for j = 3
     % **** TO DO: edit anon_fun to have the correct output structure 
     % (complex-valued function), AND subtract the experimental data!!!!
 
-    useF = true;
-    useDC = true;
+    % useF = true;
+    % useDC = true;
     % opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', true);
-    opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', false);
+    % opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', false);
 
     % v_xgp = zeros(PP.zp, PP.xp);
     % v_zgp = zeros(PP.zp, PP.xp);
@@ -432,10 +437,14 @@ for j = 3
     maskToUse = and(voxel_quality, temp_g1_tau1_mask);
     % volumeViewer(unstackData(maskToUse, PP))
 
+    maskToUseTrueInds = find(maskToUse).'; % indices where maskTouse is true
+
+    lnlTol = 1e-10; % Tolerance for the lsqnonlin solver
     tic
-    % for vi = 1:num_voxels % voxel index
+    for vi = 1:num_voxels % voxel index
     % for vi = 1:300
-    for vi = ind
+    % for vi = ind
+    % for vi = maskToUseTrueInds(1:100)
         % [zi, xi] = 
         if maskToUse(vi)
         % if 1
@@ -451,8 +460,10 @@ for j = 3
             % ub = [30e-3, 30e-3, 1, 1]; % TESTING
             % lb = [0, x0(2) - 0.01, 0, 0]; % TESTING
             % ub = [sqrt(2)*30e-3, x0(2) + 0.01, 1, 1]; % TESTING
-            lb = [0, x0(2) - 0.01, 0, 0, 2, 0]; % TESTING
-            ub = [Inf, x0(2) + 0.01, 1, 1, 3, 1]; % TESTING
+            % lb = [0, x0(2) - 0.01, 0, 0, 2, 0]; % TESTING
+            % ub = [Inf, x0(2) + 0.01, 1, 1, 3, 1]; % TESTING
+            lb = [0, -Inf, 0, 0, 2, 0]; % TESTING
+            ub = [Inf, Inf, 1, 1, 3, 1]; % TESTING
 
             g1_exp_j_vi = g1_exp{j}(vi, :); g1_exp_j_vi = g1_exp_j_vi(:);
             g1_exp_split_j_vi = [real(g1_exp_j_vi), imag(g1_exp_j_vi)];
@@ -462,14 +473,8 @@ for j = 3
             tau_inds = t1i:tau_decayed_ind(vi);
             
             % Base residual function
+            % opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', false);
             % anon_fun = @(x) vUS_3D_num_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :));
-            
-            % Residual function using the Gauss-Legendre form (for speed)
-            [s, w] = gaussLegendre01(48); % 48 nodes...
-            xscale = [1e-2 1e-2 1 1 1 1];
-            anon_fun  = @(xs) vUS_3D_quad_residJac(xs, tau, PP.k0, sigma, s, w, real(g1_exp_j_vi), imag(g1_exp_j_vi), xscale);
-            opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', true);
-            xs = lsqnonlin(anon_fun, x0./xscale, lb./xscale, ub./xscale, opts);  x = xs.*xscale;
 
             % Weighted residuals function
             % rw_pow = 1; % Residual weighting power (1: linear, 2: quadratic, etc.)
@@ -480,6 +485,15 @@ for j = 3
             % x = lsqnonlin(anon_fun, x0, lb, ub, opts); % x = [v_xgp, v_zgp, F, DC]
             % x = lsqnonlin(anon_fun, x0, [], [], opts); % x = [v_xgp, v_zgp, F, DC]
 
+            % Residual function using the Gauss-Legendre form (for speed)
+            [s, w] = gaussLegendre01(48); % 48 nodes...
+            xscale = [1e-2 1e-2 1 1 1 1];
+            anon_fun  = @(xs) vUS_3D_quad_residJac(xs, tau, PP.k0, sigma, s, w, real(g1_exp_j_vi), imag(g1_exp_j_vi), xscale);
+            opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', true, 'FunctionTolerance', lnlTol,'StepTolerance', lnlTol,'OptimalityTolerance', lnlTol);
+            xs = lsqnonlin(anon_fun, x0./xscale, lb./xscale, ub./xscale, opts);
+            x = xs.*xscale;
+
+            % Store fitted parameters
             v_tgp_stacked(vi) = x(1);
             v_zgp_stacked(vi) = x(2);
             F_stacked(vi) = x(3);
