@@ -433,9 +433,9 @@ for j = 3
     % volumeViewer(unstackData(maskToUse, PP))
 
     tic
-    for vi = 1:num_voxels % voxel index
+    % for vi = 1:num_voxels % voxel index
     % for vi = 1:300
-    % for vi = ind
+    for vi = ind
         % [zi, xi] = 
         if maskToUse(vi)
         % if 1
@@ -452,7 +452,7 @@ for j = 3
             % lb = [0, x0(2) - 0.01, 0, 0]; % TESTING
             % ub = [sqrt(2)*30e-3, x0(2) + 0.01, 1, 1]; % TESTING
             lb = [0, x0(2) - 0.01, 0, 0, 2, 0]; % TESTING
-            ub = [sqrt(2)*30e-3, x0(2) + 0.01, 1, 1, 3, 1]; % TESTING
+            ub = [Inf, x0(2) + 0.01, 1, 1, 3, 1]; % TESTING
 
             g1_exp_j_vi = g1_exp{j}(vi, :); g1_exp_j_vi = g1_exp_j_vi(:);
             g1_exp_split_j_vi = [real(g1_exp_j_vi), imag(g1_exp_j_vi)];
@@ -462,15 +462,22 @@ for j = 3
             tau_inds = t1i:tau_decayed_ind(vi);
             
             % Base residual function
-            anon_fun = @(x) vUS_3D_num_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :)); % Jacobian version
+            % anon_fun = @(x) vUS_3D_num_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :));
             
+            % Residual function using the Gauss-Legendre form (for speed)
+            [s, w] = gaussLegendre01(48); % 48 nodes...
+            xscale = [1e-2 1e-2 1 1 1 1];
+            anon_fun  = @(xs) vUS_3D_quad_residJac(xs, tau, PP.k0, sigma, s, w, real(g1_exp_j_vi), imag(g1_exp_j_vi), xscale);
+            opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', true);
+            xs = lsqnonlin(anon_fun, x0./xscale, lb./xscale, ub./xscale, opts);  x = xs.*xscale;
+
             % Weighted residuals function
             % rw_pow = 1; % Residual weighting power (1: linear, 2: quadratic, etc.)
             % OF_weight = (max(tau_cropped) - tau_cropped).^rw_pow;
             % OF_weight = OF_weight./max(OF_weight); % Objective function weighting: trust residuals from earlier time lags more
             % anon_fun = @(x) vUS_3D_num_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :), OF_weight); % Jacobian version
 
-            x = lsqnonlin(anon_fun, x0, lb, ub, opts); % x = [v_xgp, v_zgp, F, DC]
+            % x = lsqnonlin(anon_fun, x0, lb, ub, opts); % x = [v_xgp, v_zgp, F, DC]
             % x = lsqnonlin(anon_fun, x0, [], [], opts); % x = [v_xgp, v_zgp, F, DC]
 
             v_tgp_stacked(vi) = x(1);
@@ -525,6 +532,10 @@ g1_model = unstackData(g1_model, PP);
 %% Visualize the experimental vs. fitted g1
 voxelTimeseriesGUI({g1{3}, g1_model}, v, 'DataNames', {'Data', 'Fit'}, 'ComplexMode', 'abs', 'Colormap', 'turbo')
 
+%% Visualize the histograms of fitted parameters
+figure; histogram(a(a>0)); title('a')
+figure; histogram(k(k>0)); title('k')
+figure; histogram(v_tgp(v_tgp > 0)); title("v_{tgp}")
 %% Testing: visualize vUS results
 vUS_speed = cell(size(vUS));
 for j = ctp
