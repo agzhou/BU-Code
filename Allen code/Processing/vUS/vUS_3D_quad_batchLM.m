@@ -32,7 +32,8 @@ function [X, cost, iters, conv] = vUS_3D_quad_batchLM(P, X0, LB, UB, opt)
 %       tolF: converged when an accepted step lowers the cost by <= tolF relative
 %       tolX: converged when the largest scaled parameter step <= tolX
 %       lam0: initial damping (1; 1e-3 starts more aggressively and lands in worse basins more often)
-%       stepCap: max |step| per parameter per iteration in scaled units (0.5; Inf disables)
+%       stepCap: max |step| per parameter per iteration in scaled units. Scalar (0.5) or a per-parameter
+%           vector [1x6]/[6x1]; Inf disables the cap for that parameter
 %
 % Outputs:
 %   X: [6, B] SCALED solution;  cost: [1, B] final sum of squared residuals
@@ -54,7 +55,7 @@ function [X, cost, iters, conv] = vUS_3D_quad_batchLM(P, X0, LB, UB, opt)
         A   = JtJ + I6.*reshape(lam, 1, 1, Bc).*reshape(dJ, 6, 1, Bc) + I6.*reshape(1e-10*max(dJ, [], 1), 1, 1, Bc);   % Marquardt damping + tiny ridge
         A   = A.*(Fm.*permute(Fm, [2 1 3])) + I6.*(1 - Fm);
         d   = -reshape(pagemldivide(A, reshape(g.*cast(free,'like',X0), 6, 1, Bc)), 6, Bc);
-        if isfinite(opt.stepCap), d = max(min(d, opt.stepCap), -opt.stepCap); end          % crude trust-region cap (scaled units)
+        cap = cast(opt.stepCap(:), 'like', X0);  d = max(min(d, cap), -cap);              % crude trust-region cap (scaled units); scalar or per-parameter [6x1]; Inf = no cap
         Xn  = min(max(X + d, LBc), UBc);
         [rn, Jn, cn] = vUS_3D_quad_batchEval(Xn, sel, P);
         acc = cn < cost;

@@ -51,8 +51,63 @@ fprintf('   median |v_zgp - truth|: batched %.2f mm/s, lsqnonlin %.2f mm/s | med
 ok2 = mean(conv) >= 0.99 && median(ratio) < 1 + 1e-6 && sum(ratio > 1.01) <= 0.10*nV;
 fprintf('   -> %s (needs: >=99%% converged, median cost ratio ~1, <=10%% of voxels >1%% worse)\n', passfail(ok2));
 
-if ok1 && ok2, fprintf('\nAll checks passed.\n'); else, warning('One or more checks failed -- inspect before use.'); end
+%% 3. lb / ub inputs (vUS_3D_quad_fitBatched(..., sigma, lb, ub))
+% 3a. passing the DEFAULT bounds explicitly ([nVox,6] matrices) must reproduce the default call exactly
+lbD = [zeros(nV,1), Vz0 - 0.01, zeros(nV,1), zeros(nV,1), 2*ones(nV,1), zeros(nV,1)];
+ubD = [sqrt(2)*30e-3*ones(nV,1), Vz0 + 0.01, ones(nV,1), ones(nV,1), 3*ones(nV,1), ones(nV,1)];
+xE = vUS_3D_quad_fitBatched(g1, tdi, Vz0, tau, k0, sigma, lbD, ubD);
+ok3a = max(abs(xE(:) - x(:))) == 0;
+fprintf('3a. explicit default bounds reproduce the default fit: max|dx| = %.1e -> %s\n', max(abs(xE(:) - x(:))), passfail(ok3a));
+
+% 3b. the bounds used in vUS_3D_newmodel.m's serial loop: -Inf/Inf entries, one [1,6] row for every voxel
+lbI = [0, -Inf, 0, 0, 2, 0];  ubI = [Inf, Inf, 1, 1, 3, 1];
+[xI, costI, ~, convI] = vUS_3D_quad_fitBatched(g1, tdi, Vz0, tau, k0, sigma, lbI, ubI);
+inI = all(xI >= lbI - 1e-12 & xI <= ubI + 1e-12, 'all') && all(isfinite(xI(:)));
+rI = costI./cost;
+ok3b = inI && mean(convI) >= 0.99 && sum(rI > 1.01) <= 0.10*nV;
+fprintf('3b. infinite bounds [0 -Inf 0 0 2 0]/[Inf Inf 1 1 3 1]: finite and inside bounds = %d, converged %.1f%%, cost vs default-bounds fit: median %.6f, >1%% worse in %d voxels -> %s\n', inI, 100*mean(convI), median(rI), sum(rI > 1.01), passfail(ok3b));
+
+% 3c. fixing a parameter (lb = ub) and a partial NaN override (only k bounded below; everything else default)
+lbF = nan(1,6); ubF = nan(1,6); lbF(5) = 2; ubF(5) = 2;
+xF = vUS_3D_quad_fitBatched(g1, tdi, Vz0, tau, k0, sigma, lbF, ubF);
+lbP = nan(1,6); lbP(5) = 2.2;
+xP = vUS_3D_quad_fitBatched(g1, tdi, Vz0, tau, k0, sigma, lbP, []);
+ok3c = all(xF(:,5) == 2) && all(xP(:,5) >= 2.2 - 1e-12) && all(xP(:,2) >= Vz0 - 0.01 - 1e-12 & xP(:,2) <= Vz0 + 0.01 + 1e-12);
+fprintf('3c. k fixed by lb = ub = 2: all k == 2 is %d; partial override lb(k) = 2.2: min k = %.4f, v_zgp still inside its default window -> %s\n', all(xF(:,5) == 2), min(xP(:,5)), passfail(ok3c));
+
+% 3d. per-voxel bounds honored ([nVox,6]): random v_zgp window half-width per voxel, F capped at 0.9
+hw = 0.001 + 0.004*rand(nV,1);
+lbV = nan(nV,6);  lbV(:,2) = Vz0 - hw;
+ubV = nan(nV,6);  ubV(:,2) = Vz0 + hw;  ubV(:,3) = 0.9;
+xV =vUS_3D_quad_fitBatched(g1, tdi, Vz0, tau, k0, sigma, lbV, ubV);
+ok3d = all(xV(:,2) >= Vz0 - hw - 1e-12 & xV(:,2) <= Vz0 + hw + 1e-12) && all(xV(:,3) <= 0.9 + 1e-12);
+fprintf('3d. per-voxel bounds honored (v_zgp window %.1f-%.1f mm, F <= 0.9) -> %s\n', 1e3*min(hw), 1e3*max(hw), passfail(ok3d));
+
+% 3e. bad input is rejected with clear errors
+ok3e = throws(@() vUS_3D_quad_fitBatched(g1, tdi, Vz0, tau, k0, sigma, ubD, lbD), 'badBounds') ...              % lb > ub
+    && throws(@() vUS_3D_quad_fitBatched(g1, tdi, Vz0, tau, k0, sigma, ones(3,6), []), 'badBounds') ...          % wrong size
+    && throws(@() vUS_3D_quad_fitBatched(g1, tdi, Vz0, tau, k0, sigma, struct('nNodes', 24)), 'optsMoved') ...   % old call style (opts as 7th input)
+    && throws(@() vUS_3D_quad_fitBatched(g1, tdi, Vz0, tau, k0, sigma, [], [], struct('stepCap', [1 2 3])), 'badStepCap');   % wrong-size stepCap
+fprintf('3e. lb > ub, wrong-size bounds, the old opts-as-7th-input call and a wrong-size stepCap are rejected -> %s\n', passfail(ok3e));
+
+% 3f. per-parameter stepCap is accepted; with an unbounded v_tgp the automatic default is the same as passing it explicitly
+xA = vUS_3D_quad_fitBatched(g1, tdi, Vz0, tau, k0, sigma, lbI, ubI);
+xC = vUS_3D_quad_fitBatched(g1, tdi, Vz0, tau, k0, sigma, lbI, ubI, struct('stepCap', [10 0.5 0.5 0.5 0.5 0.5]));
+ok3f = all(isfinite(xC(:))) && max(abs(xA(:) - xC(:))) == 0;
+fprintf('3f. automatic stepCap for an unbounded v_tgp equals stepCap = [10 .5 .5 .5 .5 .5]: max|dx| = %.1e -> %s\n', max(abs(xA(:) - xC(:))), passfail(ok3f));
+
+ok3 = ok3a && ok3b && ok3c && ok3d && ok3e && ok3f;
+if ok1 && ok2 && ok3, fprintf('\nAll checks passed.\n'); else, warning('One or more checks failed -- inspect before use.'); end
 
 function s = passfail(tf)
     if tf, s = 'PASS'; else, s = 'FAIL'; end
+end
+
+function tf = throws(fh, idSuffix)
+% true if fh() errors with an identifier ending in idSuffix
+    try
+        fh(); tf = false;
+    catch e
+        tf = endsWith(e.identifier, idSuffix);
+    end
 end
