@@ -406,6 +406,11 @@ for j = 3
     temp_g1_tau1_mask = squeeze(abs(g1_exp{j}(:, t1i))) > 0.3; % Note: this does not account for the static component
     % volumeViewer(unstackData(temp_g1_tau1_mask, PP))
 
+    temp_g1_tau2_mask = squeeze(abs(g1_exp{j}(:, t1i + 1))) > 0.2; % Note: this does not account for the static component
+    volumeViewer(unstackData(temp_g1_tau2_mask, PP))
+
+    tempMask = and(temp_g1_tau1_mask, temp_g1_tau2_mask);
+
     % ---- Fit this direction's signal ---- %
     % anon_fun = @(x) g1vUS2D_Jac(x, tau, sigma, PP.k0);
     
@@ -432,7 +437,7 @@ for j = 3
     % Choose the mask to use to fit certain pixels or not
     % maskToUse = overall_mask_stacked; 
     % maskToUse = and(vesselAngleMask, stackData(temp_g1_tau1_mask, PP));
-    maskToUse = and(voxel_quality, temp_g1_tau1_mask);
+    maskToUse = and(voxel_quality, tempMask);
     % maskToUse = voxel_quality;
     % maskToUse = vesselMask;
     % volumeViewer(unstackData(maskToUse, PP))
@@ -441,8 +446,8 @@ for j = 3
 
     % TESTING: BATCHED SOLVER
     tic
-    lb = [0, -50e-3, 0, 0, 2, 0]; % Parameter lower bounds
-    ub = [50e-3, 50e-3, 1, 1, 3, 1]; % Parameter upper bounds
+    lb = [0, -50e-3, 0, 0, 2, 0]; % Parameter lower bounds [v_tgp, v_zgp, F, DC, k, a]
+    ub = [250e-3, 50e-3, 1, 1, 3, 1]; % Parameter upper bounds
     [x, cost] = vUS_3D_quad_fitBatched(g1_exp{j}(maskToUseTrueInds,:), tau_decayed_ind(maskToUseTrueInds), Vz0(maskToUseTrueInds), tau, PP.k0, sigma, lb, ub);
     % [x, cost] = vUS_3D_quad_fitBatched(g1_exp{j}(maskToUseTrueInds,:), tau_decayed_ind(maskToUseTrueInds), Vz0(maskToUseTrueInds), tau, PP.k0, sigma);
     v_tgp_stacked(maskToUseTrueInds) = x(:,1);  v_zgp_stacked(maskToUseTrueInds) = x(:,2);  F_stacked(maskToUseTrueInds) = x(:,3);
