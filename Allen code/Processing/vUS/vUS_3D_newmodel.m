@@ -435,15 +435,18 @@ for j = 3
     % Choose the mask to use to fit certain pixels or not
     % maskToUse = overall_mask_stacked; 
     % maskToUse = and(vesselAngleMask, stackData(temp_g1_tau1_mask, PP));
-    % maskToUse = and(voxel_quality, temp_g1_tau1_mask);
-    maskToUse = voxel_quality;
+    maskToUse = and(voxel_quality, temp_g1_tau1_mask);
+    % maskToUse = voxel_quality;
+    % maskToUse = vesselMask;
     % volumeViewer(unstackData(maskToUse, PP))
 
     maskToUseTrueInds = find(maskToUse).'; % indices where maskTouse is true
 
     % TESTING: BATCHED SOLVER
     tic
-    [x, cost] = vUS_3D_quad_fitBatched(g1_exp{j}(maskToUseTrueInds,:), tau_decayed_ind(maskToUseTrueInds), Vz0(maskToUseTrueInds), tau, PP.k0, sigma);
+    lb = [0, NaN, 0, 0, 2, 0]; % Parameter lower bounds
+    ub = [50e3, NaN, 1, 1, 3, 1]; % Parameter upper bounds
+    [x, cost] = vUS_3D_quad_fitBatched(g1_exp{j}(maskToUseTrueInds,:), tau_decayed_ind(maskToUseTrueInds), Vz0(maskToUseTrueInds), tau, PP.k0, sigma, lb, ub);
     v_tgp_stacked(maskToUseTrueInds) = x(:,1);  v_zgp_stacked(maskToUseTrueInds) = x(:,2);  F_stacked(maskToUseTrueInds) = x(:,3);
     DC_stacked(maskToUseTrueInds)    = x(:,4);  k_stacked(maskToUseTrueInds)     = x(:,5);  a_stacked(maskToUseTrueInds) = x(:,6);
     toc
@@ -687,6 +690,7 @@ for j = 3
     % maskToUse = overall_mask_stacked; 
     % maskToUse = and(vesselAngleMask, stackData(temp_g1_tau1_mask, PP));
     maskToUse = and(voxel_quality, temp_g1_tau1_mask);
+    % maskToUse = vesselMask;
     % volumeViewer(unstackData(maskToUse, PP))
 
     for vi = 1:num_voxels % voxel index

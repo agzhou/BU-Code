@@ -80,15 +80,88 @@ if ~exist('TDsavepath', 'var')
 end
 save([TDsavepath, 'TD.mat'], 'TD')
 
+%% Calculate vUS (g1 fits) for each pre-computed g1 file
+
 %% Go through pre-computed data files (for all superframes in the experiment) and store
 
 % Need to make a g1-to-vUS loop function before passing in things to
 % here...
 
 % For now, go through only PDI and CDI
-trialsToUse = [1, 2, 3];
-for trialInd = trialsToUse
-    
+% trialsToUse = [1:10];
+% for trialInd = trialsToUse
+% 
+% end
+PDIallSF = cell(3, 1);
+CDIallSF = cell(3, 1);
+for fi = 1:RFcount
+
+    disp(fi)
+    load([PDpath, 'fUSdata-', num2str(fi)], 'PDI', 'CDI')
+    for j = 1:3
+        PDIallSF{j} = cat(4, PDIallSF{j}, PDI{j});
+        CDIallSF{j} = cat(4, CDIallSF{j}, CDI{j});
+    end
 end
+% Average PDI and CDI across superframes
+PDIA = cell(3, 1);
+CDIA = cell(3, 1);
+for j = 1:3
+    PDIA{j} = mean(PDIallSF{j}, 4);
+    CDIA{j} = mean(CDIallSF{j}, 4);
+end
+save([PDpath, 'PDIA_CDIA.mat'], "PDIA", "CDIA")
 
+%% TESTING: get vessel angle from superframe-averaged PDI (or CDI?) maps
+% Load the averaged PDI and CDI maps
+[PDIA_CDIA_filename, PDIA_CDIA_pathname, ~] = uigetfile('*.mat', 'Select the averaged PDI and CDI file');
+load([PDIA_CDIA_pathname, PDIA_CDIA_filename])
 
+j = 3;
+
+% USF = 5; % Upsampling factor
+% spacing = [1, 1];
+% sigmas = [1*USF:1:5*USF];
+% tau = 0.5;
+% brightondark = true;
+% vesselnessThreshold = 0.05;
+% minBranchLengthPix = 2*USF;
+% minSegLengthPix = 2*USF;
+% gamma = 0.5;
+% % figure; imagesc(PDIA{j} .^ gamma)
+% PDI_US_j = imresize(PDIA{j}, USF, "bilinear");
+% % figure; imagesc(PDI_US_j .^ gamma)
+% % PDIN = PDI ./ max(PDIN, [], 'all'); % Normalized PDI [0, 1]
+% % [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(unstackData(Vz03, PP)) .* 1, sigmas, spacing, tau, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
+% [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(PDI_US_j .^ gamma), sigmas, spacing, tau, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
+% figure; imagesc(vesselness); axis square
+% figure; imagesc(vesselMask); axis square
+% figure; imagesc(skel); axis square
+% figure; h = imagesc(angleMap); colormap hsv; colorbar; axis square; xlabel('x [mm]'); ylabel('z [mm]'); title('Vessel angle'); set(h, 'AlphaData', ~isnan(angleMap)) % make pixels transparent if the angle = NaN
+
+spacing = [1, 1, 0.5];
+sigmas = [1:0.5:3];
+tau_va = 0.5;
+brightondark = true;
+vesselnessThreshold = 0.05;
+minBranchLengthPix = 5;
+minSegLengthPix = 3;
+% PDIN = PDI ./ max(PDIN, [], 'all'); % Normalized PDI [0, 1]
+% [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(unstackData(Vz03, PP)) .* 1, sigmas, spacing, tau_va, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
+% [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(PDIA{j}(zrange, xrange) .^ gamma), sigmas, spacing, tau_va, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
+% [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(CDIA{j}(zrange, xrange)), sigmas, spacing, tau_va, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
+[vessels, dir1, dir2, dir3, vesselness, vesselMask, segLabel, skel] = vesselAngle3D(abs(CDIA{j}(:, :, :)), sigmas, spacing, tau_va, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
+% test = CDIA{3}; test(test >0 ) = 0; test = abs(test);
+% [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(test(zrange, xrange), sigmas, spacing, tau_va, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
+% figure; imagesc(squeeze(max(vesselness, [], 1))')
+% figure; imagesc(squeeze(max(vesselMask, [], 1))')
+% figure; imagesc(skel)
+% figure; h = imagesc(angleMap); colormap hsv; colorbar; axis equal; xlabel('x'); ylabel('z'); title('Vessel angle'); set(h, 'AlphaData', ~isnan(angleMap)) % make pixels transparent if the angle = NaN
+% % vesselAngles = deg2rad(angleMap); % Vessel angles [rad]
+% vesselAngles = angleMap; % Vessel angles [deg]
+% 
+% vesselAngleMask = ~isnan(stackData(vesselAngles, PP)); % Mask to avoid NaN voxels in the vessel angle mask
+% 
+% figure; imagesc(CDIA{3}); colormap(VzCmap); axis equal; colorbar
+
+save([PDpath, 'vesselMask.mat'], 'vesselMask')
