@@ -116,6 +116,7 @@ for filenum = startFile:endFile
     % zrange = 1:zpo;
     zrange = 10:110;
     voxelRange = {xrange, yrange, zrange};
+    xp = length(xrange); yp = length(yrange); zp = length(zrange); nf = size(IQ, 4);
     
     % tic
     [PDI, CDI, g1] = IQ2g1T_3D(IQ, P, voxelRange, sv_threshold_lower, sv_threshold_upper, HPF, nTau);
@@ -133,7 +134,7 @@ for filenum = startFile:endFile
     
 end
 % savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'tau1_index_CBF', 'tau2_index_CBF', 'tau1_index_CBV');
-save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'voxelRange', 'HPF');
+save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'voxelRange', 'HPF', 'xp', 'yp', "zp", "nf", 'nTau', 'tau');
 % savefast([savepath, 'PDI_CDI_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
 
 %% 4. Store all the PDI across the experiment into one cell array - one cell for each directional component
