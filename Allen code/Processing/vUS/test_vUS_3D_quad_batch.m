@@ -96,7 +96,20 @@ xC = vUS_3D_quad_fitBatched(g1, tdi, Vz0, tau, k0, sigma, lbI, ubI, struct('step
 ok3f = all(isfinite(xC(:))) && max(abs(xA(:) - xC(:))) == 0;
 fprintf('3f. automatic stepCap for an unbounded v_tgp equals stepCap = [10 .5 .5 .5 .5 .5]: max|dx| = %.1e -> %s\n', max(abs(xA(:) - xC(:))), passfail(ok3f));
 
-ok3 = ok3a && ok3b && ok3c && ok3d && ok3e && ok3f;
+% 3g. REGRESSION: a huge finite ub(v_tgp) (50e3 m/s, a slip for 50e-3) once pushed every start point to 0.1% of the box
+% (v_tgp = 50 m/s), where the model is flat: 100% of voxels hit the iteration cap and the fit was ~20x worse.
+% The start-point nudge is now capped, so it must behave like an unbounded ub(v_tgp), and it must warn about the units.
+lbW = [0 NaN 0 0 2 0];
+lastwarn('', '');
+[xW, costW, itW, convW] = vUS_3D_quad_fitBatched(g1, tdi, Vz0, tau, k0, sigma, lbW, [50e3 NaN 1 1 3 1]);
+[~, warnId] = lastwarn;
+[~, costU, itU] = vUS_3D_quad_fitBatched(g1, tdi, Vz0, tau, k0, sigma, lbW, [Inf NaN 1 1 3 1]);       % same, but ub(v_tgp) = Inf
+rW = costW./costU;
+ok3g = mean(convW) >= 0.99 && mean(itW) < 100 && abs(median(rW) - 1) < 1e-3 && strcmp(warnId, 'vUS_3D_quad_fitBatched:unphysicalVtBound') && all(isfinite(xW(:)));
+fprintf('3g. ub(v_tgp) = 50e3: converged %.1f%%, mean iterations %.1f (bug: 300), cost vs ub = Inf: median %.6f, warns about units = %d -> %s\n', ...
+    100*mean(convW), mean(itW), median(rW), strcmp(warnId, 'vUS_3D_quad_fitBatched:unphysicalVtBound'), passfail(ok3g));
+
+ok3 = ok3a && ok3b && ok3c && ok3d && ok3e && ok3f && ok3g;
 if ok1 && ok2 && ok3, fprintf('\nAll checks passed.\n'); else, warning('One or more checks failed -- inspect before use.'); end
 
 function s = passfail(tf)

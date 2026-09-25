@@ -429,9 +429,6 @@ for j = 3
     k_stacked = zeros(num_voxels, 1);
     a_stacked = zeros(num_voxels, 1);
 
-    
-    % ind = sub2ind(ps, 23, 187)
-
     % Choose the mask to use to fit certain pixels or not
     % maskToUse = overall_mask_stacked; 
     % maskToUse = and(vesselAngleMask, stackData(temp_g1_tau1_mask, PP));
@@ -444,77 +441,78 @@ for j = 3
 
     % TESTING: BATCHED SOLVER
     tic
-    lb = [0, NaN, 0, 0, 2, 0]; % Parameter lower bounds
-    ub = [50e3, NaN, 1, 1, 3, 1]; % Parameter upper bounds
+    lb = [0, -50e-3, 0, 0, 2, 0]; % Parameter lower bounds
+    ub = [50e-3, 50e-3, 1, 1, 3, 1]; % Parameter upper bounds
     [x, cost] = vUS_3D_quad_fitBatched(g1_exp{j}(maskToUseTrueInds,:), tau_decayed_ind(maskToUseTrueInds), Vz0(maskToUseTrueInds), tau, PP.k0, sigma, lb, ub);
+    % [x, cost] = vUS_3D_quad_fitBatched(g1_exp{j}(maskToUseTrueInds,:), tau_decayed_ind(maskToUseTrueInds), Vz0(maskToUseTrueInds), tau, PP.k0, sigma);
     v_tgp_stacked(maskToUseTrueInds) = x(:,1);  v_zgp_stacked(maskToUseTrueInds) = x(:,2);  F_stacked(maskToUseTrueInds) = x(:,3);
     DC_stacked(maskToUseTrueInds)    = x(:,4);  k_stacked(maskToUseTrueInds)     = x(:,5);  a_stacked(maskToUseTrueInds) = x(:,6);
     toc
     
-    lnlTol = 1e-10; % Tolerance for the lsqnonlin solver
-    tic
-    for vi = 1:num_voxels % voxel index
-    % for vi = 1:300
-    % for vi = ind
-    % for vi = maskToUseTrueInds(1:100)
-        % [zi, xi] = 
-        if maskToUse(vi)
-        % if 1
-        % if overall_mask_stacked(vi)
-        % if overall_mask_stacked_j(vi) & vesselAngleMask(vi) % Fit only voxels we believe have high signal quality
-        % if vesselAngleMask(vi) % Fit only voxels we believe have high signal quality
-            % x0 = [Vt0(vi), Vz0(vi), FR0_j(vi), DCR0_j(vi)];
-            x0 = [Vt0(vi), Vz0(vi), 1, 0, 2.5, 1];
-            % **** Check lb AND ub --> VELOCITIES CAN BE NEGATIVE ****
-            % lb = [x0(1) - 0.25*abs(x0(1)), x0(2) - 0.25*abs(x0(2)), max(F0(vi) - 0.2, 0), max(DC0(vi) - 0.2, 0)]; % TESTING
-            % ub = [x0(1) + 0.25*abs(x0(1)), x0(2) + 0.25*abs(x0(2)), min(F0(vi) + 0.2, 1), min(DC0(vi) + 0.2, 1)]; % TESTING
-            % lb = [0, -30e-3, 0, 0]; % TESTING
-            % ub = [30e-3, 30e-3, 1, 1]; % TESTING
-            % lb = [0, x0(2) - 0.01, 0, 0]; % TESTING
-            % ub = [sqrt(2)*30e-3, x0(2) + 0.01, 1, 1]; % TESTING
-            % lb = [0, x0(2) - 0.01, 0, 0, 2, 0]; % TESTING
-            % ub = [Inf, x0(2) + 0.01, 1, 1, 3, 1]; % TESTING
-            lb = [0, -Inf, 0, 0, 2, 0]; % TESTING
-            ub = [Inf, Inf, 1, 1, 3, 1]; % TESTING
-
-            g1_exp_j_vi = g1_exp{j}(vi, :); g1_exp_j_vi = g1_exp_j_vi(:);
-            g1_exp_split_j_vi = [real(g1_exp_j_vi), imag(g1_exp_j_vi)];
-
-            % Adaptive tau cropping
-            % tau_inds = t1i:round(nTau/3); % testing
-            tau_inds = t1i:tau_decayed_ind(vi);
-            
-            % Base residual function
-            % opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', false);
-            % anon_fun = @(x) vUS_3D_num_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :));
-
-            % Weighted residuals function
-            % rw_pow = 1; % Residual weighting power (1: linear, 2: quadratic, etc.)
-            % OF_weight = (max(tau_cropped) - tau_cropped).^rw_pow;
-            % OF_weight = OF_weight./max(OF_weight); % Objective function weighting: trust residuals from earlier time lags more
-            % anon_fun = @(x) vUS_3D_num_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :), OF_weight); % Jacobian version
-
-            % x = lsqnonlin(anon_fun, x0, lb, ub, opts); % x = [v_xgp, v_zgp, F, DC]
-            % x = lsqnonlin(anon_fun, x0, [], [], opts); % x = [v_xgp, v_zgp, F, DC]
-
-            % Residual function using the Gauss-Legendre form (for speed)
-            [s, w] = gaussLegendre01(48); % 48 nodes...
-            xscale = [1e-2 1e-2 1 1 1 1];
-            anon_fun  = @(xs) vUS_3D_quad_residJac(xs, tau, PP.k0, sigma, s, w, real(g1_exp_j_vi), imag(g1_exp_j_vi), xscale);
-            opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', true, 'FunctionTolerance', lnlTol,'StepTolerance', lnlTol,'OptimalityTolerance', lnlTol);
-            xs = lsqnonlin(anon_fun, x0./xscale, lb./xscale, ub./xscale, opts);
-            x = xs.*xscale;
-
-            % Store fitted parameters
-            v_tgp_stacked(vi) = x(1);
-            v_zgp_stacked(vi) = x(2);
-            F_stacked(vi) = x(3);
-            DC_stacked(vi) = x(4);
-            k_stacked(vi) = x(5);
-            a_stacked(vi) = x(6);
-        end
-    end
-    toc
+    % lnlTol = 1e-10; % Tolerance for the lsqnonlin solver
+    % tic
+    % for vi = 1:num_voxels % voxel index
+    % % for vi = 1:300
+    % % for vi = ind
+    % % for vi = maskToUseTrueInds(1:100)
+    %     % [zi, xi] = 
+    %     if maskToUse(vi)
+    %     % if 1
+    %     % if overall_mask_stacked(vi)
+    %     % if overall_mask_stacked_j(vi) & vesselAngleMask(vi) % Fit only voxels we believe have high signal quality
+    %     % if vesselAngleMask(vi) % Fit only voxels we believe have high signal quality
+    %         % x0 = [Vt0(vi), Vz0(vi), FR0_j(vi), DCR0_j(vi)];
+    %         x0 = [Vt0(vi), Vz0(vi), 1, 0, 2.5, 1];
+    %         % **** Check lb AND ub --> VELOCITIES CAN BE NEGATIVE ****
+    %         % lb = [x0(1) - 0.25*abs(x0(1)), x0(2) - 0.25*abs(x0(2)), max(F0(vi) - 0.2, 0), max(DC0(vi) - 0.2, 0)]; % TESTING
+    %         % ub = [x0(1) + 0.25*abs(x0(1)), x0(2) + 0.25*abs(x0(2)), min(F0(vi) + 0.2, 1), min(DC0(vi) + 0.2, 1)]; % TESTING
+    %         % lb = [0, -30e-3, 0, 0]; % TESTING
+    %         % ub = [30e-3, 30e-3, 1, 1]; % TESTING
+    %         % lb = [0, x0(2) - 0.01, 0, 0]; % TESTING
+    %         % ub = [sqrt(2)*30e-3, x0(2) + 0.01, 1, 1]; % TESTING
+    %         % lb = [0, x0(2) - 0.01, 0, 0, 2, 0]; % TESTING
+    %         % ub = [Inf, x0(2) + 0.01, 1, 1, 3, 1]; % TESTING
+    %         lb = [0, -Inf, 0, 0, 2, 0]; % TESTING
+    %         ub = [Inf, Inf, 1, 1, 3, 1]; % TESTING
+    % 
+    %         g1_exp_j_vi = g1_exp{j}(vi, :); g1_exp_j_vi = g1_exp_j_vi(:);
+    %         g1_exp_split_j_vi = [real(g1_exp_j_vi), imag(g1_exp_j_vi)];
+    % 
+    %         % Adaptive tau cropping
+    %         % tau_inds = t1i:round(nTau/3); % testing
+    %         tau_inds = t1i:tau_decayed_ind(vi);
+    % 
+    %         % Base residual function
+    %         % opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', false);
+    %         % anon_fun = @(x) vUS_3D_num_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :));
+    % 
+    %         % Weighted residuals function
+    %         % rw_pow = 1; % Residual weighting power (1: linear, 2: quadratic, etc.)
+    %         % OF_weight = (max(tau_cropped) - tau_cropped).^rw_pow;
+    %         % OF_weight = OF_weight./max(OF_weight); % Objective function weighting: trust residuals from earlier time lags more
+    %         % anon_fun = @(x) vUS_3D_num_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :), OF_weight); % Jacobian version
+    % 
+    %         % x = lsqnonlin(anon_fun, x0, lb, ub, opts); % x = [v_xgp, v_zgp, F, DC]
+    %         % x = lsqnonlin(anon_fun, x0, [], [], opts); % x = [v_xgp, v_zgp, F, DC]
+    % 
+    %         % Residual function using the Gauss-Legendre form (for speed)
+    %         [s, w] = gaussLegendre01(48); % 48 nodes...
+    %         xscale = [1e-2 1e-2 1 1 1 1];
+    %         anon_fun  = @(xs) vUS_3D_quad_residJac(xs, tau, PP.k0, sigma, s, w, real(g1_exp_j_vi), imag(g1_exp_j_vi), xscale);
+    %         opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', true, 'FunctionTolerance', lnlTol,'StepTolerance', lnlTol,'OptimalityTolerance', lnlTol);
+    %         xs = lsqnonlin(anon_fun, x0./xscale, lb./xscale, ub./xscale, opts);
+    %         x = xs.*xscale;
+    % 
+    %         % Store fitted parameters
+    %         v_tgp_stacked(vi) = x(1);
+    %         v_zgp_stacked(vi) = x(2);
+    %         F_stacked(vi) = x(3);
+    %         DC_stacked(vi) = x(4);
+    %         k_stacked(vi) = x(5);
+    %         a_stacked(vi) = x(6);
+    %     end
+    % end
+    % toc
 
     v_tgp = unstackData(v_tgp_stacked, PP);
     v_zgp = unstackData(v_zgp_stacked, PP);

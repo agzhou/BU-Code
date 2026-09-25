@@ -34,7 +34,9 @@ function [x, cost, iters, converged] = vUS_3D_quad_fitBatched(g1, tdi, Vz0, tau,
 %       Inf/-Inf are allowed. NaN in any entry means "use the default for that entry":
 %           default lb = [0,          Vz0 - opts.vzHalfWidth, 0, 0, 2, 0]
 %           default ub = [sqrt(2)*30e-3, Vz0 + opts.vzHalfWidth, 1, 1, 3, 1]
-%       lb must be <= ub for every entry.
+%       lb must be <= ub for every entry. Velocities are in m/s (50 mm/s = 50e-3). A finite ub(v_tgp) above 1 m/s
+%       (e.g. 50e3, a common unit slip for 50e-3) triggers the warning 'vUS_3D_quad_fitBatched:unphysicalVtBound',
+%       because v_tgp is then effectively unbounded and its fitted values are unreliable.
 %   opts: (optional) struct; any field may be omitted
 %       t1i: first lag index to fit (2)
 %       nNodes: Gauss-Legendre nodes (48; 24 was accurate to 4e-9 on real fit windows)
@@ -44,11 +46,12 @@ function [x, cost, iters, converged] = vUS_3D_quad_fitBatched(g1, tdi, Vz0, tau,
 %       maxIter: iteration cap per voxel (300)
 %       lam0: initial Levenberg-Marquardt damping (1)
 %       stepCap: max scaled step per parameter per iteration; scalar or [1,6]. Default (NaN = auto): 0.5, except
-%           [10 0.5 0.5 0.5 0.5 0.5] when v_tgp has an infinite upper bound. An unbounded v_tgp runs away along a
-%           flat direction and a 0.5 cap makes it crawl. On real data with lb/ub = [0 -Inf 0 0 2 0]/[Inf Inf 1 1 3 1]
-%           this took convergence from 92%% to 99.8%%, run time 2.4x lower, and voxels ending >1%% worse than serial
-%           lsqnonlin from 689 to ~250 (of 5,206). Larger v_tgp caps (30, 100) were worse. NOTE: with v_tgp unbounded
-%           the fit is degenerate -- serial lsqnonlin also returned v_tgp > 100 mm/s in 85%% of those voxels.
+%           [10 0.5 0.5 0.5 0.5 0.5] when the v_tgp upper bound is above 1 m/s or infinite (effectively unbounded).
+%           An unbounded v_tgp runs away along a flat direction and a 0.5 cap makes it crawl. On real data with
+%           lb/ub = [0 -Inf 0 0 2 0]/[Inf Inf 1 1 3 1] this took convergence from 92% to 99.8%, run time 2.4x lower, and
+%           voxels ending >1% worse than serial lsqnonlin from 689 to ~250 (of 5,206). Larger v_tgp caps (30, 100) were
+%           worse. NOTE: with v_tgp unbounded the fit is degenerate -- serial lsqnonlin also returned v_tgp > 100 mm/s
+%           in 85% of those voxels.
 %       xscale: [1,6] parameter scale (1e-2 1e-2 1 1 1 1: v_tgp, v_zgp in units of 10 mm/s)
 %       x0: [1,6] start point, NaN in position 2 = use Vz0 ([5e-3 NaN 1 0 2.5 1]); clipped into [lb, ub]
 %       vzHalfWidth: half-width of the DEFAULT v_zgp bound around Vz0 [m/s] (0.01)
@@ -100,9 +103,14 @@ function [x, cost, iters, converged] = vUS_3D_quad_fitBatched(g1, tdi, Vz0, tau,
         error('vUS_3D_quad_fitBatched:badBounds', 'lb > ub for voxel %d, parameter %d (lb = %g, ub = %g).', bv, bp, lbM(bv,bp), ubM(bv,bp))
     end
 
+    if any(isfinite(ubM(:,1)) & ubM(:,1) > 1)                 % velocities are in m/s: a bound above 1 m/s is almost certainly a unit slip (50 mm/s = 50e-3)
+        warning('vUS_3D_quad_fitBatched:unphysicalVtBound', ...
+            ['ub(v_tgp) = %g m/s is far above any physical flow speed, so v_tgp is effectively unbounded and its fitted values will be unreliable. ', ...
+             'Velocities are in m/s (50 mm/s = 50e-3). Use Inf if you really want it unbounded.'], max(ubM(:,1)))
+    end
     if isscalar(o.stepCap) && isnan(o.stepCap)                % auto
         o.stepCap = 0.5;
-        if any(isinf(ubM(:,1))), o.stepCap = [10 0.5 0.5 0.5 0.5 0.5]; end
+        if any(ubM(:,1) > 1), o.stepCap = [10 0.5 0.5 0.5 0.5 0.5]; end      % v_tgp effectively unbounded (ub > 1 m/s or Inf)
     end
     if ~any(numel(o.stepCap) == [1 6]) || any(o.stepCap(:) <= 0) || any(isnan(o.stepCap(:)))
         error('vUS_3D_quad_fitBatched:badStepCap', 'opts.stepCap must be a positive scalar or a positive [1 x 6] vector (Inf allowed).')
@@ -119,8 +127,8 @@ function [x, cost, iters, converged] = vUS_3D_quad_fitBatched(g1, tdi, Vz0, tau,
         LB = cast(lbM(c,:).' ./ o.xscale(:), o.precision);
         UB = cast(ubM(c,:).' ./ o.xscale(:), o.precision);
         X0 = cast(x0 ./ o.xscale(:), o.precision);
-        d = 1e-3*(UB - LB);  d(~isfinite(d)) = 0;                 % start strictly inside a finite box; no nudge across an infinite range
-        X0 = min(max(X0, LB + d), UB - d);
+        d = min(1e-3*(UB - LB), 1e-3);                            % start strictly inside the box: nudge = 0.1% of the box width, but never more than 1e-3
+        X0 = min(max(X0, LB + d), UB - d);                        % (scaled units). An uncapped nudge pushed every start point to 0.1% of a huge ub (50 m/s for ub = 50e3)
 
         if o.useGPU
             fn = setdiff(fieldnames(P), {'sigma', 'k0'});
