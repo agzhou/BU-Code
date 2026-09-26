@@ -48,20 +48,25 @@ sigma_axial_test = 40e-6;
 
 [X, Y, Z] = meshgrid(x_mm./1e3, y_mm./1e3, z_mm./1e3);
 
-PSF = @(x, y, z, x0, y0, z0, sigma_narrow, sigma_wide, sigma_axial) ...
-        ( exp(-(x - x0).^2 ./ (2*sigma_narrow^2) - (y - y0).^2 ./ (2*sigma_wide^2)) ...
+PSF = @(x, y, z, x0, y0, z0, A, sigma_narrow, sigma_wide, sigma_axial) ...
+        A.* ( exp(-(x - x0).^2 ./ (2*sigma_narrow^2) - (y - y0).^2 ./ (2*sigma_wide^2)) ...
         + exp(-(x - x0).^2 ./ (2*sigma_wide^2) - (y - y0).^2 ./ (2*sigma_narrow^2)) ) ...
         .* exp(-(z - z0).^2 ./ (2*sigma_axial^2));
 
-% test = PSF(X, Y, Z, x0, y0, z0, sigma_narrow, sigma_wide, sigma_axial);
+% test = PSF(X, Y, Z, x0, y0, z0, 1, sigma_narrow, sigma_wide, sigma_axial);
 % volumeViewer(test)
-parametrized_fun = @(param_vec, X_design_matrix) PSF(X_design_matrix(:, 1), X_design_matrix(:, 2), X_design_matrix(:, 3), x0, y0, z0, param_vec(1), param_vec(2), param_vec(3));
+parametrized_fun = @(param_vec, X_design_matrix) PSF(X_design_matrix(:, 1), X_design_matrix(:, 2), X_design_matrix(:, 3), x0, y0, z0, param_vec(1), param_vec(2), param_vec(3), param_vec(4));
 
-testfit = nlinfit([X(:), Y(:), Z(:)], abs(IQ(:)), parametrized_fun, [sigma_narrow_test, sigma_wide_test, sigma_axial_test]);
+testfit = nlinfit([X(:), Y(:), Z(:)], abs(IQ(:)), parametrized_fun, [max(abs(IQ), [], 'all'), sigma_narrow_test, sigma_wide_test, sigma_axial_test]);
 
+testPSF = reshape(parametrized_fun(testfit, [X(:), Y(:), Z(:)]), size(IQ));
 
+sigma_um = testfit(2:end).*1e6
 
+%% Test plots
+figure; yyaxis left; plot(squeeze(abs(IQ(pos_rc(1), :, pos_rc(3))))); yyaxis right; plot(squeeze(abs(testPSF(pos_rc(1), :, pos_rc(3)))))
 
+%%
 % %% Define some parameters for the Gaussian PSF fit
 % gfit_pixel_spacing = 0.01;
 % fit_type = 'gauss2'; % Use a two-term Gaussian for the fit
