@@ -62,9 +62,13 @@ HPF.order = 4; % Butterworth filter order
 %% Define some parameters
 
 % Define the sigma values, from simulations
-% sigma = [121.8936, 121.8936, 44.3846].*1e-6; % Field-based sigma values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 11 x 2 angles from -5 to 5 deg (G:\My Drive\Data\RC15gV PSF sim - 11 angles from -5 to 5 deg)
-% sigma = [151.5410, 151.5410, 44.6252].*1e-6; % Field-based sigma values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 11 x 2 angles from -6 to 6 deg
-sigma = [130.1474, 130.1474, 44.7070].*1e-6; % Field-based sigma values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 5 x 2 angles from -6 to 6 deg
+%   Single-Gaussian version
+% sigma_SG = [121.8936, 121.8936, 44.3846].*1e-6; % Field-based sigma values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 11 x 2 angles from -5 to 5 deg (G:\My Drive\Data\RC15gV PSF sim - 11 angles from -5 to 5 deg)
+% sigma_SG = [151.5410, 151.5410, 44.6252].*1e-6; % Field-based sigma values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 11 x 2 angles from -6 to 6 deg
+sigma_SG = [130.1474, 130.1474, 44.7070].*1e-6; % Field-based sigma values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 5 x 2 angles from -6 to 6 deg
+
+%   RCA-specific orthogonal Gaussians version
+sigma_RCA = [57.6, 286.5, 50.1].*1e-6; % Field-based sigma values (narrow, wide, axial) [m] for the RC15gV probe at 13.6 MHz: 5 angles from -6 to 6 deg
 
 xDim = 1; % Dimension of the data corresponding to x (lateral direction)
 yDim = 2; % Dimension of the data corresponding to y (lateral direction)
@@ -360,22 +364,22 @@ for j = 3
     % g1adj_stacked_j = stackData(g1adj_j, PP);
 
     % TESTING
-    g1adj_stacked_j = stackData(g1{j}, PP);
-
-    % ---- Find initial guesses for fit parameters, for this direction's signal ---- %
-    % Static (DC) component -- complex valued
-    RotCtr_j = FindCOR( g1adj_stacked_j(:, round(nTau/2):end) ); % [nz*nx, nTau] -- for each pixel, take its last ½ of values (where the complex g1 spiral has theoretically started to slow down and look like a circle) and fit a circle to those points using FindCOR.m. The resulting center point of the fit is theoretically the center/end point of the complex g1 spiral, which represents the steady-state value. Take the real component of that output and use either this value if positive, or 0
-    DCR0_v1_j = max(real(RotCtr_j), 0); % Version 1 of the DC component's Real component
-    DCR0_v2_j = max(mean( real(g1adj_stacked_j(:, floor(end*2/3):end)), 2 ), 0); % Version 2 of the DC component's Real component -- for each pixel, take the temporal mean of the real components of its last ⅓ of values (where there is theoretically a steady-state/plateau), and use either this value if positive, or 0 otherwise.
-    DCR0_j = min(DCR0_v1_j, DCR0_v2_j); % Take the minimum of the two guesses above [nz*nx, nTau]
-    % DCR0_j = complex(min(real(DCR0_v1_j), real(DCR0_v2_j)), min(imag(DCR0_v1_j), imag(DCR0_v2_j))); % Take the minimum of the two guesses above [nz*nx, nTau]
-    % DCR0_j = DCR0_v1_j; % Testing
-
-    % Absolute "error" due to the noise decorrelation at tau1
-    tau1_decorr_drop_j = 1 - abs(g1adj_stacked_j(:, t1i)); % How much does |g1(tau1)| drop from 1 (This is not used as its own explicit parameter)
-    
-    % Dynamic (noise decorrelation) component -- 'F' in the vUS paper
-    FR0_j = max(min(1 - abs(DCR0_j) - tau1_decorr_drop_j, 1), 0); % F Real component, clamped to [0, 1]
+    % g1adj_stacked_j = stackData(g1{j}, PP);
+    % 
+    % % ---- Find initial guesses for fit parameters, for this direction's signal ---- %
+    % % Static (DC) component -- complex valued
+    % RotCtr_j = FindCOR( g1adj_stacked_j(:, round(nTau/2):end) ); % [nz*nx, nTau] -- for each pixel, take its last ½ of values (where the complex g1 spiral has theoretically started to slow down and look like a circle) and fit a circle to those points using FindCOR.m. The resulting center point of the fit is theoretically the center/end point of the complex g1 spiral, which represents the steady-state value. Take the real component of that output and use either this value if positive, or 0
+    % DCR0_v1_j = max(real(RotCtr_j), 0); % Version 1 of the DC component's Real component
+    % DCR0_v2_j = max(mean( real(g1adj_stacked_j(:, floor(end*2/3):end)), 2 ), 0); % Version 2 of the DC component's Real component -- for each pixel, take the temporal mean of the real components of its last ⅓ of values (where there is theoretically a steady-state/plateau), and use either this value if positive, or 0 otherwise.
+    % DCR0_j = min(DCR0_v1_j, DCR0_v2_j); % Take the minimum of the two guesses above [nz*nx, nTau]
+    % % DCR0_j = complex(min(real(DCR0_v1_j), real(DCR0_v2_j)), min(imag(DCR0_v1_j), imag(DCR0_v2_j))); % Take the minimum of the two guesses above [nz*nx, nTau]
+    % % DCR0_j = DCR0_v1_j; % Testing
+    % 
+    % % Absolute "error" due to the noise decorrelation at tau1
+    % tau1_decorr_drop_j = 1 - abs(g1adj_stacked_j(:, t1i)); % How much does |g1(tau1)| drop from 1 (This is not used as its own explicit parameter)
+    % 
+    % % Dynamic (noise decorrelation) component -- 'F' in the vUS paper
+    % FR0_j = max(min(1 - abs(DCR0_j) - tau1_decorr_drop_j, 1), 0); % F Real component, clamped to [0, 1]
 
     % Axial component of the blood flow's group velocity -- v_zgp
     [Vz0, tau_V] = findVzPhaseDiff(stackData(g1{j}, PP), PP); % v_zgp [m/s]
@@ -395,7 +399,7 @@ for j = 3
     
     % Set parameters for findTauDecayed.m
     absolute_tau_ss_cutoff_s = 10e-3;
-    too_fast_decay_s = 1e-3; 
+    too_fast_decay_s = 2e-3;
 
     % Adaptively find the tau range to fit over for each pixel, and another
     % quality mask
@@ -407,7 +411,7 @@ for j = 3
     % volumeViewer(unstackData(temp_g1_tau1_mask, PP))
 
     temp_g1_tau2_mask = squeeze(abs(g1_exp{j}(:, t1i + 1))) > 0.2; % Note: this does not account for the static component
-    volumeViewer(unstackData(temp_g1_tau2_mask, PP))
+    % volumeViewer(unstackData(temp_g1_tau2_mask, PP))
 
     tempMask = and(temp_g1_tau1_mask, temp_g1_tau2_mask);
 
@@ -427,33 +431,70 @@ for j = 3
     % p = zeros(PP.zp, PP.xp);
     % F = zeros(PP.zp, PP.xp);
     % DC = zeros(PP.zp, PP.xp);
-    v_tgp_stacked = zeros(num_voxels, 1);
-    v_zgp_stacked = zeros(num_voxels, 1);
-    F_stacked = zeros(num_voxels, 1);
-    DC_stacked = zeros(num_voxels, 1);
-    k_stacked = zeros(num_voxels, 1);
-    a_stacked = zeros(num_voxels, 1);
+
+    % Struct for storing parameters of the different g1 models
+    ifpv = zeros(num_voxels, 1); % initial fit parameter value matrix
+    % fpn_SG = {"v_tgp_stacked", "v_zgp_stacked", "F_stacked", "DC_stacked", "k_stacked", "a_stacked"}; % Fit parameter names (single Gaussian PSF model)
+    fpn_SG = {"v_tgp", "v_zgp", "F", "DC", "k", "a"}; % Fit parameter names (single Gaussian PSF model)
+    fit_SG = initFitParamStruct(fpn_SG, ifpv);
+    fpn_RCA = {"v_xgp", "v_ygp", "v_zgp", "F", "DC", "k", "a"}; % Fit parameter names (RCA-specific PSF model)
+    fit_RCA = initFitParamStruct(fpn_RCA, ifpv);
+    fpn_C = {"C", "F", "DC"}; % Fit parameter names (Combined parameter model)
+    fit_C = initFitParamStruct(fpn_C, ifpv);
+    % fit_SG = struct('v_tgp_stacked', ifpv, 'v_zgp_stacked', ifpv, 'F_stacked', ifpv, 'DC_stacked', ifpv, 'k_stacked', ifpv, 'a_stacked', ifpv); % single-Gaussian PSF version
+    % fit_RCA = struct('v_xgp_stacked', ifpv, 'v_ygp_stacked', ifpv, 'v_zgp_stacked', ifpv, 'F_stacked', ifpv, 'DC_stacked', ifpv, 'k_stacked', ifpv, 'a_stacked', ifpv); % RCA-specific PSF version
+    % fit_C = struct('C', ifpv, 'F_stacked', ifpv, 'DC_stacked', ifpv); % Combined parameter C version
 
     % Choose the mask to use to fit certain pixels or not
     % maskToUse = overall_mask_stacked; 
     % maskToUse = and(vesselAngleMask, stackData(temp_g1_tau1_mask, PP));
-    maskToUse = and(voxel_quality, tempMask);
+    % maskToUse = and(voxel_quality, tempMask);
+    maskToUse = or(voxel_quality, tempMask);
     % maskToUse = voxel_quality;
     % maskToUse = vesselMask;
     % volumeViewer(unstackData(maskToUse, PP))
 
     maskToUseTrueInds = find(maskToUse).'; % indices where maskTouse is true
 
-    % TESTING: BATCHED SOLVER
+    % Use batched solver
     tic
-    lb = [0, -50e-3, 0, 0, 2, 0]; % Parameter lower bounds [v_tgp, v_zgp, F, DC, k, a]
-    ub = [250e-3, 50e-3, 1, 1, 3, 1]; % Parameter upper bounds
-    [x, cost] = vUS_3D_quad_fitBatched(g1_exp{j}(maskToUseTrueInds,:), tau_decayed_ind(maskToUseTrueInds), Vz0(maskToUseTrueInds), tau, PP.k0, sigma, lb, ub);
-    % [x, cost] = vUS_3D_quad_fitBatched(g1_exp{j}(maskToUseTrueInds,:), tau_decayed_ind(maskToUseTrueInds), Vz0(maskToUseTrueInds), tau, PP.k0, sigma);
-    v_tgp_stacked(maskToUseTrueInds) = x(:,1);  v_zgp_stacked(maskToUseTrueInds) = x(:,2);  F_stacked(maskToUseTrueInds) = x(:,3);
-    DC_stacked(maskToUseTrueInds)    = x(:,4);  k_stacked(maskToUseTrueInds)     = x(:,5);  a_stacked(maskToUseTrueInds) = x(:,6);
+    fit_SG.lb = [0, -50e-3, 0, 0, 2, 0]; % Parameter lower bounds [v_tgp, v_zgp, F, DC, k, a]
+    fit_SG.ub = [250e-3, 50e-3, 1, 1, 3, 1]; % Parameter upper bounds
+    [fit_SG.x, fit_SG.cost] = vUS_3D_quad_fitBatched(g1_exp{j}(maskToUseTrueInds,:), tau_decayed_ind(maskToUseTrueInds), Vz0(maskToUseTrueInds), tau, PP.k0, sigma_SG, fit_SG.lb, fit_SG.ub);
+    [fit_SG] = storeFitParams(fit_SG, fpn_SG, fit_SG.x, maskToUseTrueInds, PP); % Store/parse fitted parameters
     toc
+
+    [s, w] = gaussLegendre01(48);
+
+    tic
+    fit_RCA.xscale = [1e-2 1e-2 1e-2 1 1 1 1];
+    fit_RCA.lb = [0, 0, -50e-3, 0, 0, 2, 0]; % Parameter lower bounds [v_xgp, v_ygp, v_zgp, F, DC, k, a]
+    fit_RCA.ub = [250e-3, 250e-3, 50e-3, 1, 1, 3, 1]; % Parameter upper bounds
+    fit_RCA.model = @(X, cols) vUS_3D_quad_RCA_xy_batchModel(X, tau(cols), PP.k0, sigma_RCA, s, w);
+    % vi   = find(maskToUse);  
+    nv = numel(maskToUseTrueInds);
+    fit_RCA.opts   = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', 'xscale', fit_RCA.xscale);
+    fit_RCA.x0   = [5e-3*ones(nv,1), 5e-3*ones(nv,1), Vz0(maskToUseTrueInds), ones(nv,1), zeros(nv,1), 2.5*ones(nv,1), 0.7 .*ones(nv,1)];
+    opts = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', ...
+                 'xscale', [1e-2 1e-2 1e-2 1 1 1 1]);
+    [fit_RCA.x, fit_RCA.cost, ~, fit_RCA.conv] = fitBatchedLM(fit_RCA.model, fit_RCA.x0, g1_exp{j}(maskToUseTrueInds, :), fit_RCA.lb, fit_RCA.ub, fit_RCA.opts);
+    [fit_RCA] = storeFitParams(fit_RCA, fpn_RCA, fit_RCA.x, maskToUseTrueInds, PP); % Store/parse fitted parameters
+    toc
+
+    % Combined parameter model
     
+    fit_C.lb = [0, -50e-3, 0, 0];
+    fit_C.ub = [Inf, 50e-3, 1, 1];
+    fit_C.x0 = [500*ones(nv,1), Vz0(maskToUseTrueInds), ones(nv,1), zeros(nv,1)];
+    fit_C.xscale = [500, 1e-2, 1, 1];  % C in units of 500 (its typical magnitude), v_zgp x10mm/s, F, DC
+
+    fit_C.model = @(X, cols) vUS_3D_combined_batchModel(X, tau(cols), PP.k0);
+    fit_C.opts = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', t1i, 'jacobian', 'analytic', 'xscale', fit_C.xscale);
+    tic
+    [fit_C.x, fit_C.cost, ~, fit_C.conv] = fitBatchedLM(fit_C.model, fit_C.x0, g1_exp{j}(maskToUseTrueInds, :), fit_C.lb, fit_C.ub, fit_C.opts);
+    [fit_C] = storeFitParams(fit_C, fpn_C, fit_C.x, maskToUseTrueInds, PP); % Store/parse fitted parameters
+
+    toc
     % lnlTol = 1e-10; % Tolerance for the lsqnonlin solver
     % tic
     % for vi = 1:num_voxels % voxel index
@@ -519,12 +560,6 @@ for j = 3
     % end
     % toc
 
-    v_tgp = unstackData(v_tgp_stacked, PP);
-    v_zgp = unstackData(v_zgp_stacked, PP);
-    F = unstackData(F_stacked, PP);
-    DC = unstackData(DC_stacked, PP);
-    k = unstackData(k_stacked, PP);
-    a = unstackData(a_stacked, PP);
 
     test = vUS_3D_num_wrapper(x, tau, PP.k0, sigma);
     figure; plot(tau, abs(g1_exp{j}(vi, :)), tau, abs(test))
