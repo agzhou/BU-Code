@@ -632,14 +632,53 @@ R2_SG = calcR2(g1_model_SG_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskT
 R2_RCA = calcR2(g1_model_RCA_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
 R2_C = calcR2(g1_model_C_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
 
+R2_adj_SG = calcR2_adj(g1_model_SG_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_SG));
+R2_adj_RCA = calcR2_adj(g1_model_RCA_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_RCA));
+R2_adj_C = calcR2_adj(g1_model_C_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_C));
+
+AIC_SG = calcAIC(g1_model_SG_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_SG));
+AIC_RCA = calcAIC(g1_model_RCA_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_RCA));
+AIC_C = calcAIC(g1_model_C_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_C));
+
+%% Histograms of fitting quality metrics
+figure; hold on
+fa = 0.4; ea = 0.1; nm = 'probability';
+histogram(R2_SG, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1', 'Normalization', nm)
+histogram(R2_RCA, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1', 'Normalization', nm)
+histogram(R2_C, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1', 'Normalization', nm)
+hold off
+legend('Single Gaussian', 'RCA', 'Combined', 'Location', 'northwest')
+xlabel("R^2"); ylabel("Probability")
+title("R^2")
+xlim([-2, 1])
+
 %% Histograms of fitting quality metrics
 figure; hold on
 fa = 0.4; ea = 0.1;
-histogram(R2_SG, 'FaceAlpha', fa, 'EdgeAlpha', ea)
-histogram(R2_RCA, 'FaceAlpha', fa, 'EdgeAlpha', ea)
-histogram(R2_C, 'FaceAlpha', fa, 'EdgeAlpha', ea)
+histogram(R2_adj_SG, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1', 'Normalization', nm)
+histogram(R2_adj_RCA, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1', 'Normalization', nm)
+histogram(R2_adj_C, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1', 'Normalization', nm)
 hold off
-legend('Single Gaussian', 'RCA', 'Combined')
+legend('Single Gaussian', 'RCA', 'Combined', 'Location', 'northwest')
+xlabel("R^2"); ylabel("Probability")
+title("Adjusted R^2")
+xlim([-2, 1])
+
+%% Histograms of AIC
+figure; hold on
+fa = 0.4; ea = 0.1;
+bw = 1;
+histogram(AIC_SG, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw, 'Normalization', nm)
+histogram(AIC_RCA, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw, 'Normalization', nm)
+histogram(AIC_C, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw, 'Normalization', nm)
+hold off
+legend('Single Gaussian', 'RCA', 'Combined', 'Location', 'northeast')
+xlabel("AIC"); ylabel("Probability")
+title("AIC")
+
+figure; histogram(AIC_RCA - AIC_C, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw, 'Normalization', nm)
+xlabel("ΔAIC"); ylabel("Probability")
+title("ΔAIC = AIC_{RCA} - AIC_{C}")
 %% Visualize the histograms of fitted parameters
 figure; histogram(a(a>0)); title('a')
 figure; histogram(k(k>0)); title('k')
