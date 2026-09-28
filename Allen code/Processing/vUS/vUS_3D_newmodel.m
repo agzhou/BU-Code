@@ -439,11 +439,11 @@ for j = 3
     fit_SG = initFitParamStruct(fpn_SG, ifpv);
     fpn_RCA = {"v_xgp", "v_ygp", "v_zgp", "F", "DC", "k", "a"}; % Fit parameter names (RCA-specific PSF model)
     fit_RCA = initFitParamStruct(fpn_RCA, ifpv);
-    fpn_C = {"C", "F", "DC"}; % Fit parameter names (Combined parameter model)
+    fpn_C = {"C", "v_zgp", "F", "DC"}; % Fit parameter names (Combined parameter model)
     fit_C = initFitParamStruct(fpn_C, ifpv);
     % fit_SG = struct('v_tgp_stacked', ifpv, 'v_zgp_stacked', ifpv, 'F_stacked', ifpv, 'DC_stacked', ifpv, 'k_stacked', ifpv, 'a_stacked', ifpv); % single-Gaussian PSF version
     % fit_RCA = struct('v_xgp_stacked', ifpv, 'v_ygp_stacked', ifpv, 'v_zgp_stacked', ifpv, 'F_stacked', ifpv, 'DC_stacked', ifpv, 'k_stacked', ifpv, 'a_stacked', ifpv); % RCA-specific PSF version
-    % fit_C = struct('C', ifpv, 'F_stacked', ifpv, 'DC_stacked', ifpv); % Combined parameter C version
+    % fit_C = struct('C_stacked', ifpv, 'v_zgp_stacked', ifpv, 'F_stacked', ifpv, 'DC_stacked', ifpv); % Combined parameter C version
 
     % Choose the mask to use to fit certain pixels or not
     % maskToUse = overall_mask_stacked; 
@@ -456,16 +456,29 @@ for j = 3
 
     maskToUseTrueInds = find(maskToUse).'; % indices where maskTouse is true
 
-    % Use batched solver
+    
+    % ---- Use batched solver ---- %
+    [s, w] = gaussLegendre01(48);
+
+    % Single-Gaussian PSF model
     tic
     fit_SG.lb = [0, -50e-3, 0, 0, 2, 0]; % Parameter lower bounds [v_tgp, v_zgp, F, DC, k, a]
     fit_SG.ub = [250e-3, 50e-3, 1, 1, 3, 1]; % Parameter upper bounds
-    [fit_SG.x, fit_SG.cost] = vUS_3D_quad_fitBatched(g1_exp{j}(maskToUseTrueInds,:), tau_decayed_ind(maskToUseTrueInds), Vz0(maskToUseTrueInds), tau, PP.k0, sigma_SG, fit_SG.lb, fit_SG.ub);
+    
+    fit_SG.xscale = [1e-2 1e-2 1 1 1 1];
+    fit_SG.model = @(X, cols) vUS_3D_quad_batchModel(X, tau(cols), PP.k0, sigma_SG, s, w);
+    % vi   = find(maskToUse);  
+    nv = numel(maskToUseTrueInds);
+    fit_SG.opts   = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', 'xscale', fit_SG.xscale);
+    fit_SG.x0   = [5e-3*ones(nv,1), Vz0(maskToUseTrueInds), ones(nv,1), zeros(nv,1), 2.5*ones(nv,1), 0.7 .*ones(nv,1)];
+    fit_SG.opts = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', 'xscale', fit_SG.xscale);
+    [fit_SG.x, fit_SG.cost, ~, fit_SG.conv] = fitBatchedLM(fit_SG.model, fit_SG.x0, g1_exp{j}(maskToUseTrueInds, :), fit_SG.lb, fit_SG.ub, fit_SG.opts);    
+    % [fit_SG.x, fit_SG.cost] = vUS_3D_quad_fitBatched(g1_exp{j}(maskToUseTrueInds,:), tau_decayed_ind(maskToUseTrueInds), Vz0(maskToUseTrueInds), tau, PP.k0, sigma_SG, fit_SG.lb, fit_SG.ub);
     [fit_SG] = storeFitParams(fit_SG, fpn_SG, fit_SG.x, maskToUseTrueInds, PP); % Store/parse fitted parameters
     toc
 
-    [s, w] = gaussLegendre01(48);
 
+    % RCA-specific PSF model
     tic
     fit_RCA.xscale = [1e-2 1e-2 1e-2 1 1 1 1];
     fit_RCA.lb = [0, 0, -50e-3, 0, 0, 2, 0]; % Parameter lower bounds [v_xgp, v_ygp, v_zgp, F, DC, k, a]
@@ -475,8 +488,7 @@ for j = 3
     nv = numel(maskToUseTrueInds);
     fit_RCA.opts   = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', 'xscale', fit_RCA.xscale);
     fit_RCA.x0   = [5e-3*ones(nv,1), 5e-3*ones(nv,1), Vz0(maskToUseTrueInds), ones(nv,1), zeros(nv,1), 2.5*ones(nv,1), 0.7 .*ones(nv,1)];
-    opts = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', ...
-                 'xscale', [1e-2 1e-2 1e-2 1 1 1 1]);
+    opts = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', 'xscale', fit_RCA.xscale);
     [fit_RCA.x, fit_RCA.cost, ~, fit_RCA.conv] = fitBatchedLM(fit_RCA.model, fit_RCA.x0, g1_exp{j}(maskToUseTrueInds, :), fit_RCA.lb, fit_RCA.ub, fit_RCA.opts);
     [fit_RCA] = storeFitParams(fit_RCA, fpn_RCA, fit_RCA.x, maskToUseTrueInds, PP); % Store/parse fitted parameters
     toc
@@ -493,7 +505,6 @@ for j = 3
     tic
     [fit_C.x, fit_C.cost, ~, fit_C.conv] = fitBatchedLM(fit_C.model, fit_C.x0, g1_exp{j}(maskToUseTrueInds, :), fit_C.lb, fit_C.ub, fit_C.opts);
     [fit_C] = storeFitParams(fit_C, fpn_C, fit_C.x, maskToUseTrueInds, PP); % Store/parse fitted parameters
-
     toc
     % lnlTol = 1e-10; % Tolerance for the lsqnonlin solver
     % tic
@@ -561,15 +572,20 @@ for j = 3
     % toc
 
 
-    test = vUS_3D_num_wrapper(x, tau, PP.k0, sigma);
-    figure; plot(tau, abs(g1_exp{j}(vi, :)), tau, abs(test))
-    figure; plot(g1_exp{j}(vi, :), '-x'); hold on; plot(test, '-o'); hold off; legend('Data', 'Fit'); axis equal; xlim([-1, 1]); ylim([-1, 1])
+    % test = vUS_3D_num_wrapper(x, tau, PP.k0, sigma);
+    % figure; plot(tau, abs(g1_exp{j}(vi, :)), tau, abs(test))
+    % figure; plot(g1_exp{j}(vi, :), '-x'); hold on; plot(test, '-o'); hold off; legend('Data', 'Fit'); axis equal; xlim([-1, 1]); ylim([-1, 1])
 
 end
 
 %% Visualize total fitted speed
-v = sqrt(v_tgp.^2 + v_zgp.^2);
-figure; imagesc(squeeze(max(v, [], 1))); clim([0, min(prctile(v(v>0), 99, 'all'), 40e-3)]); colormap turbo; axis equal; axis tight; colorbar
+fit_SG.v = sqrt(fit_SG.v_tgp.^2 + fit_SG.v_zgp.^2);
+fit_RCA.v = sqrt(fit_RCA.v_xgp.^2 + fit_RCA.v_ygp.^2 + fit_RCA.v_zgp.^2);
+fit_RCA.v = sqrt(fit_RCA.v_xgp.^2 + fit_RCA.v_ygp.^2 + fit_RCA.v_zgp.^2);
+
+% v = sqrt(v_tgp.^2 + v_zgp.^2);
+figure; imagesc(squeeze(max(fit_SG.v, [], 1))); clim([0, min(prctile(fit_SG.v(fit_SG.v>0), 99, 'all'), 40e-3)]); colormap turbo; axis equal; axis tight; colorbar
+figure; imagesc(squeeze(max(fit_SG.v, [], 1))); clim([0, min(prctile(fit_SG.v(fit_SG.v>0), 99, 'all'), 40e-3)]); colormap turbo; axis equal; axis tight; colorbar
 % figure; imagesc(unstackData(sqrt(Vx0.^2 + Vz0.^2), PP)); clim([0, 0.04]); colormap turbo; axis equal; colorbar
 
 %% Visualize fitted |v_zgp|
@@ -583,20 +599,47 @@ figure; imagesc(squeeze(max(v_tgp, [], 1))'); colormap(VzCmapDn); axis equal; ax
 figure; imagesc(squeeze(max(k, [], 1))); colormap(VzCmapDn); clim([2, min(prctile(k, 99, 'all'), 3)]); axis equal; axis tight; colorbar
 
 %% Calculate the fitted g1 curves for each valid pixel
-g1_model = zeros(num_voxels, nTau);
+g1_model_SG_stacked = zeros(num_voxels, nTau);
+g1_model_RCA_stacked = zeros(num_voxels, nTau);
+g1_model_C_stacked = zeros(num_voxels, nTau);
+
 for vi = 1:num_voxels % voxel index
     if maskToUse(vi) % If the voxel was fitted
-        x = [v_tgp_stacked(vi), v_zgp_stacked(vi), F_stacked(vi), DC_stacked(vi), k_stacked(vi), a_stacked(vi)];
+        x_SG = [fit_SG.v_tgp_stacked(vi), fit_SG.v_zgp_stacked(vi), fit_SG.F_stacked(vi), fit_SG.DC_stacked(vi), fit_SG.k_stacked(vi), fit_SG.a_stacked(vi)];
+        x_RCA = [fit_RCA.v_xgp_stacked(vi), fit_RCA.v_ygp_stacked(vi), fit_RCA.v_zgp_stacked(vi), fit_RCA.F_stacked(vi), fit_RCA.DC_stacked(vi), fit_RCA.k_stacked(vi), fit_RCA.a_stacked(vi)];
+        x_C = [fit_C.C_stacked(vi), fit_C.v_zgp_stacked(vi), fit_C.F_stacked(vi), fit_C.DC_stacked(vi)];
+
         % g1_model(vi, :) = vUS_3D_num_wrapper(x, tau, PP.k0, sigma);
-        g1_model(vi, :) = vUS_3D_quad_vec(x, tau, k0, sigma, s, w);
+        g1_model_SG_stacked(vi, :) = vUS_3D_quad_vec(x_SG, tau, PP.k0, sigma_SG, s, w);
+        g1_model_RCA_stacked(vi, :) = vUS_3D_quad_RCA_xy_vec(x_RCA, tau, PP.k0, sigma_RCA, s, w);
+        g1_model_C_stacked(vi, :) = vUS_3D_combined_complex_Jac(x_C, tau, PP.k0);
+
     end
 end
 
-g1_model = unstackData(g1_model, PP);
+g1_model_SG = unstackData(g1_model_SG_stacked, PP);
+g1_model_RCA = unstackData(g1_model_RCA_stacked, PP);
+g1_model_C = unstackData(g1_model_C_stacked, PP);
 
 %% Visualize the experimental vs. fitted g1
-voxelTimeseriesGUI({g1{3}, g1_model}, v, 'DataNames', {'Data', 'Fit'}, 'ComplexMode', 'abs', 'Colormap', 'turbo')
+voxelTimeseriesGUI({g1{3}, g1_model_SG}, fit_SG.v, 'DataNames', {'Data', 'Fit'}, 'ComplexMode', 'abs', 'Colormap', 'turbo')
+voxelTimeseriesGUI({g1{3}, g1_model_RCA}, fit_RCA.v, 'DataNames', {'Data', 'Fit'}, 'ComplexMode', 'abs', 'Colormap', 'turbo')
+voxelTimeseriesGUI({g1{3}, g1_model_C}, fit_C.C, 'DataNames', {'Data', 'Fit'}, 'ComplexMode', 'abs', 'Colormap', 'turbo')
 
+%% Calculate fitting quality metrics
+tau_mask = (t1i:nTau);
+R2_SG = calcR2(g1_model_SG_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
+R2_RCA = calcR2(g1_model_RCA_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
+R2_C = calcR2(g1_model_C_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
+
+%% Histograms of fitting quality metrics
+figure; hold on
+fa = 0.4; ea = 0.1;
+histogram(R2_SG, 'FaceAlpha', fa, 'EdgeAlpha', ea)
+histogram(R2_RCA, 'FaceAlpha', fa, 'EdgeAlpha', ea)
+histogram(R2_C, 'FaceAlpha', fa, 'EdgeAlpha', ea)
+hold off
+legend('Single Gaussian', 'RCA', 'Combined')
 %% Visualize the histograms of fitted parameters
 figure; histogram(a(a>0)); title('a')
 figure; histogram(k(k>0)); title('k')
