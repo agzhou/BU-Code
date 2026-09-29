@@ -461,11 +461,13 @@ for j = 3
     
     % ---- Use batched solver ---- %
     [s, w] = gaussLegendre01(48);
+    F_lb = 0; F_ub = 1;
+    k_lb = 1.5; k_ub = 3;
 
     % Single-Gaussian PSF model
     tic
-    fit_SG.lb = [0, -50e-3, 0, 0, 2, 0]; % Parameter lower bounds [v_tgp, v_zgp, F, DC, k, a]
-    fit_SG.ub = [250e-3, 50e-3, 1, 1, 3, 1]; % Parameter upper bounds
+    fit_SG.lb = [0,     -50e-3, F_lb, 0, k_lb, 0]; % Parameter lower bounds [v_tgp, v_zgp, F, DC, k, a]
+    fit_SG.ub = [250e-3, 50e-3, F_ub, 1, k_ub, 1]; % Parameter upper bounds
     
     fit_SG.xscale = [1e-2 1e-2 1 1 1 1];
     fit_SG.model = @(X, cols) vUS_3D_quad_batchModel(X, tau(cols), PP.k0, sigma_SG, s, w);
@@ -483,8 +485,8 @@ for j = 3
     % RCA-specific PSF model
     tic
     fit_RCA.xscale = [1e-2 1e-2 1e-2 1 1 1 1];
-    fit_RCA.lb = [0, 0, -50e-3, 0, 0, 2, 0]; % Parameter lower bounds [v_xgp, v_ygp, v_zgp, F, DC, k, a]
-    fit_RCA.ub = [250e-3, 250e-3, 50e-3, 1, 1, 3, 1]; % Parameter upper bounds
+    fit_RCA.lb = [0,      0,     -50e-3, F_lb, 0, k_lb, 0]; % Parameter lower bounds [v_xgp, v_ygp, v_zgp, F, DC, k, a]
+    fit_RCA.ub = [250e-3, 250e-3, 50e-3, F_ub, 1, k_ub, 1]; % Parameter upper bounds
     fit_RCA.model = @(X, cols) vUS_3D_quad_RCA_xy_batchModel(X, tau(cols), PP.k0, sigma_RCA, s, w);
     % vi   = find(maskToUse);  
     nv = numel(maskToUseTrueInds);
@@ -583,11 +585,11 @@ end
 %% Visualize total fitted speed
 fit_SG.v = sqrt(fit_SG.v_tgp.^2 + fit_SG.v_zgp.^2);
 fit_RCA.v = sqrt(fit_RCA.v_xgp.^2 + fit_RCA.v_ygp.^2 + fit_RCA.v_zgp.^2);
-fit_RCA.v = sqrt(fit_RCA.v_xgp.^2 + fit_RCA.v_ygp.^2 + fit_RCA.v_zgp.^2);
+% fit_RCA.v = sqrt(fit_RCA.v_xgp.^2 + fit_RCA.v_ygp.^2 + fit_RCA.v_zgp.^2);
 
 % v = sqrt(v_tgp.^2 + v_zgp.^2);
 figure; imagesc(squeeze(max(fit_SG.v, [], 1))); clim([0, min(prctile(fit_SG.v(fit_SG.v>0), 99, 'all'), 40e-3)]); colormap turbo; axis equal; axis tight; colorbar
-figure; imagesc(squeeze(max(fit_SG.v, [], 1))); clim([0, min(prctile(fit_SG.v(fit_SG.v>0), 99, 'all'), 40e-3)]); colormap turbo; axis equal; axis tight; colorbar
+figure; imagesc(squeeze(max(fit_RCA.v, [], 1))); clim([0, min(prctile(fit_RCA.v(fit_RCA.v>0), 99, 'all'), 40e-3)]); colormap turbo; axis equal; axis tight; colorbar
 % figure; imagesc(unstackData(sqrt(Vx0.^2 + Vz0.^2), PP)); clim([0, 0.04]); colormap turbo; axis equal; colorbar
 
 %% Visualize fitted |v_zgp|
@@ -678,14 +680,99 @@ legend('Single Gaussian', 'RCA', 'Combined', 'Location', 'northeast')
 xlabel("AIC"); ylabel("Probability")
 title("AIC")
 
-figure; histogram(AIC_RCA - AIC_C, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw, 'Normalization', nm)
+dAIC = AIC_RCA - AIC_C;
+figure; histogram(dAIC, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw, 'Normalization', nm)
 xlabel("ΔAIC"); ylabel("Probability")
 title("ΔAIC = AIC_{RCA} - AIC_{C}")
+xline(0, 'r--', 'LineWidth', 2)
+sum(dAIC < 0)/sum(maskToUse)
+
 %% Visualize the histograms of fitted parameters
-figure; histogram(a(a>0)); title('a')
-figure; histogram(k(k>0)); title('k')
-figure; histogram(v_tgp(v_tgp > 0)); title("v_{tgp}")
-figure; histogram(v_zgp(v_zgp ~= 0)); title("v_{zgp}")
+fs = 20;
+% v_zgp
+figure; hold on
+bw_vzgp = 1e-3;
+histogram(fit_SG.v_zgp_stacked(maskToUseTrueInds), 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw_vzgp, 'Normalization', nm)
+histogram(fit_RCA.v_zgp_stacked(maskToUseTrueInds), 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw_vzgp, 'Normalization', nm)
+histogram(fit_C.v_zgp_stacked(maskToUseTrueInds), 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw_vzgp, 'Normalization', nm)
+hold off
+legend('Single Gaussian', 'RCA', 'Combined', 'Location', 'northwest')
+xlabel("v_{zgp}"); ylabel("Probability")
+title("v_{zgp}")
+fontsize(fs, 'points')
+% xlim([-2, 1])
+
+% v_transverse_gp
+figure; hold on
+bw_vtgp = 1e-3;
+histogram(fit_SG.v_tgp_stacked(maskToUseTrueInds), 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw_vtgp, 'Normalization', nm)
+histogram(sqrt(fit_RCA.v_xgp_stacked(maskToUseTrueInds).^2 + fit_RCA.v_ygp_stacked(maskToUseTrueInds).^2), 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw_vtgp, 'Normalization', nm)
+hold off
+legend('Single Gaussian', 'RCA', 'Location', 'northeast')
+xlabel("v_{tgp}"); ylabel("Probability")
+title("v_{tgp}")
+fontsize(fs, 'points')
+% xlim([-2, 1])
+
+% C
+figure; hold on
+bw_C = 1e-3;
+% histogram(fit_C.C_stacked(maskToUseTrueInds), 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw_C, 'Normalization', nm)
+histogram(fit_C.C_stacked(maskToUseTrueInds), 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw_C, 'Normalization', nm)
+hold off
+legend('Combined', 'Location', 'northeast')
+xlabel("C"); ylabel("Probability")
+title("C")
+fontsize(fs, 'points')
+% xlim([-2, 1])
+
+% a
+figure; hold on
+bw_a = 1e-3;
+histogram(fit_SG.a_stacked(maskToUseTrueInds), 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw_a, 'Normalization', nm)
+histogram(fit_RCA.a_stacked(maskToUseTrueInds), 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw_a, 'Normalization', nm)
+hold off
+legend('Single Gaussian', 'RCA', 'Location', 'northwest')
+xlabel("a"); ylabel("Probability")
+title("a")
+fontsize(fs, 'points')
+
+% k
+figure; hold on
+bw_k = 1e-2;
+histogram(fit_SG.k_stacked(maskToUseTrueInds), 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw_k, 'Normalization', nm)
+histogram(fit_RCA.k_stacked(maskToUseTrueInds), 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw_k, 'Normalization', nm)
+hold off
+legend('Single Gaussian', 'RCA', 'Location', 'northeast')
+xlabel("k"); ylabel("Probability")
+title("k")
+fontsize(fs, 'points')
+
+% F
+figure; hold on
+bw_F = 1e-2;
+histogram(fit_SG.F_stacked(maskToUseTrueInds), 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw_F, 'Normalization', nm)
+histogram(fit_RCA.F_stacked(maskToUseTrueInds), 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw_F, 'Normalization', nm)
+histogram(fit_C.F_stacked(maskToUseTrueInds), 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw_F, 'Normalization', nm)
+hold off
+legend('Single Gaussian', 'RCA', 'Combined', 'Location', 'northeast')
+xlabel("F"); ylabel("Probability")
+title("F")
+xlim([0, 1])
+fontsize(fs, 'points')
+
+% DC
+figure; hold on
+bw_DC = 1e-2;
+histogram(fit_SG.DC_stacked(maskToUseTrueInds), 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw_DC, 'Normalization', nm)
+histogram(fit_RCA.DC_stacked(maskToUseTrueInds), 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw_DC, 'Normalization', nm)
+histogram(fit_C.DC_stacked(maskToUseTrueInds), 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw_DC, 'Normalization', nm)
+hold off
+legend('Single Gaussian', 'RCA', 'Combined', 'Location', 'northeast')
+xlabel("DC"); ylabel("Probability")
+title("DC")
+xlim([0, 1])
+fontsize(fs, 'points')
 
 %% Testing: visualize vUS results
 vUS_speed = cell(size(vUS));
