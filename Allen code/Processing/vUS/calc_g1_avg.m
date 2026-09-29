@@ -19,5 +19,7 @@ end
 
 g1_avg = cell(size(g1_sum));
 for j = 1:3
-    g1_avg{j} = g1_sum{j}./size(g1, 4);
+    g1_avg{j} = g1_sum{j}./(endFile - startFile + 1);
 end
+
+save([savepath, 'g1_avg.mat'], 'g1_avg', '-v7.3')

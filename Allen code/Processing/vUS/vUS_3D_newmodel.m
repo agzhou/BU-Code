@@ -36,19 +36,19 @@ if ~exist('P', 'var')
 end
 
 %% (Only if using continuous data) load some chunk of continuous superframes
-IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
-
-startFile = 1; endFile = 1;
-nsfpe = (endFile - startFile + 1)*P.numFramesPerBuffer;% Number of superframes per ensemble
-load([IQpath, IQfilenameStructure, num2str(startFile)])
-IQle = []; % long ensemble IQ
-
-for fi = startFile:endFile
-    load([IQpath, IQfilenameStructure, num2str(fi)])
-    IQle = cat(3, IQle, IQ);
-end
-
-IQ = IQle; clearvars IQle
+% IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
+% 
+% startFile = 1; endFile = 1;
+% nsfpe = (endFile - startFile + 1)*P.numFramesPerBuffer;% Number of superframes per ensemble
+% load([IQpath, IQfilenameStructure, num2str(startFile)])
+% IQle = []; % long ensemble IQ
+% 
+% for fi = startFile:endFile
+%     load([IQpath, IQfilenameStructure, num2str(fi)])
+%     IQle = cat(3, IQle, IQ);
+% end
+% 
+% IQ = IQle; clearvars IQle
 
 %% Set up the High Pass Filter (parameters from the 2020 vUS paper)
 HPF.fc = 25; % Cutoff frequency [Hz]
@@ -84,9 +84,6 @@ codeDir_split = split(string(codeDir), filesep);
 % AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "Allen code"))), '\') + "\Verasonics");
 % ErrorFunctionCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\ErrorFunction\");
 % addpath(genpath(ErrorFunctionCodePath))
-
-ProcessingCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\Processing\");
-addpath(genpath(ProcessingCodePath))
 
 %% ========= 1. Preprocessing ========= %%
 % IQ = squeeze(complex(IData, QData));
@@ -197,6 +194,11 @@ tau = (0:nTau - 1)' ./ P.frameRate; % Time lag vector [s]
 
 % Store g1 for each frequency component in a cell array
 g1 = cell(size(IQf_separated));
+
+if ~exist('ctp', 'var')
+    ctp = 1:length(g1); % Indices of which frequency Components To Process (typically [1, 2, 3]: negative, positive, all)
+    ctp_labels = {"Down flows", "Up flows", "All flows"};
+end
 
 tic
 for j = ctp
@@ -329,7 +331,7 @@ figure; imagesc(CDIA{3}); colormap(VzCmap); axis equal; colorbar
 
 % CHANGE THIS LATER, WHEN I ACTUALLY IMPLEMENT VOXEL SCREENING!!!!!!!!!!!!!!!!!!
 % num_voxels = size(g1neg, 1)*size(g1neg, 2)*size(g1neg, 3);
-vs = size(IQf_HPF); vs = vs(1:end-1); % Volume size [voxels]
+vs = size(g1{3}); vs = vs(1:end-1); % Volume size [voxels]
 num_voxels = prod(vs);
 
 t1i = 2; % Index for tau1 --> 2 for my code, because it calculates g1 starting at tau = 0
