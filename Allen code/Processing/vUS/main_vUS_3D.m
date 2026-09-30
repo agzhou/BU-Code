@@ -71,7 +71,7 @@ zDim = 3; % Dimension of the data corresponding to z (axial direction)
 fDim = 4; % Dimension of the data corresponding to frequency (or time)
 
 if ~exist('ctp', 'var')
-    ctp = 1:length(g1_avg); % Indices of which frequency Components To Process (typically [1, 2, 3]: negative, positive, all)
+    ctp = 1:3; % Indices of which frequency Components To Process (typically [1, 2, 3]: negative, positive, all)
     ctp_labels = {"Down flows", "Up flows", "All flows"};
 end
 
@@ -133,12 +133,12 @@ for j = 3
     % for the best p0 ****
     
     % Set parameters for findTauDecayed.m
-    absolute_tau_ss_cutoff_s = 10e-3;
-    too_fast_decay_s = 2e-3;
+    fp.absolute_tau_ss_cutoff_s = 10e-3;
+    fp.too_fast_decay_s = 2e-3;
 
     % Adaptively find the tau range to fit over for each pixel, and another
     % quality mask
-    [tau_decayed_ind, voxel_quality] = findTauDecayed(g1_exp{j}, tau, t1i, absolute_tau_ss_cutoff_s, too_fast_decay_s);
+    [tau_decayed_ind, voxel_quality] = findTauDecayed(g1_exp{j}, tau, t1i, fp.absolute_tau_ss_cutoff_s, fp.too_fast_decay_s);
     % volumeViewer(unstackData(voxel_quality, PP))
 
     % Another mask
@@ -193,7 +193,7 @@ for j = 3
     % vi   = find(maskToUse);  
     nv = numel(maskToUseTrueInds);
     fit_SG.opts   = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', 'xscale', fit_SG.xscale);
-    fit_SG.x0   = [5e-3*ones(nv,1), Vz0(maskToUseTrueInds), ones(nv,1), zeros(nv,1), 2.5*ones(nv,1), 0.7 .*ones(nv,1)];
+    fit_SG.x0   = [Vt0(maskToUseTrueInds), Vz0(maskToUseTrueInds), ones(nv, 1), zeros(nv, 1), 2.5*ones(nv, 1), 0.7 .*ones(nv, 1)];
     fit_SG.opts = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', 'xscale', fit_SG.xscale);
     [fit_SG.x, fit_SG.cost, ~, fit_SG.conv] = fitBatchedLM(fit_SG.model, fit_SG.x0, g1_exp{j}(maskToUseTrueInds, :), fit_SG.lb, fit_SG.ub, fit_SG.opts);    
     % [fit_SG.x, fit_SG.cost] = vUS_3D_quad_fitBatched(g1_exp{j}(maskToUseTrueInds,:), tau_decayed_ind(maskToUseTrueInds), Vz0(maskToUseTrueInds), tau, PP.k0, sigma_SG, fit_SG.lb, fit_SG.ub);
@@ -209,7 +209,7 @@ for j = 3
     % vi   = find(maskToUse);  
     nv = numel(maskToUseTrueInds);
     fit_RCA.opts   = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', 'xscale', fit_RCA.xscale);
-    fit_RCA.x0   = [5e-3*ones(nv,1), 5e-3*ones(nv,1), Vz0(maskToUseTrueInds), ones(nv,1), zeros(nv,1), 2.5*ones(nv,1), 0.7 .*ones(nv,1)];
+    fit_RCA.x0   = [Vt0(maskToUseTrueInds), Vt0(maskToUseTrueInds), Vz0(maskToUseTrueInds), ones(nv, 1), zeros(nv, 1), 2.5*ones(nv,1 ), 0.7 .*ones(nv, 1)];
     opts = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', 'xscale', fit_RCA.xscale);
     [fit_RCA.x, fit_RCA.cost, ~, fit_RCA.conv] = fitBatchedLM(fit_RCA.model, fit_RCA.x0, g1_exp{j}(maskToUseTrueInds, :), fit_RCA.lb, fit_RCA.ub, fit_RCA.opts);
     [fit_RCA] = storeFitParams(fit_RCA, fpn_RCA, fit_RCA.x, maskToUseTrueInds, PP); % Store/parse fitted parameters
@@ -218,7 +218,7 @@ for j = 3
     % Combined parameter model
     fit_C.lb = [fb.C(1), fb.v_zgp(1), fb.F(1), fb.DC(1)];
     fit_C.ub = [fb.C(2), fb.v_zgp(2), fb.F(2), fb.DC(2)];
-    fit_C.x0 = [500*ones(nv,1), Vz0(maskToUseTrueInds), ones(nv,1), zeros(nv,1)];
+    fit_C.x0 = [500*ones(nv, 1), Vz0(maskToUseTrueInds), ones(nv, 1), zeros(nv, 1)];
     fit_C.xscale = [500, 1e-2, 1, 1];  % C in units of 500 (its typical magnitude), v_zgp x10mm/s, F, DC
 
     fit_C.model = @(X, cols) vUS_3D_combined_batchModel(X, tau(cols), PP.k0);
@@ -230,348 +230,181 @@ for j = 3
    
 end
 
-fit_sfa = createStruct(fit_SG, fit_RCA, fit_C, maskToUse, maskToUseTrueInds, s, w)
+fit_sfa = createStruct(fit_SG, fit_RCA, fit_C, fpn_SG, fpn_RCA, fpn_C, maskToUse, maskToUseTrueInds, s, w, fb, nv, vs, num_voxels, t1i, tau_decayed_ind, voxel_quality);
+save([PDpath, 'fit_sfa.mat'], 'fit_sfa')
+clearvars fit_SG fit_RCA fit_C
 
-%% ========= 4. Clean data ========= %%
+%% Load and fit each individual superframe, with some parameters constrained by what the superframe average fit suggests
+% Prompt for parameter user input
+if ~exist('files_to_fit', 'var')
+    filesToFitPrompt = {'Start file number', 'End file number'};
+    filesToFitDefaults = {'1', ''};
+    filesToFitUserInput = inputdlg(filesToFitPrompt, 'Input Parameters', 1, filesToFitDefaults);
+    startFile = str2double(filesToFitUserInput{1});
+    endFile = str2double(filesToFitUserInput{2});
+    clearvars filesToFitPrompt filesToFitDefaults filesToFitUserInput
+    files_to_fit = startFile:endFile;
+end
 
-% % 4.1 Screen voxels for noisiness, through |g1(tau1)|
-% g1_tau1_threshold = 0.2;
-% 
-% g1_tau1_mask = cell(size(IQf_separated)); % Cell array of masks using the g1(tau1) threshold
-% for j = ctp
-%     g1_tau1_mask{j} = abs(squeeze(g1{j}(:, :, startTau))) > g1_tau1_threshold; % Use index 2 because index 1 corresponds to tau = 0
-% end
-% 
-% % Testing/visualization
-% figure; plot(squeeze(abs(g1{1}(tp(1), tp(2), :))), '-o'); title('Negative frequencies')
-% figure; plot(squeeze(abs(g1{2}(tp(1), tp(2), :))), '-o'); title('Positive frequencies')
-% % volumeViewer(g1_tau1_mask{1})
-% % volumeViewer(g1_tau1_mask{2})
-% 
-% % 4.2 Apply mask
-% % ...
-
-
-% 4.1 Frequency-based SNR: whole frequency spectrum
-[fbSNR, fbSNR_mask] = spectralSNR(IQf_FT_separated_masked{3}, IQf_FT_separated{3}, PP, 'full');
-
-% 4.2 g1-based SNR: whole frequency spectrum
-% % gR = mean(real(g1_dirty(:, :, 2:3)), fDim); % Average real(g1) over the first two time lags
-% gR = mean(abs(g1_dirty(:, :, 2:3)), fDim); % Average abs(g1) over the first two time lags
-% gR_pixel_avg = mean(gR, [zDim, xDim]);
-% gR_std = std(gR, 0, [1, 2]);
-% gR_mask = gR > max( (gR_pixel_avg - 0.4*gR_std), 0.08 );
-% g1_express_mask = abs(g1_dirty(:, :, 2)) > 0.4; % Immediate pass mask according to |g1(tau1)| > threshold
-[g1SNR, g1SNR_mask, g1SNR_express_mask] = g1BasedSNR(g1_dirty, PP, 'full');
-
-% 4.3 Create the overall whole-frequency-spectrum mask (of pixels to keep)
-overall_mask = and( or(fbSNR_mask, g1SNR_express_mask), g1SNR_mask);
-overall_mask_stacked = stackData(overall_mask, PP);
-figure; imagesc(overall_mask); title('Overall whole-frequency-spectrum mask')
-
-%% TESTING: get vessel angle from superframe-averaged PDI (or CDI?) maps
-% Load the averaged PDI and CDI maps
-[PDIA_CDIA_filename, PDIA_CDIA_pathname, ~] = uigetfile('*.mat', 'Select the averaged PDI and CDI file');
-load([PDIA_CDIA_pathname, PDIA_CDIA_filename])
-
-j = 3;
-
-% USF = 5; % Upsampling factor
-% spacing = [1, 1];
-% sigmas = [1*USF:1:5*USF];
-% tau = 0.5;
-% brightondark = true;
-% vesselnessThreshold = 0.05;
-% minBranchLengthPix = 2*USF;
-% minSegLengthPix = 2*USF;
-% gamma = 0.5;
-% % figure; imagesc(PDIA{j} .^ gamma)
-% PDI_US_j = imresize(PDIA{j}, USF, "bilinear");
-% % figure; imagesc(PDI_US_j .^ gamma)
-% % PDIN = PDI ./ max(PDIN, [], 'all'); % Normalized PDI [0, 1]
-% % [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(unstackData(Vz03, PP)) .* 1, sigmas, spacing, tau, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
-% [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(PDI_US_j .^ gamma), sigmas, spacing, tau, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
-% figure; imagesc(vesselness); axis square
-% figure; imagesc(vesselMask); axis square
-% figure; imagesc(skel); axis square
-% figure; h = imagesc(angleMap); colormap hsv; colorbar; axis square; xlabel('x [mm]'); ylabel('z [mm]'); title('Vessel angle'); set(h, 'AlphaData', ~isnan(angleMap)) % make pixels transparent if the angle = NaN
-
-spacing = [1, 1];
-sigmas = [1:0.5:3];
-tau_va = 0.5;
-brightondark = true;
-vesselnessThreshold = 0.05;
-minBranchLengthPix = 5;
-minSegLengthPix = 3;
-% PDIN = PDI ./ max(PDIN, [], 'all'); % Normalized PDI [0, 1]
-% [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(unstackData(Vz03, PP)) .* 1, sigmas, spacing, tau_va, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
-% [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(PDIA{j}(zrange, xrange) .^ gamma), sigmas, spacing, tau_va, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
-% [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(CDIA{j}(zrange, xrange)), sigmas, spacing, tau_va, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
-[vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(abs(CDIA{j}(:, :)), sigmas, spacing, tau_va, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
-% test = CDIA{3}; test(test >0 ) = 0; test = abs(test);
-% [vessels, angleMap, vesselness, vesselMask, segLabel, skel] = vesselAngle2D(test(zrange, xrange), sigmas, spacing, tau_va, brightondark, vesselnessThreshold, minBranchLengthPix, minSegLengthPix);
-% figure; imagesc(vesselness)
-% figure; imagesc(vesselMask)
-% figure; imagesc(skel)
-figure; h = imagesc(angleMap); colormap hsv; colorbar; axis equal; xlabel('x'); ylabel('z'); title('Vessel angle'); set(h, 'AlphaData', ~isnan(angleMap)) % make pixels transparent if the angle = NaN
-% vesselAngles = deg2rad(angleMap); % Vessel angles [rad]
-vesselAngles = angleMap; % Vessel angles [deg]
-
-vesselAngleMask = ~isnan(stackData(vesselAngles, PP)); % Mask to avoid NaN voxels in the vessel angle mask
-
-
-figure; imagesc(CDIA{3}); colormap(VzCmap); axis equal; colorbar
-
-%% ========= 5. Fit vUS ========= %%
-% Initial guesses for parameters; separate fitting for negative and positive frequencies (down and up flows)
-
-% CHANGE THIS LATER, WHEN I ACTUALLY IMPLEMENT VOXEL SCREENING!!!!!!!!!!!!!!!!!!
-% num_voxels = size(g1neg, 1)*size(g1neg, 2)*size(g1neg, 3);
-
-% ---- Loop through directional components and go through the fitting process ---- %
-% for j = ctp
-% for j = 1:2 % Fit only negative and positive frequencies (down and up flows)
-for j = 3
-    % % ---- Create masks for this direction's signal ---- %
-    % [fbSNR_j, fbSNR_mask_j, fbSNR_express_mask_j] = spectralSNR(IQf_FT_separated_masked{j}, IQf_FT_separated{j}, PP, 'half');
-    % [g1SNR_j, g1SNR_mask_j, g1SNR_express_mask] = g1BasedSNR(g1{j}, PP, 'half');
-    % [pnSNR_j, pnSNR_mask_j] = pnSpectralSNR(IQf_FT_separated_masked, PP, j);
-    % overall_mask_j = and( and( and(or(pnSNR_mask_j, fbSNR_express_mask_j), or(fbSNR_mask_j, g1SNR_express_mask)), g1SNR_mask_j), overall_mask);
-    % overall_mask_stacked_j = stackData(overall_mask_j, PP);
-    % % figure; imagesc(overall_mask_j)
-
-    % % ---- Adjust the g1 for this direction's signal ---- %
-    % % Create masks for potentially bad pixels
-    % g1adj_mask1_j = abs( abs(g1{j}(:, :, t1i)) - abs(g1{j}(:, :, t1i+1)) ) > 2.*abs( abs(g1{j}(:, :, t1i+1)) - abs(g1{j}(:, :, t1i+2)) ); % Flag a pixel if the |g1| drop from tau1 → tau2 is more than double the drop from tau2 → tau3 (is there some extra noise decorrelation in that first interval)
-    % g1adj_mask2_j = and( and( abs(g1{j}(:, :, t1i)) > 0.55, abs(g1{j}(:, :, t1i + 1)) < 0.25 ), abs(g1{j}(:, :, t1i + 1)) < abs(g1{j}(:, :, t1i + 2)) ); % (|g1(tau1)| > 0.55) AND (|g1(tau2)| < 0.25) AND (|g1(tau2)| < |g1(tau3)|) --> Flag a pixel if the |g1| at tau1 is high, low at tau2, and then goes back up at tau3 (which would be strange)
-    % % g1adj_mask_j = or(g1adj_mask1_j, g1adj_mask2_j);
-    % g1adj_mask_j = g1adj_mask2_j; % TESTING
-    % % Adjust g1(tau1) for these potentially bad pixels
-    % g1tau1_temp_j = (1 - g1adj_mask_j).*squeeze(g1{j}(:, :, t1i)) + (g1adj_mask_j).*( g1{j}(:, :, t1i + 1) + complex( abs(real(g1{j}(:, :, t1i) - g1{j}(:, :, t1i + 1))), imag(g1{j}(:, :, t1i + 1) - g1{j}(:, :, t1i + 2)) ) );
-    % % figure; imagesc(abs(g1tau1_temp_j)); clim([0, 1]); colorbar
-    % % tp = [93, 174]; % test point
-    % % figure; plot(squeeze(real(g1{j}(tp(1), tp(2), :))), '-o')
-    % % figure; plot(squeeze(abs(g1{j}(tp(1), tp(2), :))), '-o')
-    % % temp = repmat(g1adj_mask_j, [1, 1, nTau]);
-    % g1adj_j = g1{j}; g1adj_j(:, :, t1i) = g1tau1_temp_j;
-    % % figure; plot(squeeze(abs(g1adj_j(tp(1), tp(2), :))), '-o')
-    % g1adj_stacked_j = stackData(g1adj_j, PP);
-
-    % TESTING
-    % g1adj_stacked_j = stackData(g1{j}, PP);
-    % 
-    % % ---- Find initial guesses for fit parameters, for this direction's signal ---- %
-    % % Static (DC) component -- complex valued
-    % RotCtr_j = FindCOR( g1adj_stacked_j(:, round(nTau/2):end) ); % [nz*nx, nTau] -- for each pixel, take its last ½ of values (where the complex g1 spiral has theoretically started to slow down and look like a circle) and fit a circle to those points using FindCOR.m. The resulting center point of the fit is theoretically the center/end point of the complex g1 spiral, which represents the steady-state value. Take the real component of that output and use either this value if positive, or 0
-    % DCR0_v1_j = max(real(RotCtr_j), 0); % Version 1 of the DC component's Real component
-    % DCR0_v2_j = max(mean( real(g1adj_stacked_j(:, floor(end*2/3):end)), 2 ), 0); % Version 2 of the DC component's Real component -- for each pixel, take the temporal mean of the real components of its last ⅓ of values (where there is theoretically a steady-state/plateau), and use either this value if positive, or 0 otherwise.
-    % DCR0_j = min(DCR0_v1_j, DCR0_v2_j); % Take the minimum of the two guesses above [nz*nx, nTau]
-    % % DCR0_j = complex(min(real(DCR0_v1_j), real(DCR0_v2_j)), min(imag(DCR0_v1_j), imag(DCR0_v2_j))); % Take the minimum of the two guesses above [nz*nx, nTau]
-    % % DCR0_j = DCR0_v1_j; % Testing
-    % 
-    % % Absolute "error" due to the noise decorrelation at tau1
-    % tau1_decorr_drop_j = 1 - abs(g1adj_stacked_j(:, t1i)); % How much does |g1(tau1)| drop from 1 (This is not used as its own explicit parameter)
-    % 
-    % % Dynamic (noise decorrelation) component -- 'F' in the vUS paper
-    % FR0_j = max(min(1 - abs(DCR0_j) - tau1_decorr_drop_j, 1), 0); % F Real component, clamped to [0, 1]
-
-    % Axial component of the blood flow's group velocity -- v_zgp
-    [Vz0, tau_V] = findVzPhaseDiff(stackData(g1{j}, PP), PP); % v_zgp [m/s]
-    % [Vz0, tau_V] = findVzPhaseDiff(g1adj_stacked_j, PP); % v_zgp [m/s]
-    % figure; imagesc(squeeze(max(unstackData(Vz0, PP), [], 1))'); colormap(VzCmap); axis equal; colorbar; clim([-30e-3, 30e-3])
-    % volumeViewer(abs(unstackData(Vz0, PP)))
-
-    % Mesh method for finding v_tgp0
-    % [v_zgp0, v_xgp0, p0, DC0, F0, R20] = InitvUS2DParamsWithMesh(g1adj_stacked_j, Vz0, DCR0_j, FR_j, PP, sigma, tau);
-    % [Vx0, R2_Vx0] = InitVx0WithMesh2D(stackData(g1{j}, PP), Vz0, DCR0_j, FR0_j, PP, sigma, tau);
-    Vt0 = ones(size(Vz0)).* 5e-3; % TESTING: uniform initial v_xgp guess
-    % figure; imagesc(unstackData(Vx0, PP)); axis equal; colorbar
-
-    % **** TO DO: create a function that looks at the confidence in the
-    % angle-based Vt0, and outputs an updated Vt0 if needed, plus searches
-    % for the best p0 ****
-    
-    % Set parameters for findTauDecayed.m
-    absolute_tau_ss_cutoff_s = 10e-3;
-    too_fast_decay_s = 2e-3;
-
-    % Adaptively find the tau range to fit over for each pixel, and another
-    % quality mask
-    [tau_decayed_ind, voxel_quality] = findTauDecayed(g1_exp{j}, tau, t1i, absolute_tau_ss_cutoff_s, too_fast_decay_s);
-    % volumeViewer(unstackData(voxel_quality, PP))
-
-    % Another mask
-    temp_g1_tau1_mask = squeeze(abs(g1_exp{j}(:, t1i))) > 0.3; % Note: this does not account for the static component
-    % volumeViewer(unstackData(temp_g1_tau1_mask, PP))
-
-    temp_g1_tau2_mask = squeeze(abs(g1_exp{j}(:, t1i + 1))) > 0.2; % Note: this does not account for the static component
-    % volumeViewer(unstackData(temp_g1_tau2_mask, PP))
-
-    tempMask = and(temp_g1_tau1_mask, temp_g1_tau2_mask);
-
-    % ---- Fit this direction's signal ---- %
-    % anon_fun = @(x) g1vUS2D_Jac(x, tau, sigma, PP.k0);
-    
-    % **** TO DO: edit anon_fun to have the correct output structure 
-    % (complex-valued function), AND subtract the experimental data!!!!
-
-    % useF = true;
-    % useDC = true;
-    % opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', true);
-    % opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', false);
-
-    % v_xgp = zeros(PP.zp, PP.xp);
-    % v_zgp = zeros(PP.zp, PP.xp);
-    % p = zeros(PP.zp, PP.xp);
-    % F = zeros(PP.zp, PP.xp);
-    % DC = zeros(PP.zp, PP.xp);
-
-    % Struct for storing parameters of the different g1 models
-    ifpv = zeros(num_voxels, 1); % initial fit parameter value matrix
-    % fpn_SG = {"v_tgp_stacked", "v_zgp_stacked", "F_stacked", "DC_stacked", "k_stacked", "a_stacked"}; % Fit parameter names (single Gaussian PSF model)
-    fpn_SG = {"v_tgp", "v_zgp", "F", "DC", "k", "a"}; % Fit parameter names (single Gaussian PSF model)
-    fit_SG = initFitParamStruct(fpn_SG, ifpv);
-    fpn_RCA = {"v_xgp", "v_ygp", "v_zgp", "F", "DC", "k", "a"}; % Fit parameter names (RCA-specific PSF model)
-    fit_RCA = initFitParamStruct(fpn_RCA, ifpv);
-    fpn_C = {"C", "v_zgp", "F", "DC"}; % Fit parameter names (Combined parameter model)
-    fit_C = initFitParamStruct(fpn_C, ifpv);
-    % fit_SG = struct('v_tgp_stacked', ifpv, 'v_zgp_stacked', ifpv, 'F_stacked', ifpv, 'DC_stacked', ifpv, 'k_stacked', ifpv, 'a_stacked', ifpv); % single-Gaussian PSF version
-    % fit_RCA = struct('v_xgp_stacked', ifpv, 'v_ygp_stacked', ifpv, 'v_zgp_stacked', ifpv, 'F_stacked', ifpv, 'DC_stacked', ifpv, 'k_stacked', ifpv, 'a_stacked', ifpv); % RCA-specific PSF version
-    % fit_C = struct('C_stacked', ifpv, 'v_zgp_stacked', ifpv, 'F_stacked', ifpv, 'DC_stacked', ifpv); % Combined parameter C version
-
-    % Choose the mask to use to fit certain pixels or not
-    % maskToUse = overall_mask_stacked; 
-    % maskToUse = and(vesselAngleMask, stackData(temp_g1_tau1_mask, PP));
-    % maskToUse = and(voxel_quality, tempMask);
-    maskToUse = or(voxel_quality, tempMask);
-    % maskToUse = voxel_quality;
-    % maskToUse = vesselMask;
-    % volumeViewer(unstackData(maskToUse, PP))
-
-    maskToUseTrueInds = find(maskToUse).'; % indices where maskTouse is true
-
-    
-    % ---- Use batched solver ---- %
-    [s, w] = gaussLegendre01(48);
-    F_lb = 0; F_ub = 1;
-    k_lb = 1.5; k_ub = 3;
-
-    % Single-Gaussian PSF model
+warning('The code is not designed to save properly for multiple j')
+% for fi = files_to_fit
+for fi = 3:endFile
+    disp(fi)
     tic
-    fit_SG.lb = [0,     -50e-3, F_lb, 0, k_lb, 0]; % Parameter lower bounds [v_tgp, v_zgp, F, DC, k, a]
-    fit_SG.ub = [250e-3, 50e-3, F_ub, 1, k_ub, 1]; % Parameter upper bounds
+    % Choose and load the g1 superframe average: g1_avg.mat file (from calc_g1_avg.m)
+    load([PDpath, 'fUSdata-', num2str(fi), '.mat'], 'g1')
     
-    fit_SG.xscale = [1e-2 1e-2 1 1 1 1];
-    fit_SG.model = @(X, cols) vUS_3D_quad_batchModel(X, tau(cols), PP.k0, sigma_SG, s, w);
-    % vi   = find(maskToUse);  
-    nv = numel(maskToUseTrueInds);
-    fit_SG.opts   = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', 'xscale', fit_SG.xscale);
-    fit_SG.x0   = [5e-3*ones(nv,1), Vz0(maskToUseTrueInds), ones(nv,1), zeros(nv,1), 2.5*ones(nv,1), 0.7 .*ones(nv,1)];
-    fit_SG.opts = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', 'xscale', fit_SG.xscale);
-    [fit_SG.x, fit_SG.cost, ~, fit_SG.conv] = fitBatchedLM(fit_SG.model, fit_SG.x0, g1_exp{j}(maskToUseTrueInds, :), fit_SG.lb, fit_SG.ub, fit_SG.opts);    
-    % [fit_SG.x, fit_SG.cost] = vUS_3D_quad_fitBatched(g1_exp{j}(maskToUseTrueInds,:), tau_decayed_ind(maskToUseTrueInds), Vz0(maskToUseTrueInds), tau, PP.k0, sigma_SG, fit_SG.lb, fit_SG.ub);
-    [fit_SG] = storeFitParams(fit_SG, fpn_SG, fit_SG.x, maskToUseTrueInds, PP); % Store/parse fitted parameters
-    toc
-
-
-    % RCA-specific PSF model
-    tic
-    fit_RCA.xscale = [1e-2 1e-2 1e-2 1 1 1 1];
-    fit_RCA.lb = [0,      0,     -50e-3, F_lb, 0, k_lb, 0]; % Parameter lower bounds [v_xgp, v_ygp, v_zgp, F, DC, k, a]
-    fit_RCA.ub = [250e-3, 250e-3, 50e-3, F_ub, 1, k_ub, 1]; % Parameter upper bounds
-    fit_RCA.model = @(X, cols) vUS_3D_quad_RCA_xy_batchModel(X, tau(cols), PP.k0, sigma_RCA, s, w);
-    % vi   = find(maskToUse);  
-    nv = numel(maskToUseTrueInds);
-    fit_RCA.opts   = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', 'xscale', fit_RCA.xscale);
-    fit_RCA.x0   = [5e-3*ones(nv,1), 5e-3*ones(nv,1), Vz0(maskToUseTrueInds), ones(nv,1), zeros(nv,1), 2.5*ones(nv,1), 0.7 .*ones(nv,1)];
-    opts = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', 'xscale', fit_RCA.xscale);
-    [fit_RCA.x, fit_RCA.cost, ~, fit_RCA.conv] = fitBatchedLM(fit_RCA.model, fit_RCA.x0, g1_exp{j}(maskToUseTrueInds, :), fit_RCA.lb, fit_RCA.ub, fit_RCA.opts);
-    [fit_RCA] = storeFitParams(fit_RCA, fpn_RCA, fit_RCA.x, maskToUseTrueInds, PP); % Store/parse fitted parameters
-    toc
-
-    % Combined parameter model
-    
-    fit_C.lb = [0, -50e-3, 0, 0];
-    fit_C.ub = [Inf, 50e-3, 1, 1];
-    fit_C.x0 = [500*ones(nv,1), Vz0(maskToUseTrueInds), ones(nv,1), zeros(nv,1)];
-    fit_C.xscale = [500, 1e-2, 1, 1];  % C in units of 500 (its typical magnitude), v_zgp x10mm/s, F, DC
-
-    fit_C.model = @(X, cols) vUS_3D_combined_batchModel(X, tau(cols), PP.k0);
-    fit_C.opts = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', t1i, 'jacobian', 'analytic', 'xscale', fit_C.xscale);
-    tic
-    [fit_C.x, fit_C.cost, ~, fit_C.conv] = fitBatchedLM(fit_C.model, fit_C.x0, g1_exp{j}(maskToUseTrueInds, :), fit_C.lb, fit_C.ub, fit_C.opts);
-    [fit_C] = storeFitParams(fit_C, fpn_C, fit_C.x, maskToUseTrueInds, PP); % Store/parse fitted parameters
-    toc
-    % lnlTol = 1e-10; % Tolerance for the lsqnonlin solver
-    % tic
-    % for vi = 1:num_voxels % voxel index
-    % % for vi = 1:300
-    % % for vi = ind
-    % % for vi = maskToUseTrueInds(1:100)
-    %     % [zi, xi] = 
-    %     if maskToUse(vi)
-    %     % if 1
-    %     % if overall_mask_stacked(vi)
-    %     % if overall_mask_stacked_j(vi) & vesselAngleMask(vi) % Fit only voxels we believe have high signal quality
-    %     % if vesselAngleMask(vi) % Fit only voxels we believe have high signal quality
-    %         % x0 = [Vt0(vi), Vz0(vi), FR0_j(vi), DCR0_j(vi)];
-    %         x0 = [Vt0(vi), Vz0(vi), 1, 0, 2.5, 1];
-    %         % **** Check lb AND ub --> VELOCITIES CAN BE NEGATIVE ****
-    %         % lb = [x0(1) - 0.25*abs(x0(1)), x0(2) - 0.25*abs(x0(2)), max(F0(vi) - 0.2, 0), max(DC0(vi) - 0.2, 0)]; % TESTING
-    %         % ub = [x0(1) + 0.25*abs(x0(1)), x0(2) + 0.25*abs(x0(2)), min(F0(vi) + 0.2, 1), min(DC0(vi) + 0.2, 1)]; % TESTING
-    %         % lb = [0, -30e-3, 0, 0]; % TESTING
-    %         % ub = [30e-3, 30e-3, 1, 1]; % TESTING
-    %         % lb = [0, x0(2) - 0.01, 0, 0]; % TESTING
-    %         % ub = [sqrt(2)*30e-3, x0(2) + 0.01, 1, 1]; % TESTING
-    %         % lb = [0, x0(2) - 0.01, 0, 0, 2, 0]; % TESTING
-    %         % ub = [Inf, x0(2) + 0.01, 1, 1, 3, 1]; % TESTING
-    %         lb = [0, -Inf, 0, 0, 2, 0]; % TESTING
-    %         ub = [Inf, Inf, 1, 1, 3, 1]; % TESTING
-    % 
-    %         g1_exp_j_vi = g1_exp{j}(vi, :); g1_exp_j_vi = g1_exp_j_vi(:);
-    %         g1_exp_split_j_vi = [real(g1_exp_j_vi), imag(g1_exp_j_vi)];
-    % 
-    %         % Adaptive tau cropping
-    %         % tau_inds = t1i:round(nTau/3); % testing
-    %         tau_inds = t1i:tau_decayed_ind(vi);
-    % 
-    %         % Base residual function
-    %         % opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', false);
-    %         % anon_fun = @(x) vUS_3D_num_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :));
-    % 
-    %         % Weighted residuals function
-    %         % rw_pow = 1; % Residual weighting power (1: linear, 2: quadratic, etc.)
-    %         % OF_weight = (max(tau_cropped) - tau_cropped).^rw_pow;
-    %         % OF_weight = OF_weight./max(OF_weight); % Objective function weighting: trust residuals from earlier time lags more
-    %         % anon_fun = @(x) vUS_3D_num_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :), OF_weight); % Jacobian version
-    % 
-    %         % x = lsqnonlin(anon_fun, x0, lb, ub, opts); % x = [v_xgp, v_zgp, F, DC]
-    %         % x = lsqnonlin(anon_fun, x0, [], [], opts); % x = [v_xgp, v_zgp, F, DC]
-    % 
-    %         % Residual function using the Gauss-Legendre form (for speed)
-    %         [s, w] = gaussLegendre01(48); % 48 nodes...
-    %         xscale = [1e-2 1e-2 1 1 1 1];
-    %         anon_fun  = @(xs) vUS_3D_quad_residJac(xs, tau, PP.k0, sigma, s, w, real(g1_exp_j_vi), imag(g1_exp_j_vi), xscale);
-    %         opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', true, 'FunctionTolerance', lnlTol,'StepTolerance', lnlTol,'OptimalityTolerance', lnlTol);
-    %         xs = lsqnonlin(anon_fun, x0./xscale, lb./xscale, ub./xscale, opts);
-    %         x = xs.*xscale;
-    % 
-    %         % Store fitted parameters
-    %         v_tgp_stacked(vi) = x(1);
-    %         v_zgp_stacked(vi) = x(2);
-    %         F_stacked(vi) = x(3);
-    %         DC_stacked(vi) = x(4);
-    %         k_stacked(vi) = x(5);
-    %         a_stacked(vi) = x(6);
-    %     end
+    % for j = ctp
+    %     g1{j} = double(g1{j});
     % end
-    % toc
+    
+    % voxelTimeseriesGUI(g1{3}, tempPDI.^0.5, 'ComplexMode', 'abs')
+    
+    % Create new variables for experimental g1, with spatial dimensions stacked
+    g1_exp = cell(size(g1)); % Cell array of experimental g1 data with spatial dimensions vectorized/stacked
+    % for j = ctp
+    for j = 3
+        g1_exp{j} = reshape(g1{j}, num_voxels, nTau);
+    end
+    
+    % ---- Loop through directional components and go through the fitting process ---- %
+    % for j = ctp
+    % for j = 1:2 % Fit only negative and positive frequencies (down and up flows)
+    for j = 3
+        
+        % Axial component of the blood flow's group velocity -- v_zgp
+        [Vz0, tau_V] = findVzPhaseDiff(stackData(g1{j}, PP), PP); % v_zgp [m/s]
+        % figure; imagesc(squeeze(max(unstackData(Vz0, PP), [], 1))'); colormap(VzCmap); axis equal; colorbar; clim([-30e-3, 30e-3])
+        % volumeViewer(abs(unstackData(Vz0, PP)))
+    
+        % Mesh method for finding v_tgp0
+        % [v_zgp0, v_xgp0, p0, DC0, F0, R20] = InitvUS2DParamsWithMesh(g1adj_stacked_j, Vz0, DCR0_j, FR_j, PP, sigma, tau);
+        % [Vx0, R2_Vx0] = InitVx0WithMesh2D(stackData(g1{j}, PP), Vz0, DCR0_j, FR0_j, PP, sigma, tau);
+        Vt0 = ones(size(Vz0)).* 5e-3; % TESTING: uniform initial v_xgp guess
+        % figure; imagesc(unstackData(Vx0, PP)); axis equal; colorbar
+    
+        % **** TO DO: create a function that looks at the confidence in the
+        % angle-based Vt0, and outputs an updated Vt0 if needed, plus searches
+        % for the best p0 ****
+    
+        % % Adaptively find the tau range to fit over for each pixel, and another
+        % % quality mask
+        % [tau_decayed_ind, voxel_quality] = findTauDecayed(g1_exp{j}, tau, t1i, fp.absolute_tau_ss_cutoff_s, fp.too_fast_decay_s);
+        % % volumeViewer(unstackData(voxel_quality, PP))
+        % 
+        % % Another mask
+        % temp_g1_tau1_mask = squeeze(abs(g1_exp{j}(:, t1i))) > 0.3; % Note: this does not account for the static component
+        % % volumeViewer(unstackData(temp_g1_tau1_mask, PP))
+        % 
+        % temp_g1_tau2_mask = squeeze(abs(g1_exp{j}(:, t1i + 1))) > 0.2; % Note: this does not account for the static component
+        % % volumeViewer(unstackData(temp_g1_tau2_mask, PP))
+        % 
+        % tempMask = and(temp_g1_tau1_mask, temp_g1_tau2_mask);
+    
+        % Struct for storing parameters of the different g1 models
+        ifpv = zeros(num_voxels, 1); % initial fit parameter value matrix
+        fpn_SG = {"v_tgp", "v_zgp", "F", "DC", "k", "a"}; % Fit parameter names (single Gaussian PSF model)
+        fit_SG = initFitParamStruct(fpn_SG, ifpv);
+        fpn_RCA = {"v_xgp", "v_ygp", "v_zgp", "F", "DC", "k", "a"}; % Fit parameter names (RCA-specific PSF model)
+        fit_RCA = initFitParamStruct(fpn_RCA, ifpv);
+        fpn_C = {"C", "v_zgp", "F", "DC"}; % Fit parameter names (Combined parameter model)
+        fit_C = initFitParamStruct(fpn_C, ifpv);
+        
+        % ---- Use batched solver ---- %
+        if ~exist('maskToUseTrueInds', 'var')
+            maskToUseTrueInds = fit_sfa.maskToUseTrueInds;
+        end
 
+        % Single-Gaussian PSF model
+        % tic
+        % Parameter lower and upper bounds [v_tgp, v_zgp, F, DC, k, a]
+        fit_SG.lb = fit_sfa.fit_SG.x; % Initialize most to the superframe-averaged fit results
+        fit_SG.ub = fit_sfa.fit_SG.x;
+        fit_SG.lb(:, 4) = fit_sfa.fb.DC(1); fit_SG.ub(:, 4) = fit_sfa.fb.DC(2); % Allow DC to be free
+        
+        fit_SG.xscale = fit_sfa.fit_SG.xscale;
+        fit_SG.model = @(X, cols) vUS_3D_quad_batchModel(X, tau(cols), PP.k0, sigma_SG, s, w);
+        fit_SG.opts   = fit_sfa.fit_SG.opts;
+        % fit_SG.opts = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', 'xscale', fit_SG.xscale);
+        fit_SG.x0   = fit_sfa.fit_SG.x0; fit_SG.x0(:, 2) = Vz0(maskToUseTrueInds);% Use the same initial values, except for the phase-based Vz0
+        [fit_SG.x, fit_SG.cost, ~, fit_SG.conv] = fitBatchedLM(fit_SG.model, fit_SG.x0, g1_exp{j}(maskToUseTrueInds, :), fit_SG.lb, fit_SG.ub, fit_SG.opts);    
+        % [fit_SG.x, fit_SG.cost] = vUS_3D_quad_fitBatched(g1_exp{j}(maskToUseTrueInds,:), tau_decayed_ind(maskToUseTrueInds), Vz0(maskToUseTrueInds), tau, PP.k0, sigma_SG, fit_SG.lb, fit_SG.ub);
+        [fit_SG] = storeFitParams(fit_SG, fpn_SG, fit_SG.x, maskToUseTrueInds, PP); % Store/parse fitted parameters
+        % toc
+    
+        % RCA-specific PSF model
+        % tic
+        fit_RCA.xscale = fit_sfa.fit_RCA.xscale;
+        % Parameter lower and upper bounds [v_xgp, v_ygp, v_zgp, F, DC, k, a]
+        fit_RCA.lb = fit_sfa.fit_RCA.x; % Initialize most to the superframe-averaged fit results
+        fit_RCA.ub = fit_sfa.fit_RCA.x;
+        fit_RCA.lb(:, 5) = fit_sfa.fb.DC(1); fit_RCA.ub(:, 5) = fit_sfa.fb.DC(2); % Allow DC to be free
+        
+        fit_RCA.model = @(X, cols) vUS_3D_quad_RCA_xy_batchModel(X, tau(cols), PP.k0, sigma_RCA, s, w);
+        fit_RCA.opts = fit_sfa.fit_RCA.opts;
+        % fit_RCA.opts   = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', 'xscale', fit_RCA.xscale);
+        % fit_RCA.x0   = [Vt0(maskToUseTrueInds), Vt0(maskToUseTrueInds), Vz0(maskToUseTrueInds), ones(fit_sfa.nv, 1), zeros(fit_sfa.nv, 1), 2.5*ones(fit_sfa.nv,1 ), 0.7 .*ones(fit_sfa.nv, 1)];
+        fit_RCA.x0 = fit_sfa.fit_RCA.x0; fit_RCA.x0(:, 3) = Vz0(maskToUseTrueInds);
+        [fit_RCA.x, fit_RCA.cost, ~, fit_RCA.conv] = fitBatchedLM(fit_RCA.model, fit_RCA.x0, g1_exp{j}(maskToUseTrueInds, :), fit_RCA.lb, fit_RCA.ub, fit_RCA.opts);
+        [fit_RCA] = storeFitParams(fit_RCA, fpn_RCA, fit_RCA.x, maskToUseTrueInds, PP); % Store/parse fitted parameters
+        % toc
+    
+        % Combined parameter model
+        % Parameter lower and upper bounds [C, v_zgp, F, DC]
+        fit_C.lb = fit_sfa.fit_C.x;
+        fit_C.ub = fit_sfa.fit_C.x;
+        fit_C.lb(:, 4) = fit_sfa.fb.DC(1); fit_C.ub(:, 4) = fit_sfa.fb.DC(2); % Allow DC to be free
 
-    % test = vUS_3D_num_wrapper(x, tau, PP.k0, sigma);
-    % figure; plot(tau, abs(g1_exp{j}(vi, :)), tau, abs(test))
-    % figure; plot(g1_exp{j}(vi, :), '-x'); hold on; plot(test, '-o'); hold off; legend('Data', 'Fit'); axis equal; xlim([-1, 1]); ylim([-1, 1])
+        % fit_C.x0 = [500*ones(fit_sfa.nv, 1), Vz0(maskToUseTrueInds), ones(fit_sfa.nv, 1), zeros(fit_sfa.nv, 1)];
+        fit_C.x0 = fit_sfa.fit_C.x0; fit_C.x0(:, 2) = Vz0(maskToUseTrueInds);
+        fit_C.xscale = fit_sfa.fit_C.xscale;  % C in units of 500 (its typical magnitude), v_zgp x10mm/s, F, DC
+    
+        fit_C.model = @(X, cols) vUS_3D_combined_batchModel(X, tau(cols), PP.k0);
+        % fit_C.opts = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', t1i, 'jacobian', 'analytic', 'xscale', fit_C.xscale);
+        fit_C.opts = fit_sfa.fit_C.opts;
+        % tic
+        [fit_C.x, fit_C.cost, ~, fit_C.conv] = fitBatchedLM(fit_C.model, fit_C.x0, g1_exp{j}(maskToUseTrueInds, :), fit_C.lb, fit_C.ub, fit_C.opts);
+        [fit_C] = storeFitParams(fit_C, fpn_C, fit_C.x, maskToUseTrueInds, PP); % Store/parse fitted parameters
+        % toc
+       
+    end
+    % Calculate the fitted g1 curves for each valid pixel
+    g1_model_SG_stacked = zeros(num_voxels, nTau);
+    g1_model_RCA_stacked = zeros(num_voxels, nTau);
+    g1_model_C_stacked = zeros(num_voxels, nTau);
+    
+    parfor vi = 1:num_voxels % voxel index
+        if maskToUse(vi) % If the voxel was fitted
+            x_SG = [fit_SG.v_tgp_stacked(vi), fit_SG.v_zgp_stacked(vi), fit_SG.F_stacked(vi), fit_SG.DC_stacked(vi), fit_SG.k_stacked(vi), fit_SG.a_stacked(vi)];
+            x_RCA = [fit_RCA.v_xgp_stacked(vi), fit_RCA.v_ygp_stacked(vi), fit_RCA.v_zgp_stacked(vi), fit_RCA.F_stacked(vi), fit_RCA.DC_stacked(vi), fit_RCA.k_stacked(vi), fit_RCA.a_stacked(vi)];
+            x_C = [fit_C.C_stacked(vi), fit_C.v_zgp_stacked(vi), fit_C.F_stacked(vi), fit_C.DC_stacked(vi)];
+    
+            % g1_model(vi, :) = vUS_3D_num_wrapper(x, tau, PP.k0, sigma);
+            g1_model_SG_stacked(vi, :) = vUS_3D_quad_vec(x_SG, tau, PP.k0, sigma_SG, s, w);
+            g1_model_RCA_stacked(vi, :) = vUS_3D_quad_RCA_xy_vec(x_RCA, tau, PP.k0, sigma_RCA, s, w);
+            g1_model_C_stacked(vi, :) = vUS_3D_combined_complex_Jac(x_C, tau, PP.k0);
+    
+        end
+    end
+    
+    % Calculate fitting quality metrics
+    tau_mask = (t1i:nTau);
+    fit_SG.R2 = calcR2(g1_model_SG_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
+    fit_RCA.R2 = calcR2(g1_model_RCA_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
+    fit_C.R2 = calcR2(g1_model_C_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
+    
+    fit_SG.R2_adj = calcR2_adj(g1_model_SG_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_SG));
+    fit_RCA.R2_adj = calcR2_adj(g1_model_RCA_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_RCA));
+    fit_C.R2_adj = calcR2_adj(g1_model_C_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_C));
+    
+    fit_SG.AIC = calcAIC(g1_model_SG_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_SG));
+    fit_RCA.AIC = calcAIC(g1_model_RCA_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_RCA));
+    fit_C.AIC = calcAIC(g1_model_C_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_C));
 
+    % Save fit results
+    save([PDpath, 'fit_results-', num2str(fi)], 'fit_SG', 'fit_RCA', 'fit_C', 'Vz0', 'Vt0')
+
+    toc
 end
 
 %% Visualize total fitted speed
@@ -584,76 +417,67 @@ figure; imagesc(squeeze(max(fit_SG.v, [], 1))); clim([0, min(prctile(fit_SG.v(fi
 figure; imagesc(squeeze(max(fit_RCA.v, [], 1))); clim([0, min(prctile(fit_RCA.v(fit_RCA.v>0), 99, 'all'), 40e-3)]); colormap turbo; axis equal; axis tight; colorbar
 % figure; imagesc(unstackData(sqrt(Vx0.^2 + Vz0.^2), PP)); clim([0, 0.04]); colormap turbo; axis equal; colorbar
 
-%% Visualize fitted |v_zgp|
-figure; imagesc(squeeze(max(abs(v_zgp), [], 1))'); colormap(VzCmap); axis equal; axis tight; colorbar; clim([-.030, 0.030]); title("v_{zgp}")
-% figure; imagesc(abs(v_zgp)); colormap(VzCmapDn); axis equal; colorbar
-
-%% Visualize fitted v_tgp
-figure; imagesc(squeeze(max(v_tgp, [], 1))'); colormap(VzCmapDn); axis equal; axis tight; colorbar; title("v_{tgp}")
-
-%% Visualize fitted k (bluntness)
-figure; imagesc(squeeze(max(k, [], 1))); colormap(VzCmapDn); clim([2, min(prctile(k, 99, 'all'), 3)]); axis equal; axis tight; colorbar
-
-%% Calculate the fitted g1 curves for each valid pixel
-g1_model_SG_stacked = zeros(num_voxels, nTau);
-g1_model_RCA_stacked = zeros(num_voxels, nTau);
-g1_model_C_stacked = zeros(num_voxels, nTau);
-
-for vi = 1:num_voxels % voxel index
-    if maskToUse(vi) % If the voxel was fitted
-        x_SG = [fit_SG.v_tgp_stacked(vi), fit_SG.v_zgp_stacked(vi), fit_SG.F_stacked(vi), fit_SG.DC_stacked(vi), fit_SG.k_stacked(vi), fit_SG.a_stacked(vi)];
-        x_RCA = [fit_RCA.v_xgp_stacked(vi), fit_RCA.v_ygp_stacked(vi), fit_RCA.v_zgp_stacked(vi), fit_RCA.F_stacked(vi), fit_RCA.DC_stacked(vi), fit_RCA.k_stacked(vi), fit_RCA.a_stacked(vi)];
-        x_C = [fit_C.C_stacked(vi), fit_C.v_zgp_stacked(vi), fit_C.F_stacked(vi), fit_C.DC_stacked(vi)];
-
-        % g1_model(vi, :) = vUS_3D_num_wrapper(x, tau, PP.k0, sigma);
-        g1_model_SG_stacked(vi, :) = vUS_3D_quad_vec(x_SG, tau, PP.k0, sigma_SG, s, w);
-        g1_model_RCA_stacked(vi, :) = vUS_3D_quad_RCA_xy_vec(x_RCA, tau, PP.k0, sigma_RCA, s, w);
-        g1_model_C_stacked(vi, :) = vUS_3D_combined_complex_Jac(x_C, tau, PP.k0);
-
-    end
-end
+% %% Calculate the fitted g1 curves for each valid pixel
+% tic
+% g1_model_SG_stacked = zeros(num_voxels, nTau);
+% g1_model_RCA_stacked = zeros(num_voxels, nTau);
+% g1_model_C_stacked = zeros(num_voxels, nTau);
+% 
+% parfor vi = 1:num_voxels % voxel index
+%     if maskToUse(vi) % If the voxel was fitted
+%         x_SG = [fit_SG.v_tgp_stacked(vi), fit_SG.v_zgp_stacked(vi), fit_SG.F_stacked(vi), fit_SG.DC_stacked(vi), fit_SG.k_stacked(vi), fit_SG.a_stacked(vi)];
+%         x_RCA = [fit_RCA.v_xgp_stacked(vi), fit_RCA.v_ygp_stacked(vi), fit_RCA.v_zgp_stacked(vi), fit_RCA.F_stacked(vi), fit_RCA.DC_stacked(vi), fit_RCA.k_stacked(vi), fit_RCA.a_stacked(vi)];
+%         x_C = [fit_C.C_stacked(vi), fit_C.v_zgp_stacked(vi), fit_C.F_stacked(vi), fit_C.DC_stacked(vi)];
+% 
+%         % g1_model(vi, :) = vUS_3D_num_wrapper(x, tau, PP.k0, sigma);
+%         g1_model_SG_stacked(vi, :) = vUS_3D_quad_vec(x_SG, tau, PP.k0, sigma_SG, s, w);
+%         g1_model_RCA_stacked(vi, :) = vUS_3D_quad_RCA_xy_vec(x_RCA, tau, PP.k0, sigma_RCA, s, w);
+%         g1_model_C_stacked(vi, :) = vUS_3D_combined_complex_Jac(x_C, tau, PP.k0);
+% 
+%     end
+% end
 
 g1_model_SG = unstackData(g1_model_SG_stacked, PP);
 g1_model_RCA = unstackData(g1_model_RCA_stacked, PP);
 g1_model_C = unstackData(g1_model_C_stacked, PP);
+toc
+
+%% Calculate fitting quality metrics
+tau_mask = (t1i:nTau);
+fit_SG.R2 = calcR2(g1_model_SG_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
+fit_RCA.R2 = calcR2(g1_model_RCA_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
+fit_C.R2 = calcR2(g1_model_C_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
+
+fit_SG.R2_adj = calcR2_adj(g1_model_SG_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_SG));
+fit_RCA.R2_adj = calcR2_adj(g1_model_RCA_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_RCA));
+fit_C.R2_adj = calcR2_adj(g1_model_C_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_C));
+
+fit_SG.AIC = calcAIC(g1_model_SG_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_SG));
+fit_RCA.AIC = calcAIC(g1_model_RCA_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_RCA));
+fit_C.AIC = calcAIC(g1_model_C_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_C));
 
 %% Visualize the experimental vs. fitted g1
 voxelTimeseriesGUI({g1{3}, g1_model_SG}, fit_SG.v, 'DataNames', {'Data', 'Fit'}, 'ComplexMode', 'abs', 'Colormap', 'turbo')
 voxelTimeseriesGUI({g1{3}, g1_model_RCA}, fit_RCA.v, 'DataNames', {'Data', 'Fit'}, 'ComplexMode', 'abs', 'Colormap', 'turbo')
 voxelTimeseriesGUI({g1{3}, g1_model_C}, fit_C.C, 'DataNames', {'Data', 'Fit'}, 'ComplexMode', 'abs', 'Colormap', 'turbo')
 
-%% Calculate fitting quality metrics
-tau_mask = (t1i:nTau);
-R2_SG = calcR2(g1_model_SG_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
-R2_RCA = calcR2(g1_model_RCA_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
-R2_C = calcR2(g1_model_C_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
-
-R2_adj_SG = calcR2_adj(g1_model_SG_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_SG));
-R2_adj_RCA = calcR2_adj(g1_model_RCA_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_RCA));
-R2_adj_C = calcR2_adj(g1_model_C_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_C));
-
-AIC_SG = calcAIC(g1_model_SG_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_SG));
-AIC_RCA = calcAIC(g1_model_RCA_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_RCA));
-AIC_C = calcAIC(g1_model_C_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_C));
-
-%% Histograms of fitting quality metrics
+%% Histograms of R^2 and adjusted R^2
 figure; hold on
 fa = 0.4; ea = 0.1; nm = 'probability';
-histogram(R2_SG, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1', 'Normalization', nm)
-histogram(R2_RCA, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1', 'Normalization', nm)
-histogram(R2_C, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1', 'Normalization', nm)
+histogram(fit_SG.R2, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1', 'Normalization', nm)
+histogram(fit_RCA.R2, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1', 'Normalization', nm)
+histogram(fit_C.R2, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1', 'Normalization', nm)
 hold off
 legend('Single Gaussian', 'RCA', 'Combined', 'Location', 'northwest')
 xlabel("R^2"); ylabel("Probability")
 title("R^2")
 xlim([-2, 1])
 
-%% Histograms of fitting quality metrics
 figure; hold on
 fa = 0.4; ea = 0.1;
-histogram(R2_adj_SG, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1', 'Normalization', nm)
-histogram(R2_adj_RCA, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1', 'Normalization', nm)
-histogram(R2_adj_C, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1', 'Normalization', nm)
+histogram(fit_SG.R2_adj, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1', 'Normalization', nm)
+histogram(fit_RCA.R2_adj, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1', 'Normalization', nm)
+histogram(fit_C.R2_adj, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1', 'Normalization', nm)
 hold off
 legend('Single Gaussian', 'RCA', 'Combined', 'Location', 'northwest')
 xlabel("R^2"); ylabel("Probability")
@@ -664,15 +488,15 @@ xlim([-2, 1])
 figure; hold on
 fa = 0.4; ea = 0.1;
 bw = 1;
-histogram(AIC_SG, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw, 'Normalization', nm)
-histogram(AIC_RCA, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw, 'Normalization', nm)
-histogram(AIC_C, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw, 'Normalization', nm)
+histogram(fit_SG.AIC, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw, 'Normalization', nm)
+histogram(fit_RCA.AIC, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw, 'Normalization', nm)
+histogram(fit_C.AIC, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw, 'Normalization', nm)
 hold off
 legend('Single Gaussian', 'RCA', 'Combined', 'Location', 'northeast')
 xlabel("AIC"); ylabel("Probability")
 title("AIC")
 
-dAIC = AIC_RCA - AIC_C;
+dAIC = fit_RCA.AIC - fit_C.AIC;
 figure; histogram(dAIC, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', bw, 'Normalization', nm)
 xlabel("ΔAIC"); ylabel("Probability")
 title("ΔAIC = AIC_{RCA} - AIC_{C}")
@@ -765,265 +589,6 @@ xlabel("DC"); ylabel("Probability")
 title("DC")
 xlim([0, 1])
 fontsize(fs, 'points')
-
-%% Testing: visualize vUS results
-vUS_speed = cell(size(vUS));
-for j = ctp
-    vUS_speed{j} = squeeze(sqrt(sum(vUS{j}(fit_roi{1}, fit_roi{2}, :).^2, 3)));
-end
-
-for j = ctp
-    figure; imagesc(vUS_speed{j}); title(ctp_labels{j}); colorbar
-end
-
-% figure; imagesc(squeeze(max(PDI, [], 1))')
-PDI = squeeze(mean(abs(IQf_HPF).^2, 3));
-figure; imagesc(squeeze(PDI(fit_roi{1}, fit_roi{2})) .^ 0.5); title('PDI')
-
-%% ========= ???. Fit vUS: combined parameter model ========= %%
-% Initial guesses for parameters; separate fitting for negative and positive frequencies (down and up flows)
-
-% CHANGE THIS LATER, WHEN I ACTUALLY IMPLEMENT VOXEL SCREENING!!!!!!!!!!!!!!!!!!
-% num_voxels = size(g1neg, 1)*size(g1neg, 2)*size(g1neg, 3);
-vs = size(IQf_HPF); vs = vs(1:end-1); % Volume size [voxels]
-num_voxels = prod(vs);
-
-t1i = 2; % Index for tau1 --> 2 for my code, because it calculates g1 starting at tau = 0
-
-% ---- Loop through directional components and go through the fitting process ---- %
-% for j = ctp
-% for j = 1:2 % Fit only negative and positive frequencies (down and up flows)
-for j = 3
-    % % ---- Create masks for this direction's signal ---- %
-    % [fbSNR_j, fbSNR_mask_j, fbSNR_express_mask_j] = spectralSNR(IQf_FT_separated_masked{j}, IQf_FT_separated{j}, PP, 'half');
-    % [g1SNR_j, g1SNR_mask_j, g1SNR_express_mask] = g1BasedSNR(g1{j}, PP, 'half');
-    % [pnSNR_j, pnSNR_mask_j] = pnSpectralSNR(IQf_FT_separated_masked, PP, j);
-    % overall_mask_j = and( and( and(or(pnSNR_mask_j, fbSNR_express_mask_j), or(fbSNR_mask_j, g1SNR_express_mask)), g1SNR_mask_j), overall_mask);
-    % overall_mask_stacked_j = stackData(overall_mask_j, PP);
-    % % figure; imagesc(overall_mask_j)
-
-    % % ---- Adjust the g1 for this direction's signal ---- %
-    % % Create masks for potentially bad pixels
-    % g1adj_mask1_j = abs( abs(g1{j}(:, :, t1i)) - abs(g1{j}(:, :, t1i+1)) ) > 2.*abs( abs(g1{j}(:, :, t1i+1)) - abs(g1{j}(:, :, t1i+2)) ); % Flag a pixel if the |g1| drop from tau1 → tau2 is more than double the drop from tau2 → tau3 (is there some extra noise decorrelation in that first interval)
-    % g1adj_mask2_j = and( and( abs(g1{j}(:, :, t1i)) > 0.55, abs(g1{j}(:, :, t1i + 1)) < 0.25 ), abs(g1{j}(:, :, t1i + 1)) < abs(g1{j}(:, :, t1i + 2)) ); % (|g1(tau1)| > 0.55) AND (|g1(tau2)| < 0.25) AND (|g1(tau2)| < |g1(tau3)|) --> Flag a pixel if the |g1| at tau1 is high, low at tau2, and then goes back up at tau3 (which would be strange)
-    % % g1adj_mask_j = or(g1adj_mask1_j, g1adj_mask2_j);
-    % g1adj_mask_j = g1adj_mask2_j; % TESTING
-    % % Adjust g1(tau1) for these potentially bad pixels
-    % g1tau1_temp_j = (1 - g1adj_mask_j).*squeeze(g1{j}(:, :, t1i)) + (g1adj_mask_j).*( g1{j}(:, :, t1i + 1) + complex( abs(real(g1{j}(:, :, t1i) - g1{j}(:, :, t1i + 1))), imag(g1{j}(:, :, t1i + 1) - g1{j}(:, :, t1i + 2)) ) );
-    % % figure; imagesc(abs(g1tau1_temp_j)); clim([0, 1]); colorbar
-    % % tp = [93, 174]; % test point
-    % % figure; plot(squeeze(real(g1{j}(tp(1), tp(2), :))), '-o')
-    % % figure; plot(squeeze(abs(g1{j}(tp(1), tp(2), :))), '-o')
-    % % temp = repmat(g1adj_mask_j, [1, 1, nTau]);
-    % g1adj_j = g1{j}; g1adj_j(:, :, t1i) = g1tau1_temp_j;
-    % % figure; plot(squeeze(abs(g1adj_j(tp(1), tp(2), :))), '-o')
-    % g1adj_stacked_j = stackData(g1adj_j, PP);
-
-    % TESTING
-    g1adj_stacked_j = stackData(g1{j}, PP);
-
-    % ---- Find initial guesses for fit parameters, for this direction's signal ---- %
-    % Static (DC) component -- complex valued
-    RotCtr_j = FindCOR( g1adj_stacked_j(:, round(nTau/2):end) ); % [nz*nx, nTau] -- for each pixel, take its last ½ of values (where the complex g1 spiral has theoretically started to slow down and look like a circle) and fit a circle to those points using FindCOR.m. The resulting center point of the fit is theoretically the center/end point of the complex g1 spiral, which represents the steady-state value. Take the real component of that output and use either this value if positive, or 0
-    DCR0_v1_j = max(real(RotCtr_j), 0); % Version 1 of the DC component's Real component
-    DCR0_v2_j = max(mean( real(g1adj_stacked_j(:, floor(end*2/3):end)), 2 ), 0); % Version 2 of the DC component's Real component -- for each pixel, take the temporal mean of the real components of its last ⅓ of values (where there is theoretically a steady-state/plateau), and use either this value if positive, or 0 otherwise.
-    DCR0_j = min(DCR0_v1_j, DCR0_v2_j); % Take the minimum of the two guesses above [nz*nx, nTau]
-    % DCR0_j = complex(min(real(DCR0_v1_j), real(DCR0_v2_j)), min(imag(DCR0_v1_j), imag(DCR0_v2_j))); % Take the minimum of the two guesses above [nz*nx, nTau]
-    % DCR0_j = DCR0_v1_j; % Testing
-
-    % Absolute "error" due to the noise decorrelation at tau1
-    tau1_decorr_drop_j = 1 - abs(g1adj_stacked_j(:, t1i)); % How much does |g1(tau1)| drop from 1 (This is not used as its own explicit parameter)
-    
-    % Dynamic (noise decorrelation) component -- 'F' in the vUS paper
-    FR0_j = max(min(1 - abs(DCR0_j) - tau1_decorr_drop_j, 1), 0); % F Real component, clamped to [0, 1]
-
-    % Axial component of the blood flow's group velocity -- v_zgp
-    [Vz0, tau_V] = findVzPhaseDiff(stackData(g1{j}, PP), PP); % v_zgp [m/s]
-    % [Vz0, tau_V] = findVzPhaseDiff(g1adj_stacked_j, PP); % v_zgp [m/s]
-    % figure; imagesc(unstackData(Vz0, PP)); colormap(VzCmap); axis equal; colorbar; clim([-30e-3, 30e-3])
-    % volumeViewer(abs(unstackData(Vz0, PP)))
-
-    % Mesh method for finding v_tgp0
-    % [v_zgp0, v_xgp0, p0, DC0, F0, R20] = InitvUS2DParamsWithMesh(g1adj_stacked_j, Vz0, DCR0_j, FR_j, PP, sigma, tau);
-    % [Vx0, R2_Vx0] = InitVx0WithMesh2D(stackData(g1{j}, PP), Vz0, DCR0_j, FR0_j, PP, sigma, tau);
-    % Vt0 = ones(size(Vz0)).* 5e-3; % TESTING: uniform initial v_xgp guess
-    C0 = Vz0;
-    % figure; imagesc(unstackData(Vx0, PP)); axis equal; colorbar
-
-    % **** TO DO: create a function that looks at the confidence in the
-    % angle-based Vt0, and outputs an updated Vt0 if needed, plus searches
-    % for the best p0 ****
-    
-    % Set parameters for findTauDecayed.m
-    absolute_tau_ss_cutoff_s = 10e-3;
-    too_fast_decay_s = 1e-3; 
-
-    % Adaptively find the tau range to fit over for each pixel, and another
-    % quality mask
-    [tau_decayed_ind, voxel_quality] = findTauDecayed(g1_exp{j}, tau, t1i, absolute_tau_ss_cutoff_s, too_fast_decay_s);
-    % volumeViewer(unstackData(voxel_quality, PP))
-
-    % Another mask
-    temp_g1_tau1_mask = squeeze(abs(g1_exp{j}(:, t1i))) > 0.3; % Note: this does not account for the static component
-    % volumeViewer(unstackData(temp_g1_tau1_mask, PP))
-
-    % ---- Fit this direction's signal ---- %
-    % anon_fun = @(x) g1vUS2D_Jac(x, tau, sigma, PP.k0);
-    
-    % **** TO DO: edit anon_fun to have the correct output structure 
-    % (complex-valued function), AND subtract the experimental data!!!!
-
-    useF = true;
-    useDC = true;
-    opts_combined = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', false);
-    % opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', true, 'Algorithm', 'levenberg-marquardt');
-    % opts = optimoptions('lsqnonlin', 'Display', 'off', 'SpecifyObjectiveGradient', false);
-
-    C_stacked = zeros(num_voxels, 1);
-    v_zgp_combined_stacked = zeros(num_voxels, 1);
-    F_combined_stacked = zeros(num_voxels, 1);
-    DC_combined_stacked = zeros(num_voxels, 1);
-
-    tic
-    % ind = sub2ind(ps, 23, 187)
-
-    % Choose the mask to use to fit certain pixels or not
-    % maskToUse = overall_mask_stacked; 
-    % maskToUse = and(vesselAngleMask, stackData(temp_g1_tau1_mask, PP));
-    maskToUse = and(voxel_quality, temp_g1_tau1_mask);
-    % maskToUse = vesselMask;
-    % volumeViewer(unstackData(maskToUse, PP))
-
-    for vi = 1:num_voxels % voxel index
-    % for vi = 1:300
-    % for vi = ind
-        % [zi, xi] = 
-        if maskToUse(vi)
-        % if 1
-        % if overall_mask_stacked(vi)
-        % if overall_mask_stacked_j(vi) & vesselAngleMask(vi) % Fit only voxels we believe have high signal quality
-        % if vesselAngleMask(vi) % Fit only voxels we believe have high signal quality
-            % x0 = [Vt0(vi), Vz0(vi), FR0_j(vi), DCR0_j(vi)];
-            x0_combined = [C0(vi), Vz0(vi), 1, 0];
-            % **** Check lb AND ub --> VELOCITIES CAN BE NEGATIVE ****
-            % lb = [x0(1) - 0.25*abs(x0(1)), x0(2) - 0.25*abs(x0(2)), max(F0(vi) - 0.2, 0), max(DC0(vi) - 0.2, 0)]; % TESTING
-            % ub = [x0(1) + 0.25*abs(x0(1)), x0(2) + 0.25*abs(x0(2)), min(F0(vi) + 0.2, 1), min(DC0(vi) + 0.2, 1)]; % TESTING
-            % lb = [0, -30e-3, 0, 0]; % TESTING
-            % ub = [30e-3, 30e-3, 1, 1]; % TESTING
-            lb_combined = [0, x0_combined(2) - 0.01, 0, 0]; % TESTING
-            ub_combined = [Inf, x0_combined(2) + 0.01, 1, 1]; % TESTING
-            
-            % % lb = [x0(1) - 1*abs(x0(1)), x0(2) - 0.25*abs(x0(2)), max(F0(vi) - 0.5, 0)]; % TESTING
-            % ub = [x0(1) + 1*abs(x0(1)), x0(2) + 0.25*abs(x0(2)), min(F0(vi) + 0.5, 1)]; % TESTING
-
-            g1_exp_j_vi = g1_exp{j}(vi, :); g1_exp_j_vi = g1_exp_j_vi(:);
-            g1_exp_split_j_vi = [real(g1_exp_j_vi), imag(g1_exp_j_vi)];
-
-            % Adaptive tau cropping
-            tau_inds = t1i:tau_decayed_ind(vi);
-
-            % anon_fun = @(x) vUS_2D_erf_vec_split(x, tau(tau_inds), PP.k0, sigma) - g1_exp_split_j_vi(tau_inds, :);
-            
-            % Base residual function
-            anon_fun = @(x) vUS_3D_combined_split(x, tau(tau_inds), PP.k0) - g1_exp_split_j_vi(tau_inds, :);
-            % vUS_3D_TC_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :)); % Jacobian version
-            
-            % Weighted residuals function
-            % rw_pow = 1; % Residual weighting power (1: linear, 2: quadratic, etc.)
-            % OF_weight = (max(tau_cropped) - tau_cropped).^rw_pow;
-            % OF_weight = OF_weight./max(OF_weight); % Objective function weighting: trust residuals from earlier time lags more
-            % anon_fun = @(x) vUS_2D_OF(x, tau(tau_inds), PP.k0, sigma, g1_exp_split_j_vi(tau_inds, :), OF_weight); % Jacobian version
-
-            % anon_fun = @(x) vUS_2D_OF_nonsplit(x, tau(tau_inds), PP.k0, sigma, g1_exp_j_vi(tau_inds, :)); % Jacobian version
-
-            x_combined = lsqnonlin(anon_fun, x0_combined, lb_combined, ub_combined, opts_combined); % x = [v_xgp, v_zgp, F, DC]
-            % x = lsqnonlin(anon_fun, x0, [], [], opts); % x = [v_xgp, v_zgp, F, DC]
-
-            C_stacked(vi) = x_combined(1);
-            v_zgp_combined_stacked(vi) = x_combined(2);
-            F_combined_stacked(vi) = x_combined(3);
-            DC_combined_stacked(vi) = x_combined(4);
-        end
-    end
-    toc
-
-    C = unstackData(C_stacked, PP);
-    v_zgp_combined = unstackData(v_zgp_combined_stacked, PP);
-    F_combined = unstackData(F_combined_stacked, PP);
-    DC_combined = unstackData(DC_combined_stacked, PP);
-
-    test_split = vUS_3D_combined_split(x_combined, tau, PP.k0);
-    test = complex(test_split(:, 1), test_split(:, 2));
-    figure; plot(tau, abs(g1_exp{j}(vi, :)), tau, abs(test))
-    figure; plot(g1_exp{j}(vi, :), '-x'); hold on; plot(test, '-o'); hold off; legend('Data', 'Fit'); axis equal; xlim([-1, 1]); ylim([-1, 1])
-
-end
-
-%% Visualizations for the combined version
-% Total fitted speed
-v = sqrt(v_tgp.^2 + v_zgp.^2);
-figure; imagesc(squeeze(max(v, [], 1))); clim([0, min(prctile(v, 99, 'all'), 40e-3)]); colormap turbo; axis equal; axis tight; colorbar
-% figure; imagesc(unstackData(sqrt(Vx0.^2 + Vz0.^2), PP)); clim([0, 0.04]); colormap turbo; axis equal; colorbar
-
-% Fitted v_zgp_combined
-figure; imagesc(squeeze(max(v_zgp_combined, [], 1))); colormap(VzCmap); axis equal; axis tight; colorbar; clim([-.030, 0.030])
-% figure; imagesc(abs(v_zgp)); colormap(VzCmapDn); axis equal; colorbar
-
-% Fitted C
-figure; imagesc(squeeze(max(C, [], 1))); colormap(VzCmapDn); clim([0, prctile(C, 99, 'all')]); axis equal; axis tight; colorbar
-
-% Calculate the fitted g1 curves for each valid pixel
-g1_model_combined = zeros(num_voxels, nTau);
-for vi = 1:num_voxels % voxel index
-    if maskToUse(vi) % If the voxel was fitted
-        x_combined = [C(vi), v_zgp_combined_stacked(vi), F_combined_stacked(vi), DC_combined_stacked(vi)];
-        temp = vUS_3D_combined_split(x_combined, tau, PP.k0);
-        g1_model_combined(vi, :) = complex(temp(:, 1), temp(:, 2));
-    end
-end
-
-g1_model_combined = unstackData(g1_model_combined, PP);
-
-% Visualize the experimental vs. fitted g1
-voxelTimeseriesGUI({g1{3}, g1_model_combined}, v_zgp_combined, 'DataNames', {'Data', 'Fit'}, 'ComplexMode', 'abs', 'Colormap', 'turbo')
-
-%% Overlay up and down flows
-
-% Load Jianbo's colormaps
-[VzCmap, VzCmapDn, VzCmapUp, pdiCmapUp, PhtmCmap] = Colormaps_fUS;
-vUSMapFig = figure;
-
-% Plot with two linked axes (one for up Z, other for down Z)
-% % hold on
-% vCrange = [-maxSpeedExpectedMMPerS, maxSpeedExpectedMMPerS];
-figure(vUSMapFig)
-h1 = axes;
-imagesc(h1, vUS_speed{2})
-% alpha(h1, double(abs(zvUpMap) > 1))
-% alpha(h1, 1)
-alpha(h1, vUS_speed_pos ./ max(vUS_speed{2}, [], 'all'));
-colormap(vUSMapFig, flipud(VzCmapUp))
-% caxis(vCrange);
-axis tight
-colorbar
-hold on
-
-% figure
-h2 = axes;
-imagesc(h2, vUS_speed{1})
-% alpha(h2, double(abs(vUS_speed_neg) > 1))
-% alpha(h2, 0.5)
-alpha(h2, vUS_speed_neg ./ max(vUS_speed{1}, [], 'all'));
-colormap(vUSMapFig, VzCmapDn)
-% caxis(vCrange);
-axis tight
-cb = colorbar;
-axis off
-linkaxes([h1, h2]);
-% ylabel(cb, 'Speed (m/s)') % label colorbar
-
-% clim([])
-findfigs
 
 %% Helper functions
 
