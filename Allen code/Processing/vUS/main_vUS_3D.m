@@ -248,7 +248,8 @@ end
 
 warning('The code is not designed to save properly for multiple j')
 % for fi = files_to_fit
-for fi = 3:endFile
+% for fi = 3:endFile
+for fi = 195:-1:1
     disp(fi)
     tic
     % Choose and load the g1 superframe average: g1_avg.mat file (from calc_g1_avg.m)
@@ -330,6 +331,7 @@ for fi = 3:endFile
         [fit_SG.x, fit_SG.cost, ~, fit_SG.conv] = fitBatchedLM(fit_SG.model, fit_SG.x0, g1_exp{j}(maskToUseTrueInds, :), fit_SG.lb, fit_SG.ub, fit_SG.opts);    
         % [fit_SG.x, fit_SG.cost] = vUS_3D_quad_fitBatched(g1_exp{j}(maskToUseTrueInds,:), tau_decayed_ind(maskToUseTrueInds), Vz0(maskToUseTrueInds), tau, PP.k0, sigma_SG, fit_SG.lb, fit_SG.ub);
         [fit_SG] = storeFitParams(fit_SG, fpn_SG, fit_SG.x, maskToUseTrueInds, PP); % Store/parse fitted parameters
+        fit_SG.v = sqrt(fit_SG.v_tgp.^2 + fit_SG.v_zgp.^2);
         % toc
     
         % RCA-specific PSF model
@@ -347,6 +349,7 @@ for fi = 3:endFile
         fit_RCA.x0 = fit_sfa.fit_RCA.x0; fit_RCA.x0(:, 3) = Vz0(maskToUseTrueInds);
         [fit_RCA.x, fit_RCA.cost, ~, fit_RCA.conv] = fitBatchedLM(fit_RCA.model, fit_RCA.x0, g1_exp{j}(maskToUseTrueInds, :), fit_RCA.lb, fit_RCA.ub, fit_RCA.opts);
         [fit_RCA] = storeFitParams(fit_RCA, fpn_RCA, fit_RCA.x, maskToUseTrueInds, PP); % Store/parse fitted parameters
+        fit_RCA.v = sqrt(fit_RCA.v_xgp.^2 + fit_RCA.v_ygp.^2 + fit_RCA.v_zgp.^2);
         % toc
     
         % Combined parameter model
