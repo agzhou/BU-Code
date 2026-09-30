@@ -248,8 +248,9 @@ end
 
 warning('The code is not designed to save properly for multiple j')
 % for fi = files_to_fit
-% for fi = 3:endFile
-for fi = 195:-1:1
+for fi = 2:endFile
+% for fi = 195:-1:1
+% for fi = 1
     disp(fi)
     tic
     % Choose and load the g1 superframe average: g1_avg.mat file (from calc_g1_avg.m)
