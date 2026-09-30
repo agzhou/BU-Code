@@ -247,8 +247,8 @@ if ~exist('files_to_fit', 'var')
 end
 
 warning('The code is not designed to save properly for multiple j')
-% for fi = files_to_fit
-for fi = 2:endFile
+for fi = files_to_fit
+% for fi = 2:endFile
 % for fi = 195:-1:1
 % for fi = 1
     disp(fi)
