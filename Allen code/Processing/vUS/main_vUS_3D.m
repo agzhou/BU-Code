@@ -407,7 +407,8 @@ for fi = files_to_fit
 
     % Save fit results
     save([PDpath, 'fit_results-', num2str(fi)], 'fit_SG', 'fit_RCA', 'fit_C', 'Vz0', 'Vt0')
-
+    clearvars fit_SG fit_RCA fit_C g1 g1_exp
+    
     toc
 end
 

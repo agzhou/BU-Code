@@ -81,11 +81,9 @@ end
 save([TDsavepath, 'TD.mat'], 'TD')
 
 %% Calculate vUS (g1 fits) for each pre-computed g1 file
+% See main_vUS_3D.m
 
 %% Go through pre-computed data files (for all superframes in the experiment) and store
-
-% Need to make a g1-to-vUS loop function before passing in things to
-% here...
 
 % For now, go through only PDI and CDI
 % trialsToUse = [1:10];
@@ -110,7 +108,36 @@ for j = 1:3
     PDIA{j} = mean(PDIallSF{j}, 4);
     CDIA{j} = mean(CDIallSF{j}, 4);
 end
-save([PDpath, 'PDIA_CDIA.mat'], "PDIA", "CDIA")
+% save([PDpath, 'PDIA_CDIA.mat'], "PDIA", "CDIA")
+
+% Load v from vUS fits
+VallSF_SG = cell(3, 1);
+VallSF_RCA = cell(3, 1);
+CallSF_C = cell(3, 1);
+for fi = 1:RFcount
+
+    disp(fi)
+    load([PDpath, 'fit_results-', num2str(fi)], 'fit_SG', 'fit_RCA', 'fit_C')
+    % for j = 1:3
+    for j = 3
+        VallSF_SG{j} = cat(4, VallSF_SG{j}, fit_SG.v);
+        VallSF_RCA{j} = cat(4, VallSF_RCA{j}, fit_RCA.v);
+        CallSF_C{j} = cat(4, CallSF_C{j}, fit_C.C);
+    end
+end
+
+%% Align the timing of the stim and ultrasound acquisition
+% cleanStim = zeros(P.apis.seq_length_s * P.numTrials * P.daqrate, 1);
+cleanStim = zeros(size(TD.stimTimestamps)); % Vector with 0s when stim is off, and 1 when stim is on
+for ti = 1:P.numTrials
+    cleanStim(TD.stimTimestamps > TD.stimOnsetTimestamps(ti) & TD.stimTimestamps < TD.stimEndTimestamps(ti)) = 1;
+end
+
+stimDS = resample(cleanStim, sfStarts);
+
+
+
+
 
 %% TESTING: get vessel angle from superframe-averaged PDI (or CDI?) maps
 % Load the averaged PDI and CDI maps
