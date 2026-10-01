@@ -245,6 +245,18 @@ if ~exist('files_to_fit', 'var')
     clearvars filesToFitPrompt filesToFitDefaults filesToFitUserInput
     files_to_fit = startFile:endFile;
 end
+if ~exist('num_voxels', 'var')
+    num_voxels = fit_sfa.num_voxels;
+end
+if ~exist('s', 'var')
+    s = fit_sfa.s;
+end
+if ~exist('w', 'var')
+    w = fit_sfa.w;
+end
+if ~exist('maskToUse', 'var')
+    maskToUse = fit_sfa.maskToUse;
+end
 
 warning('The code is not designed to save properly for multiple j')
 for fi = files_to_fit
@@ -322,8 +334,11 @@ for fi = files_to_fit
         % Parameter lower and upper bounds [v_tgp, v_zgp, F, DC, k, a]
         fit_SG.lb = fit_sfa.fit_SG.x; % Initialize most to the superframe-averaged fit results
         fit_SG.ub = fit_sfa.fit_SG.x;
-        fit_SG.lb(:, 4) = fit_sfa.fb.DC(1); fit_SG.ub(:, 4) = fit_sfa.fb.DC(2); % Allow DC to be free
-        
+        % Allow DC and v to be free
+        fit_SG.lb(:, 4) = fit_sfa.fb.DC(1);    fit_SG.ub(:, 4) = fit_sfa.fb.DC(2); % Allow DC to be free
+        fit_SG.lb(:, 1) = fit_sfa.fb.v_tgp(1); fit_SG.ub(:, 1) = fit_sfa.fb.v_tgp(2); % v_tgp
+        fit_SG.lb(:, 2) = fit_sfa.fb.v_zgp(1); fit_SG.ub(:, 2) = fit_sfa.fb.v_zgp(2); % v_zgp
+
         fit_SG.xscale = fit_sfa.fit_SG.xscale;
         fit_SG.model = @(X, cols) vUS_3D_quad_batchModel(X, tau(cols), PP.k0, sigma_SG, s, w);
         fit_SG.opts   = fit_sfa.fit_SG.opts;
@@ -342,7 +357,10 @@ for fi = files_to_fit
         fit_RCA.lb = fit_sfa.fit_RCA.x; % Initialize most to the superframe-averaged fit results
         fit_RCA.ub = fit_sfa.fit_RCA.x;
         fit_RCA.lb(:, 5) = fit_sfa.fb.DC(1); fit_RCA.ub(:, 5) = fit_sfa.fb.DC(2); % Allow DC to be free
-        
+        fit_RCA.lb(:, 1) = fit_sfa.fb.v_xgp(1); fit_RCA.ub(:, 1) = fit_sfa.fb.v_xgp(2); % v_xgp
+        fit_RCA.lb(:, 2) = fit_sfa.fb.v_ygp(1); fit_RCA.ub(:, 2) = fit_sfa.fb.v_ygp(2); % v_ygp
+        fit_RCA.lb(:, 3) = fit_sfa.fb.v_zgp(1); fit_RCA.ub(:, 3) = fit_sfa.fb.v_zgp(2); % v_zgp
+
         fit_RCA.model = @(X, cols) vUS_3D_quad_RCA_xy_batchModel(X, tau(cols), PP.k0, sigma_RCA, s, w);
         fit_RCA.opts = fit_sfa.fit_RCA.opts;
         % fit_RCA.opts   = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', 'xscale', fit_RCA.xscale);
@@ -358,6 +376,8 @@ for fi = files_to_fit
         fit_C.lb = fit_sfa.fit_C.x;
         fit_C.ub = fit_sfa.fit_C.x;
         fit_C.lb(:, 4) = fit_sfa.fb.DC(1); fit_C.ub(:, 4) = fit_sfa.fb.DC(2); % Allow DC to be free
+        fit_C.lb(:, 1) = fit_sfa.fb.C(1); fit_C.ub(:, 1) = fit_sfa.fb.C(2); % C
+        fit_C.lb(:, 2) = fit_sfa.fb.v_zgp(1); fit_C.ub(:, 2) = fit_sfa.fb.v_zgp(2); % v_zgp
 
         % fit_C.x0 = [500*ones(fit_sfa.nv, 1), Vz0(maskToUseTrueInds), ones(fit_sfa.nv, 1), zeros(fit_sfa.nv, 1)];
         fit_C.x0 = fit_sfa.fit_C.x0; fit_C.x0(:, 2) = Vz0(maskToUseTrueInds);
@@ -392,7 +412,7 @@ for fi = files_to_fit
     end
     
     % Calculate fitting quality metrics
-    tau_mask = (t1i:nTau);
+    tau_mask = (fit_sfa.t1i:nTau);
     fit_SG.R2 = calcR2(g1_model_SG_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
     fit_RCA.R2 = calcR2(g1_model_RCA_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
     fit_C.R2 = calcR2(g1_model_C_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
@@ -407,6 +427,7 @@ for fi = files_to_fit
 
     % Save fit results
     save([PDpath, 'fit_results-', num2str(fi)], 'fit_SG', 'fit_RCA', 'fit_C', 'Vz0', 'Vt0')
+    % voxelTimeseriesGUI({g1{3}, unstackData(g1_model_RCA_stacked, PP)}, fit_RCA.v, 'ComplexMode', 'abs', 'Colormap', 'jet')
     clearvars fit_SG fit_RCA fit_C g1 g1_exp
     
     toc
