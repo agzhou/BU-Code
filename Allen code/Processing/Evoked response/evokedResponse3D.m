@@ -162,8 +162,12 @@ postTime = P.apis.seq_length_s - delay_s; % Time after the stim onset [s]; throu
 % evoked.PDI{3} is (x, y, z, # peri-stimulus time points); evokedInfo.sem has the standard error across trials
 
 % GLM: HRF-convolved stim at the DAQ rate, window-averaged over each superframe. Betas in percent change for PDI
-[glmRes, glmInfo] = glmActivationMap(dataTypes, TD.sfStarts, cleanStim, ...
-    'Fs', P.daqrate, 'SFWidth', sfWidth, ...
+% The acquisition can run past the end of the stim recording (the protocol is over, so the stim is off): pad with 'off' so those superframes are used
+nPad = ceil((TD.sfStarts(end) + sfWidth) * P.daqrate) - numel(cleanStim);
+cleanStimPadded = [cleanStim; zeros(max(nPad, 0), 1)];
+hrfPeak = 1; % HRF peak time [s]. The air puff response is fast: in 09-22-2026 AZ07, activation (z-scores) was strongest for peaks of 0.5-1 s, and much weaker for 3 s. Worth sweeping per dataset
+[glmRes, glmInfo] = glmActivationMap(dataTypes, TD.sfStarts, cleanStimPadded, ...
+    'Fs', P.daqrate, 'SFWidth', sfWidth, 'HRFPeak', hrfPeak, ...
     'Normalize', struct('PDI', 'percent', 'default', 'none'));
 % glmRes.PDI{3}.t, .beta, .z, .p, .q are (x, y, z) maps
 

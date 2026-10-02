@@ -94,6 +94,9 @@ function [results, info] = glmActivationMap(data, sfStarts, stim, opts)
     i0 = round((sfStarts - opts.StimStart) * fs) + 1; % First stim sample in each superframe window
     i1 = max(round((sfStarts + opts.SFWidth - opts.StimStart) * fs), i0); % Last stim sample in each superframe window
     validSF = i0 >= 1 & i1 <= nStim;
+    if ~all(validSF)
+        warning('glmActivationMap:stimTooShort', '%d of %d superframes fall outside the stim recording and are excluded from the fit. Pad the stim if it''s known to be off there.', nnz(~validSF), nSF)
+    end
 
     reg = nan(nSF, nCond);
     dreg = nan(nSF, nCond);
@@ -240,7 +243,10 @@ function [res, rho] = fitArray(x, name, ctx)
     end
 
     % p-values from the t distribution (via the incomplete beta function), z-scores, and FDR q-values
-    pval = betainc(dof ./ (dof + tstat.^2), dof / 2, 0.5);
+    if dof < 1, error('No residual degrees of freedom (%d usable superframes, %d design columns).', nT, p), end
+    pval = nan(size(tstat));
+    hasT = ~isnan(tstat); % betainc errors on NaN (e.g. voxels with no signal give 0/0)
+    pval(hasT) = betainc(dof ./ (dof + tstat(hasT).^2), dof / 2, 0.5);
     z = sign(tstat) .* sqrt(2) .* erfcinv(pval);
     q = nan(size(pval));
     ok = find(~isnan(pval));
