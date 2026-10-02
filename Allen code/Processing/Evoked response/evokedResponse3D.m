@@ -69,6 +69,9 @@ for sftt = sfStarts.'
 end
 clearvars xshade yshade maxValue minValue
 
+% Get superframe center timestamps
+sfCenters = sfStarts + sfWidth / 2;
+
 % Determine which superframes are present while the stimulus is on
 
 %% Create a struct for all the relevant timing parameters and save
@@ -148,7 +151,6 @@ end
 %   - superframe start times (TD.sfStarts), and the superframe duration (sfWidth)
 %   - the stim: onset times for the peri-stimulus average, and the full-rate stim waveform (cleanStim) for the GLM
 % Each data type is a cell (one per j) of (x, y, z, superframe) arrays; empty cells (e.g. vUS for j = 1, 2) are skipped.
-sfWidth = P.numFramesPerBuffer/P.frameRate; % Duration of a superframe [s]
 delay_s = P.apis.delay_time_ms/1e3; % Time before the first stim onset [s]
 
 dataTypes = struct();
