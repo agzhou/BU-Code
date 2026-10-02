@@ -443,14 +443,16 @@ figure; imagesc(squeeze(max(fit_SG.v, [], 1))); clim([0, min(prctile(fit_SG.v(fi
 figure; imagesc(squeeze(max(fit_RCA.v, [], 1))); clim([0, min(prctile(fit_RCA.v(fit_RCA.v>0), 99, 'all'), 40e-3)]); colormap turbo; axis equal; axis tight; colorbar
 % figure; imagesc(unstackData(sqrt(Vx0.^2 + Vz0.^2), PP)); clim([0, 0.04]); colormap turbo; axis equal; colorbar
 
-% %% Calculate the fitted g1 curves for each valid pixel
+%% Calculate the fitted g1 curves for each valid pixel
 % tic
 % g1_model_SG_stacked = zeros(num_voxels, nTau);
 % g1_model_RCA_stacked = zeros(num_voxels, nTau);
 % g1_model_C_stacked = zeros(num_voxels, nTau);
 % 
+% % for vi = 1:num_voxels % voxel index
 % parfor vi = 1:num_voxels % voxel index
 %     if maskToUse(vi) % If the voxel was fitted
+%         % disp(vi)
 %         x_SG = [fit_SG.v_tgp_stacked(vi), fit_SG.v_zgp_stacked(vi), fit_SG.F_stacked(vi), fit_SG.DC_stacked(vi), fit_SG.k_stacked(vi), fit_SG.a_stacked(vi)];
 %         x_RCA = [fit_RCA.v_xgp_stacked(vi), fit_RCA.v_ygp_stacked(vi), fit_RCA.v_zgp_stacked(vi), fit_RCA.F_stacked(vi), fit_RCA.DC_stacked(vi), fit_RCA.k_stacked(vi), fit_RCA.a_stacked(vi)];
 %         x_C = [fit_C.C_stacked(vi), fit_C.v_zgp_stacked(vi), fit_C.F_stacked(vi), fit_C.DC_stacked(vi)];
@@ -462,11 +464,13 @@ figure; imagesc(squeeze(max(fit_RCA.v, [], 1))); clim([0, min(prctile(fit_RCA.v(
 % 
 %     end
 % end
+% 
+% g1_model_SG = unstackData(g1_model_SG_stacked, PP);
+% g1_model_RCA = unstackData(g1_model_RCA_stacked, PP);
+% g1_model_C = unstackData(g1_model_C_stacked, PP);
+% toc
 
-g1_model_SG = unstackData(g1_model_SG_stacked, PP);
-g1_model_RCA = unstackData(g1_model_RCA_stacked, PP);
-g1_model_C = unstackData(g1_model_C_stacked, PP);
-toc
+% voxelTimeseriesGUI({g1{3}, g1_model_SG, g1_model_RCA, g1_model_C}, sqrt(fit_sfa.fit_RCA.v_xgp.^2 + fit_sfa.fit_RCA.v_ygp.^2 + fit_sfa.fit_RCA.v_zgp.^2), 'ComplexMode', 'abs', 'Colormap', 'turbo')
 
 %% Calculate fitting quality metrics
 tau_mask = (t1i:nTau);
