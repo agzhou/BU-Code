@@ -126,6 +126,11 @@ for fi = 1:RFcount
     end
 end
 
+%% Trial stuff
+% Upsampling?
+
+% Baseline (first 5s) averaging
+
 %%
 [evoked, tGrid, info] = periStimulusAverage(PDIallSF, sfStarts, stimOnsetTimestamps);
 testStim = zeros(size(tGrid));
