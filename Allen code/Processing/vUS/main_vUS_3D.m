@@ -261,7 +261,7 @@ end
 warning('The code is not designed to save properly for multiple j')
 for fi = files_to_fit
 % for fi = 2:endFile
-% for fi = 195:-1:1
+% for fi = endFile:-1:startFile
 % for fi = 1
     disp(fi)
     tic
