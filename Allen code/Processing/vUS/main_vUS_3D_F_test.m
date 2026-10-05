@@ -486,18 +486,39 @@ pS_SG = numel(fpn_SG) - 1;
 pF_SG = numel(fpn_SG);
 pS_RCA = numel(fpn_RCA) - 1;
 pF_RCA = numel(fpn_RCA);
-F_a_SG = F_stat(g1_model_SG_AF_stacked(maskToUseTrueInds, tau_mask), g1_model_SG_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, pS_SG, pF_SG);
-F_a_RCA = F_stat(g1_model_RCA_AF_stacked(maskToUseTrueInds, tau_mask), g1_model_RCA_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, pS_RCA, pF_RCA);
-F_k_SG = F_stat(g1_model_SG_KF_stacked(maskToUseTrueInds, tau_mask), g1_model_SG_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, pS_SG, pF_SG);
-F_k_RCA = F_stat(g1_model_RCA_KF_stacked(maskToUseTrueInds, tau_mask), g1_model_RCA_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, pS_RCA, pF_RCA);
+% F_a_SG = F_stat(g1_model_SG_AF_stacked(maskToUseTrueInds, tau_mask), g1_model_SG_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, pS_SG, pF_SG);
+% F_a_RCA = F_stat(g1_model_RCA_AF_stacked(maskToUseTrueInds, tau_mask), g1_model_RCA_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, pS_RCA, pF_RCA);
+% F_k_SG = F_stat(g1_model_SG_KF_stacked(maskToUseTrueInds, tau_mask), g1_model_SG_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, pS_SG, pF_SG);
+% F_k_RCA = F_stat(g1_model_RCA_KF_stacked(maskToUseTrueInds, tau_mask), g1_model_RCA_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, pS_RCA, pF_RCA);
+F_a_SG = F_stat_vUS(fit_SG_AF, fit_SG, pS_SG, pF_SG, n);
+F_a_RCA = F_stat_vUS(fit_RCA_AF, fit_RCA, pS_RCA, pF_RCA, n);
+F_k_SG = F_stat_vUS(fit_SG_KF, fit_SG, pS_SG, pF_SG, n);
+F_k_RCA = F_stat_vUS(fit_RCA_KF, fit_RCA, pS_RCA, pF_RCA, n);
 
 % p = 0.05;
-p_a_SG = fcdf(F_a_SG, pF_SG, pS_SG, "upper");
+n = tau_decayed_ind(maskToUseTrueInds) - t1i; % # of sample points for voxels that were fitted
+n_fake = size(g1_model_SG_stacked(maskToUseTrueInds, tau_mask), 2); % # of sample points (total)
+% Calculate p values
+p_a_SG = fcdf(F_a_SG, pF_SG - pS_SG, n - pF_SG, "upper");
+p_a_RCA = fcdf(F_a_RCA, pF_RCA - pS_RCA, n - pF_RCA, "upper");
+p_k_SG = fcdf(F_k_SG, pF_SG - pS_SG, n - pF_SG, "upper");
+p_k_RCA = fcdf(F_k_RCA, pF_RCA - pS_RCA, n - pF_RCA, "upper");
+
+
+
+
+% Plot F-stat distributions against the theoretical one (note: this is
+% actually wrong because each voxel's # of sample points (n) is different
+figure; histogram(F_a_SG, 'Normalization', 'pdf', 'BinWidth', 0.1)
+hold on
+plot(0:0.01:100, fpdf(0:0.01:100, pF_SG - pS_SG, n_fake - pF_SG))
+hold off
+
 % Plot histograms of the F-stat for the a-fixed model
 figure; hold on
 fa = 0.4; ea = 0.1; nm = 'probability';
-histogram(F_a_SG, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 1, 'Normalization', nm)
-histogram(F_a_RCA, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 1, 'Normalization', nm)
+histogram(F_a_SG, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1, 'Normalization', nm)
+histogram(F_a_RCA, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1, 'Normalization', nm)
 hold off
 xlabel("F-statistic: fixed a"); ylabel("Probability")
 title("F-statistic: fixed a = " + num2str(a_fixed))
@@ -514,6 +535,30 @@ hold off
 xlabel("F-statistic: fixed k"); ylabel("Probability")
 title("F-statistic: fixed k = " + num2str(k_fixed))
 xline(0, 'r--', 'LineWidth', 2)
+legend('Single Gaussian', 'RCA', 'Location', 'northwest')
+% xlim([-2, 1])
+
+% Plot histograms of the p values for the a-fixed model
+figure; hold on
+fa = 0.4; ea = 0.1; nm = 'probability';
+histogram(p_a_SG, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.01, 'Normalization', nm)
+histogram(p_a_RCA, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.01, 'Normalization', nm)
+hold off
+xlabel("p-value: fixed a"); ylabel("Probability")
+title("p-value: fixed a = " + num2str(a_fixed))
+xline(0.05, 'r--', 'LineWidth', 2)
+legend('Single Gaussian', 'RCA', 'Location', 'northwest')
+% xlim([-2, 1])
+
+% Plot histograms of the p values for the k-fixed model
+figure; hold on
+fa = 0.4; ea = 0.1; nm = 'probability';
+histogram(p_k_SG, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.01, 'Normalization', nm)
+histogram(p_k_RCA, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.01, 'Normalization', nm)
+hold off
+xlabel("p-value: fixed k"); ylabel("Probability")
+title("p-value: fixed k = " + num2str(k_fixed))
+xline(0.05, 'r--', 'LineWidth', 2)
 legend('Single Gaussian', 'RCA', 'Location', 'northwest')
 % xlim([-2, 1])
 
