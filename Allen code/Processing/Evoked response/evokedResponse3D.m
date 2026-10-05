@@ -145,6 +145,44 @@ cleanStim = zeros(size(TD.stimTimestamps)); % Vector with 0s when stim is off, a
 for ti = 1:P.numTrials
     cleanStim(TD.stimTimestamps > TD.stimOnsetTimestamps(ti) & TD.stimTimestamps < TD.stimEndTimestamps(ti)) = 1;
 end
+figure; plot(stimTimestamps, cleanStim)
+
+%% Resample the data
+rr = 10; % Resampling rate [Hz]
+
+stimrs1T = zeros(P.apis.seq_length_s * rr, 1); % Resampled stim for 1 trial
+% stimrs1T(P.apis.delay_time_ms/1e3 * rr + 1 : 1 : (P.apis.delay_time_ms/1e3 + P.apis.stim_length_s) * rr) = 1;
+testoffset = 2;
+stimrs1T((P.apis.delay_time_ms/1e3 + testoffset) * rr + 1 : 1 : (P.apis.delay_time_ms/1e3 + testoffset + P.apis.stim_length_s) * rr) = 1;
+
+% PDIallSF(isnan(PDIallSF)) = eps;
+PDIrs = permute(interp1(sfCenters, permute(PDIallSF{3}, [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
+% CDIrs = permute(interp1(sfCenters, permute(abs(CDIallSF{3}), [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
+
+% Calculate trial windows at the resampled rate
+trial_windows = cell(P.numTrials, 1);
+for ind = 1:numel(trial_windows)
+    trial_windows{ind} = (ind - 1)*P.apis.seq_length_s * rr + 1 : 1 : (ind)*P.apis.seq_length_s * rr; % Indices for each trial window, at the resampled rate
+end
+
+% Calculate relative changes before trial averaging
+trial_PDIrs = cell(size(trial_windows));
+trial_rPDIrs = cell(size(trial_windows));
+for ind = 1:numel(trial_windows)
+    trial_PDIrs{ind} = PDIrs(:, :, :, trial_windows{ind});
+    trial_rPDIrs{ind} = trial_PDIrs{ind} ./ repmat(mean(trial_PDIrs{ind}(:, :, :, 1:P.apis.delay_time_ms/1e3 * rr), 4), [1, 1, 1, size(trial_PDIrs{ind}, 4)]);
+end
+
+% Trial average
+PDIrs_TA = zeros(size(PDIA{3}));
+rPDIrs_TA = zeros(size(PDIA{3}));
+for ind = 1:numel(trial_windows)
+    % PDIrs_TA = PDIrs_TA + 1/numel(trial_windows) .* PDIrs(:, :, :, trial_windows{ind});
+    PDIrs_TA = PDIrs_TA + 1/numel(trial_windows) .* trial_PDIrs{ind};
+    rPDIrs_TA = rPDIrs_TA + 1/numel(trial_windows) .* trial_rPDIrs{ind};
+end
+
+r_rPDIrs_TA = corrCoef3D(rPDIrs_TA, stimrs1T);
 
 %% Evoked response analysis: peri-stimulus averaging and GLM
 % Both functions take the same data types and timing, all in the same time base (t = 0 is the start of acquisition):
