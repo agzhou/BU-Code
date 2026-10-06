@@ -334,6 +334,9 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
     disp(strcat("IQ file ", num2str(Mcr_filenum), " saved."))
     
     [PDI, CDI, g1] = IQ2g1T_3D(IQ, Mcr_P, Mcr_voxelRange, Mcr_sv_threshold_lower, Mcr_sv_threshold_upper, Mcr_HPF, Mcr_nTau);
+    
+    % figure; imagesc(squeeze(max(PDI{3}, [], 1))' .^ 0.5); colormap hot
+    % figure; imagesc(squeeze(max(abs(g1{3}(:, :, :, 2)), [], 1))'); colormap hot
 
 %     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
 %     disp("PDI and CDI for file " + num2str(filenum) + " saved" )
@@ -355,3 +358,4 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
     
      % voxelTimeseriesGUI(g1{3}, PDI{3}.^0.5, 'ComplexMode', 'abs')
 end
+save([Mcr_IQsavepath, 'PData.mat'], 'PData', '-v7.3')
