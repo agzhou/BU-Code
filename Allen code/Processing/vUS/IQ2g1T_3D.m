@@ -16,7 +16,7 @@ function [PDI, CDI, g1, noise] = IQ2g1T_3D(IQ, P, voxelRange, sv_threshold_lower
     % disp('SVD filtered images put together')
     clearvars CM EVs V IQ
 
-%     figure; imagesc(squeeze(abs(IQf(:, :, 1))) .^ 0.5)
+%     figure; imagesc(squeeze(max(abs(IQ(:, :, :, 1)), [], 1))' .^ 0.5)
 
     % High pass filter (apply to the post-SVD clutter filtered data)
     HPF.dim = length(size(IQf)); % Operate on the time dimension

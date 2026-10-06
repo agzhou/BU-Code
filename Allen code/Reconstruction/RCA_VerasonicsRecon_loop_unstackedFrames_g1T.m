@@ -330,8 +330,9 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
 
 %     savefast([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData')
 %     save([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData', '-v7.3')
-    save([Mcr_IQsavepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IQ', '-v7.3', '-nocompression')
-    disp(strcat("IQ file ", num2str(Mcr_filenum), " saved."))
+    
+    % save([Mcr_IQsavepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IQ', '-v7.3', '-nocompression')
+    % disp(strcat("IQ file ", num2str(Mcr_filenum), " saved."))
     
     [PDI, CDI, g1] = IQ2g1T_3D(IQ, Mcr_P, Mcr_voxelRange, Mcr_sv_threshold_lower, Mcr_sv_threshold_upper, Mcr_HPF, Mcr_nTau);
     
