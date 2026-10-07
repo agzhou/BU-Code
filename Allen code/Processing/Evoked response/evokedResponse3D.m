@@ -9,8 +9,13 @@ addpath(genpath(AllenProcessingCodePath))
 
 %% Choose processed data directory, params, and RF timetags data file
 if ~exist('PDpath', 'var')
-    PDpath = uigetdir('D:\Allen\Data\', 'Select the Processed data path');
+    PDpath = uigetdir('D:\Allen\Data\', 'Select the Processed data (PDI, CDI) path');
     PDpath = [PDpath, '\'];
+end
+
+if ~exist('FRpath', 'var')
+    FRpath = uigetdir(PDpath, 'Select the vUS fit results data path');
+    FRpath = [FRpath, '\'];
 end
 
 % Load acquisition parameters: params.mat
@@ -121,7 +126,7 @@ CallSF_C = cell(3, 1);
 for fi = 1:RFcount
 
     disp(fi)
-    load([PDpath, 'fit_results-', num2str(fi)], 'fit_SG', 'fit_RCA', 'fit_C')
+    load([FRpath, 'fit_results-', num2str(fi)], 'fit_SG', 'fit_RCA', 'fit_C')
     % for j = 1:3
     for j = 3
         VallSF_SG{j} = cat(4, VallSF_SG{j}, fit_SG.v);
@@ -130,15 +135,17 @@ for fi = 1:RFcount
     end
 end
 
+voxelTimeseriesGUI(VallSF_RCA{3}, mean(VallSF_RCA{3}, 4), 'Colormap', 'turbo')
 %% Trial stuff
 % Upsampling?
 
 % Baseline (first 5s) averaging
 
-%%
+%% Testing
 [evoked, tGrid, info] = periStimulusAverage(PDIallSF, sfStarts, stimOnsetTimestamps);
 testStim = zeros(size(tGrid));
 testStim(tGrid > 5 & tGrid < 10) = 1;
+voxelTimeseriesGUI({evoked{3}, repmat(permute(testStim, [2, 3, 4, 1]), [size(PDIA{3}), 1])}, PDIA{3}, 'Colormap', 'turbo');
 
 %% Align the timing of the stim and ultrasound acquisition
 % cleanStim = zeros(P.apis.seq_length_s * P.numTrials * P.daqrate, 1);
@@ -153,13 +160,14 @@ test = interp1(stimTimestamps, cleanStim, sfCenters(1:size(PDIallSF{3}, 4)));
 voxelTimeseriesGUI({PDIallSF{3} ./ PDIallSF{3}(:, :, :, 1), 0.9 + 0.2.*repmat(permute(test, [2, 3, 4, 1]), [size(PDIA{3}), 1])}, PDIA{3}.^0.5, 'Colormap', 'turbo')
 
 [r, z, am] = activationMap3D(PDIallSF{3}./ PDIallSF{3}(:, :, :, 1), test, 1);
+
 %% Resample the data
 rr = 10; % Resampling rate [Hz]
 
 stimrs1T = zeros(P.apis.seq_length_s * rr, 1); % Resampled stim for 1 trial
-% stimrs1T(P.apis.delay_time_ms/1e3 * rr + 1 : 1 : (P.apis.delay_time_ms/1e3 + P.apis.stim_length_s) * rr) = 1;
-testoffset = 2;
-stimrs1T((P.apis.delay_time_ms/1e3 + testoffset) * rr + 1 : 1 : (P.apis.delay_time_ms/1e3 + testoffset + P.apis.stim_length_s) * rr) = 1;
+stimrs1T(P.apis.delay_time_ms/1e3 * rr + 1 : 1 : (P.apis.delay_time_ms/1e3 + P.apis.stim_length_s) * rr) = 1;
+% testoffset = 2;
+% stimrs1T((P.apis.delay_time_ms/1e3 + testoffset) * rr + 1 : 1 : (P.apis.delay_time_ms/1e3 + testoffset + P.apis.stim_length_s) * rr) = 1;
 
 % PDIallSF(isnan(PDIallSF)) = eps;
 PDIrs = permute(interp1(sfCenters, permute(PDIallSF{3}, [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);

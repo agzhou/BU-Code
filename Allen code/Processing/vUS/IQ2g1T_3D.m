@@ -5,6 +5,9 @@ function [PDI, CDI, g1, noise] = IQ2g1T_3D(IQ, P, voxelRange, sv_threshold_lower
     yrange = voxelRange{2};
     zrange = voxelRange{3};
     IQ = IQ(xrange, yrange, zrange, :);
+
+    % [brainMask, maskInfo] = createBrainVoxelMask(sum(abs(IQ), 4), 'MarginVoxels', 0);
+    % IQ = IQ .* brainMask;   % zero out non-brain voxels before the SVD sees them
     
     % SVD decluttering
     % [xp, yp, zp, nf] = size(IQ);
