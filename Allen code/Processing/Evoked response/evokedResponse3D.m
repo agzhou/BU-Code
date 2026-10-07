@@ -112,6 +112,7 @@ for j = 1:3
     CDIA{j} = mean(CDIallSF{j}, 4);
 end
 % save([PDpath, 'PDIA_CDIA.mat'], "PDIA", "CDIA")
+voxelTimeseriesGUI(PDIallSF{3}, PDIA{3}.^0.5, 'Colormap', 'turbo')
 
 % Load v from vUS fits
 VallSF_SG = cell(3, 1);
