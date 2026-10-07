@@ -335,7 +335,7 @@ for fi = files_to_fit
         fit_SG.lb = fit_sfa.fit_SG.x; % Initialize most to the superframe-averaged fit results
         fit_SG.ub = fit_sfa.fit_SG.x;
         % Allow DC and v to be free
-        % fit_SG.lb(:, 4) = fit_sfa.fb.DC(1);    fit_SG.ub(:, 4) = fit_sfa.fb.DC(2); % Allow DC to be free
+        fit_SG.lb(:, 4) = fit_sfa.fb.DC(1);    fit_SG.ub(:, 4) = fit_sfa.fb.DC(2); % Allow DC to be free
         fit_SG.lb(:, 1) = fit_sfa.fb.v_tgp(1); fit_SG.ub(:, 1) = fit_sfa.fb.v_tgp(2); % v_tgp
         fit_SG.lb(:, 2) = fit_sfa.fb.v_zgp(1); fit_SG.ub(:, 2) = fit_sfa.fb.v_zgp(2); % v_zgp
 
@@ -356,7 +356,7 @@ for fi = files_to_fit
         % Parameter lower and upper bounds [v_xgp, v_ygp, v_zgp, F, DC, k, a]
         fit_RCA.lb = fit_sfa.fit_RCA.x; % Initialize most to the superframe-averaged fit results
         fit_RCA.ub = fit_sfa.fit_RCA.x;
-        % fit_RCA.lb(:, 5) = fit_sfa.fb.DC(1); fit_RCA.ub(:, 5) = fit_sfa.fb.DC(2); % Allow DC to be free
+        fit_RCA.lb(:, 5) = fit_sfa.fb.DC(1); fit_RCA.ub(:, 5) = fit_sfa.fb.DC(2); % Allow DC to be free
         fit_RCA.lb(:, 1) = fit_sfa.fb.v_xgp(1); fit_RCA.ub(:, 1) = fit_sfa.fb.v_xgp(2); % v_xgp
         fit_RCA.lb(:, 2) = fit_sfa.fb.v_ygp(1); fit_RCA.ub(:, 2) = fit_sfa.fb.v_ygp(2); % v_ygp
         fit_RCA.lb(:, 3) = fit_sfa.fb.v_zgp(1); fit_RCA.ub(:, 3) = fit_sfa.fb.v_zgp(2); % v_zgp
@@ -375,7 +375,7 @@ for fi = files_to_fit
         % Parameter lower and upper bounds [C, v_zgp, F, DC]
         fit_C.lb = fit_sfa.fit_C.x;
         fit_C.ub = fit_sfa.fit_C.x;
-        % fit_C.lb(:, 4) = fit_sfa.fb.DC(1); fit_C.ub(:, 4) = fit_sfa.fb.DC(2); % Allow DC to be free
+        fit_C.lb(:, 4) = fit_sfa.fb.DC(1); fit_C.ub(:, 4) = fit_sfa.fb.DC(2); % Allow DC to be free
         fit_C.lb(:, 1) = fit_sfa.fb.C(1); fit_C.ub(:, 1) = fit_sfa.fb.C(2); % C
         fit_C.lb(:, 2) = fit_sfa.fb.v_zgp(1); fit_C.ub(:, 2) = fit_sfa.fb.v_zgp(2); % v_zgp
 
