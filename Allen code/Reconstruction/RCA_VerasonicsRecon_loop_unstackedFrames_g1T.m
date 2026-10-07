@@ -45,6 +45,9 @@ if ~exist('P', 'var')
     load([Mcr_datapath, 'params.mat']) % load acquisition parameters
 end
 
+Mcr_IQsavepath = uigetdir(Mcr_datapath, 'Select the folder to save IQ data to');
+Mcr_IQsavepath = [Mcr_IQsavepath, '\'];
+
 Mcr_savepath = uigetdir(Mcr_datapath, 'Select the folder to save PROCESSED data to');
 Mcr_savepath = [Mcr_savepath, '\'];
 
@@ -292,6 +295,8 @@ end
 
 save([Mcr_savepath, 'PData'], 'PData') % Save the PData structure
 
+save([Mcr_savepath, 'fUS_proc_params.mat'], 'Mcr_sv_threshold_lower', 'Mcr_sv_threshold_upper', 'Mcr_voxelRange', 'Mcr_HPF', 'Mcr_nTau');
+
 for Mcr_filenum = Mcr_startFile:Mcr_endFile
 % for Mcr_filenum = Mcr_endFile:-1:Mcr_startFile
 % for Mcr_filenum = 142:Mcr_endFile
@@ -327,10 +332,14 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
 
 %     savefast([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData')
 %     save([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData', '-v7.3')
-    % save([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IQ', '-v7.3', '-nocompression')
+    
+    % save([Mcr_IQsavepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IQ', '-v7.3', '-nocompression')
     % disp(strcat("IQ file ", num2str(Mcr_filenum), " saved."))
     
     [PDI, CDI, g1] = IQ2g1T_3D(IQ, Mcr_P, Mcr_voxelRange, Mcr_sv_threshold_lower, Mcr_sv_threshold_upper, Mcr_HPF, Mcr_nTau);
+    
+    % figure; imagesc(squeeze(max(PDI{3}, [], 1))' .^ 0.5); colormap hot
+    % figure; imagesc(squeeze(max(abs(g1{3}(:, :, :, 2)), [], 1))'); colormap hot
 
 %     save([savepath, 'PDI_CDI-', num2str(filenum), '.mat'], 'PDI', 'CDI', '-v7.3', '-nocompression');
 %     disp("PDI and CDI for file " + num2str(filenum) + " saved" )
@@ -352,3 +361,4 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
     
      % voxelTimeseriesGUI(g1{3}, PDI{3}.^0.5, 'ComplexMode', 'abs')
 end
+save([Mcr_IQsavepath, 'PData.mat'], 'PData', '-v7.3')
