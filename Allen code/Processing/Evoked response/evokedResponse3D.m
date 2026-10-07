@@ -148,6 +148,11 @@ for ti = 1:P.numTrials
 end
 figure; plot(stimTimestamps, cleanStim)
 
+%% Test plotting
+test = interp1(stimTimestamps, cleanStim, sfCenters(1:size(PDIallSF{3}, 4)));
+voxelTimeseriesGUI({PDIallSF{3} ./ PDIallSF{3}(:, :, :, 1), 0.9 + 0.2.*repmat(permute(test, [2, 3, 4, 1]), [size(PDIA{3}), 1])}, PDIA{3}.^0.5, 'Colormap', 'turbo')
+
+[r, z, am] = activationMap3D(PDIallSF{3}./ PDIallSF{3}(:, :, :, 1), test, 1);
 %% Resample the data
 rr = 10; % Resampling rate [Hz]
 
