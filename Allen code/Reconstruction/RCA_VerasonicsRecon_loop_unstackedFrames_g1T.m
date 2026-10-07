@@ -295,6 +295,8 @@ end
 
 save([Mcr_savepath, 'PData'], 'PData') % Save the PData structure
 
+save([Mcr_savepath, 'fUS_proc_params.mat'], 'Mcr_sv_threshold_lower', 'Mcr_sv_threshold_upper', 'Mcr_voxelRange', 'Mcr_HPF', 'Mcr_nTau');
+
 for Mcr_filenum = Mcr_startFile:Mcr_endFile
 % for Mcr_filenum = Mcr_endFile:-1:Mcr_startFile
 % for Mcr_filenum = 142:Mcr_endFile
