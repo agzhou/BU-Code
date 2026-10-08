@@ -5,6 +5,7 @@
 clearvars
 
 %% 1. Load acquisition parameters, timing info, beamforming parameters, etc.
+usingRCAPlane = true; % Using a plane from 3D data or not
 IQpath = uigetdir('G:\', 'Select the IQ data path');
 IQpath = [IQpath, '\'];
 
@@ -108,6 +109,9 @@ for filenum = startFile:endFile
     tic
     load([IQpath, IQfilenameStructure, num2str(filenum)])
 
+    if usingRCAPlane
+        IQ = permute(IQ, [2, 1, 3]);
+    end
     % Mask the region to actually process
     [zpo, xpo, nfo] = size(IQ); % Original sizes
     % figure; imagesc(squeeze(abs(IQ(:, :, :, 1))).')
