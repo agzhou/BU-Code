@@ -13,7 +13,7 @@ codeDir = cd;
 codeDir_split = split(string(codeDir), filesep);
 % AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "Allen code"))), '\') + "\Verasonics");
 AllenProcessingCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\Processing");
-addpath(AllenProcessingCodePath)
+addpath(genpath(AllenProcessingCodePath))
 
 % Load parameters
 % Load acquisition parameters: params.mat
@@ -139,7 +139,7 @@ for filenum = startFile:endFile
     
 end
 % savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'tau1_index_CBF', 'tau2_index_CBF', 'tau1_index_CBV');
-save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'voxelRange', 'HPF', 'xp', 'yp', "zp", "nf", 'nTau', 'tau');
+save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'voxelRange', 'HPF', 'xp', "zp", "nf", 'nTau', 'tau');
 % savefast([savepath, 'PDI_CDI_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
 
 %% 4. Store all the PDI across the experiment into one cell array - one cell for each directional component

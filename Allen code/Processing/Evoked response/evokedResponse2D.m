@@ -117,7 +117,7 @@ for j = 1:3
     CDIA{j} = mean(CDIallSF{j}, fDim);
 end
 % save([PDpath, 'PDIA_CDIA.mat'], "PDIA", "CDIA")
-voxelTimeseriesGUI(PDIallSF{3}, PDIA{3}.^0.5, 'Colormap', 'turbo')
+pixelTimeseriesGUI(PDIallSF{3}, PDIA{3}.^0.5, 'Colormap', 'turbo')
 
 % Load v from vUS fits
 VallSF_SG = cell(3, 1);
@@ -135,7 +135,8 @@ for fi = 1:RFcount
     end
 end
 
-voxelTimeseriesGUI(VallSF_RCA{3}, mean(VallSF_RCA{3}, fDim), 'Colormap', 'turbo')
+pixelTimeseriesGUI(VallSF_RCA{3}, mean(VallSF_RCA{3}, fDim), 'Colormap', 'turbo')
+
 %% Trial stuff
 % Upsampling?
 
@@ -145,7 +146,7 @@ voxelTimeseriesGUI(VallSF_RCA{3}, mean(VallSF_RCA{3}, fDim), 'Colormap', 'turbo'
 [evoked, tGrid, info] = periStimulusAverage(PDIallSF, sfStarts, stimOnsetTimestamps);
 testStim = zeros(size(tGrid));
 testStim(tGrid > 5 & tGrid < 10) = 1;
-voxelTimeseriesGUI({evoked{3}, repmat(permute(testStim, [2, 3, 4, 1]), [size(PDIA{3}), 1])}, PDIA{3}, 'Colormap', 'turbo');
+pixelTimeseriesGUI({evoked{3}, repmat(permute(testStim, [2, 3, 1]), [size(PDIA{3}), 1])}, PDIA{3}, 'Colormap', 'turbo');
 
 %% Align the timing of the stim and ultrasound acquisition
 % cleanStim = zeros(P.apis.seq_length_s * P.numTrials * P.daqrate, 1);
@@ -156,10 +157,10 @@ end
 figure; plot(stimTimestamps, cleanStim)
 
 %% Test plotting
-test = interp1(stimTimestamps, cleanStim, sfCenters(1:size(PDIallSF{3}, 4)));
-voxelTimeseriesGUI({PDIallSF{3} ./ PDIallSF{3}(:, :, :, 1), 0.9 + 0.2.*repmat(permute(test, [2, 3, 4, 1]), [size(PDIA{3}), 1])}, PDIA{3}.^0.5, 'Colormap', 'turbo')
+test = interp1(stimTimestamps, cleanStim, sfCenters(1:size(PDIallSF{3}, fDim)));
+pixelTimeseriesGUI({PDIallSF{3} ./ PDIallSF{3}(:, :,  1), 0.9 + 0.2.*repmat(permute(test, [2, 3, 1]), [size(PDIA{3}), 1])}, PDIA{3}.^0.5, 'Colormap', 'turbo')
 
-[r, z, am] = activationMap3D(PDIallSF{3}./ PDIallSF{3}(:, :, :, 1), test, 1);
+[r, z, am] = activationMap2D(PDIallSF{3}./ PDIallSF{3}(:, :,  1), test, 1);
 
 %% Resample the data
 rr = 10; % Resampling rate [Hz]
@@ -170,7 +171,7 @@ stimrs1T(P.apis.delay_time_ms/1e3 * rr + 1 : 1 : (P.apis.delay_time_ms/1e3 + P.a
 % stimrs1T((P.apis.delay_time_ms/1e3 + testoffset) * rr + 1 : 1 : (P.apis.delay_time_ms/1e3 + testoffset + P.apis.stim_length_s) * rr) = 1;
 
 % PDIallSF(isnan(PDIallSF)) = eps;
-PDIrs = permute(interp1(sfCenters, permute(PDIallSF{3}, [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
+PDIrs = permute(interp1(sfCenters, permute(PDIallSF{3}, [3, 1, 2]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 1]);
 % CDIrs = permute(interp1(sfCenters, permute(abs(CDIallSF{3}), [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
 
 % Calculate trial windows at the resampled rate
@@ -183,8 +184,8 @@ end
 trial_PDIrs = cell(size(trial_windows));
 trial_rPDIrs = cell(size(trial_windows));
 for ind = 1:numel(trial_windows)
-    trial_PDIrs{ind} = PDIrs(:, :, :, trial_windows{ind});
-    trial_rPDIrs{ind} = trial_PDIrs{ind} ./ repmat(mean(trial_PDIrs{ind}(:, :, :, 1:P.apis.delay_time_ms/1e3 * rr), 4), [1, 1, 1, size(trial_PDIrs{ind}, 4)]);
+    trial_PDIrs{ind} = PDIrs(:, :, trial_windows{ind});
+    trial_rPDIrs{ind} = trial_PDIrs{ind} ./ repmat(mean(trial_PDIrs{ind}(:, :, 1:P.apis.delay_time_ms/1e3 * rr), fDim), [1, 1, size(trial_PDIrs{ind}, fDim)]);
 end
 
 % Trial average
@@ -196,7 +197,7 @@ for ind = 1:numel(trial_windows)
     rPDIrs_TA = rPDIrs_TA + 1/numel(trial_windows) .* trial_rPDIrs{ind};
 end
 
-r_rPDIrs_TA = corrCoef3D(rPDIrs_TA, stimrs1T);
+[r_rPDIrs_TA, z_rPDIrs_TA, am_rPDIrs_TA] = activationMap2D(rPDIrs_TA, stimrs1T, 1);
 
 %% Evoked response analysis: peri-stimulus averaging and GLM
 % Both functions take the same data types and timing, all in the same time base (t = 0 is the start of acquisition):
