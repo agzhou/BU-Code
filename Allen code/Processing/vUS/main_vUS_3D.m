@@ -4,10 +4,10 @@
 
 %% Only use if needed: convert Jianbo/Bingxue's acquisition parameters to something I can use
 % First: manually load an IQ file, like: load('E:\PROJ_tlfUS\IQdata\0806_2021_BL3_vUS_run1(good)\IQ-10-5-5000-1000-1-BL3-1.mat')
-if ~exist('P_old', 'var')
-    P_old = P; clearvars P
-end
-[P] = oldP2P(P_old);
+% if ~exist('P_old', 'var')
+%     P_old = P; clearvars P
+% end
+% [P] = oldP2P(P_old);
 
 %% Add the Processing folder to path
 codeDir = cd;
