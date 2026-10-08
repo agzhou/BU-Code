@@ -198,7 +198,7 @@ for ind = 1:numel(trial_windows)
 end
 
 [r_rPDIrs_TA, z_rPDIrs_TA, am_rPDIrs_TA] = activationMap2D(rPDIrs_TA, stimrs1T, 1);
-pixelTimeseriesGUI(rPDIrs_TA, r_rPDIrs_TA, 'Colormap', 'turbo');
+pixelTimeseriesGUI({rPDIrs_TA, 1 + 0.1.*repmat(permute(stimrs1T, [2, 3, 1]), [size(PDIA{3}), 1])}, r_rPDIrs_TA, 'Colormap', 'turbo');
 
 %% Evoked response analysis: peri-stimulus averaging and GLM
 % Both functions take the same data types and timing, all in the same time base (t = 0 is the start of acquisition):
