@@ -219,6 +219,9 @@ pixelTimeseriesGUI({rPDIrs_TA, 1 + 0.1.*repmat(permute(stimrs1T, [2, 3, 1]), [si
 
 figure; imagesc(x_mm, z_mm, r_rPDIrs_TA); colormap jet; xlabel('x'); ylabel('z'); title('r'); daspect(PData.PDelta)
 
+% Overlay the activation map (nonzero where z exceeds the threshold) on the averaged power Doppler map
+overlayActivationMap2D(PDIA{3}.^0.5, am_rPDIrs_TA, x_mm, z_mm, 'Mask', am_rPDIrs_TA > 0, 'Alpha', 0.7, 'AmapClim', [0.2, 1], 'ColorbarLabel', 'r', 'Title', 'Activation map over power Doppler');
+
 
 %% Evoked response analysis: peri-stimulus averaging and GLM
 % Both functions take the same data types and timing, all in the same time base (t = 0 is the start of acquisition):
