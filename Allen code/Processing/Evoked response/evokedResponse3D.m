@@ -170,7 +170,7 @@ stimrs1T(P.apis.delay_time_ms/1e3 * rr + 1 : 1 : (P.apis.delay_time_ms/1e3 + P.a
 % stimrs1T((P.apis.delay_time_ms/1e3 + testoffset) * rr + 1 : 1 : (P.apis.delay_time_ms/1e3 + testoffset + P.apis.stim_length_s) * rr) = 1;
 
 % PDIallSF(isnan(PDIallSF)) = eps;
-PDIrs = permute(interp1(sfCenters, permute(PDIallSF{3}, [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
+PDIrs = permute(interp1(sfCenters(1:size(PDIallSF{3}, 4)), permute(PDIallSF{3}, [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
 % CDIrs = permute(interp1(sfCenters, permute(abs(CDIallSF{3}), [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
 
 % Calculate trial windows at the resampled rate
@@ -188,12 +188,14 @@ for ind = 1:numel(trial_windows)
 end
 
 % Trial average
+% trialsToUse = [1:numel(trial_windows)]; % Which trials to keep
+trialsToUse = 1:3; % Testing
 PDIrs_TA = zeros(size(PDIA{3}));
 rPDIrs_TA = zeros(size(PDIA{3}));
-for ind = 1:numel(trial_windows)
-    % PDIrs_TA = PDIrs_TA + 1/numel(trial_windows) .* PDIrs(:, :, :, trial_windows{ind});
-    PDIrs_TA = PDIrs_TA + 1/numel(trial_windows) .* trial_PDIrs{ind};
-    rPDIrs_TA = rPDIrs_TA + 1/numel(trial_windows) .* trial_rPDIrs{ind};
+for ind = trialsToUse
+    % PDIrs_TA = PDIrs_TA + 1/numel(trialsToUse) .* PDIrs(:, :, :, trial_windows{ind});
+    PDIrs_TA = PDIrs_TA + 1/numel(trialsToUse) .* trial_PDIrs{ind};
+    rPDIrs_TA = rPDIrs_TA + 1/numel(trialsToUse) .* trial_rPDIrs{ind};
 end
 
 r_rPDIrs_TA = corrCoef3D(rPDIrs_TA, stimrs1T);
