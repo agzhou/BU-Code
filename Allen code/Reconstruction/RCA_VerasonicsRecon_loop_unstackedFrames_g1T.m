@@ -67,7 +67,7 @@ xrange = 1:80;
 yrange = 1:80;
 % zrange = 1:100;
 % zrange = 1:zpo;
-zrange = 10:110;
+zrange = 25:110;
 Mcr_voxelRange = {xrange, yrange, zrange};
 
 Mcr_filenameStructure = ['RF-', num2str(round(P.maxAngle)), '-', num2str(P.na), '-', num2str(round(P.frameRate)), '-', num2str(P.numFramesPerBuffer), '-1-'];
@@ -333,8 +333,8 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
 %     savefast([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData')
 %     save([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData', '-v7.3')
     
-    % save([Mcr_IQsavepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IQ', '-v7.3', '-nocompression')
-    % disp(strcat("IQ file ", num2str(Mcr_filenum), " saved."))
+    save([Mcr_IQsavepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IQ', '-v7.3', '-nocompression')
+    disp(strcat("IQ file ", num2str(Mcr_filenum), " saved."))
     
     [PDI, CDI, g1] = IQ2g1T_3D(IQ, Mcr_P, Mcr_voxelRange, Mcr_sv_threshold_lower, Mcr_sv_threshold_upper, Mcr_HPF, Mcr_nTau);
     
