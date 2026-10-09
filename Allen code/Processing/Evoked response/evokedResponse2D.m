@@ -12,6 +12,7 @@ if ~exist('PDpath', 'var')
     PDpath = uigetdir('D:\Allen\Data\', 'Select the Processed data (PDI, CDI) path');
     PDpath = [PDpath, '\'];
 end
+load([PDpath, 'fUS_proc_params.mat'])
 
 if ~exist('FRpath', 'var')
     FRpath = uigetdir(PDpath, 'Select the vUS fit results data path');
@@ -40,6 +41,22 @@ end
 % end
 
 clearvars params_filename params_pathname RFTT_filename RFTT_pathname triggerData_filename triggerData_pathname
+
+% Load beamforming parameters: PData.mat
+if ~exist('PData', 'var')
+    % Choose and load the RFTimeTagsPerChannel.mat file (from the acquisition and running readRFTimeTags.m)
+    [PData_filename, PData_pathname, ~] = uigetfile('*.mat', 'Select the PData file', [PDpath, '..\PData.mat']);
+    load([PData_pathname, PData_filename])
+end
+
+if usingRCAPlane
+    [x_mm, y_mm, z_mm] = getReconCoords3D(PData, P);
+
+else
+    [x_mm, z_mm] = getReconCoords2D(PData, P);
+end
+z_mm = z_mm(voxelRange{1});
+x_mm = x_mm(voxelRange{2});
 
 %% Adjust RF timetags
 % Create RF timetag-per-superframe vector and subtract so it starts at 0.
@@ -199,6 +216,9 @@ end
 
 [r_rPDIrs_TA, z_rPDIrs_TA, am_rPDIrs_TA] = activationMap2D(rPDIrs_TA, stimrs1T, 1);
 pixelTimeseriesGUI({rPDIrs_TA, 1 + 0.1.*repmat(permute(stimrs1T, [2, 3, 1]), [size(PDIA{3}), 1])}, r_rPDIrs_TA, 'Colormap', 'jet');
+
+figure; imagesc(x_mm, z_mm, r_rPDIrs_TA); colormap jet; xlabel('x'); ylabel('z'); title('r'); daspect(PData.PDelta)
+
 
 %% Evoked response analysis: peri-stimulus averaging and GLM
 % Both functions take the same data types and timing, all in the same time base (t = 0 is the start of acquisition):
