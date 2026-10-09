@@ -5,7 +5,7 @@
 clearvars
 
 %% 1. Load acquisition parameters, timing info, beamforming parameters, etc.
-usingRCAPlane = true; % Using a plane from 3D data or not
+
 IQpath = uigetdir('G:\', 'Select the IQ data path');
 IQpath = [IQpath, '\'];
 
@@ -68,8 +68,8 @@ savepath = [savepath, '\'];
 
 %% 2. Define some processing parameters
 
-procParamsPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound'};
-procParamsDefaults = {'1', '', '20', num2str(P.numFramesPerBuffer)};
+procParamsPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'Use RCA plane or not (1-yes, 0-no)'};
+procParamsDefaults = {'1', '', '20', num2str(P.numFramesPerBuffer), '0'};
 procParamsUserInput = inputdlg(procParamsPrompt, 'Input Parameters', 1, procParamsDefaults);
 
 % define # of files manually for now
@@ -79,6 +79,7 @@ endFile = str2double(procParamsUserInput{2});
 numFiles = endFile - startFile + 1;
 sv_threshold_lower = str2double(procParamsUserInput{3});
 sv_threshold_upper = str2double(procParamsUserInput{4});
+usingRCAPlane = str2double(procParamsUserInput{5}); % Using a plane from 3D data or not
 
 clearvars procParamsPrompt procParamsDefaults procParamsUserInput
 
@@ -119,7 +120,7 @@ for filenum = startFile:endFile
     xrange = 1:xpo;
     % zrange = 1:100;
     % zrange = 1:zpo;
-    zrange = 10:110;
+    zrange = 25:110;
     voxelRange = {zrange, xrange};
     xp = length(xrange); zp = length(zrange); nf = size(IQ, fDim);
     
@@ -135,7 +136,7 @@ for filenum = startFile:endFile
 
     toc
 
-    clearvars PDI CDI g1 IQ
+    % clearvars PDI CDI g1 IQ
     
 end
 % savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'tau1_index_CBF', 'tau2_index_CBF', 'tau1_index_CBV');

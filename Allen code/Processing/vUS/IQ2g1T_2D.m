@@ -11,8 +11,11 @@ function [PDI, CDI, g1, noise] = IQ2g1T_2D(IQ, P, voxelRange, sv_threshold_lower
     % SVD decluttering
     [CM, EVs, V] = getSVs1D(IQ);
     % disp('SVs decomposed')
-    % [IQf, noise] = applySVs2D_accel(IQ, CM, EVs, V, sv_threshold_lower, sv_threshold_upper);
-    [IQf] = applySVs2D_accel(IQ, CM, EVs, V, sv_threshold_lower, sv_threshold_upper);
+    if nargout > 3
+        [IQf, noise] = applySVs1D_accel(IQ, CM, EVs, V, sv_threshold_lower, sv_threshold_upper);
+    else
+        [IQf] = applySVs1D_accel(IQ, CM, EVs, V, sv_threshold_lower, sv_threshold_upper);
+    end
     % disp('SVD filtered images put together')
     clearvars CM EVs V IQ
 
