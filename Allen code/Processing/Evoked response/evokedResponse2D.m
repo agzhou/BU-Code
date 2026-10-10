@@ -12,6 +12,7 @@ if ~exist('PDpath', 'var')
     PDpath = uigetdir('D:\Allen\Data\', 'Select the Processed data (PDI, CDI) path');
     PDpath = [PDpath, '\'];
 end
+load([PDpath, 'fUS_proc_params.mat'])
 
 if ~exist('FRpath', 'var')
     FRpath = uigetdir(PDpath, 'Select the vUS fit results data path');
@@ -40,6 +41,22 @@ end
 % end
 
 clearvars params_filename params_pathname RFTT_filename RFTT_pathname triggerData_filename triggerData_pathname
+
+% Load beamforming parameters: PData.mat
+if ~exist('PData', 'var')
+    % Choose and load the RFTimeTagsPerChannel.mat file (from the acquisition and running readRFTimeTags.m)
+    [PData_filename, PData_pathname, ~] = uigetfile('*.mat', 'Select the PData file', [PDpath, '..\PData.mat']);
+    load([PData_pathname, PData_filename])
+end
+
+if usingRCAPlane
+    [x_mm, y_mm, z_mm] = getReconCoords3D(PData, P);
+
+else
+    [x_mm, z_mm] = getReconCoords2D(PData, P);
+end
+z_mm = z_mm(voxelRange{1});
+x_mm = x_mm(voxelRange{2});
 
 %% Adjust RF timetags
 % Create RF timetag-per-superframe vector and subtract so it starts at 0.
@@ -92,7 +109,7 @@ save([TDsavepath, 'TD.mat'], 'TD')
 % See main_vUS_3D.m
 
 %% Go through pre-computed data files (for all superframes in the experiment) and store
-
+fDim = 3;
 % For now, go through only PDI and CDI
 % trialsToUse = [1:10];
 % for trialInd = trialsToUse
@@ -105,19 +122,19 @@ for fi = 1:RFcount
     disp(fi)
     load([PDpath, 'fUSdata-', num2str(fi)], 'PDI', 'CDI')
     for j = 1:3
-        PDIallSF{j} = cat(4, PDIallSF{j}, PDI{j});
-        CDIallSF{j} = cat(4, CDIallSF{j}, CDI{j});
+        PDIallSF{j} = cat(fDim, PDIallSF{j}, PDI{j});
+        CDIallSF{j} = cat(fDim, CDIallSF{j}, CDI{j});
     end
 end
 % Average PDI and CDI across superframes
 PDIA = cell(3, 1);
 CDIA = cell(3, 1);
 for j = 1:3
-    PDIA{j} = mean(PDIallSF{j}, 4);
-    CDIA{j} = mean(CDIallSF{j}, 4);
+    PDIA{j} = mean(PDIallSF{j}, fDim);
+    CDIA{j} = mean(CDIallSF{j}, fDim);
 end
 % save([PDpath, 'PDIA_CDIA.mat'], "PDIA", "CDIA")
-voxelTimeseriesGUI(PDIallSF{3}, PDIA{3}.^0.5, 'Colormap', 'turbo')
+pixelTimeseriesGUI(PDIallSF{3}, PDIA{3}.^0.5, 'Colormap', 'turbo')
 
 % Load v from vUS fits
 VallSF_SG = cell(3, 1);
@@ -129,13 +146,14 @@ for fi = 1:RFcount
     load([FRpath, 'fit_results-', num2str(fi)], 'fit_SG', 'fit_RCA', 'fit_C')
     % for j = 1:3
     for j = 3
-        VallSF_SG{j} = cat(4, VallSF_SG{j}, fit_SG.v);
-        VallSF_RCA{j} = cat(4, VallSF_RCA{j}, fit_RCA.v);
-        CallSF_C{j} = cat(4, CallSF_C{j}, fit_C.C);
+        VallSF_SG{j} = cat(fDim, VallSF_SG{j}, fit_SG.v);
+        VallSF_RCA{j} = cat(fDim, VallSF_RCA{j}, fit_RCA.v);
+        CallSF_C{j} = cat(fDim, CallSF_C{j}, fit_C.C);
     end
 end
 
-voxelTimeseriesGUI(VallSF_RCA{3}, mean(VallSF_RCA{3}, 4), 'Colormap', 'turbo')
+pixelTimeseriesGUI(VallSF_RCA{3}, mean(VallSF_RCA{3}, fDim), 'Colormap', 'turbo')
+
 %% Trial stuff
 % Upsampling?
 
@@ -145,7 +163,7 @@ voxelTimeseriesGUI(VallSF_RCA{3}, mean(VallSF_RCA{3}, 4), 'Colormap', 'turbo')
 [evoked, tGrid, info] = periStimulusAverage(PDIallSF, sfStarts, stimOnsetTimestamps);
 testStim = zeros(size(tGrid));
 testStim(tGrid > 5 & tGrid < 10) = 1;
-voxelTimeseriesGUI({evoked{3}, repmat(permute(testStim, [2, 3, 4, 1]), [size(PDIA{3}), 1])}, PDIA{3}, 'Colormap', 'turbo');
+pixelTimeseriesGUI({evoked{3}, repmat(permute(testStim, [2, 3, 1]), [size(PDIA{3}), 1])}, PDIA{3}, 'Colormap', 'turbo');
 
 %% Align the timing of the stim and ultrasound acquisition
 % cleanStim = zeros(P.apis.seq_length_s * P.numTrials * P.daqrate, 1);
@@ -156,10 +174,10 @@ end
 figure; plot(stimTimestamps, cleanStim)
 
 %% Test plotting
-test = interp1(stimTimestamps, cleanStim, sfCenters(1:size(PDIallSF{3}, 4)));
-voxelTimeseriesGUI({PDIallSF{3} ./ PDIallSF{3}(:, :, :, 1), 0.9 + 0.2.*repmat(permute(test, [2, 3, 4, 1]), [size(PDIA{3}), 1])}, PDIA{3}.^0.5, 'Colormap', 'turbo')
+test = interp1(stimTimestamps, cleanStim, sfCenters(1:size(PDIallSF{3}, fDim)));
+pixelTimeseriesGUI({PDIallSF{3} ./ PDIallSF{3}(:, :,  1), 0.9 + 0.2.*repmat(permute(test, [2, 3, 1]), [size(PDIA{3}), 1])}, PDIA{3}.^0.5, 'Colormap', 'turbo')
 
-[r, z, am] = activationMap3D(PDIallSF{3}./ PDIallSF{3}(:, :, :, 1), test, 1);
+[r, z, am] = activationMap2D(PDIallSF{3}./ PDIallSF{3}(:, :,  1), test, 1);
 
 %% Resample the data
 rr = 10; % Resampling rate [Hz]
@@ -170,7 +188,7 @@ stimrs1T(P.apis.delay_time_ms/1e3 * rr + 1 : 1 : (P.apis.delay_time_ms/1e3 + P.a
 % stimrs1T((P.apis.delay_time_ms/1e3 + testoffset) * rr + 1 : 1 : (P.apis.delay_time_ms/1e3 + testoffset + P.apis.stim_length_s) * rr) = 1;
 
 % PDIallSF(isnan(PDIallSF)) = eps;
-PDIrs = permute(interp1(sfCenters(1:size(PDIallSF{3}, 4)), permute(PDIallSF{3}, [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
+PDIrs = permute(interp1(sfCenters, permute(PDIallSF{3}, [3, 1, 2]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 1]);
 % CDIrs = permute(interp1(sfCenters, permute(abs(CDIallSF{3}), [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
 
 % Calculate trial windows at the resampled rate
@@ -183,22 +201,28 @@ end
 trial_PDIrs = cell(size(trial_windows));
 trial_rPDIrs = cell(size(trial_windows));
 for ind = 1:numel(trial_windows)
-    trial_PDIrs{ind} = PDIrs(:, :, :, trial_windows{ind});
-    trial_rPDIrs{ind} = trial_PDIrs{ind} ./ repmat(mean(trial_PDIrs{ind}(:, :, :, 1:P.apis.delay_time_ms/1e3 * rr), 4), [1, 1, 1, size(trial_PDIrs{ind}, 4)]);
+    trial_PDIrs{ind} = PDIrs(:, :, trial_windows{ind});
+    trial_rPDIrs{ind} = trial_PDIrs{ind} ./ repmat(mean(trial_PDIrs{ind}(:, :, 1:P.apis.delay_time_ms/1e3 * rr), fDim), [1, 1, size(trial_PDIrs{ind}, fDim)]);
 end
 
 % Trial average
-% trialsToUse = [1:numel(trial_windows)]; % Which trials to keep
-trialsToUse = 1:3; % Testing
 PDIrs_TA = zeros(size(PDIA{3}));
 rPDIrs_TA = zeros(size(PDIA{3}));
-for ind = trialsToUse
-    % PDIrs_TA = PDIrs_TA + 1/numel(trialsToUse) .* PDIrs(:, :, :, trial_windows{ind});
-    PDIrs_TA = PDIrs_TA + 1/numel(trialsToUse) .* trial_PDIrs{ind};
-    rPDIrs_TA = rPDIrs_TA + 1/numel(trialsToUse) .* trial_rPDIrs{ind};
+for ind = 1:numel(trial_windows)
+    % PDIrs_TA = PDIrs_TA + 1/numel(trial_windows) .* PDIrs(:, :, :, trial_windows{ind});
+    PDIrs_TA = PDIrs_TA + 1/numel(trial_windows) .* trial_PDIrs{ind};
+    rPDIrs_TA = rPDIrs_TA + 1/numel(trial_windows) .* trial_rPDIrs{ind};
 end
 
-r_rPDIrs_TA = corrCoef3D(rPDIrs_TA, stimrs1T);
+[r_rPDIrs_TA, z_rPDIrs_TA, am_rPDIrs_TA] = activationMap2D(rPDIrs_TA, stimrs1T, 1);
+pixelTimeseriesGUI({rPDIrs_TA, 1 + 0.1.*repmat(permute(stimrs1T, [2, 3, 1]), [size(PDIA{3}), 1])}, r_rPDIrs_TA, 'Colormap', 'jet');
+
+figure; imagesc(x_mm, z_mm, r_rPDIrs_TA); colormap jet; xlabel('x'); ylabel('z'); title('r'); daspect([PData.PDelta(1), PData.PDelta(1), PData.PDelta(3)])
+% set(gca, 'XDir', 'reverse')
+
+% Overlay the activation map (nonzero where z exceeds the threshold) on the averaged power Doppler map
+overlayActivationMap2D(PDIA{3}.^0.5, r_rPDIrs_TA, x_mm, z_mm, 'Mask', r_rPDIrs_TA > 0.5, 'Alpha', 0.7, 'AmapClim', [0.2, 1], 'ColorbarLabel', 'r', 'Title', 'Activation map over power Doppler');
+
 
 %% Evoked response analysis: peri-stimulus averaging and GLM
 % Both functions take the same data types and timing, all in the same time base (t = 0 is the start of acquisition):
