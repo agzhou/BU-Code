@@ -57,18 +57,11 @@ clearvars proc_params_filename proc_params_pathname
 %% Define some parameters
 
 % Define the sigma values, from simulations
-%   Single-Gaussian version
-% sigma_SG = [121.8936, 121.8936, 44.3846].*1e-6; % Field-based sigma values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 11 x 2 angles from -5 to 5 deg (G:\My Drive\Data\RC15gV PSF sim - 11 angles from -5 to 5 deg)
-% sigma_SG = [151.5410, 151.5410, 44.6252].*1e-6; % Field-based sigma values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 11 x 2 angles from -6 to 6 deg
-sigma_SG = [130.1474, 130.1474, 44.7070].*1e-6; % Field-based sigma values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 5 x 2 angles from -6 to 6 deg
+sigma = [42.8163, 52.2913].*1e-6; % Field-based sigma values (x, z) [m] for the L22-14v probe at 15.625 MHz and 5 angles from -6 to 6 deg
 
-%   RCA-specific orthogonal Gaussians version
-sigma_RCA = [57.6, 286.5, 50.1].*1e-6; % Field-based sigma values (narrow, wide, axial) [m] for the RC15gV probe at 13.6 MHz: 5 angles from -6 to 6 deg
-
-xDim = 1; % Dimension of the data corresponding to x (lateral direction)
-yDim = 2; % Dimension of the data corresponding to y (lateral direction)
-zDim = 3; % Dimension of the data corresponding to z (axial direction)
-fDim = 4; % Dimension of the data corresponding to frequency (or time)
+xDim = 2; % Dimension of the data corresponding to x (lateral direction)
+zDim = 1; % Dimension of the data corresponding to z (axial direction)
+fDim = 3; % Dimension of the data corresponding to frequency (or time)
 
 if ~exist('ctp', 'var')
     ctp = 1:3; % Indices of which frequency Components To Process (typically [1, 2, 3]: negative, positive, all)
@@ -79,12 +72,11 @@ end
 [VzCmap, VzCmapDn, VzCmapUp, pdiCmapUp, PhtmCmap] = Colormaps_fUS;
 
 %% Create a struct for all the relevant processing parameters
-dimensionality = 3; % 3D data
+dimensionality = 2; % 2D data
 frameRate = P.frameRate;
 wl = P.wl;
 k0 = 2*pi/wl;
-% PP = createStruct(xp, yp, zp, nf, nTau, xDim, yDim, zDim, fDim, dimensionality, faxis, freqMask, frameRate, wl, k0); % Processing Parameters ======> adjust as needed
-PP = createStruct(xp, yp, zp, nf, nTau, xDim, yDim, zDim, fDim, dimensionality, frameRate, wl, k0); % Processing Parameters ======> adjust as needed
+PP = createStruct(xp, zp, nf, nTau, xDim, zDim, fDim, dimensionality, frameRate, wl, k0); % Processing Parameters ======> adjust as needed
 
 %% Load the g1 average across superframes and fit it
 
@@ -107,7 +99,7 @@ t1i = 2; % Index for tau1 --> 2 for my code, because it calculates g1 starting a
 
 % Create new variables for experimental g1, with spatial dimensions stacked
 g1_exp = cell(size(g1)); % Cell array of experimental g1 data with spatial dimensions vectorized/stacked
-num_voxels = size(g1{3}, xDim)*size(g1{3}, yDim)*size(g1{3}, zDim);
+num_voxels = size(g1{3}, xDim)*size(g1{3}, zDim);
 for j = ctp
     g1_exp{j} = reshape(g1{j}, num_voxels, nTau);
 end
@@ -152,10 +144,8 @@ for j = 3
 
     % Struct for storing parameters of the different g1 models
     ifpv = zeros(num_voxels, 1); % initial fit parameter value matrix
-    fpn_SG = {"v_tgp", "v_zgp", "F", "DC", "k", "a"}; % Fit parameter names (single Gaussian PSF model)
+    fpn_SG = {"v_xgp", "v_zgp", "F", "DC", "k", "a"}; % Fit parameter names (single Gaussian PSF model)
     fit_SG = initFitParamStruct(fpn_SG, ifpv);
-    fpn_RCA = {"v_xgp", "v_ygp", "v_zgp", "F", "DC", "k", "a"}; % Fit parameter names (RCA-specific PSF model)
-    fit_RCA = initFitParamStruct(fpn_RCA, ifpv);
     fpn_C = {"C", "v_zgp", "F", "DC"}; % Fit parameter names (Combined parameter model)
     fit_C = initFitParamStruct(fpn_C, ifpv);
     
@@ -174,8 +164,6 @@ for j = 3
     [s, w] = gaussLegendre01(48);
     % Make vectors for bounds for fit parameters (and store in struct 'fb')
     fb.v_xgp = [0, 250e-3];
-    fb.v_ygp = [0, 250e-3];
-    fb.v_tgp = sqrt(fb.v_xgp.^2 + fb.v_ygp.^2);
     fb.v_zgp = [-50e-3; 50e-3];
     fb.F = [0, 1];
     fb.DC = [0, 1];
@@ -185,11 +173,11 @@ for j = 3
 
     % Single-Gaussian PSF model
     tic
-    fit_SG.lb = [fb.v_tgp(1), fb.v_zgp(1), fb.F(1), fb.DC(1), fb.k(1), fb.a(1)]; % Parameter lower bounds [v_tgp, v_zgp, F, DC, k, a]
-    fit_SG.ub = [fb.v_tgp(2), fb.v_zgp(2), fb.F(2), fb.DC(2), fb.k(2), fb.a(2)]; % Parameter upper bounds
+    fit_SG.lb = [fb.v_xgp(1), fb.v_zgp(1), fb.F(1), fb.DC(1), fb.k(1), fb.a(1)]; % Parameter lower bounds [v_xgp, v_zgp, F, DC, k, a]
+    fit_SG.ub = [fb.v_xgp(2), fb.v_zgp(2), fb.F(2), fb.DC(2), fb.k(2), fb.a(2)]; % Parameter upper bounds
     
     fit_SG.xscale = [1e-2 1e-2 1 1 1 1];
-    fit_SG.model = @(X, cols) vUS_3D_quad_batchModel(X, tau(cols), PP.k0, sigma_SG, s, w);
+    fit_SG.model = @(X, cols) vUS_2D_quad_batchModel(X, tau(cols), PP.k0, sigma_SG, s, w);
     % vi   = find(maskToUse);  
     nv = numel(maskToUseTrueInds);
     fit_SG.opts   = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', 'xscale', fit_SG.xscale);
@@ -198,21 +186,6 @@ for j = 3
     [fit_SG.x, fit_SG.cost, ~, fit_SG.conv] = fitBatchedLM(fit_SG.model, fit_SG.x0, g1_exp{j}(maskToUseTrueInds, :), fit_SG.lb, fit_SG.ub, fit_SG.opts);    
     % [fit_SG.x, fit_SG.cost] = vUS_3D_quad_fitBatched(g1_exp{j}(maskToUseTrueInds,:), tau_decayed_ind(maskToUseTrueInds), Vz0(maskToUseTrueInds), tau, PP.k0, sigma_SG, fit_SG.lb, fit_SG.ub);
     [fit_SG] = storeFitParams(fit_SG, fpn_SG, fit_SG.x, maskToUseTrueInds, PP); % Store/parse fitted parameters
-    toc
-
-    % RCA-specific PSF model
-    tic
-    fit_RCA.xscale = [1e-2 1e-2 1e-2 1 1 1 1];
-    fit_RCA.lb = [fb.v_xgp(1), fb.v_ygp(1), fb.v_zgp(1), fb.F(1), fb.DC(1), fb.k(1), fb.a(1)]; % Parameter lower bounds [v_xgp, v_ygp, v_zgp, F, DC, k, a]
-    fit_RCA.ub = [fb.v_xgp(2), fb.v_ygp(2), fb.v_zgp(2), fb.F(2), fb.DC(2), fb.k(2), fb.a(2)]; % Parameter upper bounds
-    fit_RCA.model = @(X, cols) vUS_3D_quad_RCA_xy_batchModel(X, tau(cols), PP.k0, sigma_RCA, s, w);
-    % vi   = find(maskToUse);  
-    nv = numel(maskToUseTrueInds);
-    fit_RCA.opts   = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', 'xscale', fit_RCA.xscale);
-    fit_RCA.x0   = [Vt0(maskToUseTrueInds), Vt0(maskToUseTrueInds), Vz0(maskToUseTrueInds), ones(nv, 1), zeros(nv, 1), 2.5*ones(nv,1 ), 0.7 .*ones(nv, 1)];
-    opts = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', 'xscale', fit_RCA.xscale);
-    [fit_RCA.x, fit_RCA.cost, ~, fit_RCA.conv] = fitBatchedLM(fit_RCA.model, fit_RCA.x0, g1_exp{j}(maskToUseTrueInds, :), fit_RCA.lb, fit_RCA.ub, fit_RCA.opts);
-    [fit_RCA] = storeFitParams(fit_RCA, fpn_RCA, fit_RCA.x, maskToUseTrueInds, PP); % Store/parse fitted parameters
     toc
 
     % Combined parameter model
@@ -230,7 +203,7 @@ for j = 3
    
 end
 
-fit_sfa = createStruct(fit_SG, fit_RCA, fit_C, fpn_SG, fpn_RCA, fpn_C, maskToUse, maskToUseTrueInds, s, w, fb, nv, vs, num_voxels, t1i, tau_decayed_ind, voxel_quality);
+fit_sfa = createStruct(fit_SG, fit_C, fpn_SG, fpn_C, maskToUse, maskToUseTrueInds, s, w, fb, nv, vs, num_voxels, t1i, tau_decayed_ind, voxel_quality);
 save([PDpath, 'fit_sfa.mat'], 'fit_sfa')
 clearvars fit_SG fit_RCA fit_C
 

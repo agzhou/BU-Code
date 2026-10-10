@@ -82,7 +82,7 @@ end
 [VzCmap, VzCmapDn, VzCmapUp, pdiCmapUp, PhtmCmap] = Colormaps_fUS;
 
 %% Create a struct for all the relevant processing parameters
-dimensionality = 3; % 2D data
+dimensionality = 3; % 3D data
 frameRate = P.frameRate;
 wl = P.wl;
 k0 = 2*pi/wl;
