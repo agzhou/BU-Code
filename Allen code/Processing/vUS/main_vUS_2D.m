@@ -104,20 +104,34 @@ for j = ctp
     g1_exp{j} = reshape(g1{j}, num_voxels, nTau);
 end
 
+Vz0 = cell(size(ctp));
+tau_V = cell(size(ctp));
+Vt0 = cell(size(ctp));
+tau_decayed_ind = cell(size(ctp));
+voxel_quality = cell(size(ctp));
+maskToUse = cell(size(ctp));
+maskToUseTrueInds = cell(size(ctp));
+% Struct for storing parameters of the different g1 models
+ifpv = zeros(num_voxels, 1); % initial fit parameter value matrix
+fpn_SG = {"v_xgp", "v_zgp", "F", "DC", "k", "a"}; % Fit parameter names (single Gaussian PSF model)
+fit_SG = initFitParamStruct(fpn_SG, ifpv, 3);
+fpn_C = {"C", "v_zgp", "F", "DC"}; % Fit parameter names (Combined parameter model)
+fit_C = initFitParamStruct(fpn_C, ifpv, 3);
+
 % ---- Loop through directional components and go through the fitting process ---- %
-% for j = ctp
+for j = ctp
 % for j = 1:2 % Fit only negative and positive frequencies (down and up flows)
-for j = 3
+% for j = 3
     
     % Axial component of the blood flow's group velocity -- v_zgp
-    [Vz0, tau_V] = findVzPhaseDiff(stackData(g1{j}, PP), PP); % v_zgp [m/s]
+    [Vz0{j}, tau_V{j}] = findVzPhaseDiff(stackData(g1{j}, PP), PP); % v_zgp [m/s]
     % figure; imagesc(squeeze(max(unstackData(Vz0, PP), [], 1))'); colormap(VzCmap); axis equal; colorbar; clim([-30e-3, 30e-3])
     % volumeViewer(abs(unstackData(Vz0, PP)))
 
     % Mesh method for finding v_tgp0
     % [v_zgp0, v_xgp0, p0, DC0, F0, R20] = InitvUS2DParamsWithMesh(g1adj_stacked_j, Vz0, DCR0_j, FR_j, PP, sigma, tau);
     % [Vx0, R2_Vx0] = InitVx0WithMesh2D(stackData(g1{j}, PP), Vz0, DCR0_j, FR0_j, PP, sigma, tau);
-    Vt0 = ones(size(Vz0)).* 5e-3; % TESTING: uniform initial v_xgp guess
+    Vt0{j} = ones(size(Vz0{j})).* 5e-3; % TESTING: uniform initial v_xgp guess
     % figure; imagesc(unstackData(Vx0, PP)); axis equal; colorbar
 
     % **** TO DO: create a function that looks at the confidence in the
@@ -130,35 +144,26 @@ for j = 3
 
     % Adaptively find the tau range to fit over for each pixel, and another
     % quality mask
-    [tau_decayed_ind, voxel_quality] = findTauDecayed(g1_exp{j}, tau, t1i, fp.absolute_tau_ss_cutoff_s, fp.too_fast_decay_s);
+    [tau_decayed_ind{j}, voxel_quality{j}] = findTauDecayed(g1_exp{j}, tau, t1i, fp.absolute_tau_ss_cutoff_s, fp.too_fast_decay_s);
     % volumeViewer(unstackData(voxel_quality, PP))
 
     % Another mask
-    temp_g1_tau1_mask = squeeze(abs(g1_exp{j}(:, t1i))) > 0.3; % Note: this does not account for the static component
+    temp_g1_tau1_mask = squeeze(abs(g1_exp{j}(:, t1i))) > 0.4; % Note: this does not account for the static component
     % volumeViewer(unstackData(temp_g1_tau1_mask, PP))
 
-    temp_g1_tau2_mask = squeeze(abs(g1_exp{j}(:, t1i + 1))) > 0.2; % Note: this does not account for the static component
+    temp_g1_tau2_mask = squeeze(abs(g1_exp{j}(:, t1i + 1))) > 0.3; % Note: this does not account for the static component
     % volumeViewer(unstackData(temp_g1_tau2_mask, PP))
 
-    tempMask = and(temp_g1_tau1_mask, temp_g1_tau2_mask);
+    temp_g1_mask = squeeze(abs(g1_exp{j}(:, t1i))) > squeeze(abs(g1_exp{j}(:, t1i + 1)));
 
-    % Struct for storing parameters of the different g1 models
-    ifpv = zeros(num_voxels, 1); % initial fit parameter value matrix
-    fpn_SG = {"v_xgp", "v_zgp", "F", "DC", "k", "a"}; % Fit parameter names (single Gaussian PSF model)
-    fit_SG = initFitParamStruct(fpn_SG, ifpv);
-    fpn_C = {"C", "v_zgp", "F", "DC"}; % Fit parameter names (Combined parameter model)
-    fit_C = initFitParamStruct(fpn_C, ifpv);
-    
+    tempMask = temp_g1_tau1_mask & temp_g1_tau2_mask & temp_g1_mask;
+
     % Choose the mask to use to fit certain pixels or not
-    % maskToUse = overall_mask_stacked; 
-    % maskToUse = and(vesselAngleMask, stackData(temp_g1_tau1_mask, PP));
-    % maskToUse = and(voxel_quality, tempMask);
-    maskToUse = or(voxel_quality, tempMask);
-    % maskToUse = voxel_quality;
-    % maskToUse = vesselMask;
-    % volumeViewer(unstackData(maskToUse, PP))
+    % maskToUse{j} = and(voxel_quality{j}, tempMask);
+    maskToUse{j} = or(voxel_quality{j}, tempMask);
+    % figure; imagesc(unstackData(maskToUse{j}, PP))
 
-    maskToUseTrueInds = find(maskToUse).'; % indices where maskTouse is true
+    maskToUseTrueInds{j} = find(maskToUse{j}).'; % indices where maskTouse is true
     
     % ---- Use batched solver ---- %
     [s, w] = gaussLegendre01(48);
@@ -173,39 +178,43 @@ for j = 3
 
     % Single-Gaussian PSF model
     tic
-    fit_SG.lb = [fb.v_xgp(1), fb.v_zgp(1), fb.F(1), fb.DC(1), fb.k(1), fb.a(1)]; % Parameter lower bounds [v_xgp, v_zgp, F, DC, k, a]
-    fit_SG.ub = [fb.v_xgp(2), fb.v_zgp(2), fb.F(2), fb.DC(2), fb.k(2), fb.a(2)]; % Parameter upper bounds
+    fit_SG(j).lb = [fb.v_xgp(1), fb.v_zgp(1), fb.F(1), fb.DC(1), fb.k(1), fb.a(1)]; % Parameter lower bounds [v_xgp, v_zgp, F, DC, k, a]
+    fit_SG(j).ub = [fb.v_xgp(2), fb.v_zgp(2), fb.F(2), fb.DC(2), fb.k(2), fb.a(2)]; % Parameter upper bounds
     
-    fit_SG.xscale = [1e-2 1e-2 1 1 1 1];
-    fit_SG.model = @(X, cols) vUS_2D_quad_batchModel(X, tau(cols), PP.k0, sigma_SG, s, w);
+    fit_SG(j).xscale = [1e-2 1e-2 1 1 1 1];
+    fit_SG(j).model = @(X, cols) vUS_2D_quad_batchModel(X, tau(cols), PP.k0, sigma, s, w);
     % vi   = find(maskToUse);  
-    nv = numel(maskToUseTrueInds);
-    fit_SG.opts   = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', 'xscale', fit_SG.xscale);
-    fit_SG.x0   = [Vt0(maskToUseTrueInds), Vz0(maskToUseTrueInds), ones(nv, 1), zeros(nv, 1), 2.5*ones(nv, 1), 0.7 .*ones(nv, 1)];
-    fit_SG.opts = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', 'xscale', fit_SG.xscale);
-    [fit_SG.x, fit_SG.cost, ~, fit_SG.conv] = fitBatchedLM(fit_SG.model, fit_SG.x0, g1_exp{j}(maskToUseTrueInds, :), fit_SG.lb, fit_SG.ub, fit_SG.opts);    
-    % [fit_SG.x, fit_SG.cost] = vUS_3D_quad_fitBatched(g1_exp{j}(maskToUseTrueInds,:), tau_decayed_ind(maskToUseTrueInds), Vz0(maskToUseTrueInds), tau, PP.k0, sigma_SG, fit_SG.lb, fit_SG.ub);
-    [fit_SG] = storeFitParams(fit_SG, fpn_SG, fit_SG.x, maskToUseTrueInds, PP); % Store/parse fitted parameters
+    nv(j) = numel(maskToUseTrueInds{j});
+    fit_SG(j).x0   = [Vt0{j}(maskToUseTrueInds{j}), Vz0{j}(maskToUseTrueInds{j}), ones(nv(j), 1), zeros(nv(j), 1), 2.5*ones(nv(j), 1), 0.7 .*ones(nv(j), 1)];
+    fit_SG(j).opts = struct('window', tau_decayed_ind{j}(maskToUseTrueInds{j}), 't1i', 2, 'jacobian', 'analytic', 'xscale', fit_SG(j).xscale);
+    [fit_SG(j).x, fit_SG(j).cost, ~, fit_SG(j).conv] = fitBatchedLM(fit_SG(j).model, fit_SG(j).x0, g1_exp{j}(maskToUseTrueInds{j}, :), fit_SG(j).lb, fit_SG(j).ub, fit_SG(j).opts);    
+    [fit_SG(j)] = storeFitParams(fit_SG(j), fpn_SG, fit_SG(j).x, maskToUseTrueInds{j}, PP); % Store/parse fitted parameters
+    fit_SG(j).v = sqrt(fit_SG(j).v_xgp.^2 + fit_SG(j).v_zgp.^2); 
     toc
 
     % Combined parameter model
-    fit_C.lb = [fb.C(1), fb.v_zgp(1), fb.F(1), fb.DC(1)];
-    fit_C.ub = [fb.C(2), fb.v_zgp(2), fb.F(2), fb.DC(2)];
-    fit_C.x0 = [500*ones(nv, 1), Vz0(maskToUseTrueInds), ones(nv, 1), zeros(nv, 1)];
-    fit_C.xscale = [500, 1e-2, 1, 1];  % C in units of 500 (its typical magnitude), v_zgp x10mm/s, F, DC
+    fit_C(j).lb = [fb.C(1), fb.v_zgp(1), fb.F(1), fb.DC(1)];
+    fit_C(j).ub = [fb.C(2), fb.v_zgp(2), fb.F(2), fb.DC(2)];
+    fit_C(j).x0 = [500*ones(nv(j), 1), Vz0{j}(maskToUseTrueInds{j}), ones(nv(j), 1), zeros(nv(j), 1)];
+    fit_C(j).xscale = [500, 1e-2, 1, 1];  % C in units of 500 (its typical magnitude), v_zgp x10mm/s, F, DC
 
-    fit_C.model = @(X, cols) vUS_3D_combined_batchModel(X, tau(cols), PP.k0);
-    fit_C.opts = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', t1i, 'jacobian', 'analytic', 'xscale', fit_C.xscale);
+    fit_C(j).model = @(X, cols) vUS_3D_combined_batchModel(X, tau(cols), PP.k0);
+    fit_C(j).opts = struct('window', tau_decayed_ind{j}(maskToUseTrueInds{j}), 't1i', t1i, 'jacobian', 'analytic', 'xscale', fit_C(j).xscale);
     tic
-    [fit_C.x, fit_C.cost, ~, fit_C.conv] = fitBatchedLM(fit_C.model, fit_C.x0, g1_exp{j}(maskToUseTrueInds, :), fit_C.lb, fit_C.ub, fit_C.opts);
-    [fit_C] = storeFitParams(fit_C, fpn_C, fit_C.x, maskToUseTrueInds, PP); % Store/parse fitted parameters
+    [fit_C(j).x, fit_C(j).cost, ~, fit_C(j).conv] = fitBatchedLM(fit_C(j).model, fit_C(j).x0, g1_exp{j}(maskToUseTrueInds{j}, :), fit_C(j).lb, fit_C(j).ub, fit_C(j).opts);
+    [fit_C(j)] = storeFitParams(fit_C(j), fpn_C, fit_C(j).x, maskToUseTrueInds{j}, PP); % Store/parse fitted parameters
     toc
    
 end
 
 fit_sfa = createStruct(fit_SG, fit_C, fpn_SG, fpn_C, maskToUse, maskToUseTrueInds, s, w, fb, nv, vs, num_voxels, t1i, tau_decayed_ind, voxel_quality);
 save([PDpath, 'fit_sfa.mat'], 'fit_sfa')
-clearvars fit_SG fit_RCA fit_C
+clearvars fit_SG fit_C
+
+% Plot velocities
+for j = ctp
+    figure; imagesc(fit_sfa.fit_SG(j).v); colormap jet; colormap; clim([0, 50e-3])
+end
 
 %% Load and fit each individual superframe, with some parameters constrained by what the superframe average fit suggests
 % Prompt for parameter user input
@@ -231,7 +240,7 @@ if ~exist('maskToUse', 'var')
     maskToUse = fit_sfa.maskToUse;
 end
 
-warning('The code is not designed to save properly for multiple j')
+% warning('The code is not designed to save properly for multiple j')
 for fi = files_to_fit
 % for fi = 2:endFile
 % for fi = endFile:-1:startFile
@@ -241,33 +250,33 @@ for fi = files_to_fit
     % Choose and load the g1 superframe average: g1_avg.mat file (from calc_g1_avg.m)
     load([PDpath, 'fUSdata-', num2str(fi), '.mat'], 'g1')
     
-    % for j = ctp
-    %     g1{j} = double(g1{j});
-    % end
+    for j = ctp
+        g1{j} = double(g1{j});
+    end
     
     % voxelTimeseriesGUI(g1{3}, tempPDI.^0.5, 'ComplexMode', 'abs')
     
     % Create new variables for experimental g1, with spatial dimensions stacked
     g1_exp = cell(size(g1)); % Cell array of experimental g1 data with spatial dimensions vectorized/stacked
-    % for j = ctp
-    for j = 3
+    for j = ctp
+    % for j = 3
         g1_exp{j} = reshape(g1{j}, num_voxels, nTau);
     end
     
     % ---- Loop through directional components and go through the fitting process ---- %
-    % for j = ctp
+    for j = ctp
     % for j = 1:2 % Fit only negative and positive frequencies (down and up flows)
-    for j = 3
+    % for j = 3
         
         % Axial component of the blood flow's group velocity -- v_zgp
-        [Vz0, tau_V] = findVzPhaseDiff(stackData(g1{j}, PP), PP); % v_zgp [m/s]
+        [Vz0{j}, tau_V{j}] = findVzPhaseDiff(stackData(g1{j}, PP), PP); % v_zgp [m/s]
         % figure; imagesc(squeeze(max(unstackData(Vz0, PP), [], 1))'); colormap(VzCmap); axis equal; colorbar; clim([-30e-3, 30e-3])
         % volumeViewer(abs(unstackData(Vz0, PP)))
     
         % Mesh method for finding v_tgp0
         % [v_zgp0, v_xgp0, p0, DC0, F0, R20] = InitvUS2DParamsWithMesh(g1adj_stacked_j, Vz0, DCR0_j, FR_j, PP, sigma, tau);
         % [Vx0, R2_Vx0] = InitVx0WithMesh2D(stackData(g1{j}, PP), Vz0, DCR0_j, FR0_j, PP, sigma, tau);
-        Vt0 = ones(size(Vz0)).* 5e-3; % TESTING: uniform initial v_xgp guess
+        Vt0{j} = ones(size(Vz0{j})).* 5e-3; % TESTING: uniform initial v_xgp guess
         % figure; imagesc(unstackData(Vx0, PP)); axis equal; colorbar
     
         % **** TO DO: create a function that looks at the confidence in the
@@ -290,12 +299,10 @@ for fi = files_to_fit
     
         % Struct for storing parameters of the different g1 models
         ifpv = zeros(num_voxels, 1); % initial fit parameter value matrix
-        fpn_SG = {"v_tgp", "v_zgp", "F", "DC", "k", "a"}; % Fit parameter names (single Gaussian PSF model)
-        fit_SG = initFitParamStruct(fpn_SG, ifpv);
-        fpn_RCA = {"v_xgp", "v_ygp", "v_zgp", "F", "DC", "k", "a"}; % Fit parameter names (RCA-specific PSF model)
-        fit_RCA = initFitParamStruct(fpn_RCA, ifpv);
+        fpn_SG = {"v_xgp", "v_zgp", "F", "DC", "k", "a"}; % Fit parameter names (single Gaussian PSF model)
+        fit_SG = initFitParamStruct(fpn_SG, ifpv, 3);
         fpn_C = {"C", "v_zgp", "F", "DC"}; % Fit parameter names (Combined parameter model)
-        fit_C = initFitParamStruct(fpn_C, ifpv);
+        fit_C = initFitParamStruct(fpn_C, ifpv, 3);
         
         % ---- Use batched solver ---- %
         if ~exist('maskToUseTrueInds', 'var')
@@ -304,104 +311,76 @@ for fi = files_to_fit
 
         % Single-Gaussian PSF model
         % tic
-        % Parameter lower and upper bounds [v_tgp, v_zgp, F, DC, k, a]
-        fit_SG.lb = fit_sfa.fit_SG.x; % Initialize most to the superframe-averaged fit results
-        fit_SG.ub = fit_sfa.fit_SG.x;
+        % Parameter lower and upper bounds [v_xgp, v_zgp, F, DC, k, a]
+        fit_SG(j).lb = fit_sfa.fit_SG(j).x; % Initialize most to the superframe-averaged fit results
+        fit_SG(j).ub = fit_sfa.fit_SG(j).x;
         % Allow DC and v to be free
-        fit_SG.lb(:, 4) = fit_sfa.fb.DC(1);    fit_SG.ub(:, 4) = fit_sfa.fb.DC(2); % Allow DC to be free
-        fit_SG.lb(:, 1) = fit_sfa.fb.v_tgp(1); fit_SG.ub(:, 1) = fit_sfa.fb.v_tgp(2); % v_tgp
-        fit_SG.lb(:, 2) = fit_sfa.fb.v_zgp(1); fit_SG.ub(:, 2) = fit_sfa.fb.v_zgp(2); % v_zgp
+        fit_SG(j).lb(:, 4) = fit_sfa.fb.DC(1);    fit_SG(j).ub(:, 4) = fit_sfa.fb.DC(2); % Allow DC to be free
+        fit_SG(j).lb(:, 1) = fit_sfa.fb.v_xgp(1); fit_SG(j).ub(:, 1) = fit_sfa.fb.v_xgp(2); % v_xgp
+        fit_SG(j).lb(:, 2) = fit_sfa.fb.v_zgp(1); fit_SG(j).ub(:, 2) = fit_sfa.fb.v_zgp(2); % v_zgp
 
-        fit_SG.xscale = fit_sfa.fit_SG.xscale;
-        fit_SG.model = @(X, cols) vUS_3D_quad_batchModel(X, tau(cols), PP.k0, sigma_SG, s, w);
-        fit_SG.opts   = fit_sfa.fit_SG.opts;
-        % fit_SG.opts = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', 'xscale', fit_SG.xscale);
-        fit_SG.x0   = fit_sfa.fit_SG.x0; fit_SG.x0(:, 2) = Vz0(maskToUseTrueInds);% Use the same initial values, except for the phase-based Vz0
-        [fit_SG.x, fit_SG.cost, ~, fit_SG.conv] = fitBatchedLM(fit_SG.model, fit_SG.x0, g1_exp{j}(maskToUseTrueInds, :), fit_SG.lb, fit_SG.ub, fit_SG.opts);    
-        % [fit_SG.x, fit_SG.cost] = vUS_3D_quad_fitBatched(g1_exp{j}(maskToUseTrueInds,:), tau_decayed_ind(maskToUseTrueInds), Vz0(maskToUseTrueInds), tau, PP.k0, sigma_SG, fit_SG.lb, fit_SG.ub);
-        [fit_SG] = storeFitParams(fit_SG, fpn_SG, fit_SG.x, maskToUseTrueInds, PP); % Store/parse fitted parameters
-        fit_SG.v = sqrt(fit_SG.v_tgp.^2 + fit_SG.v_zgp.^2);
+        fit_SG(j).xscale = fit_sfa.fit_SG(j).xscale;
+        fit_SG(j).model = @(X, cols) vUS_2D_quad_batchModel(X, tau(cols), PP.k0, sigma, s, w);
+        fit_SG(j).opts   = fit_sfa.fit_SG(j).opts;
+        fit_SG(j).x0   = fit_sfa.fit_SG(j).x0; fit_SG(j).x0(:, 2) = Vz0{j}(maskToUseTrueInds{j});% Use the same initial values, except for the phase-based Vz0
+        [fit_SG(j).x, fit_SG(j).cost, ~, fit_SG(j).conv] = fitBatchedLM(fit_SG(j).model, fit_SG(j).x0, g1_exp{j}(maskToUseTrueInds{j}, :), fit_SG(j).lb, fit_SG(j).ub, fit_SG(j).opts);    
+        [fit_SG(j)] = storeFitParams(fit_SG(j), fpn_SG, fit_SG(j).x, maskToUseTrueInds{j}, PP); % Store/parse fitted parameters
+        fit_SG(j).v = sqrt(fit_SG(j).v_xgp.^2 + fit_SG(j).v_zgp.^2);
         % toc
-    
-        % RCA-specific PSF model
-        % tic
-        fit_RCA.xscale = fit_sfa.fit_RCA.xscale;
-        % Parameter lower and upper bounds [v_xgp, v_ygp, v_zgp, F, DC, k, a]
-        fit_RCA.lb = fit_sfa.fit_RCA.x; % Initialize most to the superframe-averaged fit results
-        fit_RCA.ub = fit_sfa.fit_RCA.x;
-        fit_RCA.lb(:, 5) = fit_sfa.fb.DC(1); fit_RCA.ub(:, 5) = fit_sfa.fb.DC(2); % Allow DC to be free
-        fit_RCA.lb(:, 1) = fit_sfa.fb.v_xgp(1); fit_RCA.ub(:, 1) = fit_sfa.fb.v_xgp(2); % v_xgp
-        fit_RCA.lb(:, 2) = fit_sfa.fb.v_ygp(1); fit_RCA.ub(:, 2) = fit_sfa.fb.v_ygp(2); % v_ygp
-        fit_RCA.lb(:, 3) = fit_sfa.fb.v_zgp(1); fit_RCA.ub(:, 3) = fit_sfa.fb.v_zgp(2); % v_zgp
 
-        fit_RCA.model = @(X, cols) vUS_3D_quad_RCA_xy_batchModel(X, tau(cols), PP.k0, sigma_RCA, s, w);
-        fit_RCA.opts = fit_sfa.fit_RCA.opts;
-        % fit_RCA.opts   = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', 'xscale', fit_RCA.xscale);
-        % fit_RCA.x0   = [Vt0(maskToUseTrueInds), Vt0(maskToUseTrueInds), Vz0(maskToUseTrueInds), ones(fit_sfa.nv, 1), zeros(fit_sfa.nv, 1), 2.5*ones(fit_sfa.nv,1 ), 0.7 .*ones(fit_sfa.nv, 1)];
-        fit_RCA.x0 = fit_sfa.fit_RCA.x0; fit_RCA.x0(:, 3) = Vz0(maskToUseTrueInds);
-        [fit_RCA.x, fit_RCA.cost, ~, fit_RCA.conv] = fitBatchedLM(fit_RCA.model, fit_RCA.x0, g1_exp{j}(maskToUseTrueInds, :), fit_RCA.lb, fit_RCA.ub, fit_RCA.opts);
-        [fit_RCA] = storeFitParams(fit_RCA, fpn_RCA, fit_RCA.x, maskToUseTrueInds, PP); % Store/parse fitted parameters
-        fit_RCA.v = sqrt(fit_RCA.v_xgp.^2 + fit_RCA.v_ygp.^2 + fit_RCA.v_zgp.^2);
-        % toc
-    
         % Combined parameter model
         % Parameter lower and upper bounds [C, v_zgp, F, DC]
-        fit_C.lb = fit_sfa.fit_C.x;
-        fit_C.ub = fit_sfa.fit_C.x;
-        fit_C.lb(:, 4) = fit_sfa.fb.DC(1); fit_C.ub(:, 4) = fit_sfa.fb.DC(2); % Allow DC to be free
-        fit_C.lb(:, 1) = fit_sfa.fb.C(1); fit_C.ub(:, 1) = fit_sfa.fb.C(2); % C
-        fit_C.lb(:, 2) = fit_sfa.fb.v_zgp(1); fit_C.ub(:, 2) = fit_sfa.fb.v_zgp(2); % v_zgp
+        fit_C(j).lb = fit_sfa.fit_C(j).x;
+        fit_C(j).ub = fit_sfa.fit_C(j).x;
+        fit_C(j).lb(:, 4) = fit_sfa.fb.DC(1); fit_C(j).ub(:, 4) = fit_sfa.fb.DC(2); % Allow DC to be free
+        fit_C(j).lb(:, 1) = fit_sfa.fb.C(1); fit_C(j).ub(:, 1) = fit_sfa.fb.C(2); % C
+        fit_C(j).lb(:, 2) = fit_sfa.fb.v_zgp(1); fit_C(j).ub(:, 2) = fit_sfa.fb.v_zgp(2); % v_zgp
 
-        % fit_C.x0 = [500*ones(fit_sfa.nv, 1), Vz0(maskToUseTrueInds), ones(fit_sfa.nv, 1), zeros(fit_sfa.nv, 1)];
-        fit_C.x0 = fit_sfa.fit_C.x0; fit_C.x0(:, 2) = Vz0(maskToUseTrueInds);
-        fit_C.xscale = fit_sfa.fit_C.xscale;  % C in units of 500 (its typical magnitude), v_zgp x10mm/s, F, DC
+        fit_C(j).x0 = fit_sfa.fit_C(j).x0; fit_C(j).x0(:, 2) = Vz0{j}(maskToUseTrueInds{j});
+        fit_C(j).xscale = fit_sfa.fit_C(j).xscale;  % C in units of 500 (its typical magnitude), v_zgp x10mm/s, F, DC
     
-        fit_C.model = @(X, cols) vUS_3D_combined_batchModel(X, tau(cols), PP.k0);
-        % fit_C.opts = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', t1i, 'jacobian', 'analytic', 'xscale', fit_C.xscale);
-        fit_C.opts = fit_sfa.fit_C.opts;
+        fit_C(j).model = @(X, cols) vUS_3D_combined_batchModel(X, tau(cols), PP.k0);
+        fit_C(j).opts = fit_sfa.fit_C(j).opts;
         % tic
-        [fit_C.x, fit_C.cost, ~, fit_C.conv] = fitBatchedLM(fit_C.model, fit_C.x0, g1_exp{j}(maskToUseTrueInds, :), fit_C.lb, fit_C.ub, fit_C.opts);
-        [fit_C] = storeFitParams(fit_C, fpn_C, fit_C.x, maskToUseTrueInds, PP); % Store/parse fitted parameters
+        [fit_C(j).x, fit_C(j).cost, ~, fit_C(j).conv] = fitBatchedLM(fit_C(j).model, fit_C(j).x0, g1_exp{j}(maskToUseTrueInds{j}, :), fit_C(j).lb, fit_C(j).ub, fit_C(j).opts);
+        [fit_C(j)] = storeFitParams(fit_C(j), fpn_C, fit_C(j).x, maskToUseTrueInds{j}, PP); % Store/parse fitted parameters
         % toc
        
     end
+
     % Calculate the fitted g1 curves for each valid pixel
-    g1_model_SG_stacked = zeros(num_voxels, nTau);
-    g1_model_RCA_stacked = zeros(num_voxels, nTau);
-    g1_model_C_stacked = zeros(num_voxels, nTau);
-    
-    parfor vi = 1:num_voxels % voxel index
-        if maskToUse(vi) % If the voxel was fitted
-            x_SG = [fit_SG.v_tgp_stacked(vi), fit_SG.v_zgp_stacked(vi), fit_SG.F_stacked(vi), fit_SG.DC_stacked(vi), fit_SG.k_stacked(vi), fit_SG.a_stacked(vi)];
-            x_RCA = [fit_RCA.v_xgp_stacked(vi), fit_RCA.v_ygp_stacked(vi), fit_RCA.v_zgp_stacked(vi), fit_RCA.F_stacked(vi), fit_RCA.DC_stacked(vi), fit_RCA.k_stacked(vi), fit_RCA.a_stacked(vi)];
-            x_C = [fit_C.C_stacked(vi), fit_C.v_zgp_stacked(vi), fit_C.F_stacked(vi), fit_C.DC_stacked(vi)];
-    
-            % g1_model(vi, :) = vUS_3D_num_wrapper(x, tau, PP.k0, sigma);
-            g1_model_SG_stacked(vi, :) = vUS_3D_quad_vec(x_SG, tau, PP.k0, sigma_SG, s, w);
-            g1_model_RCA_stacked(vi, :) = vUS_3D_quad_RCA_xy_vec(x_RCA, tau, PP.k0, sigma_RCA, s, w);
-            g1_model_C_stacked(vi, :) = vUS_3D_combined_complex_Jac(x_C, tau, PP.k0);
-    
-        end
-    end
-    
+    % g1_model_SG_stacked = zeros(num_voxels, nTau);
+    % g1_model_C_stacked = zeros(num_voxels, nTau);
+    % 
+    % parfor vi = 1:num_voxels % voxel index
+    %     if maskToUse(vi) % If the voxel was fitted
+    %         x_SG = [fit_SG(j).v_tgp_stacked(vi), fit_SG(j).v_zgp_stacked(vi), fit_SG(j).F_stacked(vi), fit_SG(j).DC_stacked(vi), fit_SG(j).k_stacked(vi), fit_SG(j).a_stacked(vi)];
+    %         x_C = [fit_C(j).C_stacked(vi), fit_C(j).v_zgp_stacked(vi), fit_C(j).F_stacked(vi), fit_C(j).DC_stacked(vi)];
+    % 
+    %         % g1_model(vi, :) = vUS_3D_num_wrapper(x, tau, PP.k0, sigma);
+    %         g1_model_SG_stacked(vi, :) = vUS_3D_quad_vec(x_SG, tau, PP.k0, sigma_SG, s, w);
+    %         g1_model_C_stacked(vi, :) = vUS_3D_combined_complex_Jac(x_C, tau, PP.k0);
+    % 
+    %     end
+    % end
+    [g1_model_SG_stacked, ~] = vUS_2D_quad_batchModel(fit_SG(j).x.', tau, PP.k0, sigma, s, w); % Calculates for only the fitted pixels
+    [g1_model_C_stacked, ~] = vUS_3D_combined_batchModel(fit_C(j).x.', tau, PP.k0); % Calculates for only the fitted pixels
+
     % Calculate fitting quality metrics
     tau_mask = (fit_sfa.t1i:nTau);
-    fit_SG.R2 = calcR2(g1_model_SG_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
-    fit_RCA.R2 = calcR2(g1_model_RCA_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
-    fit_C.R2 = calcR2(g1_model_C_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
+    fit_SG(j).R2 = calcR2(g1_model_SG_stacked(tau_mask, :).', g1_exp{j}(maskToUseTrueInds{j}, tau_mask), 2);
+    fit_C(j).R2 = calcR2(g1_model_C_stacked(tau_mask, :).', g1_exp{j}(maskToUseTrueInds{j}, tau_mask), 2);
     
-    fit_SG.R2_adj = calcR2_adj(g1_model_SG_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_SG));
-    fit_RCA.R2_adj = calcR2_adj(g1_model_RCA_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_RCA));
-    fit_C.R2_adj = calcR2_adj(g1_model_C_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_C));
+    fit_SG(j).R2_adj = calcR2_adj(g1_model_SG_stacked(tau_mask, :).', g1_exp{j}(maskToUseTrueInds{j}, tau_mask), 2, numel(fpn_SG));
+    fit_C(j).R2_adj = calcR2_adj(g1_model_C_stacked(tau_mask, :).', g1_exp{j}(maskToUseTrueInds{j}, tau_mask), 2, numel(fpn_C));
     
-    fit_SG.AIC = calcAIC(g1_model_SG_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_SG));
-    fit_RCA.AIC = calcAIC(g1_model_RCA_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_RCA));
-    fit_C.AIC = calcAIC(g1_model_C_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_C));
+    fit_SG(j).AIC = calcAIC(g1_model_SG_stacked(tau_mask, :).', g1_exp{j}(maskToUseTrueInds{j}, tau_mask), 2, numel(fpn_SG));
+    fit_C(j).AIC = calcAIC(g1_model_C_stacked(tau_mask, :).', g1_exp{j}(maskToUseTrueInds{j}, tau_mask), 2, numel(fpn_C));
 
     % Save fit results
-    save([PDpath, 'fit_results-', num2str(fi)], 'fit_SG', 'fit_RCA', 'fit_C', 'Vz0', 'Vt0')
+    save([PDpath, 'fit_results-', num2str(fi)], 'fit_SG', 'fit_C', 'Vz0', 'Vt0')
     % voxelTimeseriesGUI({g1{3}, unstackData(g1_model_RCA_stacked, PP)}, fit_RCA.v, 'ComplexMode', 'abs', 'Colormap', 'jet')
-    clearvars fit_SG fit_RCA fit_C g1 g1_exp
+    clearvars fit_SG fit_C g1 g1_exp
     
     toc
 end
