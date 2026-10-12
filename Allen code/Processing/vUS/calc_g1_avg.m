@@ -7,6 +7,7 @@ end
 
 % for filenum = startFile + 1:endFile
 for filenum = startFile:endFile
+    disp(filenum)
     tic
     load([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'g1')
 
