@@ -115,7 +115,7 @@ for filenum = startFile:endFile
     end
     % Mask the region to actually process
     [zpo, xpo, nfo] = size(IQ); % Original sizes
-    % figure; imagesc(squeeze(abs(IQ(:, :, :, 1))).')
+    % figure; imagesc(squeeze(abs(IQ(:, :, 1))))
     
     xrange = 1:xpo;
     % zrange = 1:100;
