@@ -83,6 +83,11 @@ dimensionality = 3; % 3D data
 frameRate = P.frameRate;
 wl = P.wl;
 k0 = 2*pi/wl;
+if ~exist('xp', 'var')
+    xp = length(Mcr_voxelRange{1});
+    yp = length(Mcr_voxelRange{2});
+    zp = length(Mcr_voxelRange{3});
+end
 % PP = createStruct(xp, yp, zp, nf, nTau, xDim, yDim, zDim, fDim, dimensionality, faxis, freqMask, frameRate, wl, k0); % Processing Parameters ======> adjust as needed
 PP = createStruct(xp, yp, zp, nf, nTau, xDim, yDim, zDim, fDim, dimensionality, frameRate, wl, k0); % Processing Parameters ======> adjust as needed
 
