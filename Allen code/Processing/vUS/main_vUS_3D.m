@@ -87,6 +87,11 @@ if ~exist('xp', 'var')
     xp = length(Mcr_voxelRange{1});
     yp = length(Mcr_voxelRange{2});
     zp = length(Mcr_voxelRange{3});
+    nf = P.numFramesPerBuffer;
+    nTau = Mcr_nTau;
+end
+if ~exist('tau', 'var')
+    tau = 0:1/P.frameRate:(nTau - 1)/P.frameRate;
 end
 % PP = createStruct(xp, yp, zp, nf, nTau, xDim, yDim, zDim, fDim, dimensionality, faxis, freqMask, frameRate, wl, k0); % Processing Parameters ======> adjust as needed
 PP = createStruct(xp, yp, zp, nf, nTau, xDim, yDim, zDim, fDim, dimensionality, frameRate, wl, k0); % Processing Parameters ======> adjust as needed
