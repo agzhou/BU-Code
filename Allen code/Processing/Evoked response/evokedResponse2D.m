@@ -138,26 +138,20 @@ pixelTimeseriesGUI(PDIallSF{3}, PDIA{3}.^0.5, 'Colormap', 'turbo')
 
 % Load v from vUS fits
 VallSF_SG = cell(3, 1);
-VallSF_RCA = cell(3, 1);
 CallSF_C = cell(3, 1);
 for fi = 1:RFcount
 
     disp(fi)
-    load([FRpath, 'fit_results-', num2str(fi)], 'fit_SG', 'fit_RCA', 'fit_C')
-    % for j = 1:3
-    for j = 3
-        VallSF_SG{j} = cat(fDim, VallSF_SG{j}, fit_SG.v);
-        VallSF_RCA{j} = cat(fDim, VallSF_RCA{j}, fit_RCA.v);
-        CallSF_C{j} = cat(fDim, CallSF_C{j}, fit_C.C);
+    load([FRpath, 'fit_results-', num2str(fi)], 'fit_SG', 'fit_C')
+    for j = 1:3
+    % for j = 3
+        VallSF_SG{j} = cat(fDim, VallSF_SG{j}, fit_SG(j).v);
+        CallSF_C{j} = cat(fDim, CallSF_C{j}, fit_C(j).C);
     end
 end
 
-pixelTimeseriesGUI(VallSF_RCA{3}, mean(VallSF_RCA{3}, fDim), 'Colormap', 'turbo')
-
-%% Trial stuff
-% Upsampling?
-
-% Baseline (first 5s) averaging
+pixelTimeseriesGUI(VallSF_SG{3}, mean(VallSF_SG{3}, fDim), 'Colormap', 'turbo')
+pixelTimeseriesGUI({PDIallSF{3}, VallSF_SG{3}}, PDIA{3}.^0.5, 'Colormap', 'turbo')
 
 %% Testing
 [evoked, tGrid, info] = periStimulusAverage(PDIallSF, sfStarts, stimOnsetTimestamps);
@@ -190,7 +184,12 @@ stimrs1T(P.apis.delay_time_ms/1e3 * rr + 1 : 1 : (P.apis.delay_time_ms/1e3 + P.a
 % PDIallSF(isnan(PDIallSF)) = eps;
 PDIrs = permute(interp1(sfCenters, permute(PDIallSF{3}, [3, 1, 2]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 1]);
 % CDIrs = permute(interp1(sfCenters, permute(abs(CDIallSF{3}), [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
-
+VallSF_SG_rs = cell(size(VallSF_SG));
+CallSF_C_rs = cell(size(CallSF_C));
+for j = 1:3
+    VallSF_SG_rs{j} = permute(interp1(sfCenters, permute(VallSF_SG{j}, [3, 1, 2]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 1]);
+    CallSF_C_rs{j} = permute(interp1(sfCenters, permute(CallSF_C{j}, [3, 1, 2]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 1]);
+end
 % Calculate trial windows at the resampled rate
 trial_windows = cell(P.numTrials, 1);
 for ind = 1:numel(trial_windows)
@@ -200,22 +199,33 @@ end
 % Calculate relative changes before trial averaging
 trial_PDIrs = cell(size(trial_windows));
 trial_rPDIrs = cell(size(trial_windows));
+trial_V_SG_rs = cell(size(trial_windows));
+trial_rV_SG_rs = cell(size(trial_windows));
 for ind = 1:numel(trial_windows)
     trial_PDIrs{ind} = PDIrs(:, :, trial_windows{ind});
     trial_rPDIrs{ind} = trial_PDIrs{ind} ./ repmat(mean(trial_PDIrs{ind}(:, :, 1:P.apis.delay_time_ms/1e3 * rr), fDim), [1, 1, size(trial_PDIrs{ind}, fDim)]);
+    trial_V_SG_rs{ind} = VallSF_SG_rs{3}(:, :, trial_windows{ind}); % Only all frequency component data for now
+    trial_rV_SG_rs{ind} = trial_V_SG_rs{ind} ./ repmat(mean(trial_V_SG_rs{ind}(:, :, 1:P.apis.delay_time_ms/1e3 * rr), fDim), [1, 1, size(trial_V_SG_rs{ind}, fDim)]);
 end
 
 % Trial average
 PDIrs_TA = zeros(size(PDIA{3}));
 rPDIrs_TA = zeros(size(PDIA{3}));
+V_SG_rs_TA = zeros(size(PDIA{3}));
+rV_SG_rs_TA = zeros(size(PDIA{3}));
 for ind = 1:numel(trial_windows)
     % PDIrs_TA = PDIrs_TA + 1/numel(trial_windows) .* PDIrs(:, :, :, trial_windows{ind});
     PDIrs_TA = PDIrs_TA + 1/numel(trial_windows) .* trial_PDIrs{ind};
     rPDIrs_TA = rPDIrs_TA + 1/numel(trial_windows) .* trial_rPDIrs{ind};
+
+    V_SG_rs_TA = V_SG_rs_TA + 1/numel(trial_windows) .* trial_V_SG_rs{ind};
+    rV_SG_rs_TA = rV_SG_rs_TA + 1/numel(trial_windows) .* trial_rV_SG_rs{ind};
 end
 
 [r_rPDIrs_TA, z_rPDIrs_TA, am_rPDIrs_TA] = activationMap2D(rPDIrs_TA, stimrs1T, 1);
+[r_rV_SG_rs_TA, z_rV_SG_rs_TA, am_rV_SG_rs_TA] = activationMap2D(rV_SG_rs_TA, stimrs1T, 1);
 pixelTimeseriesGUI({rPDIrs_TA, 1 + 0.1.*repmat(permute(stimrs1T, [2, 3, 1]), [size(PDIA{3}), 1])}, r_rPDIrs_TA, 'Colormap', 'jet');
+pixelTimeseriesGUI({rV_SG_rs_TA, 1 + 0.1.*repmat(permute(stimrs1T, [2, 3, 1]), [size(PDIA{3}), 1])}, rV_SG_rs_TA, 'Colormap', 'jet');
 
 figure; imagesc(x_mm, z_mm, r_rPDIrs_TA); colormap jet; xlabel('x'); ylabel('z'); title('r'); daspect([PData.PDelta(1), PData.PDelta(1), PData.PDelta(3)])
 % set(gca, 'XDir', 'reverse')
