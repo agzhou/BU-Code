@@ -208,6 +208,7 @@ for j = 3
     [fit_SG.x, fit_SG.cost, ~, fit_SG.conv] = fitBatchedLM(fit_SG.model, fit_SG.x0, g1_exp{j}(maskToUseTrueInds, :), fit_SG.lb, fit_SG.ub, fit_SG.opts);    
     % [fit_SG.x, fit_SG.cost] = vUS_3D_quad_fitBatched(g1_exp{j}(maskToUseTrueInds,:), tau_decayed_ind(maskToUseTrueInds), Vz0(maskToUseTrueInds), tau, PP.k0, sigma_SG, fit_SG.lb, fit_SG.ub);
     [fit_SG] = storeFitParams(fit_SG, fpn_SG, fit_SG.x, maskToUseTrueInds, PP); % Store/parse fitted parameters
+    fit_SG.v = sqrt(fit_SG.v_tgp.^2 + fit_SG.v_zgp.^2);
     toc
 
     % RCA-specific PSF model
@@ -223,6 +224,7 @@ for j = 3
     opts = struct('window', tau_decayed_ind(maskToUseTrueInds), 't1i', 2, 'jacobian', 'analytic', 'xscale', fit_RCA.xscale);
     [fit_RCA.x, fit_RCA.cost, ~, fit_RCA.conv] = fitBatchedLM(fit_RCA.model, fit_RCA.x0, g1_exp{j}(maskToUseTrueInds, :), fit_RCA.lb, fit_RCA.ub, fit_RCA.opts);
     [fit_RCA] = storeFitParams(fit_RCA, fpn_RCA, fit_RCA.x, maskToUseTrueInds, PP); % Store/parse fitted parameters
+    fit_RCA.v = sqrt(fit_RCA.v_xgp.^2 + fit_RCA.v_ygp.^2 + fit_RCA.v_zgp.^2);
     toc
 
     % Combined parameter model
@@ -243,6 +245,13 @@ end
 fit_sfa = createStruct(fit_SG, fit_RCA, fit_C, fpn_SG, fpn_RCA, fpn_C, maskToUse, maskToUseTrueInds, s, w, fb, nv, vs, num_voxels, t1i, tau_decayed_ind, voxel_quality);
 save([PDpath, 'fit_sfa.mat'], 'fit_sfa')
 clearvars fit_SG fit_RCA fit_C
+
+% [temp_fitted_g1, ~] = vUS_3D_quad_RCA_xy_batchModel(fit_sfa.fit_RCA.x .', tau, PP.k0, sigma_RCA, s, w); % Calculates for only the fitted pixels
+% test_g1 = zeros(size(maskToUse, 1), nTau);
+% test_g1(maskToUseTrueInds, :) = temp_fitted_g1.';
+% test_g1_unstacked = unstackData(test_g1, PP);
+% % voxelTimeseriesGUI({g1{3}, test_g1_unstacked}, abs(test_g1_unstacked(:, :, :, 2)), 'ComplexMode', 'abs', 'Colormap', 'turbo')
+% voxelTimeseriesGUI({g1{3}, test_g1_unstacked},  fit_sfa.fit_RCA.v, 'ComplexMode', 'abs', 'Colormap', 'turbo')
 
 %% Load and fit each individual superframe, with some parameters constrained by what the superframe average fit suggests
 % Prompt for parameter user input
@@ -403,37 +412,40 @@ for fi = files_to_fit
        
     end
     % Calculate the fitted g1 curves for each valid pixel
-    g1_model_SG_stacked = zeros(num_voxels, nTau);
-    g1_model_RCA_stacked = zeros(num_voxels, nTau);
-    g1_model_C_stacked = zeros(num_voxels, nTau);
-    
-    parfor vi = 1:num_voxels % voxel index
-        if maskToUse(vi) % If the voxel was fitted
-            x_SG = [fit_SG.v_tgp_stacked(vi), fit_SG.v_zgp_stacked(vi), fit_SG.F_stacked(vi), fit_SG.DC_stacked(vi), fit_SG.k_stacked(vi), fit_SG.a_stacked(vi)];
-            x_RCA = [fit_RCA.v_xgp_stacked(vi), fit_RCA.v_ygp_stacked(vi), fit_RCA.v_zgp_stacked(vi), fit_RCA.F_stacked(vi), fit_RCA.DC_stacked(vi), fit_RCA.k_stacked(vi), fit_RCA.a_stacked(vi)];
-            x_C = [fit_C.C_stacked(vi), fit_C.v_zgp_stacked(vi), fit_C.F_stacked(vi), fit_C.DC_stacked(vi)];
-    
-            % g1_model(vi, :) = vUS_3D_num_wrapper(x, tau, PP.k0, sigma);
-            g1_model_SG_stacked(vi, :) = vUS_3D_quad_vec(x_SG, tau, PP.k0, sigma_SG, s, w);
-            g1_model_RCA_stacked(vi, :) = vUS_3D_quad_RCA_xy_vec(x_RCA, tau, PP.k0, sigma_RCA, s, w);
-            g1_model_C_stacked(vi, :) = vUS_3D_combined_complex_Jac(x_C, tau, PP.k0);
-    
-        end
-    end
-    
+    % g1_model_SG_stacked = zeros(num_voxels, nTau);
+    % g1_model_RCA_stacked = zeros(num_voxels, nTau);
+    % g1_model_C_stacked = zeros(num_voxels, nTau);
+    % 
+    % parfor vi = 1:num_voxels % voxel index
+    %     if maskToUse(vi) % If the voxel was fitted
+    %         x_SG = [fit_SG.v_tgp_stacked(vi), fit_SG.v_zgp_stacked(vi), fit_SG.F_stacked(vi), fit_SG.DC_stacked(vi), fit_SG.k_stacked(vi), fit_SG.a_stacked(vi)];
+    %         x_RCA = [fit_RCA.v_xgp_stacked(vi), fit_RCA.v_ygp_stacked(vi), fit_RCA.v_zgp_stacked(vi), fit_RCA.F_stacked(vi), fit_RCA.DC_stacked(vi), fit_RCA.k_stacked(vi), fit_RCA.a_stacked(vi)];
+    %         x_C = [fit_C.C_stacked(vi), fit_C.v_zgp_stacked(vi), fit_C.F_stacked(vi), fit_C.DC_stacked(vi)];
+    % 
+    %         % g1_model(vi, :) = vUS_3D_num_wrapper(x, tau, PP.k0, sigma);
+    %         g1_model_SG_stacked(vi, :) = vUS_3D_quad_vec(x_SG, tau, PP.k0, sigma_SG, s, w);
+    %         g1_model_RCA_stacked(vi, :) = vUS_3D_quad_RCA_xy_vec(x_RCA, tau, PP.k0, sigma_RCA, s, w);
+    %         g1_model_C_stacked(vi, :) = vUS_3D_combined_complex_Jac(x_C, tau, PP.k0);
+    % 
+    %     end
+    % end
+    [g1_model_SG_stacked, ~] = vUS_3D_quad_batchModel(fit_SG.x .', tau, PP.k0, sigma_SG, s, w);
+    [g1_model_RCA_stacked, ~] = vUS_3D_quad_RCA_xy_batchModel(fit_RCA.x .', tau, PP.k0, sigma_RCA, s, w); % Calculates for only the fitted pixels
+    [g1_model_C_stacked, ~] = vUS_3D_combined_batchModel(fit_C.x .', tau, PP.k0);
+
     % Calculate fitting quality metrics
     tau_mask = (fit_sfa.t1i:nTau);
-    fit_SG.R2 = calcR2(g1_model_SG_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
-    fit_RCA.R2 = calcR2(g1_model_RCA_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
-    fit_C.R2 = calcR2(g1_model_C_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
+    fit_SG.R2 = calcR2(g1_model_SG_stacked(tau_mask, :).', g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
+    fit_RCA.R2 = calcR2(g1_model_RCA_stacked(tau_mask, :).', g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
+    fit_C.R2 = calcR2(g1_model_C_stacked(tau_mask, :).', g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
     
-    fit_SG.R2_adj = calcR2_adj(g1_model_SG_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_SG));
-    fit_RCA.R2_adj = calcR2_adj(g1_model_RCA_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_RCA));
-    fit_C.R2_adj = calcR2_adj(g1_model_C_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_C));
+    fit_SG.R2_adj = calcR2_adj(g1_model_SG_stacked(tau_mask, :).', g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_SG));
+    fit_RCA.R2_adj = calcR2_adj(g1_model_RCA_stacked(tau_mask, :).', g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_RCA));
+    fit_C.R2_adj = calcR2_adj(g1_model_C_stacked(tau_mask, :).', g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_C));
     
-    fit_SG.AIC = calcAIC(g1_model_SG_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_SG));
-    fit_RCA.AIC = calcAIC(g1_model_RCA_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_RCA));
-    fit_C.AIC = calcAIC(g1_model_C_stacked(maskToUseTrueInds, tau_mask), g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_C));
+    fit_SG.AIC = calcAIC(g1_model_SG_stacked(tau_mask, :).', g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_SG));
+    fit_RCA.AIC = calcAIC(g1_model_RCA_stacked(tau_mask, :).', g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_RCA));
+    fit_C.AIC = calcAIC(g1_model_C_stacked(tau_mask, :).', g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_C));
 
     % Save fit results
     save([PDpath, 'fit_results-', num2str(fi)], 'fit_SG', 'fit_RCA', 'fit_C', 'Vz0', 'Vt0')
