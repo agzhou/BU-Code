@@ -190,6 +190,8 @@ for j = 1:3
     VallSF_SG_rs{j} = permute(interp1(sfCenters, permute(VallSF_SG{j}, [3, 1, 2]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 1]);
     CallSF_C_rs{j} = permute(interp1(sfCenters, permute(CallSF_C{j}, [3, 1, 2]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 1]);
 end
+
+%% Trial separation and averaging - PDI
 % Calculate trial windows at the resampled rate
 trial_windows = cell(P.numTrials, 1);
 for ind = 1:numel(trial_windows)
@@ -199,25 +201,50 @@ end
 % Calculate relative changes before trial averaging
 trial_PDIrs = cell(size(trial_windows));
 trial_rPDIrs = cell(size(trial_windows));
-trial_V_SG_rs = cell(size(trial_windows));
-trial_rV_SG_rs = cell(size(trial_windows));
 for ind = 1:numel(trial_windows)
     trial_PDIrs{ind} = PDIrs(:, :, trial_windows{ind});
     trial_rPDIrs{ind} = trial_PDIrs{ind} ./ repmat(mean(trial_PDIrs{ind}(:, :, 1:P.apis.delay_time_ms/1e3 * rr), fDim), [1, 1, size(trial_PDIrs{ind}, fDim)]);
-    trial_V_SG_rs{ind} = VallSF_SG_rs{3}(:, :, trial_windows{ind}); % Only all frequency component data for now
-    trial_rV_SG_rs{ind} = trial_V_SG_rs{ind} ./ repmat(mean(trial_V_SG_rs{ind}(:, :, 1:P.apis.delay_time_ms/1e3 * rr), fDim), [1, 1, size(trial_V_SG_rs{ind}, fDim)]);
 end
 
 % Trial average
 PDIrs_TA = zeros(size(PDIA{3}));
 rPDIrs_TA = zeros(size(PDIA{3}));
-V_SG_rs_TA = zeros(size(PDIA{3}));
-rV_SG_rs_TA = zeros(size(PDIA{3}));
 for ind = 1:numel(trial_windows)
     % PDIrs_TA = PDIrs_TA + 1/numel(trial_windows) .* PDIrs(:, :, :, trial_windows{ind});
     PDIrs_TA = PDIrs_TA + 1/numel(trial_windows) .* trial_PDIrs{ind};
     rPDIrs_TA = rPDIrs_TA + 1/numel(trial_windows) .* trial_rPDIrs{ind};
+end
 
+[r_rPDIrs_TA, z_rPDIrs_TA, am_rPDIrs_TA] = activationMap2D(rPDIrs_TA, stimrs1T, 1);
+pixelTimeseriesGUI({rPDIrs_TA, 1 + 0.1.*repmat(permute(stimrs1T, [2, 3, 1]), [size(PDIA{3}), 1])}, r_rPDIrs_TA, 'Colormap', 'jet');
+
+figure; imagesc(x_mm, z_mm, r_rPDIrs_TA); colormap jet; xlabel('x'); ylabel('z'); title('r'); daspect([PData.PDelta(1), PData.PDelta(1), PData.PDelta(3)])
+% set(gca, 'XDir', 'reverse')
+
+% Overlay the activation map (nonzero where z exceeds the threshold) on the averaged power Doppler map
+rt = 0.4; % r threshold
+% overlayActivationMap2D(PDIA{3}.^0.5, r_rPDIrs_TA, x_mm, z_mm, 'Mask', r_rPDIrs_TA > 0.4, 'Alpha', 0.7, 'AmapClim', [0.2, 0.8], 'ColorbarLabel', 'r', 'Title', 'Activation map over power Doppler');
+overlayActivationMap2D(fliplr(PDIA{3}).^0.5, fliplr(r_rPDIrs_TA), x_mm, z_mm, 'Mask', fliplr(r_rPDIrs_TA) > rt, 'Alpha', 0.7, 'AmapClim', [0.2, 0.8], 'ColorbarLabel', 'r', 'Title', 'Activation map over power Doppler');
+
+%% Trial separation and averaging - vUS
+% Calculate trial windows at the resampled rate
+trial_windows = cell(P.numTrials, 1);
+for ind = 1:numel(trial_windows)
+    trial_windows{ind} = (ind - 1)*P.apis.seq_length_s * rr + 1 : 1 : (ind)*P.apis.seq_length_s * rr; % Indices for each trial window, at the resampled rate
+end
+
+% Calculate relative changes before trial averaging
+trial_V_SG_rs = cell(size(trial_windows));
+trial_rV_SG_rs = cell(size(trial_windows));
+for ind = 1:numel(trial_windows)
+    trial_V_SG_rs{ind} = VallSF_SG_rs{3}(:, :, trial_windows{ind}); % Only all frequency component data for now
+    trial_rV_SG_rs{ind} = trial_V_SG_rs{ind} ./ repmat(mean(trial_V_SG_rs{ind}(:, :, 1:P.apis.delay_time_ms/1e3 * rr), fDim), [1, 1, size(trial_V_SG_rs{ind}, fDim)]);
+end
+
+% Trial average
+V_SG_rs_TA = zeros(size(PDIA{3}));
+rV_SG_rs_TA = zeros(size(PDIA{3}));
+for ind = 1:numel(trial_windows)
     V_SG_rs_TA = V_SG_rs_TA + 1/numel(trial_windows) .* trial_V_SG_rs{ind};
     rV_SG_rs_TA = rV_SG_rs_TA + 1/numel(trial_windows) .* trial_rV_SG_rs{ind};
 end
@@ -232,7 +259,6 @@ figure; imagesc(x_mm, z_mm, r_rPDIrs_TA); colormap jet; xlabel('x'); ylabel('z')
 
 % Overlay the activation map (nonzero where z exceeds the threshold) on the averaged power Doppler map
 overlayActivationMap2D(PDIA{3}.^0.5, r_rPDIrs_TA, x_mm, z_mm, 'Mask', r_rPDIrs_TA > 0.5, 'Alpha', 0.7, 'AmapClim', [0.2, 1], 'ColorbarLabel', 'r', 'Title', 'Activation map over power Doppler');
-
 
 %% Evoked response analysis: peri-stimulus averaging and GLM
 % Both functions take the same data types and timing, all in the same time base (t = 0 is the start of acquisition):

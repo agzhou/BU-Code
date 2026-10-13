@@ -189,7 +189,8 @@ end
 
 % Trial average
 % trialsToUse = [1:numel(trial_windows)]; % Which trials to keep
-trialsToUse = 1:3; % Testing
+trialsToUse = [1:3, 5, 7, 8, 10];
+% trialsToUse = 1:3; % Testing
 PDIrs_TA = zeros(size(PDIA{3}));
 rPDIrs_TA = zeros(size(PDIA{3}));
 for ind = trialsToUse
@@ -198,7 +199,10 @@ for ind = trialsToUse
     rPDIrs_TA = rPDIrs_TA + 1/numel(trialsToUse) .* trial_rPDIrs{ind};
 end
 
-r_rPDIrs_TA = corrCoef3D(rPDIrs_TA, stimrs1T);
+% voxelTimeseriesGUI(trial_rPDIrs, PDIA{3}.^0.5, 'Colormap', 'turbo')
+% r_rPDIrs_TA = corrCoef3D(rPDIrs_TA, stimrs1T);
+[r_rPDIrs_TA, z_rPDIrs_TA, am_rPDIrs_TA] = activationMap3D(rPDIrs_TA, stimrs1T, 1);
+volumeViewer(r_rPDIrs_TA)
 
 %% Evoked response analysis: peri-stimulus averaging and GLM
 % Both functions take the same data types and timing, all in the same time base (t = 0 is the start of acquisition):
