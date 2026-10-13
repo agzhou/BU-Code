@@ -153,6 +153,20 @@ end
 pixelTimeseriesGUI(VallSF_SG{3}, mean(VallSF_SG{3}, fDim), 'Colormap', 'turbo')
 pixelTimeseriesGUI({PDIallSF{3}, VallSF_SG{3}}, PDIA{3}.^0.5, 'Colormap', 'turbo')
 
+% Load proxies from tl-fUS fits
+CBViallSF = cell(3, 1);
+CBFSiallSF = cell(3, 1);
+for fi = 1:RFcount
+
+    disp(fi)
+    load([PDpath, 'tlfUSdata-', num2str(fi)], 'CBVi', 'CBFSi')
+    for j = 1:3
+        CBViallSF{j} = cat(fDim, CBViallSF{j}, CBVi{j});
+        CBFSiallSF{j} = cat(fDim, CBFSiallSF{j}, CBFSi{j});
+    end
+end
+pixelTimeseriesGUI({(PDIallSF{3} - mean(PDIallSF{3}, 3)) ./ max(PDIallSF{3} - mean(PDIallSF{3}, 3), [], 3), CBViallSF{3}}, PDIA{3}.^0.5, 'Colormap', 'turbo')
+
 %% Testing
 [evoked, tGrid, info] = periStimulusAverage(PDIallSF, sfStarts, stimOnsetTimestamps);
 testStim = zeros(size(tGrid));
@@ -190,6 +204,8 @@ for j = 1:3
     VallSF_SG_rs{j} = permute(interp1(sfCenters, permute(VallSF_SG{j}, [3, 1, 2]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 1]);
     CallSF_C_rs{j} = permute(interp1(sfCenters, permute(CallSF_C{j}, [3, 1, 2]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 1]);
 end
+
+CBVirs = permute(interp1(sfCenters, permute(CBViallSF{3}, [3, 1, 2]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 1]);
 
 %% Trial separation and averaging - PDI
 % Calculate trial windows at the resampled rate
@@ -259,6 +275,40 @@ figure; imagesc(x_mm, z_mm, r_rPDIrs_TA); colormap jet; xlabel('x'); ylabel('z')
 
 % Overlay the activation map (nonzero where z exceeds the threshold) on the averaged power Doppler map
 overlayActivationMap2D(PDIA{3}.^0.5, r_rPDIrs_TA, x_mm, z_mm, 'Mask', r_rPDIrs_TA > 0.5, 'Alpha', 0.7, 'AmapClim', [0.2, 1], 'ColorbarLabel', 'r', 'Title', 'Activation map over power Doppler');
+
+%% Trial separation and averaging: tl-fUS
+% Calculate trial windows at the resampled rate
+trial_windows = cell(P.numTrials, 1);
+for ind = 1:numel(trial_windows)
+    trial_windows{ind} = (ind - 1)*P.apis.seq_length_s * rr + 1 : 1 : (ind)*P.apis.seq_length_s * rr; % Indices for each trial window, at the resampled rate
+end
+
+% Calculate relative changes before trial averaging
+trial_CBVirs = cell(size(trial_windows));
+trial_rCBVirs = cell(size(trial_windows));
+for ind = 1:numel(trial_windows)
+    trial_CBVirs{ind} = CBVirs(:, :, trial_windows{ind});
+    trial_rCBVirs{ind} = trial_CBVirs{ind} ./ repmat(mean(trial_CBVirs{ind}(:, :, 1:P.apis.delay_time_ms/1e3 * rr), fDim), [1, 1, size(trial_CBVirs{ind}, fDim)]);
+end
+
+% Trial average
+CBVirs_TA = zeros(size(PDIA{3}));
+rCBVirs_TA = zeros(size(PDIA{3}));
+for ind = 1:numel(trial_windows)
+    CBVirs_TA = CBVirs_TA + 1/numel(trial_windows) .* trial_CBVirs{ind};
+    rCBVirs_TA = rCBVirs_TA + 1/numel(trial_windows) .* trial_rCBVirs{ind};
+end
+
+[r_rCBVirs_TA, z_rCBVirs_TA, am_rCBVirs_TA] = activationMap2D(rCBVirs_TA, stimrs1T, 1);
+% pixelTimeseriesGUI({rCBVirs_TA, 1 + 0.1.*repmat(permute(stimrs1T, [2, 3, 1]), [size(PDIA{3}), 1])}, r_rCBVirs_TA, 'Colormap', 'jet');
+
+figure; imagesc(x_mm, z_mm, r_rCBVirs_TA); colormap jet; xlabel('x'); ylabel('z'); title('r'); daspect([PData.PDelta(1), PData.PDelta(1), PData.PDelta(3)])
+% set(gca, 'XDir', 'reverse')
+
+% Overlay the activation map (nonzero where z exceeds the threshold) on the averaged power Doppler map
+rt = 0.4; % r threshold
+% overlayActivationMap2D(PDIA{3}.^0.5, r_rPDIrs_TA, x_mm, z_mm, 'Mask', r_rPDIrs_TA > 0.4, 'Alpha', 0.7, 'AmapClim', [0.2, 0.8], 'ColorbarLabel', 'r', 'Title', 'Activation map over power Doppler');
+overlayActivationMap2D(fliplr(PDIA{3}).^0.5, fliplr(r_rCBVirs_TA), x_mm, z_mm, 'Mask', fliplr(r_rCBVirs_TA) > rt, 'Alpha', 0.7, 'AmapClim', [0.2, 0.8], 'ColorbarLabel', 'r', 'Title', 'Activation map over power Doppler');
 
 %% Evoked response analysis: peri-stimulus averaging and GLM
 % Both functions take the same data types and timing, all in the same time base (t = 0 is the start of acquisition):
