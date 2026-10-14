@@ -37,14 +37,22 @@ parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'P
 % -- 5 x 2 angles -- %
 % 200% BW, fewer frames per buffer
 % parameterDefaults = {'30', '1', '8', '47000', '4900', '5', '6', '13.6', '1540', '0', '1', '400', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '200', '3'};
+parameterDefaults = {'30', '1', '8', '47000', '4900', '5', '6', '15.625', '1540', '0', '1', '400', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '200', '3'};
 % 67% BW, more frames per buffer
-parameterDefaults = {'30', '1', '8', '47000', '4900', '5', '6', '13.6', '1540', '0', '1', '1000', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
+% parameterDefaults = {'30', '1', '8', '47000', '4900', '5', '6', '13.6', '1540', '0', '1', '1000', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
+% parameterDefaults = {'30', '1', '8', '47000', '4900', '5', '6', '15.625', '1540', '0', '1', '1000', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
 
 % -- 11 x 2 angles -- %
 % 200% BW, fewer frames per buffer
 % parameterDefaults = {'30', '1', '8', '47000', '2000', '11', '6', '13.6', '1540', '0', '1', '180', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '200', '3'};
 % 67% BW, more frames per buffer
 % parameterDefaults = {'30', '1', '8', '47000', '2000', '11', '6', '13.6', '1540', '0', '1', '490', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
+
+% -- 21 x 2 angles -- %
+% 200% BW, fewer frames per buffer
+% parameterDefaults = {'30', '1', '8', '47000', '1000', '21', '9', '15.625', '1540', '0', '1', '90', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '200', '3'};
+% 67% BW, more frames per buffer
+% parameterDefaults = {'30', '1', '8', '47000', '1000', '21', '9', '15.625', '1540', '0', '1', '200', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
 
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
@@ -797,7 +805,7 @@ if useTriggers
 end
 % saveRcvData(RcvData{1})
 clear RcvData
-% save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
+save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
 
 %% **** Callback routines used by UIControls (UI) ****
 
