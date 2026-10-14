@@ -54,7 +54,24 @@ Mcr_filenameStructure = ['RF-', num2str(round(P.maxAngle)), '-', num2str(P.na), 
 Mcr_IQfilenameStructure = ['IQ-', num2str(round(P.maxAngle)), '-', num2str(P.na), '-', num2str(round(P.frameRate)), '-', num2str(P.numFramesPerBuffer), '-1-'];
 
 %%%%%%%%%%
-saveAllAngles = false; % choose if you want to save the matrix with pages for each angle or not
+% Output mode (prompted). The options are mutually exclusive.
+%   Mcr_saveAllAngles: save the matrix with pages for each angle
+%   Mcr_saveRCCR:      save separate coherently-compounded C-R and R-C volumes (for XDoppler) instead of the OPW sum.
+%                      Saves IQ_CR and IQ_RC, each [y, x, z, frame], to files with the 'IQ-RCCR-' prefix
+% (Mcr_ prefix so VSX doesn't clear these)
+Mcr_outputOptions = {'OPW sum (single IQ volume)', 'Separate C-R and R-C volumes (XDoppler)', 'All angles (pages for each angle)'};
+Mcr_outputChoice = questdlg('Select the IQ output type:', 'Output options', ...
+                            Mcr_outputOptions{1}, Mcr_outputOptions{2}, Mcr_outputOptions{3}, Mcr_outputOptions{1});
+if isempty(Mcr_outputChoice)
+    error('No output type selected.')
+end
+Mcr_saveAllAngles = strcmp(Mcr_outputChoice, Mcr_outputOptions{3});
+Mcr_saveRCCR      = strcmp(Mcr_outputChoice, Mcr_outputOptions{2});
+disp(strcat("Output type: ", Mcr_outputChoice))
+
+if Mcr_saveRCCR
+    Mcr_IQfilenameStructure = ['IQ-RCCR-', Mcr_IQfilenameStructure(4:end)]; % strip the 'IQ-' prefix and replace
+end
 
 %% Get the updated parameter structure for unstacked data
 [P_unstacked] = updateParams_unstackedFrames(P);
@@ -163,8 +180,10 @@ numRegions = 3;
 Resource.ImageBuffer(1).numFrames = numFramesPerBuffer; % Define an ImageBuffer with a # of frames
 Resource.InterBuffer(1).numFrames = numFramesPerBuffer;
 
-if saveAllAngles
+if Mcr_saveAllAngles
     Resource.InterBuffer(1).pagesPerFrame = na * pair;
+elseif Mcr_saveRCCR
+    Resource.InterBuffer(1).pagesPerFrame = pair; % page 1: C-R (TX column, RX row), page 2: R-C (TX row, RX column)
 end
 % Recon = struct('senscutoff', 0.6, ... % Threshold for which the reconstruction doesn't consider an element's contribution due to directivity of the element, for a certain pixel (whose echoes are at an angle to the element). Should be in radians.
 %                'pdatanum', 1, ... % Which PData structure to use
@@ -195,15 +214,23 @@ for n = 1:pair*na
     
     ReconInfo(rii).txnum = n;
     ReconInfo(rii).rcvnum = rii;
-    if saveAllAngles
+    if Mcr_saveAllAngles
         ReconInfo(rii).pagenum = n;
         ReconInfo(rii).mode = 'replaceIQ'; % replace IQ data
+    elseif Mcr_saveRCCR
+        % TX 1:na are C-R (acquired first in each frame), TX na+1:2na are R-C.
+        % Each group is coherently compounded over its na angles into its own page.
+        ReconInfo(rii).pagenum = 1 + (n > na);
     end
 %     ReconInfo(1).regionnum = 1; %1 for the whole volume, 5 for the slices
 
 end
 
-if ~saveAllAngles
+if Mcr_saveRCCR
+    ReconInfo(1).mode = 'replaceIQ';        % start of C-R page
+    ReconInfo(na + 1).mode = 'replaceIQ';   % start of R-C page
+    ReconInfo(end).mode = 'accumIQ_replaceIntensity'; % at the last acquisition, update the ImgData
+elseif ~Mcr_saveAllAngles
     ReconInfo(1).mode = 'replaceIQ'; % replace IQ in the buffer for each new frame processed
     ReconInfo(end).mode = 'accumIQ_replaceIntensity'; % at the last acquisition, update the ImgData
 end
@@ -288,21 +315,32 @@ for Mcr_filenum = Mcr_startFile:Mcr_endFile
 %     IQ = IData{1} + 1i .* QData{1};                                         % Merge the I and Q into one variable
     IData = IData{1};
     QData = QData{1};
-%     IQ = squeeze(IData + 1i .* QData); 
-    IQ = squeeze(complex(IData, QData));
+
+    if Mcr_saveRCCR
+        % IData/QData are [y, x, z, page, frame]. Page 1 = C-R, page 2 = R-C.
+        % Index the pages before complex() so the full 5D array isn't duplicated.
+        IQ_CR = squeeze(complex(IData(:, :, :, 1, :), QData(:, :, :, 1, :)));
+        IQ_RC = squeeze(complex(IData(:, :, :, 2, :), QData(:, :, :, 2, :)));
+        clear IData QData
+        save([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IQ_CR', 'IQ_RC', '-v7.3', '-nocompression')
+        disp(strcat("IQ (C-R and R-C) file ", num2str(Mcr_filenum), " saved."))
+    else
+%     IQ = squeeze(IData + 1i .* QData);
+        IQ = squeeze(complex(IData, QData));
 
 %     savefast([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData')
 %     save([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IData', 'QData', '-v7.3')
-    save([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IQ', '-v7.3', '-nocompression')
-    disp(strcat("IQ file ", num2str(Mcr_filenum), " saved."))
-    
+        save([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IQ', '-v7.3', '-nocompression')
+        disp(strcat("IQ file ", num2str(Mcr_filenum), " saved."))
+    end
+
     toc
 
     % ixc = calcIXC_simple(IQ);
     % %     figure; plot(abs(ixc)); xlabel('Frame'); ylabel('|Cross correlation of images|')
     % save([Mcr_savepath, 'ixc-', num2str(Mcr_filenum)], 'ixc', '-v7.3', '-nocompression')
 
-    clearvars IQ IData QData RcvData ImgData ImgDataP
+    clearvars IQ IQ_CR IQ_RC IData QData RcvData ImgData ImgDataP
 %     clearvars RcvData ImgData ImgDataP
     
     pause(10) % Pause for safety of inter-superframe memory issues
@@ -325,6 +363,21 @@ end
 % savefast([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'test')
 % save([Mcr_savepath, Mcr_IQfilenameStructure, num2str(Mcr_filenum)], 'IQ', '-v7.3')
 % toc
+%% XDoppler axial velocity estimate from a saveRCCR file (Leroy et al., Ultrasonics 2026, Eq. 8)
+% Run the clutter filter (e.g., SVD) on IQ_CR and IQ_RC separately first.
+% Slow-time order is CR(1), RC(1), CR(2), RC(2), ...
+% The estimator is symmetric in CR/RC, but the interleaving order matters.
+%
+% load([Mcr_savepath, Mcr_IQfilenameStructure, '1'])   % IQ_CR, IQ_RC: [y, x, z, frame]
+% nf = size(IQ_CR, 4);
+% C1 = sum(IQ_CR(:, :, :, 1:nf)   .* conj(IQ_RC(:, :, :, 1:nf)),   4); % CR(i) * conj(RC(i + 0.5))
+% C2 = sum(IQ_RC(:, :, :, 1:nf-1) .* conj(IQ_CR(:, :, :, 2:nf)),   4); % RC(i + 0.5) * conj(CR(i + 1))
+% % (optionally smooth C1, C2 over a ~3x3x3 voxel window before taking the angle)
+% T = 1 / P.frameRate;         % time between consecutive CR (or RC) volumes. This is 2*na*T_PRF only if frames are back-to-back.
+% c = P.Resource.Parameters.speedOfSound; f0 = P.Trans.frequency * 1e6; % check these field names for your P
+% vz = -c ./ (4*pi*f0*T) .* (angle(C1) + angle(C2));   % sign follows the paper's convention; check against your Kasai code
+% pd = sqrt(abs(C1) ./ nf);    % XDoppler power Doppler: sqrt of the RC/CR correlation product (Eq. 2)
+
 %% random stuff and plotting
 % volumeViewer(squeeze(abs(IQ(:, :, :, 2))))
 % IQ = IData{1} + 1i .* QData{1};
