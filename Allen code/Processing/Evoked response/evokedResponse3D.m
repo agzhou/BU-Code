@@ -41,6 +41,21 @@ end
 
 clearvars params_filename params_pathname RFTT_filename RFTT_pathname triggerData_filename triggerData_pathname
 
+if ~exist('PData', 'var')
+    % Choose and load the RFTimeTagsPerChannel.mat file (from the acquisition and running readRFTimeTags.m)
+    [PData_filename, PData_pathname, ~] = uigetfile('*.mat', 'Select the PData file', [PDpath, '..\PData.mat']);
+    load([PData_pathname, PData_filename])
+end
+
+load([PDpath, 'fUS_proc_params.mat'])
+[x_mm, y_mm, z_mm] = getReconCoords3D(PData, P);
+if ~exist('voxelRange', 'var')
+    voxelRange = Mcr_voxelRange;
+end
+x_mm = x_mm(voxelRange{1});
+y_mm = y_mm(voxelRange{2});
+z_mm = z_mm(voxelRange{3});
+
 %% Adjust RF timetags
 % Create RF timetag-per-superframe vector and subtract so it starts at 0.
 %   RFtimeTags is a (# frames per superframe, # channels, # superframes matrix of RF time tags, in seconds, of the start of each frame's acquisition.
@@ -92,7 +107,7 @@ save([TDsavepath, 'TD.mat'], 'TD')
 % See main_vUS_3D.m
 
 %% Go through pre-computed data files (for all superframes in the experiment) and store
-
+fDim = 4;
 % For now, go through only PDI and CDI
 % trialsToUse = [1:10];
 % for trialInd = trialsToUse
@@ -105,16 +120,16 @@ for fi = 1:RFcount
     disp(fi)
     load([PDpath, 'fUSdata-', num2str(fi)], 'PDI', 'CDI')
     for j = 1:3
-        PDIallSF{j} = cat(4, PDIallSF{j}, PDI{j});
-        CDIallSF{j} = cat(4, CDIallSF{j}, CDI{j});
+        PDIallSF{j} = cat(fDim, PDIallSF{j}, PDI{j});
+        CDIallSF{j} = cat(fDim, CDIallSF{j}, CDI{j});
     end
 end
 % Average PDI and CDI across superframes
 PDIA = cell(3, 1);
 CDIA = cell(3, 1);
 for j = 1:3
-    PDIA{j} = mean(PDIallSF{j}, 4);
-    CDIA{j} = mean(CDIallSF{j}, 4);
+    PDIA{j} = mean(PDIallSF{j}, fDim);
+    CDIA{j} = mean(CDIallSF{j}, fDim);
 end
 % save([PDpath, 'PDIA_CDIA.mat'], "PDIA", "CDIA")
 voxelTimeseriesGUI(PDIallSF{3}, PDIA{3}.^0.5, 'Colormap', 'turbo')
@@ -129,13 +144,35 @@ for fi = 1:RFcount
     load([FRpath, 'fit_results-', num2str(fi)], 'fit_SG', 'fit_RCA', 'fit_C')
     % for j = 1:3
     for j = 3
-        VallSF_SG{j} = cat(4, VallSF_SG{j}, fit_SG.v);
-        VallSF_RCA{j} = cat(4, VallSF_RCA{j}, fit_RCA.v);
-        CallSF_C{j} = cat(4, CallSF_C{j}, fit_C.C);
+        VallSF_SG{j} = cat(fDim, VallSF_SG{j}, fit_SG.v);
+        VallSF_RCA{j} = cat(fDim, VallSF_RCA{j}, fit_RCA.v);
+        CallSF_C{j} = cat(fDim, CallSF_C{j}, fit_C.C);
     end
 end
 
-voxelTimeseriesGUI(VallSF_RCA{3}, mean(VallSF_RCA{3}, 4), 'Colormap', 'turbo')
+voxelTimeseriesGUI(VallSF_RCA{3}, mean(VallSF_RCA{3}, fDim), 'Colormap', 'turbo')
+
+% Load proxies from tl-fUS fits
+CBViallSF = cell(3, 1);
+% CBFSiallSF = cell(3, 1);
+for fi = 1:RFcount
+
+    disp(fi)
+    load([PDpath, 'tlfUSdata-', num2str(fi)], 'CBVi', 'CBFSi')
+    for j = 1:3
+        CBViallSF{j} = cat(fDim, CBViallSF{j}, CBVi{j});
+        % CBFSiallSF{j} = cat(fDim, CBFSiallSF{j}, CBFSi{j});
+    end
+end
+voxelTimeseriesGUI({(PDIallSF{3} - mean(PDIallSF{3}, fDim)) ./ max(PDIallSF{3} - mean(PDIallSF{3}, fDim), [], fDim), CBViallSF{3}}, PDIA{3}.^0.5, 'Colormap', 'turbo')
+
+% Average CBVi across superframes
+CBViA = cell(3, 1);
+% CDIA = cell(3, 1);
+for j = 1:3
+    CBViA{j} = mean(CBViallSF{j}, fDim);
+end
+
 %% Trial stuff
 % Upsampling?
 
@@ -172,6 +209,7 @@ stimrs1T(P.apis.delay_time_ms/1e3 * rr + 1 : 1 : (P.apis.delay_time_ms/1e3 + P.a
 % PDIallSF(isnan(PDIallSF)) = eps;
 PDIrs = permute(interp1(sfCenters(1:size(PDIallSF{3}, 4)), permute(PDIallSF{3}, [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
 % CDIrs = permute(interp1(sfCenters, permute(abs(CDIallSF{3}), [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
+CBVirs = permute(interp1(sfCenters(1:size(CBViallSF{3}, 4)), permute(CBViallSF{3}, [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
 
 % Calculate trial windows at the resampled rate
 trial_windows = cell(P.numTrials, 1);
@@ -203,6 +241,39 @@ end
 % r_rPDIrs_TA = corrCoef3D(rPDIrs_TA, stimrs1T);
 [r_rPDIrs_TA, z_rPDIrs_TA, am_rPDIrs_TA] = activationMap3D(rPDIrs_TA, stimrs1T, 1);
 volumeViewer(r_rPDIrs_TA)
+
+%% tl-fUS trial averaging and correlation
+% Calculate trial windows at the resampled rate
+trial_windows = cell(P.numTrials, 1);
+for ind = 1:numel(trial_windows)
+    trial_windows{ind} = (ind - 1)*P.apis.seq_length_s * rr + 1 : 1 : (ind)*P.apis.seq_length_s * rr; % Indices for each trial window, at the resampled rate
+end
+
+% Calculate relative changes before trial averaging
+trial_CBVirs = cell(size(trial_windows));
+trial_rCBVirs = cell(size(trial_windows));
+for ind = 1:numel(trial_windows)
+    trial_CBVirs{ind} = CBVirs(:, :, :, trial_windows{ind});
+    trial_rCBVirs{ind} = trial_CBVirs{ind} ./ repmat(mean(trial_CBVirs{ind}(:, :, :, 1:P.apis.delay_time_ms/1e3 * rr), fDim), [1, 1, 1, size(trial_CBVirs{ind}, fDim)]);
+end
+
+% Trial average
+% trialsToUse = [1:numel(trial_windows)]; % Which trials to keep
+trialsToUse = [1:3, 5, 7, 8, 10];
+% trialsToUse = 1:3; % Testing
+CBVirs_TA = zeros(size(CBViA{3}));
+rCBVirs_TA = zeros(size(CBViA{3}));
+for ind = trialsToUse
+    CBVirs_TA = CBVirs_TA + 1/numel(trialsToUse) .* trial_CBVirs{ind};
+    rCBVirs_TA = rCBVirs_TA + 1/numel(trialsToUse) .* trial_rCBVirs{ind};
+end
+
+% voxelTimeseriesGUI(trial_rPDIrs, PDIA{3}.^0.5, 'Colormap', 'turbo')
+[r_rCBVirs_TA, z_rCBVirs_TA, am_rCBVirs_TA] = activationMap3D(rCBVirs_TA, stimrs1T, 1);
+volumeViewer(r_rCBVirs_TA)
+% overlayActivationMap2D(squeeze(PDIA{3}(41, :, :)).^0.5.', squeeze(r_rCBVirs_TA(41, :, :)).', x_mm, z_mm, 'Mask', squeeze(r_rCBVirs_TA(41, :, :)).' > rt, 'Alpha', 0.7, 'AmapClim', [0.2, 0.8], 'ColorbarLabel', 'r', 'Title', 'Activation map over power Doppler');
+overlayActivationMap2D(fliplr(squeeze(PDIA{3}(41, :, :)).^0.5.'), fliplr(squeeze(r_rCBVirs_TA(41, :, :)).'), x_mm, z_mm, 'Mask', fliplr(squeeze(r_rCBVirs_TA(41, :, :)).') > rt, 'Alpha', 0.7, 'AmapClim', [0.2, 0.8], 'ColorbarLabel', 'r', 'Title', 'Activation map over power Doppler');
+overlayActivationMap2D(fliplr(squeeze(PDIA{3}(41, :, :)).^0.5.'), fliplr(squeeze(am_rCBVirs_TA(41, :, :)).'), x_mm, z_mm, 'Mask', fliplr(squeeze(am_rCBVirs_TA(41, :, :)).') > 0.3, 'Alpha', 0.7, 'AmapClim', [0.1, 0.5], 'ColorbarLabel', 'am', 'Title', 'Activation map over power Doppler');
 
 %% Evoked response analysis: peri-stimulus averaging and GLM
 % Both functions take the same data types and timing, all in the same time base (t = 0 is the start of acquisition):

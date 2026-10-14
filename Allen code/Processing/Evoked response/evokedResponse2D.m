@@ -307,8 +307,9 @@ figure; imagesc(x_mm, z_mm, r_rCBVirs_TA); colormap jet; xlabel('x'); ylabel('z'
 
 % Overlay the activation map (nonzero where z exceeds the threshold) on the averaged power Doppler map
 rt = 0.4; % r threshold
-% overlayActivationMap2D(PDIA{3}.^0.5, r_rPDIrs_TA, x_mm, z_mm, 'Mask', r_rPDIrs_TA > 0.4, 'Alpha', 0.7, 'AmapClim', [0.2, 0.8], 'ColorbarLabel', 'r', 'Title', 'Activation map over power Doppler');
+% overlayActivationMap2D(PDIA{3}.^0.5, r_rCBVirs_TA, x_mm, z_mm, 'Mask', r_rPDIrs_TA > 0.4, 'Alpha', 0.7, 'AmapClim', [0.2, 0.8], 'ColorbarLabel', 'r', 'Title', 'Activation map over power Doppler');
 overlayActivationMap2D(fliplr(PDIA{3}).^0.5, fliplr(r_rCBVirs_TA), x_mm, z_mm, 'Mask', fliplr(r_rCBVirs_TA) > rt, 'Alpha', 0.7, 'AmapClim', [0.2, 0.8], 'ColorbarLabel', 'r', 'Title', 'Activation map over power Doppler');
+xlim([2, 10.8])
 
 %% Evoked response analysis: peri-stimulus averaging and GLM
 % Both functions take the same data types and timing, all in the same time base (t = 0 is the start of acquisition):

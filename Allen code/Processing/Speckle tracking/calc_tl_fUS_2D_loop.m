@@ -23,11 +23,11 @@ if ~exist('P', 'var')
 end
 
 % Load beamforming parameters: PData.mat
-if ~exist('PData', 'var')
-    % Choose and load the RFTimeTagsPerChannel.mat file (from the acquisition and running readRFTimeTags.m)
-    [PData_filename, PData_pathname, ~] = uigetfile('*.mat', 'Select the PData file', [PDpath, '..\PData.mat']);
-    load([PData_pathname, PData_filename])
-end
+% if ~exist('PData', 'var')
+%     % Choose and load the RFTimeTagsPerChannel.mat file (from the acquisition and running readRFTimeTags.m)
+%     [PData_filename, PData_pathname, ~] = uigetfile('*.mat', 'Select the PData file', [PDpath, '..\PData.mat']);
+%     load([PData_pathname, PData_filename])
+% end
 
 %% Processing parameter prompt
 procParamsPrompt = {'Start file number', 'End file number', 'Use RCA plane or not (1-yes, 0-no)'};
@@ -44,14 +44,14 @@ tau1_index_CBF = 2;
 tau2_index_CBF = 5;
 tau1_index_CBV = 2;
 
-if usingRCAPlane
-    [x_mm, y_mm, z_mm] = getReconCoords3D(PData, P);
-
-else
-    [x_mm, z_mm] = getReconCoords2D(PData, P);
-end
-z_mm = z_mm(voxelRange{1});
-x_mm = x_mm(voxelRange{2});
+% if usingRCAPlane
+%     [x_mm, y_mm, z_mm] = getReconCoords3D(PData, P);
+% 
+% else
+%     [x_mm, z_mm] = getReconCoords2D(PData, P);
+% end
+% z_mm = z_mm(voxelRange{1});
+% x_mm = x_mm(voxelRange{2});
 
 %% Process tl-fUS
 save([PDpath, 'tlfUS_proc_params.mat'], 'usingRCAPlane', 'tau1_index_CBV', 'tau1_index_CBF', 'tau2_index_CBF')
