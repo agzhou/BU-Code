@@ -58,8 +58,8 @@ parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterD
 Mcr_startFile = str2double(parameterUserInput{1}); % File to start reconstructing from
 Mcr_endFile = str2double(parameterUserInput{2});   % File to stop reconstructing on
 
-Mcr_filenameStructure = ['RF-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
-Mcr_IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
+Mcr_filenameStructure = ['RF-', num2str(round(P.maxAngle)), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
+Mcr_IQfilenameStructure = ['IQ-', num2str(round(P.maxAngle)), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 
 %%%%%%%%%%
 saveAllAngles = 0; % choose if you want to save the matrix with pages for each angle or not
@@ -183,9 +183,9 @@ PData.Coord = 'rectangular'; % rectangular coords, could change to polar or sphe
 % PData.Size(3) = ceil((endDepth - startDepth)./PData.PDelta(3)); % sections
 
 % Testing
-PData.PDelta = [0.1, 0.1, 0.1]; % Spacing between pixels in x, y, z, in wavelengths
+% PData.PDelta = [0.1, 0.1, 0.1]; % Spacing between pixels in x, y, z, in wavelengths
 % PData.PDelta = [0.25, 0.25, 0.25]; % Spacing between pixels in x, y, z, in wavelengths
-% PData.PDelta = [0.5, 0.5, 0.5]; % Spacing between pixels in x, y, z, in wavelengths
+PData.PDelta = [0.5, 0.5, 0.5]; % Spacing between pixels in x, y, z, in wavelengths
 L = Trans.spacingMm/1e3*numElements/wl; % Probe width in wavelengths
 PData.Size(1) = ceil(L/PData.PDelta(2));
 PData.Size(2) = ceil(L/PData.PDelta(1));
