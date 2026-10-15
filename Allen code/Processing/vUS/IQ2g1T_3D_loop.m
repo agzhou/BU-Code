@@ -67,8 +67,8 @@ savepath = [savepath, '\'];
 
 %% 2. Define some processing parameters
 
-procParamsPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound'};
-procParamsDefaults = {'1', '', '30', num2str(P.numFramesPerBuffer)};
+procParamsPrompt = {'Start file number', 'End file number', 'SVD lower bound', 'SVD upper bound', 'z start', 'z end'};
+procParamsDefaults = {'1', '', '30', num2str(P.numFramesPerBuffer), '20', '130'};
 procParamsUserInput = inputdlg(procParamsPrompt, 'Input Parameters', 1, procParamsDefaults);
 
 % define # of files manually for now
@@ -78,6 +78,8 @@ endFile = str2double(procParamsUserInput{2});
 numFiles = endFile - startFile + 1;
 sv_threshold_lower = str2double(procParamsUserInput{3});
 sv_threshold_upper = str2double(procParamsUserInput{4});
+zstart = str2double(procParamsUserInput{5});
+zend = str2double(procParamsUserInput{6});
 
 clearvars procParamsPrompt procParamsDefaults procParamsUserInput
 
@@ -114,7 +116,7 @@ for filenum = startFile:endFile
     yrange = 1:ypo;
     % zrange = 1:100;
     % zrange = 1:zpo;
-    zrange = 10:110;
+    zrange = zstart:zend;
     voxelRange = {xrange, yrange, zrange};
     xp = length(xrange); yp = length(yrange); zp = length(zrange); nf = size(IQ, 4);
     
