@@ -54,6 +54,14 @@ parameterDefaults = {'30', '1', '8', '47000', '4900', '5', '6', '15.625', '1540'
 % 67% BW, more frames per buffer
 % parameterDefaults = {'30', '1', '8', '47000', '1000', '21', '9', '15.625', '1540', '0', '1', '200', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
 
+% -- Sauvage et al. 2020 -- %
+% da = getAngularPitch(1540/15.625e6, 8.8e-3);
+% maxAngle = da*(na - 1)/2;
+% 200% BW, fewer frames per buffer
+% parameterDefaults = {'30', '1', '8', '20000', '312', '31', '9.6257', '15.625', '1540', '0', '1', '50', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '200', '3'};
+% 67% BW, more frames per buffer
+% parameterDefaults = {'30', '1', '8', '20000', '312', '31', '9.6257', '15.625', '1540', '0', '1', '156', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
+
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % ADC_sampleMode = 'BS67BW';
