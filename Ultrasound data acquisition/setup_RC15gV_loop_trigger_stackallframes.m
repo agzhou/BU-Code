@@ -61,8 +61,10 @@ parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'P
 % maxAngle = da*(na - 1)/2;
 % 200% BW, fewer frames per buffer
 % parameterDefaults = {'30', '1', '8', '20000', '312', '31', '9.6257', '15.625', '1540', '0', '1', '50', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '200', '3'};
+% parameterDefaults = {'30', '1', '8', '47000', '700', '31', '9.6257', '15.625', '1540', '0', '1', '50', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '200', '3'};
 % 67% BW, more frames per buffer
-parameterDefaults = {'30', '1', '8', '20000', '312', '31', '9.6257', '15.625', '1540', '0', '1', '156', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
+% parameterDefaults = {'30', '1', '8', '20000', '312', '31', '9.6257', '15.625', '1540', '0', '1', '156', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
+parameterDefaults = {'30', '1', '8', '47000', '700', '31', '9.6257', '15.625', '1540', '0', '1', '156', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
 
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
