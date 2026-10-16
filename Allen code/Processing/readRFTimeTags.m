@@ -1,6 +1,6 @@
 % Check Time tags
 
-% clearvars
+clearvars
 % close all
 
 %% Load parameters
