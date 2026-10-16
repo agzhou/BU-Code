@@ -33,8 +33,9 @@ PDI_OPW = mean(abs(IQf_OPW).^2, 4);
 
 XD = IQf_RC .* conj(IQf_CR);
 % PDI_XD = mean(abs(XD).^2, 4);
-PDI_XD = 2.*real(mean(XD, 4));
-PDI_XD = abs(mean(IQf_RC .* conj(IQf_CR) + IQf_CR .* conj(IQf_RC), 4));
+% PDI_XD = 2.*real(mean(XD, 4));
+% PDI_XD = abs(mean(IQf_RC .* conj(IQf_CR) + IQf_CR .* conj(IQf_RC), 4));
+PDI_XD = abs(mean(IQf_RC .* conj(IQf_CR), 4)); % Not exactly the estimator from the paper, but close
 %% Plot
 PDI_OPW_xz_MIP = squeeze(max(PDI_OPW, [], 1)).';
 PDI_XD_xz_MIP = squeeze(max(PDI_XD, [], 1)).';
