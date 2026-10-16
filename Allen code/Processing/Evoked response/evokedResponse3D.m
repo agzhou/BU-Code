@@ -278,56 +278,56 @@ overlayActivationMap2D(fliplr(squeeze(PDIA{3}(41, :, :)).^0.5.'), fliplr(squeeze
 overlayActivationMap2D(fliplr(squeeze(PDIA{3}(41, :, :)).^0.5.'), fliplr(squeeze(am_rCBVirs_TA(41, :, :)).'), x_mm, z_mm, 'Mask', fliplr(squeeze(am_rCBVirs_TA(41, :, :)).') > 0.3, 'Alpha', 0.7, 'AmapClim', [0.1, 0.5], 'ColorbarLabel', 'am', 'Title', 'Activation map over power Doppler');
 
 %% Evoked response analysis: peri-stimulus averaging and GLM
-% % Both functions take the same data types and timing, all in the same time base (t = 0 is the start of acquisition):
-% %   - superframe start times (TD.sfStarts), and the superframe duration (sfWidth)
-% %   - the stim: onset times for the peri-stimulus average, and the full-rate stim waveform (cleanStim) for the GLM
-% % Each data type is a cell (one per j) of (x, y, z, superframe) arrays; empty cells (e.g. vUS for j = 1, 2) are skipped.
-% delay_s = P.apis.delay_time_ms/1e3; % Time before the first stim onset [s]
-% 
-% dataTypes = struct();
-% dataTypes.PDI = PDIallSF;
+% Both functions take the same data types and timing, all in the same time base (t = 0 is the start of acquisition):
+%   - superframe start times (TD.sfStarts), and the superframe duration (sfWidth)
+%   - the stim: onset times for the peri-stimulus average, and the full-rate stim waveform (cleanStim) for the GLM
+% Each data type is a cell (one per j) of (x, y, z, superframe) arrays; empty cells (e.g. vUS for j = 1, 2) are skipped.
+delay_s = P.apis.delay_time_ms/1e3; % Time before the first stim onset [s]
+
+dataTypes = struct();
+dataTypes.PDI = PDIallSF;
 % dataTypes.CDI = CDIallSF;
-% % dataTypes.vUS_SG = VallSF_SG;
-% % dataTypes.vUS_RCA = VallSF_RCA;
-% assert(size(PDIallSF{3}, 4) == numel(TD.sfStarts), 'Number of superframes in the data (%d) doesn''t match the RF time tags (%d)', size(PDIallSF{3}, 4), numel(TD.sfStarts))
-% 
-% % Peri-stimulus average of each trial, interpolated onto a common time grid (percent change for PDI, difference from baseline for the signed types)
-% preTime = min(5, delay_s); % Baseline duration before the stim onset [s] (limited by the time available before the first trial)
-% postTime = P.apis.seq_length_s - delay_s; % Time after the stim onset [s]; through the end of the trial
-% [evoked, tGrid, evokedInfo] = periStimulusAverage(dataTypes, TD.sfStarts, TD.stimOnsetTimestamps, ...
-%     'SFWidth', sfWidth, 'Pre', preTime, 'Post', postTime, ...
-%     'Normalize', struct('PDI', 'percent', 'default', 'diff'));
-% % evoked.PDI{3} is (x, y, z, # peri-stimulus time points); evokedInfo.sem has the standard error across trials
-% 
-% % GLM: HRF-convolved stim at the DAQ rate, window-averaged over each superframe. Betas in percent change for PDI
-% % The acquisition can run past the end of the stim recording (the protocol is over, so the stim is off): pad with 'off' so those superframes are used
-% nPad = ceil((TD.sfStarts(end) + sfWidth) * P.daqrate) - numel(cleanStim);
-% cleanStimPadded = [cleanStim; zeros(max(nPad, 0), 1)];
-% hrfPeak = 1; % HRF peak time [s]. The air puff response is fast: in 09-22-2026 AZ07, activation (z-scores) was strongest for peaks of 0.5-1 s, and much weaker for 3 s. Worth sweeping per dataset
-% [glmRes, glmInfo] = glmActivationMap(dataTypes, TD.sfStarts, cleanStimPadded, ...
-%     'Fs', P.daqrate, 'SFWidth', sfWidth, 'HRFPeak', hrfPeak, ...
-%     'Normalize', struct('PDI', 'percent', 'default', 'none'));
-% % glmRes.PDI{3}.t, .beta, .z, .p, .q are (x, y, z) maps
-% 
-% % Visualize PDI (j = 3): active voxels from the GLM, and their average peri-stimulus time course
-% jShow = 3;
-% activeMask = glmRes.PDI{jShow}.q < 0.05 & glmRes.PDI{jShow}.beta > 0; % FDR-corrected, positive activation
-% figure
-% subplot(1, 2, 1)
-% imagesc(squeeze(max(glmRes.PDI{jShow}.z, [], 1)).'); colorbar; axis image
-% title('GLM z-score (max projection along dim 1)')
-% subplot(1, 2, 2)
-% if any(activeMask, 'all')
-%     evokedPDI = reshape(evoked.PDI{jShow}, [], numel(tGrid)); % (voxels x time)
-%     plot(tGrid, mean(evokedPDI(activeMask(:), :), 1, 'omitnan'), 'k', 'LineWidth', 1.5) % Mean across active voxels of the trial-averaged response
-%     hold on
-%     xline(0, 'g'); xline(P.apis.stim_length_s, 'r') % Stim onset and offset
-%     xlabel('Time from stim onset [s]'); ylabel('\DeltaPDI [%]')
-%     title(sprintf('Active voxels (n = %d)', nnz(activeMask)))
-%     clearvars evokedPDI
-% else
-%     title('No active voxels at q < 0.05')
-% end
+% dataTypes.vUS_SG = VallSF_SG;
+% dataTypes.vUS_RCA = VallSF_RCA;
+assert(size(PDIallSF{3}, 4) == numel(TD.sfStarts), 'Number of superframes in the data (%d) doesn''t match the RF time tags (%d)', size(PDIallSF{3}, 4), numel(TD.sfStarts))
+
+% Peri-stimulus average of each trial, interpolated onto a common time grid (percent change for PDI, difference from baseline for the signed types)
+preTime = min(5, delay_s); % Baseline duration before the stim onset [s] (limited by the time available before the first trial)
+postTime = P.apis.seq_length_s - delay_s; % Time after the stim onset [s]; through the end of the trial
+[evoked, tGrid, evokedInfo] = periStimulusAverage(dataTypes, TD.sfStarts, TD.stimOnsetTimestamps, ...
+    'SFWidth', sfWidth, 'Pre', preTime, 'Post', postTime, ...
+    'Normalize', struct('PDI', 'percent', 'default', 'diff'));
+% evoked.PDI{3} is (x, y, z, # peri-stimulus time points); evokedInfo.sem has the standard error across trials
+
+% GLM: HRF-convolved stim at the DAQ rate, window-averaged over each superframe. Betas in percent change for PDI
+% The acquisition can run past the end of the stim recording (the protocol is over, so the stim is off): pad with 'off' so those superframes are used
+nPad = ceil((TD.sfStarts(end) + sfWidth) * P.daqrate) - numel(cleanStim);
+cleanStimPadded = [cleanStim; zeros(max(nPad, 0), 1)];
+hrfPeak = 1; % HRF peak time [s]. The air puff response is fast: in 09-22-2026 AZ07, activation (z-scores) was strongest for peaks of 0.5-1 s, and much weaker for 3 s. Worth sweeping per dataset
+[glmRes, glmInfo] = glmActivationMap(dataTypes, TD.sfStarts, cleanStimPadded, ...
+    'Fs', P.daqrate, 'SFWidth', sfWidth, 'HRFPeak', hrfPeak, ...
+    'Normalize', struct('PDI', 'percent', 'default', 'none'));
+% glmRes.PDI{3}.t, .beta, .z, .p, .q are (x, y, z) maps
+
+% Visualize PDI (j = 3): active voxels from the GLM, and their average peri-stimulus time course
+jShow = 3;
+activeMask = glmRes.PDI{jShow}.q < 0.05 & glmRes.PDI{jShow}.beta > 0; % FDR-corrected, positive activation
+figure
+subplot(1, 2, 1)
+imagesc(squeeze(max(glmRes.PDI{jShow}.z, [], 1)).'); colorbar; axis image
+title('GLM z-score (max projection along dim 1)')
+subplot(1, 2, 2)
+if any(activeMask, 'all')
+    evokedPDI = reshape(evoked.PDI{jShow}, [], numel(tGrid)); % (voxels x time)
+    plot(tGrid, mean(evokedPDI(activeMask(:), :), 1, 'omitnan'), 'k', 'LineWidth', 1.5) % Mean across active voxels of the trial-averaged response
+    hold on
+    xline(0, 'g'); xline(P.apis.stim_length_s, 'r') % Stim onset and offset
+    xlabel('Time from stim onset [s]'); ylabel('\DeltaPDI [%]')
+    title(sprintf('Active voxels (n = %d)', nnz(activeMask)))
+    clearvars evokedPDI
+else
+    title('No active voxels at q < 0.05')
+end
 % 
 % % save([PDpath, 'evokedResponse.mat'], 'evoked', 'tGrid', 'evokedInfo', 'glmRes', 'glmInfo', '-v7.3')
 % 
