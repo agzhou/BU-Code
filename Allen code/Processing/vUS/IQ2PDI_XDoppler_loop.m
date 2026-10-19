@@ -154,7 +154,7 @@ for filenum = startFile:endFile
     
 end
 % savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'tau1_index_CBF', 'tau2_index_CBF', 'tau1_index_CBV');
-save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'voxelRange', 'HPF', 'xp', 'yp', "zp", "nf", 'nTau', 'tau');
+save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'voxelRange', 'HPF', 'xp', 'yp', "zp", "nf");
 % savefast([savepath, 'PDI_CDI_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
 
 %% 4. Store all the PDI across the experiment into one cell array - one cell for each directional component
