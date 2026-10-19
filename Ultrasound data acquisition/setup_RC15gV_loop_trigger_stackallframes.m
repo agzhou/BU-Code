@@ -40,9 +40,9 @@ parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'P
 % parameterDefaults = {'30', '1', '8', '47000', '4900', '5', '6', '15.625', '1540', '0', '1', '360', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '200', '3'};
 % 67% BW, more frames per buffer
 % parameterDefaults = {'30', '1', '8', '47000', '4900', '5', '6', '13.6', '1540', '0', '1', '1000', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
-% parameterDefaults = {'30', '1', '8', '47000', '4900', '5', '6', '15.625', '1540', '0', '1', '1000', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
+parameterDefaults = {'30', '1', '8', '47000', '4900', '5', '6', '15.625', '1540', '0', '1', '1000', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
 % ** Grating lobe suppression ** %
-parameterDefaults = {'30', '1', '8', '47000', '4900', '5', '0.9626', '15.625', '1540', '0', '1', '1000', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
+% parameterDefaults = {'30', '1', '8', '47000', '4900', '5', '0.9626', '15.625', '1540', '0', '1', '1000', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
 
 % -- 11 x 2 angles -- %
 % 200% BW, fewer frames per buffer
@@ -490,7 +490,7 @@ SeqControl(scInd).command = 'timeToNextAcq'; % In us, allowed range is from 10 -
                                          % the TPC (voltage) across acqs,
                                          % since it takes 800 us - 8 ms to
                                          % switch
-SeqControl(scInd).condition = 'ignore';  % don't print the warning message
+% SeqControl(scInd).condition = 'ignore';  % don't print the warning message
 
 timePerAcq = 1 / PRF * 1e6; % time step according to the PRF [us]
 
@@ -817,7 +817,7 @@ if useTriggers
 end
 % saveRcvData(RcvData{1})
 clear RcvData
-save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
+% save([savepath, 'workspace.mat'], '-v7.3', '-nocompression')
 
 %% **** Callback routines used by UIControls (UI) ****
 
