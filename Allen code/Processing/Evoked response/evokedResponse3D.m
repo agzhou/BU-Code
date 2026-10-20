@@ -174,6 +174,12 @@ for j = 1:3
     CBViA{j} = mean(CBViallSF{j}, fDim);
 end
 
+%% Smoothing test
+% PDIallSF_orig = PDIallSF;
+for sfi = 1:size(PDIallSF{3}, fDim)
+    PDIallSF{3}(:, :, :, sfi) = imgaussfilt3(PDIallSF_orig{3}(:, :, :, sfi), [2, 2, 4]);
+
+end
 %% Trial stuff
 % Upsampling?
 
@@ -210,7 +216,7 @@ stimrs1T(P.apis.delay_time_ms/1e3 * rr + 1 : 1 : (P.apis.delay_time_ms/1e3 + P.a
 % PDIallSF(isnan(PDIallSF)) = eps;
 PDIrs = permute(interp1(sfCenters(1:size(PDIallSF{3}, 4)), permute(PDIallSF{3}, [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
 % CDIrs = permute(interp1(sfCenters, permute(abs(CDIallSF{3}), [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
-CBVirs = permute(interp1(sfCenters(1:size(CBViallSF{3}, 4)), permute(CBViallSF{3}, [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
+% CBVirs = permute(interp1(sfCenters(1:size(CBViallSF{3}, 4)), permute(CBViallSF{3}, [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
 
 % Calculate trial windows at the resampled rate
 trial_windows = cell(P.numTrials, 1);
