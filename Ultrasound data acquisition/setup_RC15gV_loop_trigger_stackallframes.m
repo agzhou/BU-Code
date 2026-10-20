@@ -424,6 +424,21 @@ if ((2*maxAcqLength_adjusted)*wl / speedOfSound) > 1/PRF
     error('Error: the PRF is too high, it will send the next transmission before the previous transmission reflects from the deepest part of the region')
 end
 
+%% Check the PRF and frame rate against the hardware's minimum acquisition cycle time
+frameRateLimits = getMaxFrameRate_RC15gV(PRF, na, numRcvSamples, probe_freq, spw_guess);
+
+disp("======== PRF/frame rate limits ========")
+disp("Receive window: " + num2str(frameRateLimits.T_window) + " us (" + num2str(numRcvSamples) + " samples at " + num2str(frameRateLimits.fsDecim) + " MHz)")
+disp("Minimum acquisition cycle time (window + overhead): " + num2str(frameRateLimits.T_min) + " us")
+disp("Maximum PRF: " + num2str(frameRateLimits.PRFmax) + " Hz (requested " + num2str(PRF) + " Hz)")
+disp("Maximum frame rate: " + num2str(frameRateLimits.frameRateMax) + " Hz (requested " + num2str(frameRate) + " Hz); " + num2str(frameRateLimits.frameRateMax_atPRFmax) + " Hz if the PRF is lowered to the maximum")
+
+if PRF > frameRateLimits.PRFmax
+    error("The PRF (" + num2str(PRF) + " Hz) is too high for the hardware to sustain, the maximum is " + num2str(frameRateLimits.PRFmax) + " Hz (" + num2str(frameRateLimits.nAcq) + " acquisitions/frame, " + num2str(frameRateLimits.T_min) + " us minimum per acquisition)")
+elseif frameRate > frameRateLimits.frameRateMax
+    error("The frame rate (" + num2str(frameRate) + " Hz) is too high for the PRF (" + num2str(PRF) + " Hz) with " + num2str(frameRateLimits.nAcq) + " acquisitions/frame, the maximum is " + num2str(frameRateLimits.frameRateMax) + " Hz")
+end
+
 %% Check for if the superframe size and superframe rate are incompatible
 DMATime = numGBInBuffer/DMARate; % Time to DMA one superframe [s]
 AcqTime = numFramesPerSF / frameRate; % Time to acquire on superframe [s]
