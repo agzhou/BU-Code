@@ -194,7 +194,7 @@ for filenum = startFile:endFile
     % IQf_OPW = IQf_RC + IQf_CR;
     % PDI_OPW = mean(abs(IQf_OPW).^2, 4);
     
-    PDI = squeeze(mean(IQf, 4));
+    PDI = squeeze(mean(abs(IQf).^2, 4));
     % figure; imagesc(squeeze(max(PDI, [], 1)).' .^ 0.5); colormap hot
 
     % save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'CDI', 'g1', 'noise', '-v7.3', '-nocompression');
@@ -206,7 +206,7 @@ for filenum = startFile:endFile
 
     toc
 
-    clearvars PDI IQ_RC IQ_CR IQ IQf
+    % clearvars PDI IQ_RC IQ_CR IQ IQf
     
 end
 % savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'tau1_index_CBF', 'tau2_index_CBF', 'tau1_index_CBV');

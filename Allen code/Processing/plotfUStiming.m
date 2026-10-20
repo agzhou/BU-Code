@@ -21,7 +21,7 @@ endFile = str2double(parameterUserInput{2});
 
 clearvars parameterPrompt parameterDefaults parameterUserInput
 
-RFfilenameStructure = ['RF-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
+RFfilenameStructure = ['RF-', num2str(round(P.maxAngle)), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 acqStart = timetag; % The timetag at the start of the Verasonics sequence (after the trigger starts it)
 
 %% Get the air puff output and Verasonics trigger timecourses
