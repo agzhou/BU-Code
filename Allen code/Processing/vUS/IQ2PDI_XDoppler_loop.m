@@ -159,11 +159,11 @@ save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_uppe
 
 %% Loop through files: Clutter Filtering and Power Doppler (OPW) calculation
 mkdir([savepath, 'OPW'])
-% for filenum = startFile:endFile
+for filenum = startFile:endFile
 % for filenum = endFile:-1:startFile
 % for filenum = 2:endFile
 % for filenum = startFile
-for filenum = 1
+% for filenum = 1
     tic
     load([IQpath, IQfilenameStructure, num2str(filenum)])
 
