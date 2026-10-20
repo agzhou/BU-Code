@@ -71,8 +71,10 @@ indFirstOn = find(inScanData > analogHigh, 1, 'first') - 1; % Index (in DAQ samp
 % indSFStart_DAQunits = indFirstOn - P.apis.delay_time_ms/1e3 * P.daqrate; % Index (in DAQ samples) at which the data acquisition started
 indSFStart_DAQunits = round(P.vts.delay_s * P.daqrate) + 1; % TESTING
 stim = inScanData(indSFStart_DAQunits:end); % Crop the stim/trigger data to start when the data acquisition started
-stimTimestamps = timeStamp(indSFStart_DAQunits:end); stimTimestamps = stimTimestamps - stimTimestamps(1); % Cropped timestamps for the stim/trigger data
-stimOnsetTimestamps = ((0:P.numTrials-1).' .* P.apis.seq_length_s) + P.apis.delay_time_ms/1e3; % Time [s] at the stim onset for each trial (assumes repeated trials of the same structure)
+stimTimestamps = timeStamp(indSFStart_DAQunits:end);
+stimTimestamps = stimTimestamps - stimTimestamps(1); % Cropped timestamps for the stim/trigger data
+% stimOnsetTimestamps = ((0:P.numTrials-1).' .* P.apis.seq_length_s) + P.apis.delay_time_ms/1e3; % Time [s] at the stim onset for each trial (assumes repeated trials of the same structure)
+stimOnsetTimestamps = 1 + ((0:P.numTrials-1).' .* P.apis.seq_length_s) + P.apis.delay_time_ms/1e3; % Time [s] at the stim onset for each trial (assumes repeated trials of the same structure)
 stimEndTimestamps = stimOnsetTimestamps + P.apis.stim_length_s; % Time [s] at the stim ends for each trial (assumes repeated trials of the same structure)
 % clearvars inScanData timeStamp
 
@@ -167,8 +169,10 @@ figure; plot(stimTimestamps, cleanStim)
 %% Resample the data
 rr = 10; % Resampling rate [Hz]
 
+stim_delay = 1; % stim is delayed for 1 second compared to the acquisition start... [s]
 stimrs1T = zeros(P.apis.seq_length_s * rr, 1); % Resampled stim for 1 trial
-stimrs1T(P.apis.delay_time_ms/1e3 * rr + 1 : 1 : (P.apis.delay_time_ms/1e3 + P.apis.stim_length_s) * rr) = 1;
+% stimrs1T(P.apis.delay_time_ms/1e3 * rr + 1 : 1 : (P.apis.delay_time_ms/1e3 + P.apis.stim_length_s) * rr) = 1;
+stimrs1T((P.apis.delay_time_ms/1e3 + stim_delay) * rr + 1 : 1 : ((P.apis.delay_time_ms/1e3 + stim_delay) + P.apis.stim_length_s) * rr) = 1;
 % testoffset = 2;
 % stimrs1T((P.apis.delay_time_ms/1e3 + testoffset) * rr + 1 : 1 : (P.apis.delay_time_ms/1e3 + testoffset + P.apis.stim_length_s) * rr) = 1;
 
