@@ -25,7 +25,7 @@ if ~exist('P', 'var')
     load([params_pathname, params_filename])
 end
 
-% Load RF time tags: params.mat
+% Load RF time tags: RFtimeTags.mat
 if ~exist('RFtimeTags', 'var')
     % Choose and load the RFTimeTagsPerChannel.mat file (from the acquisition and running readRFTimeTags.m)
     [RFTT_filename, RFTT_pathname, ~] = uigetfile('*.mat', 'Select the RF timetags file', [PDpath, '..\RFTimeTagsPerChannel.mat']);

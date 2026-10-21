@@ -37,6 +37,26 @@ clearvars params_filename params_pathname
 load([proc_params_pathname, proc_params_filename])
 clearvars proc_params_filename proc_params_pathname
 
+%% Check the frame rate - hardware could lag behind the nominal one
+% Load RF time tags: RFtimeTags.mat
+if ~exist('RFtimeTags', 'var')
+    % Choose and load the RFTimeTagsPerChannel.mat file (from the acquisition and running readRFTimeTags.m)
+    [RFTT_filename, RFTT_pathname, ~] = uigetfile('*.mat', 'Select the RF timetags file', [PDpath, '..\RFTimeTagsPerChannel.mat']);
+    load([RFTT_pathname, RFTT_filename])
+end
+
+dt_all = diff(squeeze(mean(RFTimeTags_allSFStacked, 1)), 1); % Difference in frame timetags
+dt_subframe = dt_all(dt_all < 0.8*(1/P.sfRate - P.numFramesPerBuffer/P.frameRate)); % Remove the large inter-superframe jumps
+dt = mean(dt_subframe);
+frameRate_actual = 1/dt; % Actual frame rate
+
+% Set the downstream-used frameRate to the actual frame rate
+if abs(P.frameRate - frameRate_actual) > 10
+    warning("Nominal frame rate (" + num2str(P.frameRate) + " Hz) was not supported by the hardware during data acquisition. Using the actual frame rate of " + num2str(frameRate_actual) + " Hz instead.")
+    frameRate = frameRate_actual;
+else
+    frameRate = P.frameRate;
+end
 %% (Only if using continuous data) load some chunk of continuous superframes
 % IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 % 
@@ -63,7 +83,8 @@ clearvars proc_params_filename proc_params_pathname
 sigma_SG = [130.1474, 130.1474, 44.7070].*1e-6; % Field-based sigma values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 5 x 2 angles from -6 to 6 deg
 
 %   RCA-specific orthogonal Gaussians version
-sigma_RCA = [57.6, 286.5, 50.1].*1e-6; % Field-based sigma values (narrow, wide, axial) [m] for the RC15gV probe at 13.6 MHz: 5 angles from -6 to 6 deg
+% sigma_RCA = [57.6, 286.5, 50.1].*1e-6; % Field-based sigma values (narrow, wide, axial) [m] for the RC15gV probe at 13.6 MHz: 5 angles from -6 to 6 deg
+sigma_RCA = [32.0596, 170.5005, 36.4731].*1e-6; % ^ same but fitting complex PSF
 
 xDim = 1; % Dimension of the data corresponding to x (lateral direction)
 yDim = 2; % Dimension of the data corresponding to y (lateral direction)
@@ -80,7 +101,7 @@ end
 
 %% Create a struct for all the relevant processing parameters
 dimensionality = 3; % 3D data
-frameRate = P.frameRate;
+
 wl = P.wl;
 k0 = 2*pi/wl;
 if ~exist('xp', 'var')
@@ -90,9 +111,11 @@ if ~exist('xp', 'var')
     nf = P.numFramesPerBuffer;
     nTau = Mcr_nTau;
 end
-if ~exist('tau', 'var')
-    tau = 0:1/P.frameRate:(nTau - 1)/P.frameRate;
-end
+
+% if ~exist('tau', 'var')
+    tau = 0:1/frameRate:(nTau - 1)/frameRate;
+% end
+
 % PP = createStruct(xp, yp, zp, nf, nTau, xDim, yDim, zDim, fDim, dimensionality, faxis, freqMask, frameRate, wl, k0); % Processing Parameters ======> adjust as needed
 PP = createStruct(xp, yp, zp, nf, nTau, xDim, yDim, zDim, fDim, dimensionality, frameRate, wl, k0); % Processing Parameters ======> adjust as needed
 
