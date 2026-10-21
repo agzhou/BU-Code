@@ -72,7 +72,8 @@ indFirstOn = find(inScanData > analogHigh, 1, 'first') - 1; % Index (in DAQ samp
 indSFStart_DAQunits = round(P.vts.delay_s * P.daqrate) + 1; % TESTING
 stim = inScanData(indSFStart_DAQunits:end); % Crop the stim/trigger data to start when the data acquisition started
 stimTimestamps = timeStamp(indSFStart_DAQunits:end); stimTimestamps = stimTimestamps - stimTimestamps(1); % Cropped timestamps for the stim/trigger data
-stimOnsetTimestamps = ((0:P.numTrials-1).' .* P.apis.seq_length_s) + P.apis.delay_time_ms/1e3; % Time [s] at the stim onset for each trial (assumes repeated trials of the same structure)
+% stimOnsetTimestamps = ((0:P.numTrials-1).' .* P.apis.seq_length_s) + P.apis.delay_time_ms/1e3; % Time [s] at the stim onset for each trial (assumes repeated trials of the same structure)
+stimOnsetTimestamps = 1 + ((0:P.numTrials-1).' .* P.apis.seq_length_s) + P.apis.delay_time_ms/1e3; % Time [s] at the stim onset for each trial (assumes repeated trials of the same structure)
 stimEndTimestamps = stimOnsetTimestamps + P.apis.stim_length_s; % Time [s] at the stim ends for each trial (assumes repeated trials of the same structure)
 % clearvars inScanData timeStamp
 
@@ -175,9 +176,11 @@ for j = 1:3
 end
 
 %% Smoothing test
-% PDIallSF_orig = PDIallSF;
+PDIallSF_orig = PDIallSF;
+% gk = [2, 2, 4]; % 3D Gaussian smoothing kernel
+gk = [1, 1, 2];
 for sfi = 1:size(PDIallSF{3}, fDim)
-    PDIallSF{3}(:, :, :, sfi) = imgaussfilt3(PDIallSF_orig{3}(:, :, :, sfi), [2, 2, 4]);
+    PDIallSF{3}(:, :, :, sfi) = imgaussfilt3(PDIallSF_orig{3}(:, :, :, sfi), gk);
 
 end
 %% Trial stuff
