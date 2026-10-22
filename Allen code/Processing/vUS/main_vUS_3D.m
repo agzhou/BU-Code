@@ -124,7 +124,7 @@ PP = createStruct(xp, yp, zp, nf, nTau, xDim, yDim, zDim, fDim, dimensionality, 
 % Choose and load the g1 superframe average: g1_avg.mat file (from calc_g1_avg.m)
 [g1_avg_filename, g1_avg_pathname, ~] = uigetfile('*.mat', 'Select the g1 average file', [PDpath, '\g1_avg.mat']);
 load([g1_avg_pathname, g1_avg_filename], 'g1_avg')
-g1 = g1_avg; clear g1_avg;
+g1 = g1_avg;% clear g1_avg;
 
 vs = size(g1{3}); vs = vs(1:end-1); % Volume size [voxels]
 num_voxels = prod(vs);
@@ -266,8 +266,7 @@ for j = 3
 end
 
 fit_sfa = createStruct(fit_SG, fit_RCA, fit_C, fpn_SG, fpn_RCA, fpn_C, maskToUse, maskToUseTrueInds, s, w, fb, nv, vs, num_voxels, t1i, tau_decayed_ind, voxel_quality);
-save([PDpath, 'fit_sfa.mat'], 'fit_sfa')
-clearvars fit_SG fit_RCA fit_C
+
 
 % [temp_fitted_g1, ~] = vUS_3D_quad_RCA_xy_batchModel(fit_sfa.fit_RCA.x .', tau, PP.k0, sigma_RCA, s, w); % Calculates for only the fitted pixels
 % test_g1 = zeros(size(maskToUse, 1), nTau);
@@ -275,6 +274,32 @@ clearvars fit_SG fit_RCA fit_C
 % test_g1_unstacked = unstackData(test_g1, PP);
 % % voxelTimeseriesGUI({g1{3}, test_g1_unstacked}, abs(test_g1_unstacked(:, :, :, 2)), 'ComplexMode', 'abs', 'Colormap', 'turbo')
 % voxelTimeseriesGUI({g1{3}, test_g1_unstacked},  fit_sfa.fit_RCA.v, 'ComplexMode', 'abs', 'Colormap', 'turbo')
+
+% For testing: look at the fits for the averaged g1
+[temp_g1_model_SG_stacked, ~] = vUS_3D_quad_batchModel(fit_sfa.fit_SG.x .', tau, PP.k0, sigma_SG, s, w);
+[temp_g1_model_RCA_stacked, ~] = vUS_3D_quad_RCA_xy_batchModel(fit_sfa.fit_RCA.x .', tau, PP.k0, sigma_RCA, s, w); % Calculates for only the fitted pixels
+[temp_g1_model_C_stacked, ~] = vUS_3D_combined_batchModel(fit_sfa.fit_C.x .', tau, PP.k0);
+% test_g1 = zeros(size(maskToUse, 1), nTau);
+% test_g1(maskToUseTrueInds, :) = temp_g1_model_RCA_stacked.';
+% test_g1_unstacked = unstackData(test_g1, PP);
+% voxelTimeseriesGUI({g1_avg{3}, test_g1_unstacked}, fit_sfa.fit_RCA.v, 'ComplexMode', 'abs', 'Colormap', 'jet')
+
+% Calculate fitting quality metrics
+tau_mask = (fit_sfa.t1i:nTau);
+fit_sfa.fit_SG.R2 = calcR2(temp_g1_model_SG_stacked(tau_mask, :).', g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
+fit_sfa.fit_RCA.R2 = calcR2(temp_g1_model_RCA_stacked(tau_mask, :).', g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
+fit_sfa.fit_C.R2 = calcR2(temp_g1_model_C_stacked(tau_mask, :).', g1_exp{3}(maskToUseTrueInds, tau_mask), 2);
+
+fit_sfa.fit_SG.R2_adj = calcR2_adj(temp_g1_model_SG_stacked(tau_mask, :).', g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_SG));
+fit_sfa.fit_RCA.R2_adj = calcR2_adj(temp_g1_model_RCA_stacked(tau_mask, :).', g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_RCA));
+fit_sfa.fit_C.R2_adj = calcR2_adj(temp_g1_model_C_stacked(tau_mask, :).', g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_C));
+
+fit_sfa.fit_SG.AIC = calcAIC(temp_g1_model_SG_stacked(tau_mask, :).', g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_SG));
+fit_sfa.fit_RCA.AIC = calcAIC(temp_g1_model_RCA_stacked(tau_mask, :).', g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_RCA));
+fit_sfa.fit_C.AIC = calcAIC(temp_g1_model_C_stacked(tau_mask, :).', g1_exp{3}(maskToUseTrueInds, tau_mask), 2, numel(fpn_C));
+
+save([PDpath, 'fit_sfa.mat'], 'fit_sfa')
+clearvars fit_SG fit_RCA fit_C
 
 %% Load and fit each individual superframe, with some parameters constrained by what the superframe average fit suggests
 % Prompt for parameter user input
@@ -558,6 +583,29 @@ legend('Single Gaussian', 'RCA', 'Combined', 'Location', 'northwest')
 xlabel("R^2"); ylabel("Probability")
 title("Adjusted R^2")
 xlim([-2, 1])
+
+% % g1 average version
+% figure; hold on
+% fa = 0.4; ea = 0.1; nm = 'probability';
+% histogram(fit_sfa.fit_SG.R2, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1', 'Normalization', nm)
+% histogram(fit_sfa.fit_RCA.R2, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1', 'Normalization', nm)
+% histogram(fit_sfa.fit_C.R2, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1', 'Normalization', nm)
+% hold off
+% legend('Single Gaussian', 'RCA', 'Combined', 'Location', 'northwest')
+% xlabel("R^2"); ylabel("Probability")
+% title("R^2")
+% xlim([-2, 1])
+% 
+% figure; hold on
+% fa = 0.4; ea = 0.1;
+% histogram(fit_sfa.fit_SG.R2_adj, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1', 'Normalization', nm)
+% histogram(fit_sfa.fit_RCA.R2_adj, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1', 'Normalization', nm)
+% histogram(fit_sfa.fit_C.R2_adj, 'FaceAlpha', fa, 'EdgeAlpha', ea, 'BinWidth', 0.1', 'Normalization', nm)
+% hold off
+% legend('Single Gaussian', 'RCA', 'Combined', 'Location', 'northwest')
+% xlabel("R^2"); ylabel("Probability")
+% title("Adjusted R^2")
+% xlim([-2, 1])
 
 %% Histograms of AIC
 figure; hold on
