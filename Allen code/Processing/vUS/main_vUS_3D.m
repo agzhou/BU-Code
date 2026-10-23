@@ -57,6 +57,7 @@ if abs(P.frameRate - frameRate_actual) > 10
 else
     frameRate = P.frameRate;
 end
+
 %% (Only if using continuous data) load some chunk of continuous superframes
 % IQfilenameStructure = ['IQ-', num2str(P.maxAngle), '-', num2str(P.na), '-', num2str(P.frameRate), '-', num2str(P.numFramesPerBuffer), '-1-'];
 % 
@@ -80,11 +81,12 @@ end
 %   Single-Gaussian version
 % sigma_SG = [121.8936, 121.8936, 44.3846].*1e-6; % Field-based sigma values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 11 x 2 angles from -5 to 5 deg (G:\My Drive\Data\RC15gV PSF sim - 11 angles from -5 to 5 deg)
 % sigma_SG = [151.5410, 151.5410, 44.6252].*1e-6; % Field-based sigma values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 11 x 2 angles from -6 to 6 deg
-sigma_SG = [130.1474, 130.1474, 44.7070].*1e-6; % Field-based sigma values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 5 x 2 angles from -6 to 6 deg
+% sigma_SG = [130.1474, 130.1474, 44.7070].*1e-6; % Field-based sigma values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 5 x 2 angles from -6 to 6 deg
+sigma_SG = [73.249, 73.249, 36.473].*1e-6; % same but from the complex PSF measured decorrelation fit
 
 %   RCA-specific orthogonal Gaussians version
 % sigma_RCA = [57.6, 286.5, 50.1].*1e-6; % Field-based sigma values (narrow, wide, axial) [m] for the RC15gV probe at 13.6 MHz: 5 angles from -6 to 6 deg
-sigma_RCA = [32.0596, 170.5005, 36.4731].*1e-6; % ^ same but fitting complex PSF
+sigma_RCA = [32.0596, 170.5005, 36.4731].*1e-6; % ^ same but from the complex PSF measured decorrelation fit
 
 xDim = 1; % Dimension of the data corresponding to x (lateral direction)
 yDim = 2; % Dimension of the data corresponding to y (lateral direction)
