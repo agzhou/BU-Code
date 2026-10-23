@@ -85,10 +85,10 @@ clearvars procParamsPrompt procParamsDefaults procParamsUserInput
 
 %% Define time lags
 % startTau = t1i; % Index for the first tau point (tau1) for subsequent analysis.
-
-nTau = ceil(20e-3 *P.frameRate); % # of time lags to consider; empirically set by assuming all g1 for voxels containing actual flow decay within 10 ms
+[frameRate] = checkFrameRate(P);
+nTau = ceil(20e-3 *frameRate); % # of time lags to consider; empirically set by assuming all g1 for voxels containing actual flow decay within 10 ms
 % nTau = ceil(100e-3 *P.frameRate); % # of time lags to consider; empirically set by assuming all g1 for voxels containing actual flow decay within 10 ms
-tau = (0:nTau - 1)' ./ P.frameRate; % Time lag vector [s]
+tau = (0:nTau - 1)' ./ frameRate; % Time lag vector [s]
 
 %% Set up the High Pass Filter (parameters from the 2020 vUS paper)
 HPF.fc = 25; % Cutoff frequency [Hz]
