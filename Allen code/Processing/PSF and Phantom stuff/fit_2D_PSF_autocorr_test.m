@@ -50,7 +50,7 @@ end
 % Next, only lateral shifts
 g1sd_x = zeros(length(dxs), 1); % g1,s as calculated from data, for lateral shifts
 for dxi = 1:length(dxs)
-    dx = dzs(dxi);
+    dx = dxs(dxi);
     PSF_lateral_shifted = IQ(pos_rc(3) - zw : pos_rc(3) + zw, dx + (pos_rc(1) - xw : pos_rc(1) + xw));
     g1sd_x(dxi) = sum(PSF_centered .* conj(PSF_lateral_shifted), 'all') ./ sum(PSF_centered .* conj(PSF_centered), 'all');
 end   
@@ -59,10 +59,10 @@ end
 opts = optimoptions('lsqnonlin', 'Display', 'off', 'FunctionTolerance', 1e-14, 'StepTolerance', 1e-12);
 lb = 1e-6; ub = 1000e-6;
 % Fit axial
-[sigma_z] = lsqnonlin(@(sigma_z) g1_model(sigma_z, dzs_m) - abs(g1sd_z), 50e-6, opts);
+[sigma_z] = lsqnonlin(@(sigma_z) g1_model(sigma_z, dzs_m) - abs(g1sd_z).', 50e-6, lb, ub, opts);
 
 % Fit lateral
-[sigma_x] = lsqnonlin(@(sigma_x) g1_model(sigma_x, dxs_m) - abs(g1sd_x), 50e-6, opts);
+[sigma_x] = lsqnonlin(@(sigma_x) g1_model(sigma_x, dxs_m) - abs(g1sd_x).', 50e-6, lb, ub, opts);
 
 %% Visualize the fits
 % Calculate g1 curves according to the model fit
