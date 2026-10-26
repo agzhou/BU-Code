@@ -144,6 +144,12 @@ std_PDI_XD = std(PDI_XD_allSF, 0, fDim);
 SNR_PDI_OPW = PDI_OPW_avg ./ std_PDI_OPW;
 SNR_PDI_XD = PDI_XD_avg ./ std_PDI_XD;
 
+% Look at pixels with SNR before some threshold
+mask = SNR_PDI_OPW > 20;
+test = SNR_PDI_OPW; test(mask)=NaN;
+figure; imagesc(squeeze(max(test, [], 1))')
+colormap turbo
+
 bw = 0.1;
 figure; hold on
 histogram(SNR_PDI_OPW, 'BinWidth', bw, 'FaceAlpha', 0.3, 'Normalization', 'probability')
