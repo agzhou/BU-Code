@@ -82,11 +82,21 @@ end
 % sigma_SG = [121.8936, 121.8936, 44.3846].*1e-6; % Field-based sigma values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 11 x 2 angles from -5 to 5 deg (G:\My Drive\Data\RC15gV PSF sim - 11 angles from -5 to 5 deg)
 % sigma_SG = [151.5410, 151.5410, 44.6252].*1e-6; % Field-based sigma values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 11 x 2 angles from -6 to 6 deg
 % sigma_SG = [130.1474, 130.1474, 44.7070].*1e-6; % Field-based sigma values (x, y, z) [m] for the RC15gV probe at 13.6 MHz and 5 x 2 angles from -6 to 6 deg
-sigma_SG = [73.249, 73.249, 36.473].*1e-6; % same but from the complex PSF measured decorrelation fit
+
+% sigma_SG = [73.249, 73.249, 36.473].*1e-6; % same but from the complex PSF measured decorrelation fit
+% disp('5 angles from -6 to 6 deg')
+
+sigma_SG = [89.444, 89.444, 40.432].*1e-6;
+disp('5 angles from -0.9626 to 0.9626 deg')
 
 %   RCA-specific orthogonal Gaussians version
 % sigma_RCA = [57.6, 286.5, 50.1].*1e-6; % Field-based sigma values (narrow, wide, axial) [m] for the RC15gV probe at 13.6 MHz: 5 angles from -6 to 6 deg
-sigma_RCA = [32.0596, 170.5005, 36.4731].*1e-6; % ^ same but from the complex PSF measured decorrelation fit
+
+% sigma_RCA = [32.0596, 170.5005, 36.4731].*1e-6; % ^ same but from the complex PSF measured decorrelation fit
+% disp('5 angles from -6 to 6 deg')
+
+sigma_RCA = [39.848, 1249.112, 40.432].*1e-6;
+disp('5 angles from -0.9626 to 0.9626 deg')
 
 xDim = 1; % Dimension of the data corresponding to x (lateral direction)
 yDim = 2; % Dimension of the data corresponding to y (lateral direction)
