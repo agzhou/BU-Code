@@ -21,6 +21,7 @@ clearvars
 
 addpath(fullfile(cd))
 cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
+% cd 'C:\Users\agzhou\Vantage-5.0.1-p1' % BME-BOAS-29
 % cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.7-2505271400' % Lab PC (bme-boas-19)
 % addpath 'C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Processing'
 addpath 'C:\Users\BOAS-US\Documents\GitHub\BU-Code\Allen code\Processing'
@@ -201,8 +202,8 @@ PData.Coord = 'rectangular'; % rectangular coords, could change to polar or sphe
 
 % Testing
 % PData.PDelta = [0.1, 0.1, 0.1]; % Spacing between pixels in x, y, z, in wavelengths
-% PData.PDelta = [0.25, 0.25, 0.25]; % Spacing between pixels in x, y, z, in wavelengths
-PData.PDelta = [0.5, 0.5, 0.5]; % Spacing between pixels in x, y, z, in wavelengths
+PData.PDelta = [0.25, 0.25, 0.25]; % Spacing between pixels in x, y, z, in wavelengths
+% PData.PDelta = [0.5, 0.5, 0.5]; % Spacing between pixels in x, y, z, in wavelengths
 L = Trans.spacingMm/1e3*numElements/wl; % Probe width in wavelengths
 PData.Size(1) = ceil(L/PData.PDelta(2));
 PData.Size(2) = ceil(L/PData.PDelta(1));

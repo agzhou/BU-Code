@@ -24,7 +24,7 @@ savepath = uigetdir('F:\', 'Select the save path');
 savepath = [savepath, '\'];
 
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe'}; % 'Save RF data (0-no, 1-yes)', 
-parameterDefaults = {'20', '0', '10', '10000', '450', '11', '5', '13.6', '1540', '1', '1', '1'};
+parameterDefaults = {'20', '0', '10', '10000', '450', '11', '5', '15.625', '1540', '1', '1', '1'};
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
 % Store the user inputs for parameters into the corresponding variables
@@ -649,41 +649,41 @@ Event(n).seqControl = 3;
 
 %% Save all the data/structures to a .mat file.
 currentDir = cd; currentDir = regexp(currentDir, filesep, 'split');
-filename = 'RC15gV_Allen_loop_fixed.mat';
+filename = 'RC15gV_Allen_loop_PSFsim.mat';
 
 save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+filename);
 
 %% Initialize time tagging if enabled
-import com.verasonics.hal.hardware.*
-switch TimeTagEna
-    case 0
-        % disable time tag
-        rc = Hardware.enableAcquisitionTimeTagging(false);
-        if ~rc
-            error('Error from enableAcqTimeTagging')
-        end
-        tagstr = 'off';
-    case 1
-        % enable time tag
-        rc = Hardware.enableAcquisitionTimeTagging(true);
-        if ~rc
-            error('Error from enableAcqTimeTagging')
-        end
-        tagstr = 'on';
-        disp('**** Time tagging enabled on mode 1 ****')
-    case 2
-        % enable time tag and reset counter
-        rc = Hardware.enableAcquisitionTimeTagging(true);
-        if ~rc
-            error('Error from enableAcqTimeTagging')
-        end
-        rc = Hardware.setTimeTaggingAttributes(false, true); % reset hardware counter to 0 (otherwise, it continuously counts up from system bootup until it gets to 107,000s - see p37 of User Manual
-        if ~rc
-            error('Error from setTimeTaggingAttributes')
-        end
-        tagstr = 'on, reset';
-        disp('**** Time tagging enabled on mode 2 ****')
-end
+% import com.verasonics.hal.hardware.*
+% switch TimeTagEna
+%     case 0
+%         % disable time tag
+%         rc = Hardware.enableAcquisitionTimeTagging(false);
+%         if ~rc
+%             error('Error from enableAcqTimeTagging')
+%         end
+%         tagstr = 'off';
+%     case 1
+%         % enable time tag
+%         rc = Hardware.enableAcquisitionTimeTagging(true);
+%         if ~rc
+%             error('Error from enableAcqTimeTagging')
+%         end
+%         tagstr = 'on';
+%         disp('**** Time tagging enabled on mode 1 ****')
+%     case 2
+%         % enable time tag and reset counter
+%         rc = Hardware.enableAcquisitionTimeTagging(true);
+%         if ~rc
+%             error('Error from enableAcqTimeTagging')
+%         end
+%         rc = Hardware.setTimeTaggingAttributes(false, true); % reset hardware counter to 0 (otherwise, it continuously counts up from system bootup until it gets to 107,000s - see p37 of User Manual
+%         if ~rc
+%             error('Error from setTimeTaggingAttributes')
+%         end
+%         tagstr = 'on, reset';
+%         disp('**** Time tagging enabled on mode 2 ****')
+% end
 
 %% Run VSX automatically and make parameter structure for RF file naming
 
