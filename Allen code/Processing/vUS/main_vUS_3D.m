@@ -629,6 +629,7 @@ xline(0, 'r--', 'LineWidth', 2)
 sum(dAIC < 0)/sum(maskToUse)
 
 %% Visualize the histograms of fitted parameters
+fa = 0.4; ea = 0.1; nm = 'probability';
 fs = 20;
 % v_zgp
 figure; hold on
