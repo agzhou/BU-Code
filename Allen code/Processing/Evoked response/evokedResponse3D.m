@@ -287,6 +287,39 @@ volumeViewer(r_rCBVirs_TA)
 overlayActivationMap2D(fliplr(squeeze(PDIA{3}(41, :, :)).^0.5.'), fliplr(squeeze(r_rCBVirs_TA(41, :, :)).'), x_mm, z_mm, 'Mask', fliplr(squeeze(r_rCBVirs_TA(41, :, :)).') > rt, 'Alpha', 0.7, 'AmapClim', [0.2, 0.8], 'ColorbarLabel', 'r', 'Title', 'Activation map over power Doppler');
 overlayActivationMap2D(fliplr(squeeze(PDIA{3}(41, :, :)).^0.5.'), fliplr(squeeze(am_rCBVirs_TA(41, :, :)).'), x_mm, z_mm, 'Mask', fliplr(squeeze(am_rCBVirs_TA(41, :, :)).') > 0.3, 'Alpha', 0.7, 'AmapClim', [0.1, 0.5], 'ColorbarLabel', 'am', 'Title', 'Activation map over power Doppler');
 
+%% vUS trial averaging and correlation
+vUSrs = permute(interp1(sfCenters(1:size(VallSF_RCA{3}, 4)), permute(VallSF_RCA{3}, [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
+
+% Calculate trial windows at the resampled rate
+trial_windows = cell(P.numTrials, 1);
+for ind = 1:numel(trial_windows)
+    trial_windows{ind} = (ind - 1)*P.apis.seq_length_s * rr + 1 : 1 : (ind)*P.apis.seq_length_s * rr; % Indices for each trial window, at the resampled rate
+end
+
+% Calculate relative changes before trial averaging
+trial_vUSrs = cell(size(trial_windows));
+trial_rvUSrs = cell(size(trial_windows));
+for ind = 1:numel(trial_windows)
+    trial_vUSrs{ind} = vUSrs(:, :, :, trial_windows{ind});
+    trial_rvUSrs{ind} = trial_vUSrs{ind} ./ repmat(mean(trial_vUSrs{ind}(:, :, :, 1:P.apis.delay_time_ms/1e3 * rr), fDim), [1, 1, 1, size(trial_vUSrs{ind}, fDim)]);
+end
+
+% Trial average
+% trialsToUse = [1:numel(trial_windows)]; % Which trials to keep
+trialsToUse = [1:3, 5, 7, 8, 10];
+% trialsToUse = 1:3; % Testing
+vUSrs_TA = zeros(size(CBViA{3}));
+rvUSrs_TA = zeros(size(CBViA{3}));
+for ind = trialsToUse
+    vUSrs_TA = vUSrs_TA + 1/numel(trialsToUse) .* trial_vUSrs{ind};
+    rvUSrs_TA = rvUSrs_TA + 1/numel(trialsToUse) .* trial_rvUSrs{ind};
+end
+
+% voxelTimeseriesGUI(trial_rvUSrs, PDIA{3}.^0.5, 'Colormap', 'turbo')
+voxelTimeseriesGUI(trial_rvUSrs, r_rvUSrs_TA, 'Colormap', 'turbo')
+[r_rvUSrs_TA, z_rvUSrs_TA, am_rvUSrs_TA] = activationMap3D(rvUSrs_TA, stimrs1T, 1);
+volumeViewer(r_rvUSrs_TA)
+
 %% Evoked response analysis: peri-stimulus averaging and GLM
 % Both functions take the same data types and timing, all in the same time base (t = 0 is the start of acquisition):
 %   - superframe start times (TD.sfStarts), and the superframe duration (sfWidth)
