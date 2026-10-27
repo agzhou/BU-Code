@@ -191,12 +191,15 @@ nw = RFcount - ws + 1; % Number of windows to compute the FFT over (max possible
 
 fftLen = ws; % FFT length (adjust if needed)
 
-faxis = linspace(-sfRate/2, sfRate/2, fftLen);
+faxis = (-floor(fftLen/2):ceil(fftLen/2)-1) * sfRate / fftLen; % fftshifted FFT bin frequencies [Hz] (zero at index floor(fftLen/2)+1)
 
 s = zeros([vs, nw, fftLen], 'single');
 
 for wi = 1:nw % Go through windows and calculate the spectrogram
-    s(:, :, :, wi, :) = fftshift(fft(PDIallSF{3}(:, :, :, wi:wi+ws-1), fftLen, fDim));
+    s(:, :, :, wi, :) = fftshift(fft(PDIallSF{3}(:, :, :, wi:wi+ws-1), fftLen, fDim), fDim); % shift only the frequency dim, not the spatial dims
 end
 
-figure; imagesc(sfStarts(1:nw), faxis, abs(squeeze(s(40, 40, 40, :, :)))'); xlabel('Time [s]'); ylabel('Frequency [Hz]')
+figure; imagesc(sfStarts(1:nw), faxis, abs(squeeze(s(40, 40, 40, :, :)))'); axis xy; xlabel('Time [s]'); ylabel('Frequency [Hz]')
+
+%% Inspect the spectrogram per voxel
+voxelSpectrogramGUI(s, PDIA{3}.^0.5, 'Time', sfStarts(1:nw), 'Freq', faxis, 'Colormap', 'turbo')
