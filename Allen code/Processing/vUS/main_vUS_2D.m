@@ -57,7 +57,10 @@ clearvars proc_params_filename proc_params_pathname
 %% Define some parameters
 
 % Define the sigma values, from simulations
-sigma = [42.8163, 52.2913].*1e-6; % Field-based sigma values (x, z) [m] for the L22-14v probe at 15.625 MHz and 5 angles from -6 to 6 deg
+% sigma = [42.8163, 52.2913].*1e-6; % Field-based sigma values (x, z) [m]
+% for the L22-14v probe at 15.625 MHz and 5 angles from -6 to 6 deg, using |PSF|
+sigma = [29.564, 49.084].*1e-6; % Field-based sigma values (x, z) [m] for the
+% L22-14v probe at 15.625 MHz and 5 angles from -6 to 6 deg, using the complex PSF
 
 xDim = 2; % Dimension of the data corresponding to x (lateral direction)
 zDim = 1; % Dimension of the data corresponding to z (axial direction)
@@ -71,9 +74,11 @@ end
 % Load Jianbo's colormaps
 [VzCmap, VzCmapDn, VzCmapUp, pdiCmapUp, PhtmCmap] = Colormaps_fUS;
 
+
 %% Create a struct for all the relevant processing parameters
 dimensionality = 2; % 2D data
-frameRate = P.frameRate;
+% frameRate = P.frameRate;
+[frameRate] = checkFrameRate(P); % Check the frame rate
 wl = P.wl;
 k0 = 2*pi/wl;
 PP = createStruct(xp, zp, nf, nTau, xDim, zDim, fDim, dimensionality, frameRate, wl, k0); % Processing Parameters ======> adjust as needed
@@ -216,6 +221,15 @@ for j = ctp
     figure; imagesc(fit_sfa.fit_SG(j).v); colormap jet; colormap; clim([0, 50e-3])
     % pixelTimeseriesGUI(g1{j}, fit_sfa.fit_SG(j).v, 'Colormap', 'jet', 'ComplexMode', 'abs')
 end
+
+% figure; imagesc(fit_sfa.fit_SG(3).v_zgp); colormap(VzCmap); clim([-30e-3, 30e-3])
+
+testj = 1;
+[temp_fitted_g1, ~] = vUS_2D_quad_batchModel(fit_sfa.fit_SG(testj).x .', tau, PP.k0, sigma, s, w); % Calculates for only the fitted pixels
+test_g1 = zeros(size(maskToUse{testj}, 1), nTau);
+test_g1(maskToUseTrueInds{testj}, :) = temp_fitted_g1.';
+test_g1_unstacked = unstackData(test_g1, PP);
+pixelTimeseriesGUI({g1{testj}, test_g1_unstacked}, fit_sfa.fit_SG(testj).v, 'Colormap', 'jet', 'ComplexMode', 'abs')
 
 %% Load and fit each individual superframe, with some parameters constrained by what the superframe average fit suggests
 % Prompt for parameter user input

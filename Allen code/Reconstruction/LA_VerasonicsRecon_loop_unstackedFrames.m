@@ -22,7 +22,8 @@ addpath(genpath(AllenReconCodePath))
 %% Activate the Verasonics folder
 clearvars
 
-cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
+% cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
+cd 'C:\Users\agzhou\Vantage-5.0.1-p1'
 % cd '\\ad\eng\users\a\g\agzhou\Desktop\Vantage-5.0.1-p1'
 % cd 'C:\Users\agzhou\Vantage-4.9.7-2505271400'
 % cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
@@ -130,8 +131,10 @@ numElements = Trans.numelements; % the structure gives # row elements + # column
 pixelspacingPrompt = {'z (axial) pixel spacing [wl]', 'x (lateral) pixel spacing [wl]'};
 % pixelspacingDefaults = {num2str(wl/2 * 1e6), num2str(Trans.spacingMm * 1e3)};
 % pixelspacingDefaults = {num2str(Trans.spacing/2), num2str(Trans.spacing)};
-pixelspacingDefaults = {num2str(Trans.spacing/2), num2str(Trans.spacing/2)};
+% pixelspacingDefaults = {num2str(Trans.spacing/2), num2str(Trans.spacing/2)};
 % pixelspacingDefaults = {num2str(Trans.spacing/4), num2str(Trans.spacing/4)};
+% pixelspacingDefaults = {num2str(1/4), num2str(1/4)};
+pixelspacingDefaults = {num2str(1/2), num2str(1/2)};
 pixelspacingUserInput = inputdlg(pixelspacingPrompt, 'Pixel Spacing Parameters', 1, pixelspacingDefaults);
 
 z_pix_spacing = str2double(pixelspacingUserInput{1});

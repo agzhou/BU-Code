@@ -13,7 +13,7 @@ function [frameRate] = checkFrameRate(P)
     frameRate_actual = 1/dt; % Actual frame rate
     
     % Set the downstream-used frameRate to the actual frame rate
-    if abs(P.frameRate - frameRate_actual) > 10
+    if abs(P.frameRate - frameRate_actual) > 25
         warning("Nominal frame rate (" + num2str(P.frameRate) + " Hz) was not supported by the hardware during data acquisition. Using the actual frame rate of " + num2str(frameRate_actual) + " Hz instead.")
         frameRate = frameRate_actual;
     else
