@@ -72,6 +72,7 @@ end
 cfgs = {'exactRx, wavenum +', struct('exactRx', true, 'wavenumSign', 1);
         'exactRx, wavenum -', struct('exactRx', true, 'wavenumSign', -1);
         '3D Rx distance    ', struct('exactRx', false, 'wavenumSign', 1)};
+% cfgs = {'exactRx, wavenum -', struct('exactRx', true, 'wavenumSign', -1)};
 if exist('useGPU', 'var') % can be set to false beforehand to run with a CPU stand-in for ffdas.das
     for k = 1 : size(cfgs, 1)
         cfgs{k, 2}.useGPU = useGPU;
