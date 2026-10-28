@@ -9,9 +9,13 @@
 % Needs a CUDA GPU, the Parallel Computing Toolbox, and ffdas on the MATLAB path.
 
 c = 1540; fc = 15.625e6; wl = c / fc; spw = 4; fs = fc * spw; dps = c / fs;
-N = 128; pitch = 0.1e-3; na = 11; nf = 2; % enough angles that the grating lobes (lambda/sin(dtheta)) fall outside the region
+N = 128; pitch = 0.1e-3; nf = 2;
 startDepth = 10; endDepth = 60; twPeak = 1; % wavelengths
-angles = linspace(-15, 15, na) * pi/180;
+% Number of angles and max angle (deg) can be set beforehand with numAngles and maxAngleDeg. The defaults have enough
+% angles that the grating lobes (lambda/sin(dtheta)) fall outside the region
+if exist('numAngles', 'var'), na = numAngles; else, na = 11; end
+if exist('maxAngleDeg', 'var'), maxAng = maxAngleDeg; else, maxAng = 15; end
+angles = linspace(-maxAng, maxAng, na) * pi/180;
 
 xe = ((0:N-1) - (N-1)/2) * pitch; ye = xe;
 x_end = max(xe); y_end = max(ye);
