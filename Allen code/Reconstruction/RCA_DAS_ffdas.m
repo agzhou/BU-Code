@@ -54,11 +54,6 @@ function [IQ_CR, IQ_RC, grid] = RCA_DAS_ffdas(RcvData, P, ypix_spacing, xpix_spa
     angles = reshape(P.angles, 1, []);
     startDepth = P.startDepth;
     endDepth = P.endDepth;
-    if isfield(P, 'numSubFrames')
-        nf = P.numSubFrames;
-    else
-        nf = P.numFramesPerBuffer;
-    end
     if numel(angles) ~= na
         error('P.angles has %d entries but P.na = %d', numel(angles), na)
     end
@@ -120,6 +115,11 @@ function [IQ_CR, IQ_RC, grid] = RCA_DAS_ffdas(RcvData, P, ypix_spacing, xpix_spa
         r = RcvData;
     end
     r = r(:, Trans.Connector, :); % (# z samples * # acquisitions, # channels, # frames)
+    if isfield(P, 'numSubFrames') % older P structures name the frame count differently, so take it from the data
+        nf = P.numSubFrames;
+    else
+        nf = size(r, 3);
+    end
 
     if Opts.perAngle
         nk = na;
