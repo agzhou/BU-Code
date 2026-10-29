@@ -16,10 +16,11 @@
 %           - The IQ is single precision and is the analytic signal of the RF at each voxel's round trip time (see
 %             RCA_DAS_ffdas), so its magnitude is comparable to the Verasonics IQ but its phase reference is not the
 %             Verasonics demodulation reference. Phase differences between frames/volumes are not affected
-%           - Pixel (x, y, z) positions are the pixel centers of the RCA_DAS grid, not the PData corners
-%             Verasonics uses, so there can be a sub-pixel shift relative to the Verasonics IQ
-%           - Not checked: whether the y index runs in the same direction as in the Verasonics IQ. Compare on a
-%             scatterer that is off-center in y before using the two interchangeably
+%           - The pixel grid is the Verasonics PData (pixel 1 at PData.Origin, x increasing and y decreasing with the
+%             index), saved as PData.mat like the Verasonics recon. The IQ is not scaled like the Verasonics IQ
+%           - The y direction (decreasing with the row index, as in Verasonics) is by construction from the PData
+%             definition, and only checked on a PSF at x = y = 0. Check on a scatterer that is off-center in y
+%             before using the two interchangeably
 
 % Inputs (all optional, prompts for the folders if they are empty):
 %   datapath   folder with params.mat and the RF files
@@ -145,8 +146,15 @@ function IQfiles = RCA_ffdas_recon(datapath, savepath, Opts)
     end
 
     if exist('grid', 'var') % not set if every file was skipped
+        % PData like the Verasonics recon's: size is [# rows (y), # columns (x), # sections (z)], PDelta and Origin in wavelengths
+        PData.Coord = 'rectangular';
+        PData.PDelta = Opts.pixelSpacingWl;
+        PData.Size = [numel(grid.y), numel(grid.x), numel(grid.z)];
+        PData.Origin = [grid.x(1), grid.y(1), grid.z(1)] / wl;
+        save(fullfile(savepath, 'PData.mat'), 'PData')
+
         ReconOpts = Opts; %#ok<NASGU>
-        save(fullfile(savepath, 'ffdas_recon_params.mat'), 'grid', 'ReconOpts') % grid is the same for every file
+        save(fullfile(savepath, 'ffdas_recon_params.mat'), 'grid', 'ReconOpts') % grid (m) is the same for every file
     end
 
 end

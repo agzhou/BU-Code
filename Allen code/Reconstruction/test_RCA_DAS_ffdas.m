@@ -69,9 +69,9 @@ for a = 1:na
 end
 
 %% Reconstruct and locate the peak
-cfgs = {'exactRx, wavenum +', struct('exactRx', true, 'wavenumSign', 1);
-        'exactRx, wavenum -', struct('exactRx', true, 'wavenumSign', -1);
-        '3D Rx distance    ', struct('exactRx', false, 'wavenumSign', 1)};
+cfgs = {'exactRx, wavenum +', struct('exactRx', true, 'wavenumSign', 1, 'rxHalfAngle', []);
+        'exactRx, wavenum -', struct('exactRx', true, 'wavenumSign', -1, 'rxHalfAngle', []);
+        '3D Rx distance    ', struct('exactRx', false, 'wavenumSign', 1, 'rxHalfAngle', [])};
 % cfgs = {'exactRx, wavenum -', struct('exactRx', true, 'wavenumSign', -1)};
 if exist('useGPU', 'var') % can be set to false beforehand to run with a CPU stand-in for ffdas.das
     for k = 1 : size(cfgs, 1)
@@ -108,6 +108,14 @@ end
 
 fprintf('\nPosition within one pixel (%.0f um) with exactRx: %s\n', pix * 1e6, passFail(posOK))
 fprintf('Peak with wavenum + vs. - (should be much higher for +): %.3g vs. %.3g -> %s\n', peaks(1), peaks(2), passFail(peaks(1) > 2 * peaks(2)))
+% Compounding the angles must equal the sum of the single-angle volumes (this ffdas build applies the first sequence
+% entry's offsets to every entry, so compounding inside one ffdas.das call gives the wrong image)
+optsPA = struct('perAngle', true, 'rxHalfAngle', []); optsC = struct('perAngle', false, 'rxHalfAngle', []);
+if exist('useGPU', 'var'), optsPA.useGPU = useGPU; optsC.useGPU = useGPU; end
+[CRpa, RCpa] = RCA_DAS_ffdas(rf, P, pix, pix, pix, optsPA);
+[CRc, RCc] = RCA_DAS_ffdas(rf, P, pix, pix, pix, optsC);
+relDiff = max(norm(reshape(sum(CRpa, 4), [], 1) - CRc(:)) / norm(CRc(:)), norm(reshape(sum(RCpa, 4), [], 1) - RCc(:)) / norm(RCc(:)));
+fprintf('Compounded vs. sum of per-angle volumes, relative difference %.2g -> %s\n', relDiff, passFail(relDiff < 1e-3))
 fprintf('If the peak is a constant depth off (about %.0f um per sample), try Opts.sampleShift = +/-1.\n', dps / 2 * 1e6)
 
 %% Plot the reconstructions against the true scatterer location

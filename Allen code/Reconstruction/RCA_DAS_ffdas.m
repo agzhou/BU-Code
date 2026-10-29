@@ -13,23 +13,30 @@
 % Notes:
 %           - ffdas computes the receive delay from the 3D channel-to-voxel distance, but a row/column element is a
 %             line: the correct delay only uses the distance in the plane perpendicular to the element. With
-%             Opts.exactRx the volume is beamformed one slice at a time, and each channel's coordinate along its
-%             length is set to the slice's coordinate, which makes the 3D distance equal the in-plane distance.
+%             Opts.exactRx each voxel's coordinate along the element length is set to the channels' (0) for the
+%             receive distance, which makes the 3D distance equal the in-plane distance. The voxel's real position
+%             along that axis only enters through the transmit offsets, so each angle is one das call for the whole
+%             volume (in depth chunks if it is large), not one call per slice.
 %           - ffdas sums over all channels for every sequence entry, so the two orientations (different receive
 %             channels) are separate das calls. They are not summed here; add them (or not) after.
 %           - ffdas has no per-channel weights. Use Opts.rxHalfAngle for a hard directivity cone, not the
 %             Trans.ElementSens weighting that RCA_DAS uses
-%           - Not yet checked against a real ffdas install: sample index base, the sign of the phase rotation (wavenum),
-%             and out-of-range sample handling. test_RCA_DAS_ffdas.m checks them with a simulated point scatterer.
+%           - Checked with test_RCA_DAS_ffdas.m (simulated point scatterer): offsets index the samples from 0 (the
+%             sampleShift default of 0 is right), and the data is demodulated with exp(-j*2*pi*n/samplesPerWave) so the
+%             phase rotation is wavenum = +2*pi/samplesPerWave (wavenumSign = 1). The opposite sign loses most of the peak
 
 % Opts fields (all optional):
-%   exactRx      (true)   per-slice in-plane receive distance. false: one call with 3D distance (faster, wrong off-center)
+%   exactRx      (true)   in-plane receive distance. false: 3D distance to the channel's midpoint (wrong off-center)
 %   perAngle     (false)  keep the angle dimension instead of compounding
-%   rxHalfAngle  ([])     half-angle in rad of the receive cone (ffdas srcdir), [] for no directivity mask
+%   rxHalfAngle  (0.6)    half-angle in rad of the receive cone (ffdas srcdir), [] for no directivity mask. The default
+%                         is the Verasonics Recon.senscutoff used in the Verasonics recon
+%   grid         ('verasonics')  'verasonics': the pixels of the Verasonics recon's PData (pixel 1 at PData.Origin, y
+%                         decreasing with the index). 'centered': the pixel centers of RCA_DAS's grid (y increasing)
 %   angleWeights ([])     1 x na transmit apodization over the angles, in the order of P.angles
 %   frameChunk   (Inf)    # of frames beamformed per batch, lower this if the GPU runs out of memory
-%   wavenumSign  (1)      set to -1 if ffdas' phase rotation convention is opposite
-%   sampleShift  (0)      samples added to the transmit offsets (e.g., -1 if ffdas indexes samples from 1)
+%   maxElems     (6e7)    max # of elements of the (x, y, z, angles) offset/weight arrays per das call (splits in depth)
+%   wavenumSign  (1)      sign of ffdas' phase rotation (see Notes)
+%   sampleShift  (0)      samples added to the transmit offsets
 %   useGPU       (true)   false keeps the arrays on the host, only for testing with a CPU stand-in for ffdas.das
 
 function [IQ_CR, IQ_RC, grid] = RCA_DAS_ffdas(RcvData, P, ypix_spacing, xpix_spacing, zpix_spacing, Opts)
@@ -39,12 +46,14 @@ function [IQ_CR, IQ_RC, grid] = RCA_DAS_ffdas(RcvData, P, ypix_spacing, xpix_spa
     end
     Opts = setDefault(Opts, 'exactRx', true);
     Opts = setDefault(Opts, 'perAngle', false);
-    Opts = setDefault(Opts, 'rxHalfAngle', []);
+    Opts = setDefault(Opts, 'rxHalfAngle', 0.6); % Verasonics' Recon.senscutoff
+    Opts = setDefault(Opts, 'grid', 'verasonics');
     Opts = setDefault(Opts, 'angleWeights', []);
     Opts = setDefault(Opts, 'frameChunk', Inf);
     Opts = setDefault(Opts, 'wavenumSign', 1);
     Opts = setDefault(Opts, 'sampleShift', 0);
     Opts = setDefault(Opts, 'useGPU', true);
+    Opts = setDefault(Opts, 'maxElems', 6e7);
 
     %% Parameters
     Trans = P.Trans;
@@ -72,18 +81,39 @@ function [IQ_CR, IQ_RC, grid] = RCA_DAS_ffdas(RcvData, P, ypix_spacing, xpix_spa
 
     d_correction_1way = Trans.lensCorrection * wl; % TX and RX each pass through the lens
 
-    %% Reconstruction region (same pixel grid as RCA_DAS)
+    %% Reconstruction region
     xsize = numElements * Trans.spacingMm / 1e3;
     ysize = xsize;
     zsize = (endDepth - startDepth) * wl;
 
-    znumpix = ceil(zsize / zpix_spacing);
-    xnumpix = ceil(xsize / xpix_spacing);
-    ynumpix = ceil(ysize / ypix_spacing);
+    if strcmpi(Opts.grid, 'verasonics')
+        % Same pixels as the PData of the Verasonics recon (RCA_VerasonicsRecon_loop*.m): pixel (1, 1, 1) is at
+        % PData.Origin = [-halfProbeDist, +halfProbeDist, startDepth], x increases and y DEcreases with the index
+        if isfield(Trans, 'spacing')
+            spacingWl = Trans.spacing;
+        else
+            spacingWl = Trans.spacingMm / 1e3 / wl;
+        end
+        L = Trans.spacingMm / 1e3 * numElements / wl; % probe width in wavelengths
+        pdelta = [xpix_spacing, ypix_spacing, zpix_spacing] / wl; % [x, y, z] in wavelengths
+        xnumpix = ceil(round(L / pdelta(1), 9));
+        ynumpix = ceil(round(L / pdelta(2), 9));
+        znumpix = ceil(round((endDepth - startDepth) / pdelta(3), 9));
+        halfProbeDist = (numElements - 1) / 2 * spacingWl;
 
-    grid.z = startDepth * wl + ((1:znumpix) - 1/2) / znumpix * zsize;
-    grid.x = ((1:xnumpix) - (xnumpix + 1)/2) / xnumpix * xsize;
-    grid.y = ((1:ynumpix) - (ynumpix + 1)/2) / ynumpix * ysize;
+        grid.x = (-halfProbeDist + (0 : xnumpix-1) * pdelta(1)) * wl;
+        grid.y = (halfProbeDist - (0 : ynumpix-1) * pdelta(2)) * wl;
+        grid.z = (startDepth + (0 : znumpix-1) * pdelta(3)) * wl;
+    else
+        % Same pixel grid as RCA_DAS (pixel centers of a grid spanning the probe, y increasing)
+        znumpix = ceil(zsize / zpix_spacing);
+        xnumpix = ceil(xsize / xpix_spacing);
+        ynumpix = ceil(ysize / ypix_spacing);
+
+        grid.z = startDepth * wl + ((1:znumpix) - 1/2) / znumpix * zsize;
+        grid.x = ((1:xnumpix) - (xnumpix + 1)/2) / xnumpix * xsize;
+        grid.y = ((1:ynumpix) - (ynumpix + 1)/2) / ynumpix * ysize;
+    end
 
     elementx = (wl .* Trans.ElementPos(1:numElements, 1))';
     elementy = (wl .* Trans.ElementPos(numElements + 1 : numElements*2, 2))';
@@ -170,9 +200,10 @@ function vol = groupDAS(rf, Receive, grp, G, Opts)
     % Analytic signal, then demodulate to baseband (ffdas' interpolation works on baseband IQ with a phase rotation)
     d = reshape(hilbert(reshape(d, nS, [])), size(d));
     d = d .* exp(-1j * 2*pi * single((0 : nS-1)') / G.spw);
-    d = toDevice(d, Opts);
+    dDev = toDevice(d, Opts);
+    clear d
 
-    wavenum = single(-Opts.wavenumSign * 2*pi / G.spw); % -2*pi*fc/fs
+    wavenum = single(Opts.wavenumSign * 2*pi / G.spw); % +2*pi*fc/fs for the exp(-j*2*pi*fc*t) demodulation above (verified, see the test)
 
     if isempty(Opts.rxHalfAngle)
         srcdir = [];
@@ -180,63 +211,58 @@ function vol = groupDAS(rf, Receive, grp, G, Opts)
         srcdir = toDevice(single(repmat([0; 0; 1; cos(Opts.rxHalfAngle)], 1, numCh)), Opts); % cone around +z
     end
 
-    if Opts.exactRx
-        sliceSets = num2cell(1:ns); % one slice per call, channels put in the slice's plane
-    else
-        sliceSets = {1:ns};
-    end
+    % Channel positions (3, # channels): along the element array axis only (zero along the slice axis and depth)
+    src = toDevice(single([grp.uElem; zeros(2, numCh)] * G.ks), Opts);
+
+    % Depths per call, limited so the (nu, ns, nzc) offsets/weights stay below Opts.maxElems elements
+    zChunk = max(2, min(nz, floor(Opts.maxElems / (nu * ns))));
+
     if Opts.perAngle
-        angSets = num2cell(1:na);
+        nk = na;
     else
-        angSets = {1:na};
+        nk = 1;
     end
-    dSets = cell(size(angSets));
-    for k = 1:numel(angSets)
-        dSets{k} = d(:, angSets{k}, :, :);
-    end
-
-    th = reshape(grp.angles, 1, 1, 1, na);
-    angleW = reshape(grp.w, 1, 1, 1, na);
-
-    vol = complex(zeros(nu, ns, nz, numel(angSets), nfc, 'single'));
-
-    for si = 1:numel(sliceSets)
-        sidx = sliceSets{si};
-        nsi = numel(sidx);
-        sv = grp.sv(sidx);
-
-        % Channel positions (3, # channels): along the element array axis, along the slice axis, depth
-        if Opts.exactRx
-            src = [grp.uElem; sv * ones(1, numCh); zeros(1, numCh)];
-        else
-            src = [grp.uElem; zeros(2, numCh)];
+    vol = complex(zeros(nu, ns, nz, nk, nfc, 'single'));
+    for z0 = 1 : zChunk : nz
+        zi = z0 : min(z0 + zChunk - 1, nz);
+        if numel(zi) < 2 % ffdas needs the voxel array to keep its depth dimension
+            zi = max(1, zi(1) - 1) : zi(1);
         end
-        src = toDevice(single(src * G.ks), Opts);
+        nzc = numel(zi);
 
-        % Voxel positions (3, nu, nsi, nz)
-        [U, S, Z] = ndgrid(grp.uv, sv, G.zv);
-        dst = permute(cat(4, U, S, Z), [4, 1, 2, 3]);
-
-        % TX one-way time of flight to each voxel, in samples (nu, nsi, nz, na). Same expression as RCA_DAS
-        txPath = Z .* cos(th) + (grp.sg * S + sign(th) * grp.endPos) .* sin(th);
-        offs = single((txPath + G.pathConst) * G.ks + Opts.sampleShift);
-        wts = single(ones(size(offs)) .* angleW);
-
-        if nsi == 1 % drop the singleton slice dim
-            dst = reshape(dst, [3, nu, nz]);
+        % Voxel positions (3, nu, ns, nzc). With exactRx the slice coordinate is set to the channels' (0) for the
+        % receive distance, so the 3D distance equals the in-plane distance, for the whole volume in one call. The
+        % slice dependence of the transmit path is in the offsets below
+        [U, S, Z] = ndgrid(grp.uv, grp.sv, G.zv(zi));
+        if Opts.exactRx
+            dst = permute(cat(4, U, zeros(size(S)), Z), [4, 1, 2, 3]);
+        else
+            dst = permute(cat(4, U, S, Z), [4, 1, 2, 3]);
         end
         dst = toDevice(single(dst * G.ks), Opts);
+        wts = toDevice(ones(nu, ns, nzc, 'single'), Opts);
 
-        for k = 1:numel(angSets)
-            a = angSets{k};
-            o = offs(:, :, :, a);
-            w = wts(:, :, :, a);
-            if nsi == 1
-                o = reshape(o, [nu, nz, numel(a)]);
-                w = reshape(w, [nu, nz, numel(a)]);
+        acc = [];
+        % One das call per angle: this ffdas build applies the first sequence entry's offsets/weights to every entry
+        % of the sequence dimension (checked with impulses), so compounding all angles in one call is wrong
+        for k = 1:na
+            % TX one-way time of flight to each voxel, in samples (nu, ns, nzc). Same expression as RCA_DAS
+            th = grp.angles(k);
+            txPath = Z .* cos(th) + (grp.sg * S + sign(th) * grp.endPos) .* sin(th);
+            offs = toDevice(single((txPath + G.pathConst) * G.ks + Opts.sampleShift), Opts);
+
+            out = grp.w(k) * ffdas.das(dDev(:, k, :, :), src, dst, offs, wts, srcdir, wavenum);
+            out = reshape(out, [nu, ns, nzc, 1, nfc]);
+            if Opts.perAngle
+                vol(:, :, zi, k, :) = toHost(out, Opts);
+            elseif isempty(acc)
+                acc = out;
+            else
+                acc = acc + out;
             end
-            out = ffdas.das(dSets{k}, src, dst, toDevice(o, Opts), toDevice(w, Opts), srcdir, wavenum);
-            vol(:, sidx, :, k, :) = reshape(toHost(out, Opts), [nu, nsi, nz, 1, nfc]);
+        end
+        if ~Opts.perAngle
+            vol(:, :, zi, 1, :) = toHost(acc, Opts);
         end
     end
 
