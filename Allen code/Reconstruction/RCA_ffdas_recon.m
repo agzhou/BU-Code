@@ -13,6 +13,9 @@
 %         and ffdas_recon_params.mat with the pixel grid (m) and the options used
 
 % Notes:
+%           - The Receive.sampleMode in params.mat (NS200BW, BS67BW, BS100BW or BS50BW) is used to read the stored samples, see
+%             RCA_DAS_ffdas. For the Verasonics PDelta of the fUS runs use pixelSpacingWl = [Trans.spacing, Trans.spacing, 0.5]
+%             (0.9714 wavelengths for the RC15gV). About 1 min per RF file of 496 frames x 11 angles on an RTX 3060
 %           - The IQ is single precision and is the analytic signal of the RF at each voxel's round trip time (see
 %             RCA_DAS_ffdas), so its magnitude is comparable to the Verasonics IQ but its phase reference is not the
 %             Verasonics demodulation reference. Phase differences between frames/volumes are not affected

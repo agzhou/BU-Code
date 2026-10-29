@@ -118,6 +118,40 @@ relDiff = max(norm(reshape(sum(CRpa, 4), [], 1) - CRc(:)) / norm(CRc(:)), norm(r
 fprintf('Compounded vs. sum of per-angle volumes, relative difference %.2g -> %s\n', relDiff, passFail(relDiff < 1e-3))
 fprintf('If the peak is a constant depth off (about %.0f um per sample), try Opts.sampleShift = +/-1.\n', dps / 2 * 1e6)
 
+%% Undersampled Receive.sampleModes
+% The simulated RF above is NS200BW (4 samples per period of the demodulation frequency, here fc). The stored samples of the
+% other modes are subsets of that sample grid (j = 0, 1, ... in each acquisition): BS67BW every 3rd sample, BS100BW j mod 4 in
+% {0, 1}, BS50BW j mod 8 in {0, 1} (Vantage Sequence Programming Manual 3.3.1). The pulse is narrowband enough for all modes,
+% so each should reproduce the NS200BW volume. Assumes the pair of BS100BW/BS50BW starts at the first sample
+optsM = struct('rxHalfAngle', []);
+if exist('useGPU', 'var'), optsM.useGPU = useGPU; end
+[CRn, RCn] = RCA_DAS_ffdas(rf, P, pix, pix, pix, optsM);
+IQn = CRn + RCn;
+modeNames = {'BS67BW', 'BS100BW', 'BS50BW'};
+modeIdx = {1:3:nS, find(mod(0:nS-1, 4) < 2), find(mod(0:nS-1, 8) < 2)};
+modeOK = true;
+fprintf('\n%-8s %6s %8s %8s %8s %8s %14s\n', 'mode', 'nS', 'dx um', 'dy um', 'dz um', 'peak', 'rel. diff vs NS')
+for q = 1:numel(modeNames)
+    nSq = numel(modeIdx{q});
+    rfq = zeros(2*na*nSq, 2*N, nf);
+    Pq = P;
+    for a = 1 : 2*na
+        rfq((a-1)*nSq + (1:nSq), :, :) = rf((a-1)*nS + modeIdx{q}, :, :);
+        Pq.Receive(a).startSample = (a-1)*nSq + 1;
+        Pq.Receive(a).endSample = a*nSq;
+        Pq.Receive(a).sampleMode = modeNames{q};
+    end
+    [CRq, RCq, gq] = RCA_DAS_ffdas(rfq, Pq, pix, pix, pix, optsM);
+    IQq = CRq + RCq;
+    [m, ind] = max(reshape(abs(IQq(:, :, :, 1)), [], 1));
+    [ix, iy, iz] = ind2sub(size(IQq, 1:3), ind);
+    err = [gq.x(ix) - scat(1), gq.y(iy) - scat(2), gq.z(iz) - scat(3)] * 1e6;
+    relDiffM = norm(IQq(:) - IQn(:)) / norm(IQn(:));
+    fprintf('%-8s %6d %8.1f %8.1f %8.1f %8.3g %14.3g\n', modeNames{q}, nSq, err, m, relDiffM)
+    modeOK = modeOK && all(abs(err) <= pix * 1e6) && relDiffM < 0.1;
+end
+fprintf('Undersampled modes reproduce the NS200BW volume (position within one pixel, relative difference < 0.1): %s\n', passFail(modeOK))
+
 %% Plot the reconstructions against the true scatterer location
 % Max intensity projections in dB, red circle = true location. Set saveFigDir beforehand to also save PNGs
 for k = 1 : size(cfgs, 1)
