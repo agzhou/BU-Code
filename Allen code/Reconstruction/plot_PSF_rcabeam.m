@@ -26,8 +26,17 @@ pix = 0.5 * wl; % the Half wl voxel spacing grid
 rfFile = dir(fullfile(psfPath, 'RF-*.mat')); rfFile = rfFile(1).name;
 
 %% Reconstruct (x, y, z) with the rcabeam port
-if ~isempty(cacheFile) && exist(cacheFile, 'file')
-    C = load(cacheFile); IQ_CR = C.IQ_CR; IQ_RC = C.IQ_RC; grid = C.grid;
+useCache = ~isempty(cacheFile) && exist(cacheFile, 'file');
+if useCache
+    C = load(cacheFile);
+    % A cache made by another backend would silently skip the backend being tested
+    if ~isfield(C, 'backend') || ~strcmp(C.backend, backend)
+        warning('Ignoring %s: it was made with the "%s" backend, not "%s"', cacheFile, string(getfield_or(C, 'backend', 'unknown')), backend)
+        useCache = false;
+    end
+end
+if useCache
+    IQ_CR = C.IQ_CR; IQ_RC = C.IQ_RC; grid = C.grid;
     fprintf('Loaded the reconstruction from %s\n', cacheFile)
 else
     R = load(fullfile(psfPath, rfFile), 'RcvData');
@@ -37,7 +46,7 @@ else
     [IQ_CR, IQ_RC, grid] = RCA_DAS_rcabeam(r, P, pix, pix, pix, struct('backend', backend));
     fprintf('Reconstructed with the %s backend in %.0f s\n', backend, toc)
     if ~isempty(cacheFile)
-        save(cacheFile, 'IQ_CR', 'IQ_RC', 'grid', '-v7.3')
+        save(cacheFile, 'IQ_CR', 'IQ_RC', 'grid', 'backend', '-v7.3')
     end
 end
 IQ_CR = IQ_CR(:, :, :, 1); IQ_RC = IQ_RC(:, :, :, 1);
@@ -135,6 +144,14 @@ end
 if ~isempty(saveDir)
     exportgraphics(fig1, fullfile(saveDir, 'PSF_slices_rcabeam.png'), 'Resolution', 150)
     exportgraphics(fig2, fullfile(saveDir, 'PSF_profiles_rcabeam.png'), 'Resolution', 150)
+end
+
+
+%% Field of a struct, or a default
+function v = getfield_or(S, name, default)
+
+    if isfield(S, name), v = S.(name); else, v = default; end
+
 end
 
 

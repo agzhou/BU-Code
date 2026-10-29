@@ -28,7 +28,7 @@ angles = linspace(-maxAng, maxAng, na) * pi/180;
 xe = ((0:N-1) - (N-1)/2) * pitch; ye = xe;
 x_end = max(xe); y_end = max(ye);
 
-% Minimal P with the fields RCA_DAS_rcabeam reads
+% Minimal P with the fields RCA_DAS_rcabeam reads (the pixel grid is the 'centered' one, see base below)
 P.Trans.frequency = fc / 1e6;
 P.Trans.spacingMm = pitch * 1e3;
 P.Trans.lensCorrection = 0;
@@ -83,7 +83,8 @@ end
 rf = rf .* reshape(1:nf, 1, 1, nf); % frame f is f times frame 1
 
 %% Reconstruct and locate the peaks
-base = struct('frameChunk', 2, 'fNumber', fNumber, 'pythonExe', pythonExe, 'backend', backend);
+% The 'centered' grid, so that the scatterer above sits on a voxel center for pix = pitch
+base = struct('frameChunk', 2, 'fNumber', fNumber, 'pythonExe', pythonExe, 'backend', backend, 'grid', 'centered');
 fprintf('Scatterer at x = %.0f, y = %.0f, z = %.0f um, backend %s\n', scat * 1e6, backend)
 [IQ_CR, IQ_RC, grid] = RCA_DAS_rcabeam(rf, P, pix, pix, pix, base);
 

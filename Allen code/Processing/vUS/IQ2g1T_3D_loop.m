@@ -12,7 +12,7 @@ codeDir = cd;
 codeDir_split = split(string(codeDir), filesep);
 % AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "Allen code"))), '\') + "\Verasonics");
 AllenProcessingCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\Processing");
-addpath(AllenProcessingCodePath)
+addpath(genpath(AllenProcessingCodePath))
 
 % Load parameters
 % Load acquisition parameters: params.mat

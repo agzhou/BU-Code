@@ -2,7 +2,7 @@
 
 % GPU delay-and-sum on RF data collected from a row-column array probe (orthogonal plane wave compounding), using the
 % rcabeam library (https://github.com/sdiebolt/rcabeam) through MATLAB's Python interface. Counterpart of RCA_DAS_ffdas.m
-% with the same inputs, pixel grid and delay model (plane wave TX time of flight referenced to the first-firing edge
+% with the same inputs, pixel grid (Verasonics PData by default) and delay model (plane wave TX time of flight referenced to the first-firing edge
 % element, TW.peak, lens correction, startDepth), so it can replace it in the recon loop.
 
 % Input: RF data and various parameters (same as RCA_DAS_ffdas), plus an optional Opts struct
@@ -40,6 +40,8 @@
 %   phaseReference   ('absolute')   or 'firstSample' (see Notes)
 %   backend          ('rcabeam')    'reference' runs rcabeam_reference_beamform on the CPU (for tests, slow)
 %   pythonExe        ('')           python.exe for rcabeam_setup, if RCABEAM_PYTHON is not set
+%   grid             ('verasonics') 'verasonics': the pixels of the Verasonics recon's PData (pixel 1 at PData.Origin, y
+%                                   decreasing with the index). 'centered': the pixel centers of RCA_DAS's grid (y increasing)
 %   verbose          (false)        print the adapter's timings for each chunk
 
 function [IQ_CR, IQ_RC, grid] = RCA_DAS_rcabeam(RcvData, P, ypix_spacing, xpix_spacing, zpix_spacing, Opts)
@@ -69,6 +71,7 @@ function [IQ_CR, IQ_RC, grid] = RCA_DAS_rcabeam(RcvData, P, ypix_spacing, xpix_s
     Opts = setDefault(Opts, 'phaseReference', 'absolute');
     Opts = setDefault(Opts, 'backend', 'rcabeam');
     Opts = setDefault(Opts, 'pythonExe', '');
+    Opts = setDefault(Opts, 'grid', 'verasonics');
     Opts = setDefault(Opts, 'verbose', false);
     useRcabeam = strcmpi(Opts.backend, 'rcabeam');
     if ~useRcabeam && ~strcmpi(Opts.backend, 'reference')
@@ -102,13 +105,36 @@ function [IQ_CR, IQ_RC, grid] = RCA_DAS_rcabeam(RcvData, P, ypix_spacing, xpix_s
     ysize = xsize;
     zsize = (endDepth - startDepth) * wl;
 
-    znumpix = ceil(zsize / zpix_spacing);
-    xnumpix = ceil(xsize / xpix_spacing);
-    ynumpix = ceil(ysize / ypix_spacing);
+    if strcmpi(Opts.grid, 'verasonics')
+        % Same pixels as the PData of the Verasonics recon (RCA_VerasonicsRecon_loop*.m): pixel (1, 1, 1) is at
+        % PData.Origin = [-halfProbeDist, +halfProbeDist, startDepth], x increases and y DEcreases with the index
+        if isfield(Trans, 'spacing')
+            spacingWl = Trans.spacing;
+        else
+            spacingWl = Trans.spacingMm / 1e3 / wl;
+        end
+        L = Trans.spacingMm / 1e3 * numElements / wl; % probe width in wavelengths
+        pdelta = [xpix_spacing, ypix_spacing, zpix_spacing] / wl; % [x, y, z] in wavelengths
+        xnumpix = ceil(round(L / pdelta(1), 9));
+        ynumpix = ceil(round(L / pdelta(2), 9));
+        znumpix = ceil(round((endDepth - startDepth) / pdelta(3), 9));
+        halfProbeDist = (numElements - 1) / 2 * spacingWl;
 
-    grid.z = startDepth * wl + ((1:znumpix) - 1/2) / znumpix * zsize;
-    grid.x = ((1:xnumpix) - (xnumpix + 1)/2) / xnumpix * xsize;
-    grid.y = ((1:ynumpix) - (ynumpix + 1)/2) / ynumpix * ysize;
+        grid.x = (-halfProbeDist + (0 : xnumpix-1) * pdelta(1)) * wl;
+        grid.y = (halfProbeDist - (0 : ynumpix-1) * pdelta(2)) * wl;
+        grid.z = (startDepth + (0 : znumpix-1) * pdelta(3)) * wl;
+    elseif strcmpi(Opts.grid, 'centered')
+        % Same pixel grid as RCA_DAS (pixel centers of a grid spanning the probe, y increasing)
+        znumpix = ceil(zsize / zpix_spacing);
+        xnumpix = ceil(xsize / xpix_spacing);
+        ynumpix = ceil(ysize / ypix_spacing);
+
+        grid.z = startDepth * wl + ((1:znumpix) - 1/2) / znumpix * zsize;
+        grid.x = ((1:xnumpix) - (xnumpix + 1)/2) / xnumpix * xsize;
+        grid.y = ((1:ynumpix) - (ynumpix + 1)/2) / ynumpix * ysize;
+    else
+        error('Unknown grid "%s". Use verasonics or centered.', Opts.grid)
+    end
 
     elementx = (wl .* Trans.ElementPos(1:numElements, 1))';
     elementy = (wl .* Trans.ElementPos(numElements + 1 : numElements*2, 2))';
