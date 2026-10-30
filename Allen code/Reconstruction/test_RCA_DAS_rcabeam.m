@@ -124,6 +124,37 @@ fprintf('At that voxel, absolute vs. first sample phase reference (should be muc
     peak(1), peakFirst(1), peak(2), peakFirst(2), passFail(all(peak > 2 * peakFirst)))
 fprintf('RC + CR vs. single pass sum, relative difference %.2g: %s\n', sumErr, passFail(sumErr < 1e-4))
 
+%% Undersampled Receive.sampleModes
+% The simulated RF above is NS200BW (4 samples per period of the demodulation frequency, here fc). The stored samples of the
+% other modes are subsets of that sample grid (j = 0, 1, ... in each acquisition): BS67BW every 3rd sample, BS100BW j mod 4 in
+% {0, 1}, BS50BW j mod 8 in {0, 1} (Vantage Sequence Programming Manual 3.3.1). The pulse is narrowband enough for all modes,
+% so each should reproduce the NS200BW volume. Assumes the pair of BS100BW/BS50BW starts at the first sample
+modeNames = {'BS67BW', 'BS100BW', 'BS50BW'};
+modeIdx = {1:3:nS, find(mod(0:nS-1, 4) < 2), find(mod(0:nS-1, 8) < 2)};
+oS = base; oS.sumOnly = true;
+IQn = S; % NS200BW, RC + CR
+modeOK = true;
+fprintf('\n%-8s %6s %8s %8s %8s %8s %14s\n', 'mode', 'nS', 'dx um', 'dy um', 'dz um', 'peak', 'rel. diff vs NS')
+for q = 1:numel(modeNames)
+    nSq = numel(modeIdx{q});
+    rfq = zeros(2*na*nSq, 2*N, nf);
+    Pq = P;
+    for a = 1 : 2*na
+        rfq((a-1)*nSq + (1:nSq), :, :) = rf((a-1)*nS + modeIdx{q}, :, :);
+        Pq.Receive(a).startSample = (a-1)*nSq + 1;
+        Pq.Receive(a).endSample = a*nSq;
+        Pq.Receive(a).sampleMode = modeNames{q};
+    end
+    IQq = RCA_DAS_rcabeam(rfq, Pq, pix, pix, pix, oS);
+    [m, ind] = max(reshape(abs(IQq(:, :, :, 1)), [], 1));
+    [ix, iy, iz] = ind2sub(size(IQq, 1:3), ind);
+    err = [grid.x(ix) - scat(1), grid.y(iy) - scat(2), grid.z(iz) - scat(3)] * 1e6;
+    relDiffM = norm(IQq(:) - IQn(:)) / norm(IQn(:));
+    fprintf('%-8s %6d %8.1f %8.1f %8.1f %8.3g %14.3g\n', modeNames{q}, nSq, err, m, relDiffM)
+    modeOK = modeOK && all(abs(err) <= pix * 1e6 / 2) && relDiffM < 0.1;
+end
+fprintf('Undersampled modes reproduce the NS200BW volume (peak on the scatterer voxel, relative difference < 0.1): %s\n', passFail(modeOK))
+
 %% Against the MATLAB port of the CUDA kernel, when the GPU backend was used
 if strcmpi(backend, 'rcabeam')
     o = base; o.backend = 'reference';
