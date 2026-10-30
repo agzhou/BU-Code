@@ -20,7 +20,17 @@
 %           - rcabeam computes the receive delay from the in-plane distance sqrt(z^2 + (v - element)^2) and sums over
 %             the angles inside the kernel, so no per-slice loop is needed (unlike RCA_DAS_ffdas). It does not do
 %             per-angle output (no perAngle) or the Trans.ElementSens weighting that RCA_DAS uses. Opts.fNumber is a
-%             hard receive aperture z/(2 fNumber)
+%             hard receive aperture z/(2 fNumber). By default it is the aperture of the Verasonics recon: it includes an element
+%             if Trans.ElementSens at the angle atan(|v - element| / z) is above Recon.senscutoff (0.6), a binary cutoff that is
+%             a constant f-number (0.788 for the RC15gV). The old default, the full aperture, adds the very oblique channels
+%             of the near field: PDI that is much more cluttered (on the 08-28-2025 AZ01 run 1 data the clutter filtered IQ
+%             correlates 0.70 with the Verasonics one, 0.92 with the Verasonics aperture) and a depth dependent amplitude
+%             (see the amplitude note below)
+%           - Amplitude: the rcabeam sum is plain (no normalization, no weights), so the IQ is about 3e3 times smaller than the
+%             Verasonics IQ, which also has a gain that grows with depth (~ sqrt(z): 1.8e3 at z = 0.5 mm, 2.6e3 at 2.8 mm,
+%             3.9e3 at 6.2 mm, 4.6e3 at 7.9 mm, per voxel independent of x and of the number of active channels; not from the
+%             TGC, which was flat here). With the same aperture the two IQ agree to ~1% per voxel, with an absolute phase offset
+%             of 0, up to that real gain. Compare PDI normalized, or multiply by a gain fitted per depth
 %           - rcabeam shares one list of angles and first-sample times between RC and CR, and takes the same angles
 %             for both. RCA_DAS flips the angles for the second group, which is the same list only when the angles are
 %             symmetric about 0 and the array is square (the RC15gV setup). Otherwise this errors
@@ -48,7 +58,9 @@
 % Opts fields (all optional):
 %   frameChunk       (16)           # of frames per workspace call. The last chunk is zero padded to this size
 %   sumOnly          (false)        one pass that returns the RC+CR sum in IQ_CR. false: two passes (RC, then CR)
-%   fNumber          (0)            receive f-number, <= 0 for the full aperture
+%   fNumber          ('verasonics') receive f-number: |v - element| <= z / (2 fNumber). 'verasonics': the aperture of the Verasonics
+%                                   recon, from Trans.ElementSens and Opts.senscutoff. <= 0 for the full aperture
+%   senscutoff       (0.6)          Recon.senscutoff of the Verasonics recon, for fNumber = 'verasonics'
 %   sampleShift      (0)            samples added to the sample index (e.g., -1 if the model is a sample off)
 %   iqStorage        ('float32')    'float16' halves the packed input memory, lossy
 %   phaseReference   ('absolute')   or 'firstSample' (see Notes)
@@ -86,7 +98,8 @@ function [IQ_CR, IQ_RC, grid] = RCA_DAS_rcabeam(RcvData, P, ypix_spacing, xpix_s
     end
     Opts = setDefault(Opts, 'frameChunk', 16);
     Opts = setDefault(Opts, 'sumOnly', false);
-    Opts = setDefault(Opts, 'fNumber', 0);
+    Opts = setDefault(Opts, 'fNumber', 'verasonics');
+    Opts = setDefault(Opts, 'senscutoff', 0.6);
     Opts = setDefault(Opts, 'sampleShift', 0);
     Opts = setDefault(Opts, 'iqStorage', 'float32');
     Opts = setDefault(Opts, 'phaseReference', 'absolute');
@@ -107,6 +120,7 @@ function [IQ_CR, IQ_RC, grid] = RCA_DAS_rcabeam(RcvData, P, ypix_spacing, xpix_s
     %% Parameters
     Trans = P.Trans;
     Receive = P.Receive;
+    fNumber = resolveFNumber(Opts.fNumber, Trans, Opts.senscutoff);
     na = P.na;
     numElements = P.numElements;
     angles = reshape(P.angles, 1, []);
@@ -214,14 +228,14 @@ function [IQ_CR, IQ_RC, grid] = RCA_DAS_rcabeam(RcvData, P, ypix_spacing, xpix_s
         mod = rcabeam_setup(Opts.pythonExe);
         key = string(sprintf('%d,', [nsIQ, numElements, na, nT, xnumpix, ynumpix, znumpix])) + ...
               string(sprintf('%.12g,', [angles, t0, grid.x([1, end]), grid.y([1, end]), grid.z([1, end]), c, fs, Fd, ...
-                                        Opts.fNumber, elementx, elementy])) + string(Opts.iqStorage);
+                                        fNumber, elementx, elementy])) + string(Opts.iqStorage);
         if isempty(cache) || ~strcmp(cache.key, key)
             if ~isempty(cache)
                 try cache.sess.release(); catch, end
                 cache = [];
             end
             cache.sess = mod.Session(pyvec([nsIQ, numElements, na, nT]), pyvec(angles), pyvec(t0), pyvec(grid.x), ...
-                pyvec(grid.z), pyvec(grid.y), pyvec(elementx), pyvec(elementy), c, fs, Fd, Opts.fNumber, char(Opts.iqStorage));
+                pyvec(grid.z), pyvec(grid.y), pyvec(elementx), pyvec(elementy), c, fs, Fd, fNumber, char(Opts.iqStorage));
             cache.key = key;
         end
         sess = cache.sess;
@@ -269,8 +283,8 @@ function [IQ_CR, IQ_RC, grid] = RCA_DAS_rcabeam(RcvData, P, ypix_spacing, xpix_s
             end
         else
             args = {angles, t0, grid.x, grid.z, grid.y};
-            volCR = rcabeam_reference_beamform(D_cr, 1, args{:}, elementy, c, fs, Fd, Opts.fNumber);
-            volRC = rcabeam_reference_beamform(D_rc, 0, args{:}, elementx, c, fs, Fd, Opts.fNumber);
+            volCR = rcabeam_reference_beamform(D_cr, 1, args{:}, elementy, c, fs, Fd, fNumber);
+            volRC = rcabeam_reference_beamform(D_rc, 0, args{:}, elementx, c, fs, Fd, fNumber);
             if Opts.sumOnly
                 IQ_CR(:, :, :, fi) = sgn(volCR(:, :, :, 1:nfc) + volRC(:, :, :, 1:nfc));
             else
@@ -428,6 +442,32 @@ function a = toBaseband(d, bb, useGPU)
 
     a = bb.L * ifft(Yu, [], 1);
     a = reshape(a, [size(a, 1), sz(2:end)]);
+
+end
+
+
+%% Receive f-number of the Verasonics recon's aperture (or the number given)
+% The Verasonics recon includes an element if the element sensitivity at the angle atan(|dx| / z) is above Recon.senscutoff. With
+% a sensitivity curve sampled on -pi/2..pi/2 the aperture ends at the first sampled angle that is below the cutoff, which is
+% the f-number 1/(2 tan(angle)): 0.788 for the RC15gV's Trans.ElementSens and the cutoff 0.6 (best match to the Verasonics
+% IQ in a scan of the f-number, a sharp peak there)
+function fn = resolveFNumber(v, Trans, cutoff)
+
+    if ischar(v) || isstring(v)
+        if ~strcmpi(v, 'verasonics')
+            error('Opts.fNumber must be a number or "verasonics"')
+        end
+        es = Trans.ElementSens(:)';
+        th = linspace(-pi/2, pi/2, numel(es));
+        k = find(th >= -1e-9 & es < cutoff, 1);
+        if isempty(k) || th(k) <= 0
+            fn = 0; % no angle is cut: full aperture
+        else
+            fn = 1 / (2 * tan(th(k)));
+        end
+    else
+        fn = v;
+    end
 
 end
 

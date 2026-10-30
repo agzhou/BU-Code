@@ -16,7 +16,8 @@
 %   fileNum      RF/IQ file number (default 1)
 %   nFrames      # of frames to compare (default 1000, all of a file). The CPU reference backend is slow, 100-200 is faster
 %   backend      'rcabeam' (GPU, R2026b) or 'reference' (CPU port of the kernel, default when the GPU path isn't available)
-%   fNumber      receive f-number of the rcabeam recon (default 0.731 = 1/(2*tan(0.6)), the Verasonics Recon.senscutoff of 0.6 rad)
+%   fNumber      receive f-number of the rcabeam recon (default 'verasonics': the aperture of the Verasonics Recon.senscutoff of 0.6,
+%                from Trans.ElementSens, 0.788 for the RC15gV)
 %   svRange      [lower, upper] singular value cut for the clutter filter (default [30, nFrames], like IQ2g1T_3D_loop.m)
 %   zRange       z voxels to process (default [20, 124])
 %   cacheFile    .mat file to keep the rcabeam IQ in, so a rerun skips the reconstruction
@@ -34,7 +35,7 @@ if exist('backend', 'var') ~= 1
         if ~isMATLABReleaseOlderThan("R2026b"), backend = 'rcabeam'; end
     end
 end
-if exist('fNumber', 'var') ~= 1, fNumber = 1 / (2 * tan(0.6)); end
+if exist('fNumber', 'var') ~= 1, fNumber = 'verasonics'; end
 if exist('svRange', 'var') ~= 1, svRange = [30, nFrames]; end
 if exist('zRange', 'var') ~= 1, zRange = [20, 124]; end
 if exist('cacheFile', 'var') ~= 1, cacheFile = ''; end
