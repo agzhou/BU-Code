@@ -26,6 +26,10 @@ if exist('sfRate', 'var')
     P.sfRate = sfRate;
 end
 
+if exist('fsFileName', 'var')
+    P.fsFileName = fsFileName;
+end
+
 P.numElements = numElements;
 P.Receive = Receive;
 P.Resource = Resource;

@@ -11,7 +11,8 @@ clear
 
 % cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 % cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.7-2505271400'
-cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
+% cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
+cd 'C:\Verasonics\Vantage Releases\Vantage-5.0.1-p1'
 % cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000\Allen code\12-18-2024 RCA acq testing'
 
 activate
@@ -794,7 +795,7 @@ frameRateFactor = 1;
 currentDir = cd; currentDir = regexp(currentDir, filesep, 'split');
 filename = 'RC15gV_Allen_loop_live.mat';
 
-save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+filename);
+save(fullfile(currentDir{1:find(contains(currentDir,"Vantage-"),1)})+"\MatFiles\"+filename);
 
 
 %% Run VSX automatically and make parameter structure for RF file naming

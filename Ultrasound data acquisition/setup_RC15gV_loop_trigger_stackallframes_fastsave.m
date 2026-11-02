@@ -18,53 +18,54 @@ codeDir = cd;
 codeDir_split = split(string(codeDir), filesep);
 % AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\Verasonics");
 AcquisitionCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Ultrasound data acquisition");
-addpath(AcquisitionCodePath)
+AirPuffCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen code\Air Puff");
+addpath(AcquisitionCodePath); addpath(AirPuffCodePath)
 
-addpath('C:\Users\BOAS-US\Documents\GitHub\BU-Code\Allen code\Air Puff\')
-
-cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
+% cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
+cd 'C:\Verasonics\Vantage Releases\Vantage-5.0.1-p1'
 % cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 % cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
 activate
 
-Resource.VDAS.acqTimeTagEnable = true; % Enable RF time tags
+% Resource.VDAS.acqTimeTagEnable = true; % Enable RF time tags
 
-savepath = uigetdir('F:\', 'Select the save path');
+savepath = uigetdir('D:\', 'Select the parameter save path');
 savepath = [savepath, '\'];
 
 parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use air puff (0-no, 1-yes)', 'Probe connector', 'SSD write speed [GB/s]', 'Probe aperture [mm]', 'Time per superframe [s]', 'ADC Sampling Mode (50, 67, 100, 200% of center frequency)', 'Number of buffers'}; % 'Save RF data (0-no, 1-yes)', 
 % -- 5 x 2 angles -- %
 % 200% BW, fewer frames per buffer
-% parameterDefaults = {'30', '1', '8', '47000', '4900', '5', '6', '13.6', '1540', '0', '1', '400', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '200', '3'};
-% parameterDefaults = {'30', '1', '8', '47000', '4900', '5', '6', '15.625', '1540', '0', '1', '360', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '200', '3'};
+% parameterDefaults = {'30', '1', '8', '47000', '4900', '5', '6', '13.6', '1540', '0', '1', '400', '0', 'UTA-408GE', '14.5', '8.8', '1.5', '200', '3'};
+% parameterDefaults = {'30', '1', '8', '47000', '4900', '5', '6', '15.625', '1540', '0', '1', '360', '0', 'UTA-408GE', '14.5', '8.8', '1.5', '200', '3'};
 % 67% BW, more frames per buffer
-% parameterDefaults = {'30', '1', '8', '47000', '4900', '5', '6', '13.6', '1540', '0', '1', '1000', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
-% parameterDefaults = {'30', '1', '8', '47000', '4900', '5', '6', '15.625', '1540', '0', '1', '1000', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
-% parameterDefaults = {'30', '2', '8', '36000', '3500', '5', '6', '15.625', '1540', '0', '1', '1000', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
+% parameterDefaults = {'30', '1', '8', '47000', '4900', '5', '6', '13.6', '1540', '0', '1', '1000', '0', 'UTA-408GE', '14.5', '8.8', '1.5', '67', '3'};
+% parameterDefaults = {'30', '1', '8', '47000', '4900', '5', '6', '15.625', '1540', '0', '1', '1000', '0', 'UTA-408GE', '14.5', '8.8', '1.5', '67', '3'};
+% parameterDefaults = {'30', '2', '8', '36000', '3500', '5', '6', '15.625', '1540', '0', '1', '1000', '0', 'UTA-408GE', '14.5', '8.8', '1.5', '67', '3'};
+parameterDefaults = {'30', '2', '8', '36000', '3500', '5', '6', '15.625', '1540', '0', '1', '1000', '0', 'UTA-408GE', '14.5', '8.8', 'continuous', '67', '3'};
 % ** Grating lobe suppression ** %
-% parameterDefaults = {'30', '1', '8', '47000', '4900', '5', '0.9626', '15.625', '1540', '0', '1', '1000', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
+% parameterDefaults = {'30', '1', '8', '47000', '4900', '5', '0.9626', '15.625', '1540', '0', '1', '1000', '0', 'UTA-408GE', '14.5', '8.8', '1.5', '67', '3'};
 
 % -- 11 x 2 angles -- %
 % 200% BW, fewer frames per buffer
-% parameterDefaults = {'30', '1', '8', '47000', '2000', '11', '6', '13.6', '1540', '0', '1', '180', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '200', '3'};
+% parameterDefaults = {'30', '1', '8', '47000', '2000', '11', '6', '13.6', '1540', '0', '1', '180', '0', 'UTA-408GE', '14.5', '8.8', '1.5', '200', '3'};
 % 67% BW, more frames per buffer
-% parameterDefaults = {'30', '1', '8', '47000', '2000', '11', '6', '13.6', '1540', '0', '1', '490', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
+% parameterDefaults = {'30', '1', '8', '47000', '2000', '11', '6', '13.6', '1540', '0', '1', '490', '0', 'UTA-408GE', '14.5', '8.8', '1.5', '67', '3'};
 
 % -- 21 x 2 angles -- %
 % 200% BW, fewer frames per buffer
-% parameterDefaults = {'30', '1', '8', '47000', '1000', '21', '9', '15.625', '1540', '0', '1', '90', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '200', '3'};
+% parameterDefaults = {'30', '1', '8', '47000', '1000', '21', '9', '15.625', '1540', '0', '1', '90', '0', 'UTA-408GE', '14.5', '8.8', '1.5', '200', '3'};
 % 67% BW, more frames per buffer
-% parameterDefaults = {'30', '1', '8', '47000', '1000', '21', '9', '15.625', '1540', '0', '1', '200', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
+% parameterDefaults = {'30', '1', '8', '47000', '1000', '21', '9', '15.625', '1540', '0', '1', '200', '0', 'UTA-408GE', '14.5', '8.8', '1.5', '67', '3'};
 
 % -- Sauvage et al. 2020 -- %
 % da = getAngularPitch(1540/15.625e6, 8.8e-3);
 % maxAngle = da*(na - 1)/2;
 % 200% BW, fewer frames per buffer
-% parameterDefaults = {'30', '1', '8', '20000', '312', '31', '9.6257', '15.625', '1540', '0', '1', '50', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '200', '3'};
-% parameterDefaults = {'30', '1', '8', '47000', '700', '31', '9.6257', '15.625', '1540', '0', '1', '50', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '200', '3'};
+% parameterDefaults = {'30', '1', '8', '20000', '312', '31', '9.6257', '15.625', '1540', '0', '1', '50', '0', 'UTA-408GE', '14.5', '8.8', '1.5', '200', '3'};
+% parameterDefaults = {'30', '1', '8', '47000', '700', '31', '9.6257', '15.625', '1540', '0', '1', '50', '0', 'UTA-408GE', '14.5', '8.8', '1.5', '200', '3'};
 % 67% BW, more frames per buffer
-parameterDefaults = {'30', '1', '8', '20000', '312', '31', '9.6257', '15.625', '1540', '0', '1', '156', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
-% parameterDefaults = {'30', '1', '8', '47000', '700', '31', '9.6257', '15.625', '1540', '0', '1', '156', '0', 'UTA-408GE', '1.45', '8.8', '1.5', '67', '3'};
+% parameterDefaults = {'30', '1', '8', '20000', '312', '31', '9.6257', '15.625', '1540', '0', '1', '156', '0', 'UTA-408GE', '14.5', '8.8', '1.5', '67', '3'};
+% parameterDefaults = {'30', '1', '8', '47000', '700', '31', '9.6257', '15.625', '1540', '0', '1', '156', '0', 'UTA-408GE', '14.5', '8.8', '1.5', '67', '3'};
 
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
@@ -87,6 +88,7 @@ speedOfSound = str2double(parameterUserInput{9});
 simMode = str2double(parameterUserInput{10});
 saveRcvDataFlag = str2double(parameterUserInput{11});
 numFramesPerSF = str2double(parameterUserInput{12});
+
 if mod(numFramesPerSF, 2) ~= 0
     error('# of frames per SF must be even')
 end
@@ -99,7 +101,13 @@ SSDWriteRate = str2double(parameterUserInput{15});
 apertureMM = str2double(parameterUserInput{16});
 % apertureMM = 12.8; % Use some subset of the probe elements [mm]
 % apertureMM = 8;
-TimePerSF = str2double(parameterUserInput{17});
+
+% Auto-calculate superframe length if continuous measurement is specified
+if isequal(parameterUserInput{17}, 'continuous')
+    TimePerSF = numFramesPerSF / frameRate;
+else
+    TimePerSF = str2double(parameterUserInput{17});
+end
 sfRate = 1/TimePerSF; % Superframe rate [Hz]
 
 ADC_sampleModeNumber = str2double(parameterUserInput{18}); % Options: 50, 67, 100, 200 (% of center frequency)
@@ -125,7 +133,8 @@ else
 end
 
 % ---- FastSave required variables ---- %
-fsDriveNames = {'C:\', 'D:\','E:\'}; % Drive names
+% fsDriveNames = {'C:\', 'D:\','E:\'}; % Drive names
+fsDriveNames = {'D:\','E:\'}; % Drive names
 fsFileName = ['RF-', num2str(round(maxAngle)), '-', num2str(na), '-', num2str(round(frameRate)), '-', num2str(numFramesPerSF), '-']; % Filename template (FastSave adds file numbers)
 
 % numAngles = length(angles);
@@ -145,6 +154,12 @@ Resource.Parameters.speedOfSound = speedOfSound; % speed of sound in m/s, the 15
 % previously acquired frame and to start acquiring the next.  Acquisition, data transfer and 
 % processing are then all occurring at the same time, but using different data - a process 
 % known as pipelining.
+
+%% enable time tag
+TimeTagEna = 2;
+% 0: disable
+% 1: enable but don't reset counter
+% 2: enable and reset counter
 
 %% 1.5. Specify the functional stimulus parameters
 if useTriggers
@@ -464,6 +479,8 @@ end
 disp("===============================")
 
 %% Process structures
+% Save an initial computer clock 'datetime' variable when the acquisition
+% starts
 Process(1).classname = 'External';
 Process(1).method = 'saveTimetag';
 Process(1).Parameters = {'srcbuffer', 'none', ...
@@ -472,7 +489,7 @@ nprevproc = 1; % number of previous Processes
 
 for nbuf = 1:numBuffers
     Process(nbuf + nprevproc).classname = 'External';
-    Process(nbuf + nprevproc).method = 'saveRcvData_timetag'; % Function name
+    Process(nbuf + nprevproc).method = 'fastsave'; % Verasonics FastSave
     % Process(1).Parameters = {'srcbuffer', 'bufferName', ...
     %                          'srcbufnum', 1, ... % # of buffer to process
     %                          'srcframenum', 1, ... % starting frame #
@@ -484,10 +501,32 @@ for nbuf = 1:numBuffers
     %                          'dstsectionnum', 1, ...
     %                          'dstpagenum', 1};
     
-    Process(nbuf + nprevproc).Parameters = {'srcbuffer', 'receive', ...
+    Process(nbuf + nprevproc).Parameters = {...
+                             'srcbuffer', 'receive', ...
                              'srcbufnum', nbuf, ... % # of buffer to process
+                             'srcframenum', -1, ... % process the last frame in a RcvBuffer
                              'dstbuffer', 'none'};
 end
+
+
+% for nbuf = 1:numBuffers
+%     Process(nbuf + nprevproc).classname = 'External';
+%     Process(nbuf + nprevproc).method = 'saveRcvData_timetag'; % Function name
+%     % Process(1).Parameters = {'srcbuffer', 'bufferName', ...
+%     %                          'srcbufnum', 1, ... % # of buffer to process
+%     %                          'srcframenum', 1, ... % starting frame #
+%     %                          'srcsectionnum', 1, ...
+%     %                          ' srcpagenum', 1, ...
+%     %                          'dstbuffer', 'bufferName', ... % destination buf
+%     %                          'dstbufnum', 1, ...
+%     %                          'dstframenum', 1, ...
+%     %                          'dstsectionnum', 1, ...
+%     %                          'dstpagenum', 1};
+% 
+%     Process(nbuf + nprevproc).Parameters = {'srcbuffer', 'receive', ...
+%                              'srcbufnum', nbuf, ... % # of buffer to process
+%                              'dstbuffer', 'none'};
+% end
 
 %% Store a select couple of parameters into a structure for updating the save data's filename
 makeParameterStructureSmall_functional;
@@ -708,7 +747,7 @@ for nbuf = 1:numBuffers
     if saveRcvDataFlag
         n = n + 1;
     
-        Event(n).info = 'Save data - ext proc func';
+        Event(n).info = 'Save data - FastSave';
         Event(n).tx = 0; 
         Event(n).rcv = 0; 
         Event(n).recon = 0;
@@ -766,9 +805,9 @@ Event(n).seqControl = 3;
 
 %% Save all the data/structures to a .mat file.
 currentDir = cd; currentDir = regexp(currentDir, filesep, 'split');
-filename = 'RC15gV_Allen_loop_functional_buffers.mat';
+filename = 'RC15gV_Allen_loop_functional_buffers_fastsave.mat';
 
-save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+filename);
+save(fullfile(currentDir{1:find(contains(currentDir,"Vantage-"),1)})+"\MatFiles\"+filename);
 
 %% Run the air puff script before running VSX
 if useTriggers
@@ -777,37 +816,37 @@ if useTriggers
     savefast([savepath, 'daqStartTimetag'], 'daqStartTimetag')
 end
 
-% %% Initialize time tagging if enabled
-% import com.verasonics.hal.hardware.*
-% switch TimeTagEna
-%     case 0
-%         % disable time tag
-%         rc = Hardware.enableAcquisitionTimeTagging(false);
-%         if ~rc
-%             error('Error from enableAcqTimeTagging')
-%         end
-%         tagstr = 'off';
-%     case 1
-%         % enable time tag
-%         rc = Hardware.enableAcquisitionTimeTagging(true);
-%         if ~rc
-%             error('Error from enableAcqTimeTagging')
-%         end
-%         tagstr = 'on';
-%         disp('**** Time tagging enabled on mode 1 ****')
-%     case 2
-%         % enable time tag and reset counter
-%         rc = Hardware.enableAcquisitionTimeTagging(true);
-%         if ~rc
-%             error('Error from enableAcqTimeTagging')
-%         end
-%         rc = Hardware.setTimeTaggingAttributes(false, true); % reset hardware counter to 0 (otherwise, it continuously counts up from system bootup until it gets to 107,000s - see p37 of User Manual
-%         if ~rc
-%             error('Error from setTimeTaggingAttributes')
-%         end
-%         tagstr = 'on, reset';
-%         disp('**** Time tagging enabled on mode 2 ****')
-% end
+%% Initialize time tagging if enabled
+import com.verasonics.hal.hardware.*
+switch TimeTagEna
+    case 0
+        % disable time tag
+        rc = Hardware.enableAcquisitionTimeTagging(false);
+        if ~rc
+            error('Error from enableAcqTimeTagging')
+        end
+        tagstr = 'off';
+    case 1
+        % enable time tag
+        rc = Hardware.enableAcquisitionTimeTagging(true);
+        if ~rc
+            error('Error from enableAcqTimeTagging')
+        end
+        tagstr = 'on';
+        disp('**** Time tagging enabled on mode 1 ****')
+    case 2
+        % enable time tag and reset counter
+        rc = Hardware.enableAcquisitionTimeTagging(true);
+        if ~rc
+            error('Error from enableAcqTimeTagging')
+        end
+        rc = Hardware.setTimeTaggingAttributes(false, true); % reset hardware counter to 0 (otherwise, it continuously counts up from system bootup until it gets to 107,000s - see p37 of User Manual
+        if ~rc
+            error('Error from setTimeTaggingAttributes')
+        end
+        tagstr = 'on, reset';
+        disp('**** Time tagging enabled on mode 2 ****')
+end
 
 %% Run VSX automatically and make parameter structure for RF file naming
 
