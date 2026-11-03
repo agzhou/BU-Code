@@ -20,6 +20,9 @@ RFcount = countFiles(RFName, RFPath); % Count # of RF files in the path
 %% Main Loop
 fileInfo = strsplit(RFName,'-');
 
+temp = strsplit(fileInfo(end), '.');
+startFileInd = str2double(temp(1));
+
 % Framewise time tags
 % RFtimeTags = zeros(str2double(fileInfo{5}), P.Resource.Parameters.numRcvChannels, RFcount);
 
@@ -41,11 +44,12 @@ for iFrame = 1:P.numFramesPerBuffer
     end
 end
 %%
-for iFile = 1:RFcount
+for iFile = startFileInd:RFcount + startFileInd - 1
 % for iFile = 1:4
 
     iFileInfo = fileInfo;
-    iFileInfo{end} = [sprintf( '%05d', iFile - 1), '.rf']; % fastsave indexes from 0 and zero pads to 5 digits
+    % iFileInfo{end} = [sprintf( '%05d', iFile - 1), '.rf']; % fastsave indexes from 0 and zero pads to 5 digits
+    iFileInfo{end} = [sprintf( '%05d', iFile), '.rf']; % fastsave indexes from 0 and zero pads to 5 digits
     iFileName = strjoin(iFileInfo, '-');
     
     % Load the .rf binary file
@@ -56,7 +60,7 @@ for iFile = 1:RFcount
     disp('Data loaded!');
     
     for iFrame = 1:P.numFramesPerBuffer
-        RFtimeTags(iFrame, :, iFile) = readTimeTags(RFData(startSamples(iFrame):endSamples(iFrame), :));
+        RFtimeTags(iFrame, :, iFile - startFileInd + 1) = readTimeTags(RFData(startSamples(iFrame):endSamples(iFrame), :));
     end
 end
 
