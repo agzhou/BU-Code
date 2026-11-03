@@ -28,6 +28,7 @@ end
 
 if exist('fsFileName', 'var')
     P.fsFileName = fsFileName;
+    P.fsDriveNames = fsDriveNames;
 end
 
 P.numElements = numElements;
