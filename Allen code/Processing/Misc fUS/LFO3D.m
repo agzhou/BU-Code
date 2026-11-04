@@ -181,6 +181,28 @@ end
 % PDIrs = permute(interp1(sfCenters(1:size(PDIallSF{3}, 4)), permute(PDIallSF{3}, [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
 % % CDIrs = permute(interp1(sfCenters, permute(abs(CDIallSF{3}), [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
 
+%% Wavelet transform --> scalogram
+vs = [length(voxelRange{1}), length(voxelRange{2}), length(voxelRange{3})]; % Volume size [voxels]
+num_voxels = prod(vs);
+% FOR NOW: assume the superframe rate is constant
+sfRate = 1/median(diff(sfStarts)); % Superframe rate [Hz]
+
+nsf = length(sfCenters); % # of superframes
+fb = cwtfilterbank('SignalLength', nsf, 'SamplingFrequency', sfRate, 'Wavelet', 'amor', 'Boundary', 'reflection'); % , 'TimeBandwidth', 20
+
+% test = cwt(squeeze(PDIallSF{3}(40, 40, 40, :)), 'amor', sfRate);
+% [test, faxis] = cwt(squeeze(PDIallSF{3}(40, 40, 40, :)), 'FilterBank', fb);
+
+PDIallSF_stacked = single(reshape(PDIallSF{3}, [num_voxels, nsf]));
+[~, faxis] = cwt(squeeze(PDIallSF_stacked(1, :)), 'FilterBank', fb); num_freqs = length(faxis);
+% num_freqs = 48; warning('hard coded num_freqs')
+
+PDI_scalogram = zeros([num_voxels, num_freqs, nsf], 'single');
+% parfor vi = 1:num_voxels
+parfor vi = 1:100
+    PDI_scalogram(vi, :, :) = cwt(squeeze(PDIallSF_stacked(vi, :)), 'FilterBank', fb);
+end
+
 %% Make a spectrogram of PDI
 vs = [length(voxelRange{1}), length(voxelRange{2}), length(voxelRange{3})]; % Volume size [voxels]
 % FOR NOW: assume the superframe rate is constant
