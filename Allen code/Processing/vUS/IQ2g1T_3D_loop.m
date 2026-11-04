@@ -5,7 +5,7 @@
 clearvars
 
 %% 1. Load acquisition parameters, timing info, beamforming parameters, etc.
-IQpath = uigetdir('G:\', 'Select the IQ data path');
+IQpath = uigetdir('D:\', 'Select the IQ data path');
 IQpath = [IQpath, '\'];
 
 codeDir = cd;
