@@ -197,12 +197,42 @@ PDIallSF_stacked = single(reshape(PDIallSF{3}, [num_voxels, nsf]));
 [~, faxis] = cwt(squeeze(PDIallSF_stacked(1, :)), 'FilterBank', fb); num_freqs = length(faxis);
 % num_freqs = 48; warning('hard coded num_freqs')
 
+
 PDI_scalogram = zeros([num_voxels, num_freqs, nsf], 'single');
-% parfor vi = 1:num_voxels
-parfor vi = 1:100
+tic
+for vi = 1:num_voxels
+% for vi = 1:1
     PDI_scalogram(vi, :, :) = cwt(squeeze(PDIallSF_stacked(vi, :)), 'FilterBank', fb);
 end
+toc
 
+%% Accelerated scaleogram code?
+fb = cwtfilterbank('SignalLength', nsf, 'SamplingFrequency', sfRate, 'Wavelet', 'amor', 'Boundary', 'reflection');
+%   Optional, big speedup + memory saving if you only care about the LFO band:
+%   ..., 'FrequencyLimits', [fLow fHigh])
+
+cwtOutput = "abs";     % "complex" (phase kept) | "abs" | "abs2"; abs is ~2x faster and half the memory
+useGPU    = gpuDeviceCount > 0;
+chunkSize = 5000;      % voxels per batch; lower this if the GPU/RAM runs out
+
+PDIallSF_stacked = single(reshape(PDIallSF{3}, [num_voxels, nsf])).';   % [time x voxels], time down the columns
+SP = cwtPrepare(fb, 'single');                                      % filters pulled out once (self-checks against cwt)
+faxis = SP.faxis; num_freqs = numel(faxis);
+if useGPU, SP.psiT = gpuArray(SP.psiT); end
+
+voxelsToRun = 1:num_voxels;           % e.g. replace with find(brainMask(:)) to skip voxels outside the brain
+if cwtOutput == "complex", outCls = complex(zeros(1, 'single')); else, outCls = zeros(1, 'single'); end
+PDI_scalogram_T = zeros(nsf, numel(voxelsToRun), num_freqs, 'like', outCls);   % [time x voxel x freq]
+
+for s = 1:chunkSize:numel(voxelsToRun)
+    ii = s:min(s+chunkSize-1, numel(voxelsToRun));
+    Xc = PDIallSF_stacked(:, voxelsToRun(ii));
+    if useGPU, Xc = gpuArray(Xc); end
+    PDI_scalogram_T(:, ii, :) = gather(cwtBatchedCore(Xc, SP, cwtOutput));
+end
+
+% Reshape to ny, nx, nz, nT, num_freqs
+PDI_scalogram = reshape(permute(PDI_scalogram_T, [2 1 3]), [vs, nsf, num_freqs]);   % makes a full copy -> mind memory
 %% Make a spectrogram of PDI
 vs = [length(voxelRange{1}), length(voxelRange{2}), length(voxelRange{3})]; % Volume size [voxels]
 % FOR NOW: assume the superframe rate is constant
@@ -224,4 +254,5 @@ end
 figure; imagesc(sfStarts(1:nw), faxis, abs(squeeze(s(40, 40, 40, :, :)))'); axis xy; xlabel('Time [s]'); ylabel('Frequency [Hz]')
 
 %% Inspect the spectrogram per voxel
-voxelSpectrogramGUI(s, PDIA{3}.^0.5, 'Time', sfStarts(1:nw), 'Freq', faxis, 'Colormap', 'turbo')
+% voxelSpectrogramGUI(s, PDIA{3}.^0.5, 'Time', sfStarts(1:nw), 'Freq', faxis, 'Colormap', 'turbo')
+voxelSpectrogramGUI(PDI_scalogram, PDIA{3}.^0.5, 'Time', sfStarts, 'Freq', faxis, 'Colormap', 'turbo')
