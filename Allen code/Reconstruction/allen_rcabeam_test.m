@@ -85,15 +85,27 @@ d_correction_1way = Trans.lensCorrection * wl; % TX and RX each pass through the
 pathConst = wl * P.TW.peak + 2 * d_correction_1way - 2 * P.startDepth * wl;
 t0 = -(pathConst + x_end * abs(sin(angles))) / c;
 
-RF = RF_LPF .* repmat(exp(-1i.*2.*pi .* demodFreq .* t0), 1, 2);
+IQ = RF_LPF .* repmat(exp(-1i.*2.*pi .* demodFreq .* t0), 1, 2); % Non-beamformed IQ
 
 
-%% Pass the demodulated but nonbeamformed data to the GPU
-RFG = gpuArray(RF);
-RFG_cupy = pycupyarray(RFG);
+%% Set up the Python environment?
+pyenv("Version", "C:\Users\agzhou\AppData\Local\Python\pythoncore-3.13-64\python.exe", ExecutionMode="OutOfProcess");
 
+%%
+module = rcabeam_setup("C:\Users\agzhou\AppData\Local\Python\pythoncore-3.13-64\python.exe");
+pyvec = @(v) py.list(num2cell(double(v(:)'))); % Function to convert a Matlab vector into a Python list
+
+
+
+%% Pass the demodulated but nonbeamformed IQ data to the GPU
+IQ_RC_gpu = gpuArray(IQ(:, 1:na, numElements+1:2*numElements, :));
+IQ_CR_gpu = gpuArray(IQ(:, na + 1:2*na, 1:numElements, :));
+IQ_RC_cupy = pycupyarray(IQ_RC_gpu);
+IQ_CR_cupy = pycupyarray(IQ_CR_gpu);
+
+volSum = rcabeam_from_py(sess.beamform_sum(IQ_RC_cupy, IQ_CR_cupy), want);
 %% Run the rcabeam beamforming function
-BF = py.opw(RFG_cupy);
+BF = py.opw(IQ_cupy);
 
 %% Convert the output back to a Matlab array (gpu or cpu)
-IQ = gather(BF);
+IQ_BF = gather(BF);
