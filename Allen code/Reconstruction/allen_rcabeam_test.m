@@ -60,22 +60,23 @@ sampleVec = (0:numRFSamples-1).';
 tSample = sampleVec ./ decimSampleRate; % [Micro]-Time corresponding to each sample
 
 % Demodulate (remove carrier) in the time domain
-RF_demod = single(RFData) .* exp(1i.*2.*pi.* -demodFreq .* tSample);
+RF_demod = 2.* single(RFData) .* exp(1i.*2.*pi.* -demodFreq .* tSample); % Multiply by 2 because the original signal is real{envelope * exp(2j*pi*demodFreq*t)} = 1/2*envelope * exp(2j*pi*demodFreq*t) + 1/2*envelope * exp(-2j*pi*demodFreq*t) --> property of complex numbers. Then, demodulating gives you 1/2*envelope + 1/2*envelope*exp(-4j*pi*demodFreq*t), and you keep the first term
 
 % FFT and lowpass the demodulated RF
 RFFD = fft(RF_demod, numRFSamples, sampleDim); % RF in the frequency domain
 BW = abs(diff(P.Trans.Bandwidth)) * 1e6; % Bandwidth of the probe [Hz]
 faxis = linspace(-decimSampleRate/2, decimSampleRate/2, size(RFFD, sampleDim));
-LPF_mask = abs(faxis) <= BW/2;
+LPF_mask = abs(faxis) <= min(BW/2, decimSampleRate/4);
 % figure; yyaxis left; plot(faxis, abs(RFFD(:, 1, 120, 1))); yyaxis right; plot(faxis, LPF_mask)
 RFFD_LPF = fftshift(RFFD, sampleDim); RFFD_LPF(~LPF_mask, :, :, :) = 0; % Apply the low pass filter
 % figure; yyaxis left; plot(faxis, abs(RFFD_LPF(:, 1, 120, 1))); yyaxis right; plot(faxis, LPF_mask)
 
-RF = ifft(ifftshift(RFFD_LPF, sampleDim), [], sampleDim);
+RF_LPF = ifft(ifftshift(RFFD_LPF, sampleDim), [], sampleDim);
 
 % Get the start sample time of each acquisition and shift the RF for each
 % acquisition accordingly (start sample time wrt each acquisition
-% corresponds to the first element that fired
+% corresponds to the first element that fired). Phase depends on the
+% carrier frequency, demodFreq.
 elementx = (wl .* Trans.ElementPos(1:numElements, 1))';
 elementy = (wl .* Trans.ElementPos(numElements + 1 : numElements*2, 2))';
 x_end = max(elementx); % End element position [m]
@@ -84,8 +85,7 @@ d_correction_1way = Trans.lensCorrection * wl; % TX and RX each pass through the
 pathConst = wl * P.TW.peak + 2 * d_correction_1way - 2 * P.startDepth * wl;
 t0 = -(pathConst + x_end * abs(sin(angles))) / c;
 
-RF = RF .* repmat(exp(1i.*2.*pi .* decimSampleRate .* t0), 1, 2);
-%% I/Q Demodulation
+RF = RF_LPF .* repmat(exp(-1i.*2.*pi .* demodFreq .* t0), 1, 2);
 
 
 %% Pass the demodulated but nonbeamformed data to the GPU
