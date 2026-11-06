@@ -101,20 +101,20 @@ xpix_spacing = Trans.spacingMm/1e3;
 ypix_spacing = Trans.spacingMm/1e3;
 zpix_spacing = 0.5 * wl;
 
-znumpix = ceil(zsize / zpix_spacing);
-xnumpix = ceil(xsize / xpix_spacing);
-ynumpix = ceil(ysize / ypix_spacing);
+nz = ceil(zsize / zpix_spacing);
+nx = ceil(xsize / xpix_spacing);
+ny = ceil(ysize / ypix_spacing);
 
-grid.z = P.startDepth * wl + ((1:znumpix) - 1/2) / znumpix * zsize;
-grid.x = ((1:xnumpix) - (xnumpix + 1)/2) / xnumpix * xsize;
-grid.y = ((1:ynumpix) - (ynumpix + 1)/2) / ynumpix * ysize;
+grid.z = P.startDepth * wl + ((1:nz) - 1/2) / nz * zsize;
+grid.x = ((1:nx) - (nx + 1)/2) / nx * xsize;
+grid.y = ((1:ny) - (ny + 1)/2) / ny * ysize;
 
 %% Set up the Python environment?
 pyenv("Version", "C:\Users\agzhou\AppData\Local\Python\pythoncore-3.13-64\python.exe", ExecutionMode="OutOfProcess");
 np = py.importlib.import_module('numpy');
 rcb = py.importlib.import_module('rcabeam');
 
-%%
+%% A more simple method to use rcabeam
 geom = rcb.RCAGeometry(np.array(elementx), np.array(elementy), pyargs( ...
     'c', 1540.0, 'fs', decimSampleRate, 'f_demod', demodFreq, 'fnumber', 1.0));
 pygrid = py.tuple({np.array(grid.x), np.array(grid.z), np.array(grid.y)});
@@ -128,21 +128,31 @@ BF = rcb.beamform_ensemble(np.array(rc), np.array(cr), np.array(angles), ...
 toc
 
 IQ_BF = permute(double(BF), [1, 3, 2, 4]);
-%%
-module = rcabeam_setup("C:\Users\agzhou\AppData\Local\Python\pythoncore-3.13-64\python.exe");
+
+%% A more complicated but faster method to use rcabeam
+mod = rcabeam_setup("C:\Users\agzhou\AppData\Local\Python\pythoncore-3.13-64\python.exe");
 pyvec = @(v) py.list(num2cell(double(v(:)'))); % Function to convert a Matlab vector into a Python list
 
+f_number = 1.0;
+fs = decimSampleRate;
 
+% Create a persistent Session that allocates GPU buffers...
+sess = mod.Session(pyvec([numRFSamples, numElements, na, nf]), pyvec(angles), pyvec(t0), ...
+    pyvec(grid.x), pyvec(grid.z), pyvec(grid.y), pyvec(elementx), pyvec(elementy), ...
+    c, fs, demodFreq, f_number, 'float32');               % 0.788 = Verasonics-equivalent f-number
 
-%% Pass the demodulated but nonbeamformed IQ data to the GPU
-IQ_RC_gpu = gpuArray(IQ(:, 1:na, numElements+1:2*numElements, :));
-IQ_CR_gpu = gpuArray(IQ(:, na + 1:2*na, 1:numElements, :));
-IQ_RC_cupy = pycupyarray(IQ_RC_gpu);
-IQ_CR_cupy = pycupyarray(IQ_CR_gpu);
+% Pass the demodulated but nonbeamformed IQ data to the GPU
+IQ_RC_gpu = gpuArray(permute(IQ(:, 1:na, numElements+1:2*numElements, :), [4, 2, 3, 1]));
+IQ_CR_gpu = gpuArray(permute(IQ(:, na + 1:2*na, 1:numElements, :), [4, 2, 3, 1]));
+% IQ_RC_cupy = pycupyarray(IQ_RC_gpu);
+% IQ_CR_cupy = pycupyarray(IQ_CR_gpu);
 
-volSum = rcabeam_from_py(sess.beamform_sum(IQ_RC_cupy, IQ_CR_cupy), want);
-%% Run the rcabeam beamforming function
-BF = py.opw(IQ_cupy);
+% IQ_RC_gpu, IQ_CR_gpu: gpuArray complex single [nT, na, nc, nsIQ]
+tic
+vol = rcabeam_from_py(sess.beamform_sum(pycupyarray(IQ_RC_gpu), pycupyarray(IQ_CR_gpu)), [nx ny nz nf]);
 
-%% Convert the output back to a Matlab array (gpu or cpu)
-IQ_BF = gather(BF);
+% Convert the output back to a Matlab array (gpu or cpu)
+IQ_BF_c = gather(conj(vol));                               % conj = Verasonics convention
+toc
+sess.release();
+
