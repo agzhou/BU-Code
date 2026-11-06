@@ -87,9 +87,39 @@ t0 = -(pathConst + x_end * abs(sin(angles))) / c;
 
 IQ = RF_LPF .* repmat(exp(-1i.*2.*pi .* demodFreq .* t0), 1, 2); % Non-beamformed IQ
 
+%% Reconstruction region (same pixel grid as RCA_DAS)
+% Extents of the region
+xsize = numElements * Trans.spacingMm / 1e3;
+ysize = xsize;
+zsize = (P.endDepth - P.startDepth) * wl;
+
+% Same pixel grid as RCA_DAS (pixel centers of a grid spanning the probe, y increasing)
+xpix_spacing = 0.5 * wl;
+ypix_spacing = 0.5 * wl;
+zpix_spacing = 0.5 * wl;
+
+znumpix = ceil(zsize / zpix_spacing);
+xnumpix = ceil(xsize / xpix_spacing);
+ynumpix = ceil(ysize / ypix_spacing);
+
+grid.z = P.startDepth * wl + ((1:znumpix) - 1/2) / znumpix * zsize;
+grid.x = ((1:xnumpix) - (xnumpix + 1)/2) / xnumpix * xsize;
+grid.y = ((1:ynumpix) - (ynumpix + 1)/2) / ynumpix * ysize;
 
 %% Set up the Python environment?
 pyenv("Version", "C:\Users\agzhou\AppData\Local\Python\pythoncore-3.13-64\python.exe", ExecutionMode="OutOfProcess");
+np = py.importlib.import_module('numpy');
+rcb = py.importlib.import_module('rcabeam');
+%%
+geom = rcb.RCAGeometry(np.array(elementx), np.array(elementy), pyargs( ...
+    'c', 1540.0, 'fs', decimSampleRate, 'f_demod', demodFreq, 'fnumber', 1.0));
+grid = py.tuple({np.array(grid.x), np.array(grid.z), np.array(grid.y)});
+
+rc = permute(IQ(:, 1:na, numElements+1:2*numElements, :), [1, 3, 2, 4]);
+cr = permute(IQ(:, na + 1:2*na, 1:numElements, :), [1, 3, 2, 4]);
+tStart = t0;
+BF = rcb.beamform_ensemble(np.array(rc), np.array(cr), np.array(angles), ...
+    tStart, grid, geom, pyargs('method', 'opw'));
 
 %%
 module = rcabeam_setup("C:\Users\agzhou\AppData\Local\Python\pythoncore-3.13-64\python.exe");
