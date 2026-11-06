@@ -33,6 +33,11 @@ na = P.na; % # of angles (for RC or CR)
 nspa = P.Resource.RcvBuffer(1).rowsPerFrame / nf / (2*na); % of samples per acquisition
 ntc = P.Resource.Parameters.numRcvChannels; % # of total channels
 nc = length(P.Trans.Connector); % # of probe channels (row + col)
+wl = P.wl;
+Trans = P.Trans;
+numElements = P.Trans.numelements/2; % # of rows or cols
+angles = P.angles;
+c = P.Resource.Parameters.speedOfSound; % Speed of sound [m/s]
 
 % Sampling
 sampleMode = P.Receive(1).sampleMode; % Verasonics ADC sample mode
@@ -49,33 +54,42 @@ RFData = RFData(:, :, P.Trans.Connector, :); % Map the receive channels properly
 
 %% If RF is undersampled, do the necessary stuff
 
-sampleDim = 1; numRFSamples = size(RFData, 1);
+sampleDim = 1;
+numRFSamples = size(RFData, 1);
 sampleVec = (0:numRFSamples-1).';
 tSample = sampleVec ./ decimSampleRate; % [Micro]-Time corresponding to each sample
 
-RF_demod = single(RFData) .* exp(1i.*2.*pi.* -demodFreq .* tSample); % Demodulate (remove carrier) in the time domain
+% Demodulate (remove carrier) in the time domain
+RF_demod = single(RFData) .* exp(1i.*2.*pi.* -demodFreq .* tSample);
 
+% FFT and lowpass the demodulated RF
+RFFD = fft(RF_demod, numRFSamples, sampleDim); % RF in the frequency domain
+BW = abs(diff(P.Trans.Bandwidth)) * 1e6; % Bandwidth of the probe [Hz]
+faxis = linspace(-decimSampleRate/2, decimSampleRate/2, size(RFFD, sampleDim));
+LPF_mask = abs(faxis) <= BW/2;
+% figure; yyaxis left; plot(faxis, abs(RFFD(:, 1, 120, 1))); yyaxis right; plot(faxis, LPF_mask)
+RFFD_LPF = fftshift(RFFD, sampleDim); RFFD_LPF(~LPF_mask, :, :, :) = 0; % Apply the low pass filter
+% figure; yyaxis left; plot(faxis, abs(RFFD_LPF(:, 1, 120, 1))); yyaxis right; plot(faxis, LPF_mask)
 
+RF = ifft(ifftshift(RFFD_LPF, sampleDim), [], sampleDim);
 
-% RFFD = fft(single(RFData), numRFSamples, sampleDim); % RF in the frequency domain
-% % RFFD = fft(single(RFData), 2^nextpow2(numRFSamples), sampleDim); % RF in the frequency domain
-% % RFFD = RFFD(1:numRFSamples, :, :); % (not working properly) Crop the number of samples
-% 
-% % Up-mix the frequency domain RF to the original (pre-undersampling) baseband
-% % figure; plot(squeeze(abs(RFFD(:, 111, 3) )))
-% 
-% RFFD_upmix = RFFD .* exp(1i.*2.*pi.* demodFreq .* tSample);
-% % figure; plot(squeeze(abs(RFFD_upmix(:, 111, 3) )))
-% 
-% RF_upmix = ifft(RFFD_upmix, numRFSamples, sampleDim);
+% Get the start sample time of each acquisition and shift the RF for each
+% acquisition accordingly (start sample time wrt each acquisition
+% corresponds to the first element that fired
+elementx = (wl .* Trans.ElementPos(1:numElements, 1))';
+elementy = (wl .* Trans.ElementPos(numElements + 1 : numElements*2, 2))';
+x_end = max(elementx); % End element position [m]
+y_end = max(elementy);
+d_correction_1way = Trans.lensCorrection * wl; % TX and RX each pass through the lens
+pathConst = wl * P.TW.peak + 2 * d_correction_1way - 2 * P.startDepth * wl;
+t0 = -(pathConst + x_end * abs(sin(angles))) / c;
 
-clear RFFD RFFD_upmix
-
+RF = RF .* repmat(exp(1i.*2.*pi .* decimSampleRate .* t0), 1, 2);
 %% I/Q Demodulation
 
 
 %% Pass the demodulated but nonbeamformed data to the GPU
-RFG = gpuArray(RF_upmix);
+RFG = gpuArray(RF);
 RFG_cupy = pycupyarray(RFG);
 
 %% Run the rcabeam beamforming function
