@@ -214,7 +214,7 @@ addpath(genpath(processingbeamCodePath))
     end
 
     %% Reconstruct
-    cleanup = onCleanup(@() RCA_DAS_rcabeam('clear')); % release the GPU workspace, also after an error or Ctrl+C
+    % cleanup = onCleanup(@() RCA_DAS_rcabeam('clear')); % release the GPU workspace, also after an error or Ctrl+C
     IQfiles = {};
     for k = 1:numel(f) % Loop through files
         if strcmp(fmt, 'rf')
@@ -267,6 +267,9 @@ addpath(genpath(processingbeamCodePath))
         end
         clear IQ_CR IQ_RC
 
+        % Let the CuPy GPU memory go
+        cleanup = onCleanup(@() RCA_DAS_rcabeam('clear')); % release the GPU workspace, also after an error or Ctrl+C
+
         IQfiles{end+1} = outFile; %#ok<AGROW>
         % fprintf('RF file %d reconstructed and saved as %s (%.1f s)\n', fileNum(k), outName, toc)
         fprintf('RF file %d reconstructed (%.1f s)\n', fileNum(k), toc)
@@ -283,8 +286,13 @@ addpath(genpath(processingbeamCodePath))
         voxelRange = {xrange, yrange, zrange};
         xp = length(xrange); yp = length(yrange); zp = length(zrange); nf = size(IQ, 4);
 
+        IQ = IQ(voxelRange{1}, voxelRange{2}, voxelRange{3}, :);
         tic
-        [PDI, g1] = IQ2g1T_3D_nofreqsep(IQ, voxelRange, sv_threshold_lower, sv_threshold_upper, HPF, nTau);
+        [PDI, g1] = IQ2g1T_3D_nofreqsep_fast(IQ, sv_threshold_lower, sv_threshold_upper, HPF, nTau);
+        % [PDI, g1] = IQ2g1T_3D_nofreqsep(IQ(voxelRange{1}, voxelRange{2}, voxelRange{3}, :), sv_threshold_lower, sv_threshold_upper, HPF, nTau);
+        % Move PDI and g1 from GPU memory back to RAM
+        PDI = gather(PDI);
+        g1 = gather(g1);
         % toc
     
         % voxelTimeseriesGUI(gather(g1), gather(abs(g1(:, :, :, 2))), 'ComplexMode', 'abs', 'Colormap', 'turbo')
