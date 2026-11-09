@@ -4,8 +4,12 @@
 % (RCA_DAS_rcabeam), one IQ file per RF file. Counterpart of RCA_ffdas_recon.m and of the Verasonics recon loops
 % (RCA_VerasonicsRecon_loop.m, RCA_VerasonicsRecon_loop_unstackedFrames.m), without needing the Verasonics software.
 
-% Input folder: params.mat (structure P) and RF-<maxAngle>-<na>-<frameRate>-<numFrames>-1-<file #>.mat (RcvData)
-% Output: one file per RF file in the save folder, named like the Verasonics recon output (the 'RF-' prefix is replaced):
+% Input folder: params.mat (structure P) and either
+%           RF-<maxAngle>-<na>-<frameRate>-<numFrames>-1-<file #>.mat   (RcvData)         Verasonics .mat saves, or
+%           <P.fsFileName><file #, 5 digits>.rf                          (binary, int16)   Verasonics FastSave
+%         (see Opts.fileFormat)
+% Output: one file per RF file in the save folder, named like the Verasonics recon output (the 'RF-' prefix is replaced; the
+%         .rf files get IQ-<maxAngle>-<na>-<frameRate>-<numFrames>-1-<file #>.mat, as in the Verasonics loop for them):
 %           'OPW'    IQ-...       IQ [y, x, z, frame], all 2*na acquisitions summed coherently (one pass on the GPU)
 %           'RCCR'   IQ-RCCR-...  IQ_CR and IQ_RC [y, x, z, frame], each compounded over the angles
 %         and PData.mat and rcabeam_recon_params.mat (the pixel grid in m, and the options used) in the save folder
@@ -14,7 +18,12 @@
 %           - Setup is the same as RCA_DAS_rcabeam: MATLAB R2026b+ with the Parallel Computing Toolbox, and the python.exe
 %             of an environment with cupy and rcabeam in Opts.pythonExe or the RCABEAM_PYTHON environment variable. Run
 %             test_rcabeam_layout.m and test_RCA_DAS_rcabeam_psf.m once before trusting a recon
-%           - Opts.unstackedFrames chooses how the RF files are read (like the two Verasonics loops):
+%           - Binary .rf files (FastSave) are read with loadBinaryRF, which gives the stacked [rowsPerFrame, colsPerFrame]
+%             array, then unstackFrames, as in RCA_VerasonicsRecon_loop_unstackedFrames_fastsave.m. They are always stacked, so
+%             Opts.unstackedFrames should stay true for them (false uses the array as is). The file numbers are the numbers in
+%             the names (FastSave starts at 0). The channels are remapped with P.Trans.Connector inside RCA_DAS_rcabeam, as for
+%             the .mat files
+%           - Opts.unstackedFrames chooses how the .mat RF files are read (like the two Verasonics loops):
 %               true (default)  each file holds the frames stacked in one buffer frame (RcvData is 2-D, or has a few
 %                               stacked chunks), and is split with unstackFrames, as in RCA_VerasonicsRecon_loop_unstackedFrames.m
 %               false           each file holds RcvData as [samples per frame, channels, frames] already, as in
@@ -43,6 +52,8 @@
 %     pixelSpacingWl   [x, y, z] pixel spacing in wavelengths (default [0.5, 0.5, 0.5])
 %     output           'OPW' (default) or 'RCCR'
 %     unstackedFrames  true (default) or false, see the Notes
+%     fileFormat       'auto' (default), 'mat' or 'rf'. auto: the .mat files if the folder has RF-*.mat files, else the .rf files
+%                      named by P.fsFileName. If it has both, auto uses the .mat files ('rf' to use the others)
 %     overwrite        false: skip files that already have an output (default)
 %     das              struct of options passed to RCA_DAS_rcabeam (frameChunk, fNumber, pythonExe, backend, ...)
 %
@@ -70,6 +81,7 @@ function IQfiles = RCA_rcabeam_recon(datapath, savepath, Opts)
     Opts = setDefault(Opts, 'pixelSpacingWl', [0.5, 0.5, 0.5]);
     Opts = setDefault(Opts, 'output', 'OPW');
     Opts = setDefault(Opts, 'unstackedFrames', true);
+    Opts = setDefault(Opts, 'fileFormat', 'auto');
     Opts = setDefault(Opts, 'overwrite', false);
     Opts = setDefault(Opts, 'das', struct());
 
@@ -87,20 +99,12 @@ function IQfiles = RCA_rcabeam_recon(datapath, savepath, Opts)
     wl = c / (P.Trans.frequency * 1e6);
 
     %% Find the RF files, in order of file number
-    f = dir(fullfile(datapath, 'RF-*.mat'));
-    tok = regexp({f.name}, '^RF-.*-(\d+)\.mat$', 'tokens', 'once');
-    isRF = ~cellfun(@isempty, tok);
-    f = f(isRF);
-    fileNum = cellfun(@(t) str2double(t{1}), tok(isRF));
-    [fileNum, order] = sort(fileNum);
-    f = f(order);
-    if isempty(f)
-        error('No RF files (RF-*-<file #>.mat) in %s', datapath)
-    end
+    [f, fileNum, fmt] = findRFFiles(datapath, P, Opts.fileFormat);
+    fprintf('%d RF files (.%s) in %s\n', numel(f), fmt, datapath)
 
     %% Options from the dialog
     if showGUI
-        Opts = reconDialog(Opts, fileNum, P, wl, datapath, savepath);
+        Opts = reconDialog(Opts, fileNum, P, wl, datapath, savepath, fmt);
         if isempty(Opts)
             fprintf('Reconstruction cancelled.\n')
             IQfiles = {};
@@ -155,7 +159,12 @@ function IQfiles = RCA_rcabeam_recon(datapath, savepath, Opts)
     cleanup = onCleanup(@() RCA_DAS_rcabeam('clear')); % release the GPU workspace, also after an error or Ctrl+C
     IQfiles = {};
     for k = 1:numel(f)
-        outName = [namePrefix, f(k).name(4:end)]; % replace the 'RF-' prefix
+        if strcmp(fmt, 'rf')
+            % like the Verasonics loops: IQ-<maxAngle>-<na>-<frameRate>-<numFramesPerBuffer>-1-<file #>
+            outName = sprintf('%s%d-%d-%d-%d-1-%d.mat', namePrefix, round(P.maxAngle), P.na, round(P.frameRate), P.numFramesPerBuffer, fileNum(k));
+        else
+            outName = [namePrefix, f(k).name(4:end)]; % replace the 'RF-' prefix
+        end
         outFile = fullfile(savepath, outName);
         if exist(outFile, 'file') && ~Opts.overwrite
             fprintf('%s already exists, skipping.\n', outName)
@@ -164,14 +173,20 @@ function IQfiles = RCA_rcabeam_recon(datapath, savepath, Opts)
         end
 
         tic
-        S = load(fullfile(f(k).folder, f(k).name), 'RcvData');
-        if Opts.unstackedFrames
-            r = unstackFrames(S.RcvData, P); % (# samples per frame, # channels, # frames)
+        if strcmp(fmt, 'rf')
+            RcvData = loadBinaryRF(fullfile(f(k).folder, f(k).name), P); % stacked [rowsPerFrame, colsPerFrame], int16
         else
-            r = S.RcvData;
+            S = load(fullfile(f(k).folder, f(k).name), 'RcvData');
+            RcvData = S.RcvData;
+            clear S
+        end
+        if Opts.unstackedFrames
+            r = unstackFrames(RcvData, P); % (# samples per frame, # channels, # frames)
+        else
+            r = RcvData;
             if iscell(r), r = r{1}; end
         end
-        clear S
+        clear RcvData
 
         % RCA_DAS_rcabeam takes the frame count from P.numSubFrames when that exists, so make sure it matches this file
         Pk = P;
@@ -215,8 +230,64 @@ function IQfiles = RCA_rcabeam_recon(datapath, savepath, Opts)
 end
 
 
+%% The RF files of the folder, sorted by file number: struct array f (name, folder), the file numbers, and the format ('mat' or 'rf')
+function [f, fileNum, fmt] = findRFFiles(datapath, P, fileFormat)
+
+    fileFormat = lower(fileFormat);
+    if ~ismember(fileFormat, {'auto', 'mat', 'rf'})
+        error('Opts.fileFormat must be auto, mat or rf')
+    end
+
+    % .mat saves: RF-...-<file #>.mat
+    fm = dir(fullfile(datapath, 'RF-*.mat'));
+    tokm = regexp({fm.name}, '^RF-.*-(\d+)\.mat$', 'tokens', 'once');
+    isM = ~cellfun(@isempty, tokm);
+    fm = fm(isM);
+    numM = cellfun(@(t) str2double(t{1}), tokm(isM));
+
+    % binary FastSave files: <P.fsFileName><5 digit file #>.rf
+    fr = struct('name', {}, 'folder', {});
+    numR = [];
+    if isfield(P, 'fsFileName') && ~isempty(P.fsFileName)
+        fr = dir(fullfile(datapath, '*.rf'));
+        tokr = regexp({fr.name}, ['^', regexptranslate('escape', P.fsFileName), '(\d+)\.rf$'], 'tokens', 'once');
+        isR = ~cellfun(@isempty, tokr);
+        fr = fr(isR);
+        numR = cellfun(@(t) str2double(t{1}), tokr(isR));
+    end
+
+    switch fileFormat
+        case 'auto'
+            if ~isempty(fm)
+                fmt = 'mat';
+                if ~isempty(fr)
+                    fprintf('The folder has both .mat and .rf RF files, using the .mat files (Opts.fileFormat = ''rf'' for the others)\n')
+                end
+            elseif ~isempty(fr)
+                fmt = 'rf';
+            else
+                error('No RF files in %s (RF-*-<file #>.mat, or <P.fsFileName><file #>.rf)', datapath)
+            end
+        case 'mat'
+            fmt = 'mat';
+        case 'rf'
+            fmt = 'rf';
+            if ~isfield(P, 'fsFileName')
+                error('P has no fsFileName, so the .rf file names are unknown')
+            end
+    end
+    if strcmp(fmt, 'mat'), f = fm; fileNum = numM; else, f = fr; fileNum = numR; end
+    if isempty(f)
+        error('No .%s RF files in %s', fmt, datapath)
+    end
+    [fileNum, order] = sort(fileNum);
+    f = f(order);
+
+end
+
+
 %% Options dialog (modal). Shows the options of Opts as the defaults. Returns the updated Opts, or [] if cancelled
-function Opts = reconDialog(Opts, fileNum, P, wl, datapath, savepath)
+function Opts = reconDialog(Opts, fileNum, P, wl, datapath, savepath, fmt)
 
     result = [];
 
@@ -250,7 +321,7 @@ function Opts = reconDialog(Opts, fileNum, P, wl, datapath, savepath)
     addLabel(g, 2, 'Save folder'); lbl(g, 2, savepath);
     gaps = '';
     if numel(fileNum) < max(fileNum) - min(fileNum) + 1, gaps = ' (with gaps)'; end
-    addLabel(g, 3, 'RF files found'); lbl(g, 3, sprintf('%d files, file numbers %d to %d%s', numel(fileNum), min(fileNum), max(fileNum), gaps));
+    addLabel(g, 3, 'RF files found'); lbl(g, 3, sprintf('%d .%s files, file numbers %d to %d%s', numel(fileNum), fmt, min(fileNum), max(fileNum), gaps));
 
     addLabel(g, 4, 'File numbers to reconstruct');
     eFiles = uieditfield(g, 'text', 'Value', fileNumbersText(Opts, fileNum), ...
@@ -278,7 +349,7 @@ function Opts = reconDialog(Opts, fileNum, P, wl, datapath, savepath)
 
     addLabel(g, 9, 'Frames in the RF files');
     cbStack = uicheckbox(g, 'Text', 'Stacked in one buffer frame (apply unstackFrames)', 'Value', logical(Opts.unstackedFrames), ...
-        'Tooltip', 'On: like RCA_VerasonicsRecon_loop_unstackedFrames. Off: RcvData is already [samples, channels, frames]');
+        'Tooltip', 'On: like RCA_VerasonicsRecon_loop_unstackedFrames (always for binary .rf files). Off: RcvData is already [samples, channels, frames]');
     cbStack.Layout.Row = 9; cbStack.Layout.Column = 2;
 
     gb = uigridlayout(g, [1, 3]); gb.Layout.Row = 11; gb.Layout.Column = [1, 2];

@@ -150,9 +150,9 @@ IQ_CR_gpu = gpuArray(permute(IQ(:, na + 1:2*na, 1:numElements, :), [4, 2, 3, 1])
 % IQ_RC_gpu, IQ_CR_gpu: gpuArray complex single [nT, na, nc, nsIQ]
 tic
 vol = rcabeam_from_py(sess.beamform_sum(pycupyarray(IQ_RC_gpu), pycupyarray(IQ_CR_gpu)), [nx ny nz nf]);
-
-% Convert the output back to a Matlab array (gpu or cpu)
-IQ_BF_c = gather(conj(vol));                               % conj = Verasonics convention
 toc
+% Convert the output back to a Matlab array (gpu or cpu)
+IQ_BF_c = gather(vol);                               % conj = Verasonics convention
+% toc
 sess.release();
 

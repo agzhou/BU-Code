@@ -56,6 +56,9 @@
 %             relative to the Verasonics IQ. test_RCA_DAS_rcabeam.m checks the simulated case
 
 % Opts fields (all optional):
+%   gpuOutput        (false)        return IQ_CR and IQ_RC as gpuArrays instead of host arrays (rcabeam backend only, it errors for
+%                                   'reference'). The whole output stays in GPU memory (7.3 GB per volume for 1000 frames of
+%                                   80 x 80 x 142 voxels, twice that for RC and CR), so it needs room next to the workspace
 %   frameChunk       (16)           # of frames per workspace call. The last chunk is zero padded to this size
 %   sumOnly          (false)        one pass that returns the RC+CR sum in IQ_CR. false: two passes (RC, then CR)
 %   fNumber          ('verasonics') receive f-number: |v - element| <= z / (2 fNumber). 'verasonics': the aperture of the Verasonics
@@ -96,6 +99,7 @@ function [IQ_CR, IQ_RC, grid] = RCA_DAS_rcabeam(RcvData, P, ypix_spacing, xpix_s
     if nargin < 6
         Opts = struct();
     end
+    Opts = setDefault(Opts, 'gpuOutput', false);
     Opts = setDefault(Opts, 'frameChunk', 16);
     Opts = setDefault(Opts, 'sumOnly', false);
     Opts = setDefault(Opts, 'fNumber', 'verasonics');
@@ -116,6 +120,9 @@ function [IQ_CR, IQ_RC, grid] = RCA_DAS_rcabeam(RcvData, P, ypix_spacing, xpix_s
         error('Unknown backend "%s"', Opts.backend)
     end
     useGPU = useRcabeam; % the reference runs on the host
+    if Opts.gpuOutput && ~useRcabeam
+        error('RCA_DAS_rcabeam:gpuOutput', 'Opts.gpuOutput needs the rcabeam backend, the reference backend computes on the host')
+    end
 
     %% Parameters
     Trans = P.Trans;
@@ -242,11 +249,16 @@ function [IQ_CR, IQ_RC, grid] = RCA_DAS_rcabeam(RcvData, P, ypix_spacing, xpix_s
     end
 
     %% Beamform in chunks of frames
-    IQ_CR = complex(zeros(xnumpix, ynumpix, znumpix, nf, 'single'));
+    % The outputs are preallocated where they should end up: assigning a gpuArray into a host array by indexing gathers it
+    outType = {'single'};
+    if Opts.gpuOutput
+        outType = {'single', 'gpuArray'};
+    end
+    IQ_CR = complex(zeros(xnumpix, ynumpix, znumpix, nf, outType{:}));
     if Opts.sumOnly
         IQ_RC = [];
     else
-        IQ_RC = complex(zeros(xnumpix, ynumpix, znumpix, nf, 'single'));
+        IQ_RC = complex(zeros(xnumpix, ynumpix, znumpix, nf, outType{:}));
     end
     want = [xnumpix, ynumpix, znumpix, nT];
     if Opts.conjugateIQ
@@ -268,14 +280,25 @@ function [IQ_CR, IQ_RC, grid] = RCA_DAS_rcabeam(RcvData, P, ypix_spacing, xpix_s
             clear D_rc D_cr
             if Opts.sumOnly
                 volSum = rcabeam_from_py(sess.beamform_sum(pyRC, pyCR), want);
-                IQ_CR(:, :, :, fi) = gather(sgn(volSum(:, :, :, 1:nfc)));
+                if Opts.gpuOutput
+                    IQ_CR(:, :, :, fi) = sgn(volSum(:, :, :, 1:nfc));
+                else
+                    IQ_CR(:, :, :, fi) = gather(sgn(volSum(:, :, :, 1:nfc)));
+                end
                 clear volSum
             else
                 volCR = rcabeam_from_py(sess.beamform_cr(pyCR), want);
-                IQ_CR(:, :, :, fi) = gather(sgn(volCR(:, :, :, 1:nfc)));
-                clear volCR
-                volRC = rcabeam_from_py(sess.beamform_rc(pyRC), want);
-                IQ_RC(:, :, :, fi) = gather(sgn(volRC(:, :, :, 1:nfc)));
+                if Opts.gpuOutput
+                    IQ_CR(:, :, :, fi) = sgn(volCR(:, :, :, 1:nfc));
+                    clear volCR
+                    volRC = rcabeam_from_py(sess.beamform_rc(pyRC), want);
+                    IQ_RC(:, :, :, fi) = sgn(volRC(:, :, :, 1:nfc));
+                else
+                    IQ_CR(:, :, :, fi) = gather(sgn(volCR(:, :, :, 1:nfc)));
+                    clear volCR
+                    volRC = rcabeam_from_py(sess.beamform_rc(pyRC), want);
+                    IQ_RC(:, :, :, fi) = gather(sgn(volRC(:, :, :, 1:nfc)));
+                end
                 clear volRC
             end
             if Opts.verbose
