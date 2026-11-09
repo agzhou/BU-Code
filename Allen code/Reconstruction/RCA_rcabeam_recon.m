@@ -47,7 +47,7 @@
 %     gui              a dialog asks for the file numbers, voxel spacing, output type and whether the frames are stacked.
 %                      It is shown when Opts is not given at all. With an Opts it is shown only if gui is true, and then the
 %                      values in Opts are its defaults. Cancelling returns without reconstructing
-%     fileRange        [first, last] RF file numbers to reconstruct (default [1, Inf])
+%     fileRange        [first, last] RF file numbers to reconstruct (default [-Inf, Inf]: all files, including file 0)
 %     fileNumbers      list of RF file numbers to reconstruct, e.g. [1:10, 15] (default [], which uses fileRange)
 %     pixelSpacingWl   [x, y, z] pixel spacing in wavelengths (default [0.5, 0.5, 0.5])
 %     output           'OPW' (default) or 'RCCR'
@@ -76,7 +76,7 @@ function IQfiles = RCA_rcabeam_recon(datapath, savepath, Opts)
     else
         showGUI = isfield(Opts, 'gui') && Opts.gui;
     end
-    Opts = setDefault(Opts, 'fileRange', [1, Inf]);
+    Opts = setDefault(Opts, 'fileRange', [-Inf, Inf]); % all files. File numbers can start at 0 (FastSave .rf files)
     Opts = setDefault(Opts, 'fileNumbers', []);
     Opts = setDefault(Opts, 'pixelSpacingWl', [0.5, 0.5, 0.5]);
     Opts = setDefault(Opts, 'output', 'OPW');
@@ -458,11 +458,11 @@ function n = parseFileNumbers(txt, available)
     for i = 1:numel(parts)
         t = parts{i};
         if isempty(t), continue, end
-        p = regexp(t, '^(\d+)(?::(\d+))?(?::(\d+))?$', 'tokens', 'once');
-        if isempty(p)
+        % (a regexp with optional groups and 'tokens' only returns the first number here, so split at the colons instead)
+        if isempty(regexp(t, '^\d+(:\d+){0,2}$', 'once'))
             error('Can''t read "%s". Use file numbers like 1:20 or 3, 7, 10:12.', t)
         end
-        v = str2double(p(~cellfun(@isempty, p)));
+        v = str2double(strsplit(t, ':'));
         switch numel(v)
             case 1
                 n = [n, v]; %#ok<AGROW>
