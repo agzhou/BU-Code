@@ -135,7 +135,14 @@ end
 % ---- FastSave required variables ---- %
 % fsDriveNames = {'C:\', 'D:\','E:\'}; % Drive names
 fsDriveNames = {'D:\','E:\'}; % Drive names
-fsFileName = ['RF-', num2str(round(maxAngle)), '-', num2str(na), '-', num2str(round(frameRate)), '-', num2str(numFramesPerSF), '-']; % Filename template (FastSave adds file numbers)
+
+% Prompt for the filename prefix
+fsFileNameDefault = ['RF-', num2str(round(maxAngle)), '-', num2str(na), '-', num2str(round(frameRate)), '-', num2str(numFramesPerSF), '-']; % Filename template (FastSave adds file numbers)
+fsPrompt = {'FastSave file name prefix'};
+fsDefaults = {fsFileNameDefault};
+fsUserInput = inputdlg(fsPrompt, 'Input Parameters', 1, fsDefaults);
+% fsDriveNames = str2double(fsUserInput{1});
+fsFileName = fsUserInput{1};
 
 % numAngles = length(angles);
 pair = 2; % The R-C and C-R pair of acquisitions per angle
