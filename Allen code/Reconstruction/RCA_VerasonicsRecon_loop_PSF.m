@@ -20,11 +20,18 @@
 clearvars
 
 addpath(fullfile(cd))
-cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
+codeDir = cd;
+codeDir_split = split(string(codeDir), filesep);
+% AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "Allen code"))), '\') + "\Verasonics");
+AllenProcessingCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\Processing\");
+addpath(genpath(AllenProcessingCodePath))
+
+cd 'C:\Verasonics\Vantage Releases\Vantage-5.0.1-p1'
+% cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
 % cd 'C:\Users\agzhou\Vantage-5.0.1-p1' % BME-BOAS-29
 % cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.7-2505271400' % Lab PC (bme-boas-19)
 % addpath 'C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Processing'
-addpath 'C:\Users\BOAS-US\Documents\GitHub\BU-Code\Allen code\Processing'
+% addpath 'C:\Users\BOAS-US\Documents\GitHub\BU-Code\Allen code\Processing'
 % cd 'C:\Users\agzhou\Vantage-4.9.7-2505271400' % Office PC (bme-boas-27)
 
 activate
@@ -328,9 +335,9 @@ end
 
 %% Save all the data/structures to a .mat file.
 currentDir = cd; currentDir = regexp(currentDir, filesep, 'split');
-Mcr_filename = 'RC15gV_Allen_recon.mat';
+Mcr_filename = 'RC15gV_Allen_recon_PSF.mat';
 
-save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+Mcr_filename, "Event", "SeqControl", "ReconInfo", "Recon", "Resource", "Media", "PData", "Receive", "TGC", "TPC", "Trans", "TW", "TX");
+save(fullfile(currentDir{1:find(contains(currentDir,"Vantage-"),1)})+"\MatFiles\"+Mcr_filename, "Event", "SeqControl", "ReconInfo", "Recon", "Resource", "Media", "PData", "Receive", "TGC", "TPC", "Trans", "TW", "TX");
 
 
 %% Run VSX automatically and make parameter structure for RF file naming
