@@ -333,4 +333,5 @@ figure; imagesc(sfStarts(1:nw), faxis, abs(squeeze(s(40, 40, 40, :, :)))'); axis
 
 %% Inspect the spectrogram per voxel
 % voxelSpectrogramGUI(s, PDIA{3}.^0.5, 'Time', sfStarts(1:nw), 'Freq', faxis, 'Colormap', 'turbo')
-voxelSpectrogramGUI(PDI_scalogram, PDIA{3}.^0.5, 'Time', sfStarts, 'Freq', faxis, 'Colormap', 'turbo')
+% voxelSpectrogramGUI(PDI_scalogram, PDIA{3}.^0.5, 'Time', sfStarts, 'Freq', faxis, 'Colormap', 'turbo')
+voxelSpectrogramGUI(PDI_scalogram, PDIA.^0.5, 'Time', sfStarts, 'Freq', faxis, 'Colormap', 'turbo')
