@@ -39,7 +39,7 @@ end
 %     load([triggerData_pathname, triggerData_filename])
 % % end
 
-clearvars params_filename params_pathname RFTT_filename RFTT_pathname triggerData_filename triggerData_pathname
+clearvars params_filename params_pathname triggerData_filename triggerData_pathname
 
 if ~exist('PData', 'var')
     % Choose and load the RFTimeTagsPerChannel.mat file (from the acquisition and running readRFTimeTags.m)
@@ -64,15 +64,13 @@ channelDim = 2;
 RFTT = squeeze(mean(RFtimeTags - RFTT_start, channelDim)); % Also collapse the channel dimension, since time tags should be the same across channels
 sfStarts = RFTT(1, :).'; % Superframe start times [s]
 
-
-
 % Visualize stim and superframe times
 figure
 % plot(stimTimestamps, stim)
 maxValue = 1; % max value of the stim, for shading
 minValue = 0;
 yshade = [maxValue, minValue, minValue, maxValue]; % Go top right and clockwise for the shading patch vertices
-frameRate = checkFrameRate(P);
+frameRate = checkFrameRate(P, [RFTT_pathname]);
 sfWidth = P.numFramesPerBuffer/frameRate; % Duration of a superframe [s]
 hold on
 for sftt = sfStarts.'
@@ -83,8 +81,13 @@ clearvars xshade yshade maxValue minValue
 
 % Get superframe center timestamps
 sfCenters = sfStarts + sfWidth / 2;
+nsf = length(sfCenters); % # of superframes
 
-% Determine which superframes are present while the stimulus is on
+vs = [length(voxelRange{1}), length(voxelRange{2}), length(voxelRange{3})]; % Volume size [voxels]
+num_voxels = prod(vs);
+% FOR NOW: assume the superframe rate is constant
+sfRate = 1/median(diff(sfStarts)); % Superframe rate [Hz]
+warning('Code currently assumes a constant superframe rate')
 
 %% Create a struct for all the relevant timing parameters and save
 TD = createStruct(RFTT, sfStarts); % Processing Parameters ======> adjust as needed
@@ -95,10 +98,71 @@ if ~exist('TDsavepath', 'var')
 end
 save([TDsavepath, 'TD.mat'], 'TD')
 
+% Adjust file numbers if needed
+if isfield(P, 'fsFileName') % If FastSave was used, indices start from 0
+    filenumsToUse = 0:RFcount-1;
+else
+    filenumsToUse = 1:RFcount; % Otherwise, indices start from 1
+end
+
 %% Calculate vUS (g1 fits) for each pre-computed g1 file
 % See main_vUS_3D.m
 
 %% Go through pre-computed data files (for all superframes in the experiment) and store
+% (NON-CELL VERSION)
+fDim = 4;
+
+PDIallSF = [];
+for fi = filenumsToUse
+
+    disp(fi)
+    load([PDpath, 'fUSdata-', num2str(fi)], 'PDI')
+
+    PDIallSF = cat(fDim, PDIallSF, PDI);
+    % CDIallSF{j} = cat(fDim, CDIallSF{j}, CDI{j});
+end
+% Average PDI and CDI across superframes
+PDIA = mean(PDIallSF, fDim);
+    % CDIA{j} = mean(CDIallSF{j}, fDim);
+
+% save([PDpath, 'PDIA_CDIA.mat'], "PDIA", "CDIA")
+voxelTimeseriesGUI(PDIallSF, PDIA.^0.5, 'Colormap', 'turbo')
+
+% Load v from vUS fits
+VallSF_SG = [];
+VallSF_RCA = [];
+CallSF_C = [];
+for fi = filenumsToUse
+
+    disp(fi)
+    load([FRpath, 'fit_results-', num2str(fi)], 'fit_SG', 'fit_RCA', 'fit_C')
+
+    VallSF_SG = cat(fDim, VallSF_SG, fit_SG.v);
+    VallSF_RCA = cat(fDim, VallSF_RCA, fit_RCA.v);
+    CallSF_C = cat(fDim, CallSF_C, fit_C.C);
+
+end
+
+voxelTimeseriesGUI(VallSF_RCA, mean(VallSF_RCA, fDim), 'Colormap', 'turbo')
+
+% Load proxies from tl-fUS fits
+CBViallSF = [];
+% CBFSiallSF = cell(3, 1);
+for fi = filenumsToUse
+
+    disp(fi)
+    load([PDpath, 'tlfUSdata-', num2str(fi)], 'CBVi', 'CBFSi')
+
+    CBViallSF = cat(fDim, CBViallSF, CBVi);
+    % CBFSiallSF{j} = cat(fDim, CBFSiallSF{j}, CBFSi{j});
+end
+voxelTimeseriesGUI({(PDIallSF - mean(PDIallSF, fDim)) ./ max(PDIallSF - mean(PDIallSF, fDim), [], fDim), CBViallSF}, PDIA.^0.5, 'Colormap', 'turbo')
+
+% Average CBVi across superframes
+CBViA = mean(CBViallSF, fDim);
+
+%% Go through pre-computed data files (for all superframes in the experiment) and store
+% (CELL VERSION)
 fDim = 4;
 % For now, go through only PDI and CDI
 % trialsToUse = [1:10];
@@ -107,7 +171,7 @@ fDim = 4;
 % end
 PDIallSF = cell(3, 1);
 % CDIallSF = cell(3, 1);
-for fi = 1:RFcount
+for fi = filenumsToUse
 
     disp(fi)
     load([PDpath, 'fUSdata-', num2str(fi)], 'PDI', 'CDI')
@@ -130,7 +194,7 @@ voxelTimeseriesGUI(PDIallSF{3}, PDIA{3}.^0.5, 'Colormap', 'turbo')
 VallSF_SG = cell(3, 1);
 VallSF_RCA = cell(3, 1);
 CallSF_C = cell(3, 1);
-for fi = 1:RFcount
+for fi = filenumsToUse
 
     disp(fi)
     load([FRpath, 'fit_results-', num2str(fi)], 'fit_SG', 'fit_RCA', 'fit_C')
@@ -147,7 +211,7 @@ voxelTimeseriesGUI(VallSF_RCA{3}, mean(VallSF_RCA{3}, fDim), 'Colormap', 'turbo'
 % Load proxies from tl-fUS fits
 CBViallSF = cell(3, 1);
 % CBFSiallSF = cell(3, 1);
-for fi = 1:RFcount
+for fi = filenumsToUse
 
     disp(fi)
     load([PDpath, 'tlfUSdata-', num2str(fi)], 'CBVi', 'CBFSi')
@@ -182,18 +246,16 @@ end
 % % CDIrs = permute(interp1(sfCenters, permute(abs(CDIallSF{3}), [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
 
 %% Wavelet transform --> scalogram
-vs = [length(voxelRange{1}), length(voxelRange{2}), length(voxelRange{3})]; % Volume size [voxels]
-num_voxels = prod(vs);
-% FOR NOW: assume the superframe rate is constant
-sfRate = 1/median(diff(sfStarts)); % Superframe rate [Hz]
-
-nsf = length(sfCenters); % # of superframes
 fb = cwtfilterbank('SignalLength', nsf, 'SamplingFrequency', sfRate, 'Wavelet', 'amor', 'Boundary', 'reflection'); % , 'TimeBandwidth', 20
 
 % test = cwt(squeeze(PDIallSF{3}(40, 40, 40, :)), 'amor', sfRate);
 % [test, faxis] = cwt(squeeze(PDIallSF{3}(40, 40, 40, :)), 'FilterBank', fb);
 
-PDIallSF_stacked = single(reshape(PDIallSF{3}, [num_voxels, nsf]));
+if iscell(PDIallSF)
+    PDIallSF_stacked = single(reshape(PDIallSF{3}, [num_voxels, nsf]));
+else
+    PDIallSF_stacked = single(reshape(PDIallSF, [num_voxels, nsf]));
+end
 [~, faxis] = cwt(squeeze(PDIallSF_stacked(1, :)), 'FilterBank', fb); num_freqs = length(faxis);
 % num_freqs = 48; warning('hard coded num_freqs')
 
@@ -206,33 +268,49 @@ for vi = 1:num_voxels
 end
 toc
 
-%% Accelerated scaleogram code?
-fb = cwtfilterbank('SignalLength', nsf, 'SamplingFrequency', sfRate, 'Wavelet', 'amor', 'Boundary', 'reflection');
+%% Accelerated scalogram code?
+% fb = cwtfilterbank('SignalLength', nsf, 'SamplingFrequency', sfRate, 'Wavelet', 'amor', 'Boundary', 'reflection');
 %   Optional, big speedup + memory saving if you only care about the LFO band:
 %   ..., 'FrequencyLimits', [fLow fHigh])
+fLow = 0.01;
+fHigh = 0.4;
+fb = cwtfilterbank('SignalLength', nsf, 'SamplingFrequency', sfRate, 'Wavelet', 'amor', 'Boundary', 'reflection', 'FrequencyLimits', [fLow, fHigh]);
+
 
 cwtOutput = "abs";     % "complex" (phase kept) | "abs" | "abs2"; abs is ~2x faster and half the memory
 useGPU    = gpuDeviceCount > 0;
 chunkSize = 5000;      % voxels per batch; lower this if the GPU/RAM runs out
 
-PDIallSF_stacked = single(reshape(PDIallSF{3}, [num_voxels, nsf])).';   % [time x voxels], time down the columns
+if iscell(PDIallSF)
+    PDIallSF_stacked = single(reshape(PDIallSF{3}, [num_voxels, nsf])).'; % [time x voxels], time down the columns
+else
+    PDIallSF_stacked = single(reshape(PDIallSF, [num_voxels, nsf])).';
+end
+
 SP = cwtPrepare(fb, 'single');                                      % filters pulled out once (self-checks against cwt)
 faxis = SP.faxis; num_freqs = numel(faxis);
 if useGPU, SP.psiT = gpuArray(SP.psiT); end
 
 voxelsToRun = 1:num_voxels;           % e.g. replace with find(brainMask(:)) to skip voxels outside the brain
 if cwtOutput == "complex", outCls = complex(zeros(1, 'single')); else, outCls = zeros(1, 'single'); end
-PDI_scalogram_T = zeros(nsf, numel(voxelsToRun), num_freqs, 'like', outCls);   % [time x voxel x freq]
+
+% Allocate the final array directly in [voxel x time x freq] order (voxels not in voxelsToRun stay 0).
+% NOTE: if the old per-voxel loop above was run, its PDI_scalogram is still in memory: this line briefly
+% needs both. Run `clearvars PDI_scalogram` first if RAM is tight (and you don't need it for comparison).
+PDI_scalogram = zeros(num_voxels, nsf, num_freqs, 'like', outCls);
 
 for s = 1:chunkSize:numel(voxelsToRun)
     ii = s:min(s+chunkSize-1, numel(voxelsToRun));
     Xc = PDIallSF_stacked(:, voxelsToRun(ii));
     if useGPU, Xc = gpuArray(Xc); end
-    PDI_scalogram_T(:, ii, :) = gather(cwtBatchedCore(Xc, SP, cwtOutput));
+    % cwtBatchedCore returns [time x voxel x freq]; permute just this chunk to [voxel x time x freq] and
+    % write it straight into the final array, so a second full-size copy is never made
+    PDI_scalogram(voxelsToRun(ii), :, :) = permute(gather(cwtBatchedCore(Xc, SP, cwtOutput)), [2 1 3]);
 end
 
-% Reshape to ny, nx, nz, nT, num_freqs
-PDI_scalogram = reshape(permute(PDI_scalogram_T, [2 1 3]), [vs, nsf, num_freqs]);   % makes a full copy -> mind memory
+% Reshape to ny, nx, nz, nT, num_freqs (reshape is free: no copy)
+PDI_scalogram = reshape(PDI_scalogram, [vs, nsf, num_freqs]);
+
 %% Make a spectrogram of PDI
 vs = [length(voxelRange{1}), length(voxelRange{2}), length(voxelRange{3})]; % Volume size [voxels]
 % FOR NOW: assume the superframe rate is constant

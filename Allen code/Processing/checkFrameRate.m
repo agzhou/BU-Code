@@ -1,10 +1,15 @@
-function [frameRate] = checkFrameRate(P)
+function [frameRate] = checkFrameRate(P, filepath)
     %% Check the frame rate - hardware could lag behind the nominal one
     % Load RF time tags: RFtimeTags.mat
     % if ~exist('RFtimeTags', 'var')
         % Choose and load the RFTimeTagsPerChannel.mat file (from the acquisition and running readRFTimeTags.m)
-        [RFTT_filename, RFTT_pathname, ~] = uigetfile('*.mat', 'Select the RF timetags file', ['RFTimeTagsPerChannel.mat']);
-        load([RFTT_pathname, RFTT_filename], 'RFTimeTags_allSFStacked')
+        if nargin < 2
+            filepath = '';
+        end
+            
+        % [RFTT_filename, RFTT_pathname, ~] = uigetfile([filepath, '*.mat'], 'Select the RF timetags file', ['RFTimeTagsPerChannel.mat']);
+        % load([RFTT_pathname, RFTT_filename], 'RFTimeTags_allSFStacked')
+        uiopen([filepath, '\RFTimeTagsPerChannel.mat'])
     % end
     
     dt_all = diff(squeeze(mean(RFTimeTags_allSFStacked, 1)), 1); % Difference in frame timetags
