@@ -4,5 +4,6 @@ function R = rotationMatrix(x_angle, y_angle, z_angle)
     Rx = rotx(x_angle); % x rotation matrix (input is in degrees)
     Ry = roty(y_angle); % y rotation matrix (input is in degrees)
     Rz = rotz(z_angle); % z rotation matrix (input is in degrees)
-    R = Rx * Ry * Rz;   % Combined rotation matrix
+    % R = Rx * Ry * Rz;   % Combined rotation matrix
+    R = Rz * Ry * Rx;   % Combined rotation matrix: x, y, then z
 end

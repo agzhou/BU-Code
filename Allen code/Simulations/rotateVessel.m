@@ -3,7 +3,7 @@
 
 % Rotate the vessel about its center.
 
-function [vessel_rotated] = rotateVessel(vessel, x_angle, y_angle, z_angle, SP)
+function [vessel_rotated] = rotateVessel(vessel, angles, SP)
     % Zero mean the scatterers before rotating
     vessel_zeromeaned = vessel;
     vessel_zeromeaned(:, 1) = vessel_zeromeaned(:, 1) - SP.xstart;
@@ -11,6 +11,9 @@ function [vessel_rotated] = rotateVessel(vessel, x_angle, y_angle, z_angle, SP)
     vessel_zeromeaned(:, 3) = vessel_zeromeaned(:, 3) - SP.zstart;
 
     % Perform the roation on the centered data
+    x_angle = angles(1);
+    y_angle = angles(2);
+    z_angle = angles(3);
     R = rotationMatrix(x_angle, y_angle, z_angle);
     vessel_rotated = vessel_zeromeaned;
     vessel_rotated(:, 1:3) = (R * vessel_rotated(:, 1:3)')';
