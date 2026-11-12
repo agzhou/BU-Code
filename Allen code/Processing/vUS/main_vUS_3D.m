@@ -682,10 +682,37 @@ warning('The code is not designed to save properly for multiple j')
 g1_ens = cell(ws, 1); % Empty cell to hold the g1 for each ensemble
 for ei = ensembles_to_fit
 % for ei = 1
-    disp(ei)
+    disp(['==== Processing ensemble #', num2str(ei), ' ===='])
     tic
-    % Choose and load the g1 superframe average: g1_avg.mat file (from calc_g1_avg.m)
-    load([PDpath, 'fUSdata-', num2str(ei), '.mat'], 'g1')
+
+    % Detect which g1 need to be loaded        
+    if isempty(g1_ens{end}) & ~all(cellfun('isempty', g1_ens)) % If we only need to load in the last g1 file of the new ensemble, as the previous ones were loaded from a previous loop iteration
+        disp(['Loading file ', num2str(ei + ws - 1)])
+        load([PDpath, 'fUSdata-', num2str(ei + ws - 1), '.mat'], 'g1') % Load only the last g1 file needed
+        g1_ens{end} = g1;
+    else % Otherwise, load every file one by one
+        for fi = ei:ei + ws - 1
+            disp(['Loading file ', num2str(fi)])
+            load([PDpath, 'fUSdata-', num2str(ei), '.mat'], 'g1')
+            g1_ens{fi - ei + 1} = g1;
+        end
+    end
+    % if all(cellfun('isempty', g1_ens)) | ~any(cellfun('isempty', g1_ens)) % All cells are empty or all cells are full --> need to load all g1s for that ensemble
+    %     for fi = ei:ei + ws - 1
+    %         disp(['Loading file', num2str(fi)])
+    %         load([PDpath, 'fUSdata-', num2str(ei), '.mat'], 'g1')
+    %         g1_ens{fi - ei + 1} = g1;
+    %     end
+    % elseif isempty(g1_ens{end}) % The only other scenario should be that we only need to load in the last g1 file of the new ensemble, as the previous ones were loaded from a previous loop iteration
+    %     disp(['Loading file', num2str(ei + ws - 1)])
+    %     load([PDpath, 'fUSdata-', num2str(ei + ws - 1), '.mat'], 'g1') % Load only the last g1 file needed
+    %     g1_ens{end} = g1;
+    % end
+    g1_avg = zeros(size(g1_ens{1}));
+    for fi = 1:ws
+        g1_avg = 1/ws .* g1_ens{fi};
+    end
+    % -- ALSO NEED TO UPDATE THE BELOW TO USE g1_ens INSTEAD OF g1 and g1_exp -- %
     
     % for j = ctp
     %     g1{j} = double(g1{j});
@@ -695,10 +722,11 @@ for ei = ensembles_to_fit
     
     % Create new variables for experimental g1, with spatial dimensions stacked
     
-    g1_exp = reshape(g1, num_voxels, nTau); % Cell array of experimental g1 data with spatial dimensions vectorized/stacked
+    g1_exp = reshape(g1_avg, num_voxels, nTau); % Cell array of experimental g1 data with spatial dimensions vectorized/stacked
 
     % Axial component of the blood flow's group velocity -- v_zgp
-    [Vz0, tau_V] = findVzPhaseDiff(stackData(g1, PP), PP); % v_zgp [m/s]
+    % [Vz0, tau_V] = findVzPhaseDiff(stackData(g1, PP), PP); % v_zgp [m/s]
+    [Vz0, tau_V] = findVzPhaseDiff(g1_exp, PP); % v_zgp [m/s]
     % figure; imagesc(squeeze(max(unstackData(Vz0, PP), [], 1))'); colormap(VzCmap); axis equal; colorbar; clim([-30e-3, 30e-3])
     % volumeViewer(abs(unstackData(Vz0, PP)))
 
@@ -841,7 +869,11 @@ for ei = ensembles_to_fit
     % Save fit results
     save([PDpath, 'fit_results-', num2str(ei)], 'fit_SG', 'fit_RCA', 'fit_C', 'Vz0', 'Vt0')
     % voxelTimeseriesGUI({g1, unstackData(g1_model_RCA_stacked, PP)}, fit_RCA.v, 'ComplexMode', 'abs', 'Colormap', 'jet')
-    clearvars fit_SG fit_RCA fit_C g1 g1_exp
+    clearvars fit_SG fit_RCA fit_C g1 g1_avg g1_exp
+    
+    % g1_ens{1} = {}; % Clear the first cell
+    g1_ens(1:end-1) = g1_ens(2:end); % Shift all the g1s to the left
+    g1_ens{end} = {}; % Clear the last cell
     
     toc
 end
