@@ -3,6 +3,7 @@
 %   - Add velocity distribution options (and change v to v_gp)
 
 clearvars
+rng('shuffle')
 
 %% Add the Simulations folder to path
 codeDir = cd;
@@ -34,10 +35,10 @@ sigma_RCA = [32.431, 211.06, 40.617].*1e-6;
 SP.snr = 100000;
 
 % SP.vesselDiam = 50e-6; % Vessel diameter [m]
-SP.vesselDiam = 100e-6; % Vessel diameter [m]
+SP.vesselDiam = 30e-6; % Vessel diameter [m]
 
 % SP.vesselLength = (SP.endDepthMM - SP.startDepthMM)/1e3;  % Vessel length [m]
-SP.vesselLength = 8 * 1e-3;  % Vessel length [m]
+SP.vesselLength = 2 * 1e-3;  % Vessel length [m]
 
 % Define the center of the vessel  
 SP.xstart = 0;
@@ -66,6 +67,7 @@ SP.vesselAngle = [-theta, 0, phi]; % (x, y, z) [deg]
 cyl_vessel_rot = rotateVessel(cyl_vessel, SP.vesselAngle, SP);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+% SP.flow_v_mm_s = 15;
 SP.flow_v_mm_s = 10;
 % SP.flow_v_mm_s = 125;
 % SP.flow_v_mm_s = 1250;
@@ -82,10 +84,11 @@ voxel.size = [100e-6, 100e-6, 100e-6]; % Define x, y, z dimensions of the voxel
 % voxel.size = [1000e-6, 1000e-6, 1000e-6]; % Define x, y, z dimensions of the voxel
 
 % Define time steps
-SP.window = 1; % Windowd to simulate over [s]
+SP.window = 4; % Windowd to simulate over [s]
+SP.numFrames = SP.window * SP.frameRate;
 % SP.numFrames = 50;
 % SP.numFrames = 500;
-SP.numFrames = SP.window * SP.frameRate;
+
 
 % Get all the data within the voxel at frame 1
 voxel.data = getDataInVoxel(cyl_vessel, voxel); % Note: voxel.data for now is just a container that is always changing
@@ -99,7 +102,7 @@ voxel.sIQ_RCA(1) = voxel_sIQ_models(voxel, sigma_RCA, 'RCA', SP);
 tic
 for fi = 2:SP.numFrames
     new_cyl_vessel_rot = rotateVessel(new_cyl_vessel, SP.vesselAngle, SP);
-    voxel.data = getDataInVoxel(new_cyl_vessel, voxel);
+    voxel.data = getDataInVoxel(new_cyl_vessel_rot, voxel);
     voxel.sIQ_SG(fi) = voxel_sIQ_models(voxel, sigma_SG, 'SG', SP);
     voxel.sIQ_RCA(fi) = voxel_sIQ_models(voxel, sigma_RCA, 'RCA', SP);
     % voxel.sIQ(fi) = voxel_sIQ(voxel, SP);
@@ -120,15 +123,20 @@ clearvars fi temp_sIQ
 voxel.sIQ_SG = voxel.sIQ_SG - mean(voxel.sIQ_SG);
 voxel.sIQ_RCA = voxel.sIQ_RCA - mean(voxel.sIQ_RCA);
 
+% Add white Gaussian noise
+voxel.sIQ_SG = awgn(voxel.sIQ_SG, SP.snr, 'measured', 'db');
+voxel.sIQ_RCA = awgn(voxel.sIQ_RCA, SP.snr, 'measured', 'db');
+
 %% Calculate g1 (data should be zero meaned already!!)
-voxel.g1_SG = sim_g1T(voxel.sIQ_SG);
-voxel.g1_RCA = sim_g1T(voxel.sIQ_RCA);
-% nTau = round(50e-3 * SP.frameRate); % Number of time lags to calculate g1 at
-% voxel.g1_SG = g1T_fft(voxel.sIQ_SG);
-% voxel.g1_RCA = g1T_fft(voxel.sIQ_RCA);
+nTau = round(50e-3 * SP.frameRate); % Number of time lags to calculate g1 at
+voxel.g1_SG = sim_g1T(voxel.sIQ_SG, nTau);
+voxel.g1_RCA = sim_g1T(voxel.sIQ_RCA, nTau);
+% voxel.g1_SG = g1T_fft(voxel.sIQ_SG, nTau);
+% voxel.g1_RCA = g1T_fft(voxel.sIQ_RCA, nTau);
 
 %% Plot for testing
-tau = 0:1/SP.frameRate:(SP.numFrames-1)/SP.frameRate;
+% tau = 0:1/SP.frameRate:(SP.numFrames-1)/SP.frameRate;
+tau = 0:1/SP.frameRate:(nTau-1)/SP.frameRate;
 
 plot_g1(voxel.sIQ_SG, voxel.g1_SG, tau.*1e3, 'ms')
 plot_g1(voxel.sIQ_RCA, voxel.g1_RCA, tau.*1e3, 'ms')

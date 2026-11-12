@@ -9,7 +9,7 @@
 function [pts, SP] = genRandomPts3D_cyl(SP)
     % x, y, start are measured with x, y = 0 at center of transducer
     % z start is distance starting from startDepth
-    rng('shuffle')
+    % rng('shuffle')
 
     % Start by defining a rectangular vessel
     SP.vesselWidth = SP.vesselDiam;

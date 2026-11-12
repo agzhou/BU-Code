@@ -23,7 +23,7 @@ function sIQ = voxel_sIQ_models(voxel, sigma, model, SP)
             sigma_n = sigma(1); sigma_w = sigma(2); sigma_a = sigma(3); % parse sigma vector
             PSF = ( exp( -(voxel.data(:, 1) - voxel.center(1)).^2./(2.*sigma_n^2) -(voxel.data(:, 2) - voxel.center(2)).^2./(2.*sigma_w^2)) ...
                   + exp( -(voxel.data(:, 1) - voxel.center(1)).^2./(2.*sigma_w^2) -(voxel.data(:, 2) - voxel.center(2)).^2./(2.*sigma_n^2)) ) ...
-                  .* (voxel.data(:, 3) - voxel.center(3)).^2./(2.*sigma_a^2);
+                  .* exp( -(voxel.data(:, 3) - voxel.center(3)).^2./(2.*sigma_a^2));
     end
 
     % Calculate the sIQ using the specific PSF term
@@ -31,6 +31,5 @@ function sIQ = voxel_sIQ_models(voxel, sigma, model, SP)
                         .* PSF ...
                         .* exp( 2.*1i.*k.*(voxel.data(:, 3) - voxel.center(3)) )    );
     
-    % Add white Gaussian noise
-    sIQ = awgn(sIQ, SP.snr, 'measured', 'db');
+    
 end
