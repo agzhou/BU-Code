@@ -11,6 +11,7 @@
 %   1. Acquire one buffer
 %   2. Acquire the next buffer while transferring and saving the previous buffer
 %   3. Repeat step 2
+
 %% 1. Specify system parameters
 clearvars
 
@@ -32,7 +33,15 @@ activate
 savepath = uigetdir('D:\', 'Select the parameter save path');
 savepath = [savepath, '\'];
 
-parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', 'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', 'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', 'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', 'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', 'Use air puff (0-no, 1-yes)', 'Probe connector', 'SSD write speed [GB/s]', 'Probe aperture [mm]', 'Time per superframe [s]', 'ADC Sampling Mode (50, 67, 100, 200% of center frequency)', 'Number of buffers'}; % 'Save RF data (0-no, 1-yes)', 
+parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', ...
+    'End depth [mm]', 'Pulse Repetition Frequency [Hz]', 'Frame rate [Hz]', ...
+    'Number of angles', 'Maximum angle [degrees]', 'Probe frequency [MHz]', ...
+    'Speed of sound [m/s]', 'Simulate Mode (0-off, 1-on, 2-RcvLoop)', ...
+    'Save RcvData (0-no, 1-yes)', 'Number of frames per superframe', ...
+    'Use stimulus (0-no, 1-air puff, 2-visual)', 'Probe connector', ...
+    'SSD write speed [GB/s]', 'Probe aperture [mm]', 'Time per superframe [s]', ...
+    'ADC Sampling Mode (50, 67, 100, 200% of center frequency)', ...
+    'Number of buffers'}; % 'Save RF data (0-no, 1-yes)', 
 % -- 5 x 2 angles -- %
 % 200% BW, fewer frames per buffer
 % parameterDefaults = {'30', '1', '8', '47000', '4900', '5', '6', '13.6', '1540', '0', '1', '400', '0', 'UTA-408GE', '14.5', '8.8', '1.5', '200', '3'};
@@ -99,7 +108,7 @@ numFramesPerSF = str2double(parameterUserInput{12});
 if mod(numFramesPerSF, 2) ~= 0
     error('# of frames per SF must be even')
 end
-useTriggers = str2double(parameterUserInput{13});
+useStim = str2double(parameterUserInput{13});
 connectorPlate = parameterUserInput{14};
 % Maximum PCIe DMA rate for the Vantage 256 is 6.6 GB/s, but the connector
 % type can affect this
@@ -176,7 +185,7 @@ TimeTagEna = 2;
 % 2: enable and reset counter
 
 %% 1.5. Specify the functional stimulus parameters
-if useTriggers
+if useStim > 0
     [apis, vts, daqrate, numTrials] = functionalParameterInputPrompt;
 end
 
@@ -578,7 +587,7 @@ SeqControl(scInd).command = 'returnToMatlab';
 % 3. Jump to some event to keep the acquisition looping
 scInd = scInd + 1;
 SeqControl(scInd).command = 'jump'; % jump to
-if useTriggers
+if useStim > 0
     SeqControl(scInd).argument = 2;     % second event
 else
     SeqControl(scInd).argument = 1;     % first event
@@ -663,7 +672,7 @@ SeqControl(scInd).argument = 10000000; % 10 s
 % 11. Sync for aligning the hardware to when the data is done saving
 scInd = scInd + 1;
 SeqControl(scInd).command = 'sync';
-if useTriggers
+if useStim > 0
     SeqControl(scInd).argument = 1e6 * vts.delay_s*5; % Timeout set to 5x the input delay just in case
 else
     SeqControl(scInd).argument = 20*1e6; % 20 s
@@ -674,7 +683,7 @@ scInd = scInd + 1;
 SeqControl(scInd).command = 'timeToNextAcq';
 SeqControl(scInd).argument = (1/sfRate - 1/frameRate*numFramesPerSF) * 1e6 + SeqControl(1).argument; % [us]
 
-if useTriggers
+if useStim > 0
     n = 1;
     Event(n).info = 'Wait for external trigger to start the acquisition sequence';
     Event(n).tx = 1; % It seems to not work properly if there isn't some acquisition event combined here
@@ -823,9 +832,13 @@ filename = 'RC15gV_Allen_loop_functional_buffers_fastsave.mat';
 
 save(fullfile(currentDir{1:find(contains(currentDir,"Vantage-"),1)})+"\MatFiles\"+filename);
 
-%% Run the air puff script before running VSX
-if useTriggers
+%% Run the functional stimulus (air puff or visual) script before running VSX
+if useStim == 1
     [Mcr_d, Mcr_fcp] = controlAirPuff_func(apis, vts, daqrate, numTrials); % Need to use Mcr_ because VSX will autoclear most variables
+    daqStartTimetag = datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss.SSS');
+    savefast([savepath, 'daqStartTimetag'], 'daqStartTimetag')
+elseif useStim == 2
+    [Mcr_d, Mcr_fcp] = controlVisualStim_func(apis, vts, daqrate, numTrials); % Need to use Mcr_ because VSX will autoclear most variables
     daqStartTimetag = datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss.SSS');
     savefast([savepath, 'daqStartTimetag'], 'daqStartTimetag')
 end
@@ -869,8 +882,8 @@ if runVSX
     VSX
 end
 
-%% Read the air puff data - may need to put this in the saveRcvData Processing...
-if useTriggers
+%% Read the functional stimulus (air puff, visual) data if applicable - may need to put this in the saveRcvData Processing...
+if useStim == 1 % Currently, only the air puff gives a marker output
     [inScanData, timeStamp, triggerTime] = read(Mcr_d, seconds(Mcr_d.NumScansAvailable / Mcr_d.Rate), "OutputFormat", "Matrix");
 end
 
@@ -878,7 +891,7 @@ end
 
 makeParameterStructure_functional;
 save([savepath, 'params.mat'], 'P')
-if useTriggers
+if useStim == 1
     save([savepath, 'triggerData.mat'], 'inScanData', 'timeStamp', 'triggerTime')
 end
 % saveRcvData(RcvData{1})
