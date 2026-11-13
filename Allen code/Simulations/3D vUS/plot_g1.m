@@ -19,6 +19,6 @@ function plot_g1(sIQ, g1, tau, tau_units)
 
 
     figure; plot(tau, abs(g1)); xlabel(['tau', tau_units]); ylabel("|g_1|"); title('|g1|')
-    figure; plot(real(g1), imag(g1), '-o'); axis square; title('Complex g1') 
+    figure; plot(real(g1), imag(g1), '-o'); xlim([-1, 1]); ylim([-1, 1]); axis square; title('Complex g1')
 
 end

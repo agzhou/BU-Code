@@ -26,6 +26,12 @@ SP.frameRate = 3500; % Frame rate [Hz]
 SP.scatterReflectivity = 1.0;
 SP.dim = 3; % Base vessel is defined to run along z
 
+% Flow profile parameters
+% a = 0
+a = 0.7
+% a = 1
+k = 2
+
 % Field-based sigmas from the complex PSF measured decorrelation
 % For: 5 angles from -5 to 5 deg, 15.625 MHz, Verasonics sim
 sigma_SG = [77.869, 77.869, 40.617].*1e-6;
@@ -41,19 +47,20 @@ SP.vesselDiam = 30e-6; % Vessel diameter [m]
 SP.vesselLength = 2 * 1e-3;  % Vessel length [m]
 
 % Define the center of the vessel  
-SP.xstart = 0;
-SP.ystart = 0;
-SP.zstart = 0;
+% SP.xstart = 0;
+% SP.ystart = 0;
+% SP.zstart = 0;
+SP.vesselCenter = [0, 0, 0]; % [x, y, z]
 
 % -- Define vessel rotation angles -- %
 % Start with the vessel axis aligned with the z axis. Define the polar
 % angle 'theta' as the vessel's angle from the z axis, and the azimuthal 
 % angle 'phi' as the angle of the vessel's projection onto the xy plane
 % from the x axis (https://en.wikipedia.org/wiki/Spherical_coordinate_system)
-% theta = 45;
-% phi = 15;
-theta = 0;
-phi = 0;
+theta = 45;
+phi = 15;
+% theta = 0;
+% phi = 0;
 % For simplicity, treat these as first a -rotation about x and then a
 % rotation about z
 SP.vesselAngle = [-theta, 0, phi]; % (x, y, z) [deg]
@@ -67,8 +74,9 @@ SP.vesselAngle = [-theta, 0, phi]; % (x, y, z) [deg]
 cyl_vessel_rot = rotateVessel(cyl_vessel, SP.vesselAngle, SP);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+SP.v_gp = 10e-3; % [m/s]
 % SP.flow_v_mm_s = 15;
-SP.flow_v_mm_s = 10;
+% SP.flow_v_mm_s = 10;
 % SP.flow_v_mm_s = 125;
 % SP.flow_v_mm_s = 1250;
 SP.flow_dim = 3; %%%%%%%%
@@ -95,7 +103,11 @@ voxel.data = getDataInVoxel(cyl_vessel, voxel); % Note: voxel.data for now is ju
 voxel.sIQ_SG(1) = voxel_sIQ_models(voxel, sigma_SG, 'SG', SP);
 voxel.sIQ_RCA(1) = voxel_sIQ_models(voxel, sigma_RCA, 'RCA', SP);
 
-[new_cyl_vessel, SP] = movePoints(cyl_vessel, SP);
+% Create anonymous function for the used flow profile
+flowProfile = @(pts) tangelderFlowProfile(pts, SP.v_gp, SP.frameRate, k, a, SP.dim, SP.vesselDiam, SP.vesselCenter);
+
+% [new_cyl_vessel, SP] = movePoints(cyl_vessel, SP);
+[new_cyl_vessel, SP] = movePoints_flowProfiles(cyl_vessel, flowProfile, SP);
 % plotPoints(new_cyl_vessel, SP)
 
 % Go through each frame, moving the points, and update the voxel data/sIQ
@@ -113,7 +125,10 @@ for fi = 2:SP.numFrames
     % plotPoints(voxel.data, SP)
     % plotPoints(new_cyl_vessel, SP)
 
-    [new_cyl_vessel, SP] = movePoints(new_cyl_vessel, SP); % Update points after moving
+    % Move and update points
+    % [new_cyl_vessel, SP] = movePoints(new_cyl_vessel, SP);
+    [new_cyl_vessel, SP] = movePoints_flowProfiles(new_cyl_vessel, flowProfile, SP);
+
 end
 toc
 clearvars fi temp_sIQ

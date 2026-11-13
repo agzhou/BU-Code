@@ -5,7 +5,6 @@
 
 % Output is in meters
 
-% function pts = genRandomPts3D_cyl(vesselDiam, vesselLength, startDepth, xstart, ystart, zstart)
 function [pts, SP] = genRandomPts3D_cyl(SP)
     % x, y, start are measured with x, y = 0 at center of transducer
     % z start is distance starting from startDepth
@@ -29,9 +28,9 @@ function [pts, SP] = genRandomPts3D_cyl(SP)
     
 %     for n = 1:numCells
     %     Media.MP(n, :) = [ -vesselWidth / wl / 2 + xr(n) * vesselWidth / wl, 0, 50 + zr(n) * vesselHeight / wl, scatterReflectivity];
-        pts = [ SP.xstart - SP.vesselWidth ./ 2 + xr .* SP.vesselWidth, ...
-                SP.ystart - SP.vesselWidth ./ 2 + yr .* SP.vesselWidth, ...
-                SP.zstart - SP.vesselLength ./ 2 + zr .* SP.vesselLength, ... % SP.zstart + SP.startDepthMM/1e3 + zr .* SP.vesselLength, ...
+        pts = [ SP.vesselCenter(1) - SP.vesselWidth ./ 2 + xr .* SP.vesselWidth, ...
+                SP.vesselCenter(2) - SP.vesselWidth ./ 2 + yr .* SP.vesselWidth, ...
+                SP.vesselCenter(3) - SP.vesselLength ./ 2 + zr .* SP.vesselLength, ... % SP.zstart + SP.startDepthMM/1e3 + zr .* SP.vesselLength, ...
                 repmat(SP.scatterReflectivity, length(xr), 1)];
 
 %         pts = [ -vesselX / wl / 2 + xr(n) * vesselX / wl, 0, 0 + zr(n) * vesselZ / wl, scatterReflectivity];
