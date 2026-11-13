@@ -19,7 +19,7 @@ codeDir = cd;
 codeDir_split = split(string(codeDir), filesep);
 % AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\Verasonics");
 AcquisitionCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Ultrasound data acquisition");
-AirPuffCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen code\Air Puff");
+AirPuffCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen code\Air Puff and Visual Stim");
 addpath(AcquisitionCodePath); addpath(AirPuffCodePath)
 
 % cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
@@ -64,7 +64,7 @@ parameterPrompt = {'Probe voltage [V]', 'Start depth [mm]', ...
 % 200% BW, fewer frames per buffer
 % parameterDefaults = {'30', '1', '8', '47000', '1000', '21', '9', '15.625', '1540', '0', '1', '90', '0', 'UTA-408GE', '14.5', '8.8', '1.5', '200', '3'};
 % 67% BW, more frames per buffer
-parameterDefaults = {'30', '1', '8', '36000', '1000', '17', '8', '15.625', '1540', '0', '1', '300', '0', 'UTA-408GE', '14.5', '8.8', 'continuous', '67', '3'};
+% parameterDefaults = {'30', '1', '8', '36000', '1000', '17', '8', '15.625', '1540', '0', '1', '300', '0', 'UTA-408GE', '14.5', '8.8', 'continuous', '67', '3'};
 
 
 % -- 21 x 2 angles -- %
@@ -80,8 +80,9 @@ parameterDefaults = {'30', '1', '8', '36000', '1000', '17', '8', '15.625', '1540
 % parameterDefaults = {'30', '1', '8', '20000', '312', '31', '9.6257', '15.625', '1540', '0', '1', '50', '0', 'UTA-408GE', '14.5', '8.8', '1.5', '200', '3'};
 % parameterDefaults = {'30', '1', '8', '47000', '700', '31', '9.6257', '15.625', '1540', '0', '1', '50', '0', 'UTA-408GE', '14.5', '8.8', '1.5', '200', '3'};
 % 67% BW, more frames per buffer
-% parameterDefaults = {'30', '1', '8', '20000', '312', '31', '9.6257', '15.625', '1540', '0', '1', '156', '0', 'UTA-408GE', '14.5', '8.8', '1.5', '67', '3'};
+% parameterDefaults = {'30', '1', '8', '20000', '312', '31', '9.6257', '15.625', '1540', '0', '1', '156', '0', 'UTA-408GE', '14.5', '8.8', 'continuous', '67', '3'};
 % parameterDefaults = {'30', '1', '8', '47000', '700', '31', '9.6257', '15.625', '1540', '0', '1', '156', '0', 'UTA-408GE', '14.5', '8.8', '1.5', '67', '3'};
+parameterDefaults = {'30', '1', '8', '36000', '500', '31', '9.6257', '15.625', '1540', '0', '1', '150', '0', 'UTA-408GE', '14.5', '8.8', 'continuous', '67', '3'};
 
 parameterUserInput = inputdlg(parameterPrompt, 'Input Parameters', 1, parameterDefaults);
 
