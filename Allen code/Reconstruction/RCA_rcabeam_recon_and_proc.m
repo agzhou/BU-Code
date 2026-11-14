@@ -69,7 +69,7 @@ addpath(genpath(rcabeamCodePath))
 processingbeamCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "Allen code"))), '\') + "\Processing\");
 addpath(genpath(processingbeamCodePath))
 
-% function IQfiles = RCA_rcabeam_recon_and_proc(datapath, PDsavepath, Opts)
+% function PDfiles = RCA_rcabeam_recon_and_proc(datapath, PDsavepath, Opts)
 
     % if nargin < 1 || isempty(datapath)
         datapath = uigetdir(pwd, 'Select the raw data path');
@@ -164,7 +164,7 @@ addpath(genpath(processingbeamCodePath))
         Opts = reconDialog(Opts, fileNum, P, wl, datapath, PDsavepath, fmt);
         if isempty(Opts)
             fprintf('Reconstruction cancelled.\n')
-            IQfiles = {};
+            PDfiles = {};
             return
         end
     end
@@ -215,18 +215,33 @@ addpath(genpath(processingbeamCodePath))
 
     %% Reconstruct
     % cleanup = onCleanup(@() RCA_DAS_rcabeam('clear')); % release the GPU workspace, also after an error or Ctrl+C
-    IQfiles = {};
+    PDfiles = {};
     for k = 1:numel(f) % Loop through files
+
+        % Get the file index from the RF name
+        if strcmp(fmt, 'rf')
+            temp = strsplit(f(k).name, '-');
+            temp2 = strsplit(temp{end}, '.');
+            if strcmp(temp2{1}, '00000')
+                fileInd = 0;
+            else
+                fileInd = strip(temp2{1}, 'left', '0');
+            end
+        else
+            error('Code is not set up to get the file index properly for non FastSave data')
+        end
+
         if strcmp(fmt, 'rf')
             % like the Verasonics loops: IQ-<maxAngle>-<na>-<frameRate>-<numFramesPerBuffer>-1-<file #>
             outName = sprintf('%s%d-%d-%d-%d-1-%d.mat', namePrefix, round(P.maxAngle), P.na, round(P.frameRate), P.numFramesPerBuffer, fileNum(k));
         else
             outName = [namePrefix, f(k).name(4:end)]; % replace the 'RF-' prefix
         end
-        outFile = fullfile(PDsavepath, outName);
+        % outFile = fullfile(PDsavepath, outName);
+        outFile = fullfile(PDsavepath, ['fUSdata-', num2str(fileInd)]);
         if exist(outFile, 'file') && ~Opts.overwrite
             fprintf('%s already exists, skipping.\n', outName)
-            IQfiles{end+1} = outFile; %#ok<AGROW>
+            PDfiles{end+1} = outFile; %#ok<AGROW>
             continue
         end
 
@@ -270,7 +285,7 @@ addpath(genpath(processingbeamCodePath))
         % Let the CuPy GPU memory go
         cleanup = onCleanup(@() RCA_DAS_rcabeam('clear')); % release the GPU workspace, also after an error or Ctrl+C
 
-        IQfiles{end+1} = outFile; %#ok<AGROW>
+        PDfiles{end+1} = outFile; %#ok<AGROW>
         % fprintf('RF file %d reconstructed and saved as %s (%.1f s)\n', fileNum(k), outName, toc)
         fprintf('RF file %d reconstructed (%.1f s)\n', fileNum(k), toc)
 
@@ -298,18 +313,7 @@ addpath(genpath(processingbeamCodePath))
         % voxelTimeseriesGUI(gather(g1), gather(abs(g1(:, :, :, 2))), 'ComplexMode', 'abs', 'Colormap', 'turbo')
         % save(fullfile(PDsavepath, 'fUSdata-', num2str(k)', '.mat'), 'PDI', 'g1', '-v7.3', '-nocompression')
         
-        % Get the file index from the RF name
-        if strcmp(fmt, 'rf')
-            temp = strsplit(f(k).name, '-');
-            temp2 = strsplit(temp{end}, '.');
-            if strcmp(temp2{1}, '00000')
-                fileInd = 0;
-            else
-                fileInd = strip(temp2{1}, 'left', '0');
-            end
-        else
-            error('Code is not set up to get the file index properly for non FastSave data')
-        end
+        
         save([PDsavepath, '\fUSdata-', num2str(fileInd), '.mat'], 'PDI', 'g1', '-v7.3', '-nocompression')
         fprintf('Processed data file %d saved (%.1f s)\n', fileNum(k), toc)
 
