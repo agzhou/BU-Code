@@ -238,8 +238,8 @@ addpath(genpath(processingbeamCodePath))
             outName = [namePrefix, f(k).name(4:end)]; % replace the 'RF-' prefix
         end
         % outFile = fullfile(PDsavepath, outName);
-        outFile = fullfile(PDsavepath, ['fUSdata-', num2str(fileInd)]);
-        if exist(outFile, 'file') && ~Opts.overwrite
+        outFile = fullfile(PDsavepath, ['fUSdata-', num2str(fileInd), '.mat']);
+        if exist(outFile, 'file')==2 && ~Opts.overwrite
             fprintf('%s already exists, skipping.\n', outName)
             PDfiles{end+1} = outFile; %#ok<AGROW>
             continue
