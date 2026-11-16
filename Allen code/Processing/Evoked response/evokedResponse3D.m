@@ -261,9 +261,16 @@ end
 PDIallSF_orig = PDIallSF;
 % gk = [2, 2, 4]; % 3D Gaussian smoothing kernel
 gk = [1, 1, 2];
-for sfi = 1:size(PDIallSF{3}, fDim)
-    PDIallSF{3}(:, :, :, sfi) = imgaussfilt3(PDIallSF_orig{3}(:, :, :, sfi), gk);
+if iscell(PDIallSF)
+    for sfi = 1:size(PDIallSF{3}, fDim)
+        PDIallSF{3}(:, :, :, sfi) = imgaussfilt3(PDIallSF_orig{3}(:, :, :, sfi), gk);
+    
+    end
+else
+    for sfi = 1:size(PDIallSF, fDim)
+        PDIallSF(:, :, :, sfi) = imgaussfilt3(PDIallSF_orig(:, :, :, sfi), gk);
 
+    end
 end
 
 %% Testing
