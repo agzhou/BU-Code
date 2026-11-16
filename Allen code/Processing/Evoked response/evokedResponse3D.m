@@ -1,5 +1,7 @@
 %% Description: processing for 3D fUS data, in an evoked response experimental paradigm
 
+stimType = 'visual'; % Add this to a user prompt later
+
 %% Add the Processing folder (and subfolders) to path
 codeDir = cd;
 codeDir_split = split(string(codeDir), filesep);
@@ -56,6 +58,8 @@ x_mm = x_mm(voxelRange{1});
 y_mm = y_mm(voxelRange{2});
 z_mm = z_mm(voxelRange{3});
 
+vs = [length(voxelRange{1}), length(voxelRange{2}), length(voxelRange{3})]; % Volume size [voxels]
+
 %% Adjust RF timetags
 % Create RF timetag-per-superframe vector and subtract so it starts at 0.
 %   RFtimeTags is a (# frames per superframe, # channels, # superframes matrix of RF time tags, in seconds, of the start of each frame's acquisition.
@@ -64,18 +68,37 @@ channelDim = 2;
 RFTT = squeeze(mean(RFtimeTags - RFTT_start, channelDim)); % Also collapse the channel dimension, since time tags should be the same across channels
 sfStarts = RFTT(1, :).'; % Superframe start times [s]
 
-% Crop the stimulus (air puff) signal so it's aligned with the start of data
-% acquisition
-analogHigh = 2; % Trigger value past which we treat the signal as 'on'
-indFirstOn = find(inScanData > analogHigh, 1, 'first') - 1; % Index (in DAQ samples) at which the first stim 'on' starts
-% indSFStart_DAQunits = indFirstOn - P.apis.delay_time_ms/1e3 * P.daqrate; % Index (in DAQ samples) at which the data acquisition started
-indSFStart_DAQunits = round(P.vts.delay_s * P.daqrate) + 1; % TESTING
-stim = inScanData(indSFStart_DAQunits:end); % Crop the stim/trigger data to start when the data acquisition started
-stimTimestamps = timeStamp(indSFStart_DAQunits:end); stimTimestamps = stimTimestamps - stimTimestamps(1); % Cropped timestamps for the stim/trigger data
-% stimOnsetTimestamps = ((0:P.numTrials-1).' .* P.apis.seq_length_s) + P.apis.delay_time_ms/1e3; % Time [s] at the stim onset for each trial (assumes repeated trials of the same structure)
-stimOnsetTimestamps = 1 + ((0:P.numTrials-1).' .* P.apis.seq_length_s) + P.apis.delay_time_ms/1e3; % Time [s] at the stim onset for each trial (assumes repeated trials of the same structure)
-stimEndTimestamps = stimOnsetTimestamps + P.apis.stim_length_s; % Time [s] at the stim ends for each trial (assumes repeated trials of the same structure)
-% clearvars inScanData timeStamp
+if isequal(stimType, 'air puff') % For the air puff, there is a marker output, so use that
+    % Crop the stimulus (air puff) signal so it's aligned with the start of data
+    % acquisition
+    analogHigh = 2; % Trigger value past which we treat the signal as 'on'
+    indFirstOn = find(inScanData > analogHigh, 1, 'first') - 1; % Index (in DAQ samples) at which the first stim 'on' starts
+    % indSFStart_DAQunits = indFirstOn - P.apis.delay_time_ms/1e3 * P.daqrate; % Index (in DAQ samples) at which the data acquisition started
+    indSFStart_DAQunits = round(P.vts.delay_s * P.daqrate) + 1; % TESTING
+    stim = inScanData(indSFStart_DAQunits:end); % Crop the stim/trigger data to start when the data acquisition started
+    stimTimestamps = timeStamp(indSFStart_DAQunits:end); stimTimestamps = stimTimestamps - stimTimestamps(1); % Cropped timestamps for the stim/trigger data
+    % stimOnsetTimestamps = ((0:P.numTrials-1).' .* P.apis.seq_length_s) + P.apis.delay_time_ms/1e3; % Time [s] at the stim onset for each trial (assumes repeated trials of the same structure)
+    stimOnsetTimestamps = 1 + ((0:P.numTrials-1).' .* P.apis.seq_length_s) + P.apis.delay_time_ms/1e3; % Time [s] at the stim onset for each trial (assumes repeated trials of the same structure)
+    stimEndTimestamps = stimOnsetTimestamps + P.apis.stim_length_s; % Time [s] at the stim ends for each trial (assumes repeated trials of the same structure)
+    % clearvars inScanData timeStamp
+elseif isequal(stimType, 'visual') % For visual stim, there is no marker output, so use the input trigger signal
+    % Crop the stimulus (air puff) signal so it's aligned with the start of data
+    % acquisition
+    analogHigh = 2; % Trigger value past which we treat the signal as 'on'
+    indFirstOn = find(P.Mcr_fcp.apis.signal > analogHigh, 1, 'first') - 1; % Index (in DAQ samples) at which the first stim 'on' starts
+    % indSFStart_DAQunits = indFirstOn - P.apis.delay_time_ms/1e3 * P.daqrate; % Index (in DAQ samples) at which the data acquisition started
+    indSFStart_DAQunits = round(P.vts.delay_s * P.daqrate) + 1; % TESTING
+    stim = P.Mcr_fcp.apis.signal(indSFStart_DAQunits:end); % Crop the stim/trigger data to start when the data acquisition started
+    timeStamp = 0:1/P.daqrate:(length(P.Mcr_fcp.apis.signal)-1)/P.daqrate;
+    stimTimestamps = timeStamp(indSFStart_DAQunits:end); stimTimestamps = stimTimestamps - stimTimestamps(1); % Cropped timestamps for the stim/trigger data
+    % stimOnsetTimestamps = ((0:P.numTrials-1).' .* P.apis.seq_length_s) + P.apis.delay_time_ms/1e3; % Time [s] at the stim onset for each trial (assumes repeated trials of the same structure)
+    stimOnsetTimestamps = 1 + ((0:P.numTrials-1).' .* P.apis.seq_length_s) + P.apis.delay_time_ms/1e3; % Time [s] at the stim onset for each trial (assumes repeated trials of the same structure)
+    stimEndTimestamps = stimOnsetTimestamps + P.apis.stim_length_s; % Time [s] at the stim ends for each trial (assumes repeated trials of the same structure)
+    % clearvars inScanData timeStamp
+
+else
+    error('Stim type not recognized')
+end
 
 % Visualize stim and superframe times
 figure
@@ -105,10 +128,69 @@ if ~exist('TDsavepath', 'var')
 end
 save([TDsavepath, 'TD.mat'], 'TD')
 
+% Adjust file numbers if needed
+if isfield(P, 'fsFileName') % If FastSave was used, indices start from 0
+    filenumsToUse = 0:RFcount-1;
+else
+    filenumsToUse = 1:RFcount; % Otherwise, indices start from 1
+end
+
 %% Calculate vUS (g1 fits) for each pre-computed g1 file
 % See main_vUS_3D.m
 
 %% Go through pre-computed data files (for all superframes in the experiment) and store
+% (NO CELL VERSION)
+fDim = 4;
+
+PDIallSF = [];
+% CDIallSF = [];
+for fi = filenumsToUse
+
+    disp(fi)
+    load([PDpath, 'fUSdata-', num2str(fi)], 'PDI', 'CDI')
+    PDIallSF = cat(fDim, PDIallSF, PDI);
+    % CDIallSF = cat(fDim, CDIallSF, CDI);
+end
+% Average PDI and CDI across superframes
+PDIA = mean(PDIallSF, fDim);
+% CDIA = mean(CDIallSF, fDim);
+% save([PDpath, 'PDIA_CDIA.mat'], "PDIA", "CDIA")
+voxelTimeseriesGUI(PDIallSF, PDIA.^0.5, 'Colormap', 'turbo')
+
+% Load v from vUS fits
+VallSF_SG = [];
+VallSF_RCA = [];
+CallSF_C = [];
+for fi = filenumsToUse
+
+    disp(fi)
+    load([FRpath, 'fit_results-', num2str(fi)], 'fit_SG', 'fit_RCA', 'fit_C')
+
+    VallSF_SG = cat(fDim, VallSF_SG, fit_SG.v);
+    VallSF_RCA = cat(fDim, VallSF_RCA, fit_RCA.v);
+    CallSF_C = cat(fDim, CallSF_C, fit_C.C);
+end
+
+voxelTimeseriesGUI(VallSF_RCA, mean(VallSF_RCA, fDim), 'Colormap', 'turbo')
+
+% Load proxies from tl-fUS fits
+CBViallSF = [];
+% CBFSiallSF = [];
+for fi = filenumsToUse
+
+    disp(fi)
+    load([PDpath, 'tlfUSdata-', num2str(fi)], 'CBVi', 'CBFSi')
+
+    CBViallSF = cat(fDim, CBViallSF, CBVi);
+    % CBFSiallSF = cat(fDim, CBFSiallSF, CBFSi);
+end
+voxelTimeseriesGUI({(PDIallSF - mean(PDIallSF, fDim)) ./ max(PDIallSF - mean(PDIallSF, fDim), [], fDim), CBViallSF}, PDIA.^0.5, 'Colormap', 'turbo')
+
+% Average CBVi across superframes
+CBViA = mean(CBViallSF, fDim);
+
+%% Go through pre-computed data files (for all superframes in the experiment) and store
+% (CELL VERSION)
 fDim = 4;
 % For now, go through only PDI and CDI
 % trialsToUse = [1:10];
@@ -183,10 +265,6 @@ for sfi = 1:size(PDIallSF{3}, fDim)
     PDIallSF{3}(:, :, :, sfi) = imgaussfilt3(PDIallSF_orig{3}(:, :, :, sfi), gk);
 
 end
-%% Trial stuff
-% Upsampling?
-
-% Baseline (first 5s) averaging
 
 %% Testing
 % [evoked, tGrid, info] = periStimulusAverage(PDIallSF, sfStarts, stimOnsetTimestamps);
@@ -217,7 +295,11 @@ stimrs1T(P.apis.delay_time_ms/1e3 * rr + 1 : 1 : (P.apis.delay_time_ms/1e3 + P.a
 % stimrs1T((P.apis.delay_time_ms/1e3 + testoffset) * rr + 1 : 1 : (P.apis.delay_time_ms/1e3 + testoffset + P.apis.stim_length_s) * rr) = 1;
 
 % PDIallSF(isnan(PDIallSF)) = eps;
-PDIrs = permute(interp1(sfCenters(1:size(PDIallSF{3}, 4)), permute(PDIallSF{3}, [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
+if iscell(PDIallSF)
+    PDIrs = permute(interp1(sfCenters(1:size(PDIallSF{3}, 4)), permute(PDIallSF{3}, [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
+else
+    PDIrs = permute(interp1(sfCenters(1:size(PDIallSF, 4)), permute(PDIallSF, [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
+end
 % CDIrs = permute(interp1(sfCenters, permute(abs(CDIallSF{3}), [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
 
 % Calculate trial windows at the resampled rate
@@ -238,8 +320,8 @@ end
 trialsToUse = [1:numel(trial_windows)]; % Which trials to keep
 % trialsToUse = [1:3, 5, 7, 8, 10];
 % trialsToUse = 1:3; % Testing
-PDIrs_TA = zeros(size(PDIA{3}));
-rPDIrs_TA = zeros(size(PDIA{3}));
+PDIrs_TA = zeros(vs);
+rPDIrs_TA = zeros(vs);
 for ind = trialsToUse
     % PDIrs_TA = PDIrs_TA + 1/numel(trialsToUse) .* PDIrs(:, :, :, trial_windows{ind});
     PDIrs_TA = PDIrs_TA + 1/numel(trialsToUse) .* trial_PDIrs{ind};
@@ -251,6 +333,9 @@ end
 % r_rPDIrs_TA = corrCoef3D(rPDIrs_TA, stimrs1T);
 [r_rPDIrs_TA, z_rPDIrs_TA, am_rPDIrs_TA] = activationMap3D(rPDIrs_TA, stimrs1T, 1);
 volumeViewer(r_rPDIrs_TA)
+
+% voxelTimeseriesGUI(rPDIrs_TA, PDIA, 'Colormap', 'turbo')
+voxelTimeseriesGUI(rPDIrs_TA, am_rPDIrs_TA, 'Colormap', 'turbo')
 
 %% tl-fUS trial averaging and correlation
 CBVirs = permute(interp1(sfCenters(1:size(CBViallSF{3}, 4)), permute(CBViallSF{3}, [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);

@@ -19,8 +19,8 @@ codeDir = cd;
 codeDir_split = split(string(codeDir), filesep);
 % AllenVerasonicsCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\Verasonics");
 AcquisitionCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Ultrasound data acquisition");
-AirPuffCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen code\Air Puff and Visual Stim");
-addpath(AcquisitionCodePath); addpath(AirPuffCodePath)
+stimCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen code\Air Puff and Visual Stim");
+addpath(AcquisitionCodePath); addpath(stimCodePath)
 
 % cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
 cd 'C:\Verasonics\Vantage Releases\Vantage-5.0.1-p1'

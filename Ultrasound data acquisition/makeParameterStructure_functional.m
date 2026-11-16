@@ -56,12 +56,11 @@ if exist('rcvChunkSize', 'var')
 end
 
 % Functional params
-if exist('useTriggers', 'var')
-    if useTriggers
+if ( exist('useTriggers', 'var') && useTriggers ) | ( exist('useStim', 'var') && useStim)
         if exist('apis', 'var')
             P.apis = apis;
         end
-        if exist('numTrials', 'var')
+        if exist('vts', 'var')
             P.vts = vts;
         end
         if exist('numTrials', 'var')
@@ -76,5 +75,4 @@ if exist('useTriggers', 'var')
         
         % P.Mcr_d = Mcr_d;
         P.Mcr_fcp = Mcr_fcp;
-    end
 end
