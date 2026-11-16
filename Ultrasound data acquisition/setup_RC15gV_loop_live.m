@@ -69,7 +69,7 @@ Resource.Parameters.verbose = 2; % Describe errors in varying levels
 
 Trans.name = 'RC15gV'; 
 % Trans.frequency = 18.5; % Not needed if using the default center frequency
-% Trans.frequency = 15.625;
+Trans.frequency = 15.625;
 
 Trans.units = 'wavelengths'; % or mm
 % Trans.units = 'mm';
@@ -271,7 +271,8 @@ Resource.DisplayWindow(3).numFrames = numSubFrames;
 tw.A = Trans.frequency; % frequency of transmission pulse, sets half cycle period of the waveform...
 tw.B = 0.67; % amount of time (0.1 - 1.0) that the transmission drivers are active in the half cycle period. Controsl how much power is delivered.
              % Apparently using B = 0.67 approximates a sine wave.
-tw.C = 2; % number of half cycles in the transmission waveform. 2 half cycles = 1 full cycle burst
+% tw.C = 2; % number of half cycles in the transmission waveform. 2 half cycles = 1 full cycle burst
+tw.C = 6;
 tw.D = 1; % initial polarity of the first half cycle (1 = +, 0 = -)
 TW(1).type = 'parametric';
 TW(1).Parameters = [tw.A, tw.B, tw.C, tw.D];
