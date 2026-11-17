@@ -8,5 +8,8 @@ function [PDI, g1] = IQ2g1T_3D_nofreqsep_fast(IQ, sv_threshold_lower, sv_thresho
     clearvars IQ
 
     PDI = sum(abs(IQf_HPF).^2, 4) ./ size(IQf_HPF, 4);
-    g1 = g1T_fft(IQf_HPF, nTau);
+
+    if nargout > 1
+        g1 = g1T_fft(IQf_HPF, nTau);
+    end
 end
