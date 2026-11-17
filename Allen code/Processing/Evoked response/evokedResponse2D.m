@@ -60,6 +60,8 @@ end
 z_mm = z_mm(voxelRange{1});
 x_mm = x_mm(voxelRange{2});
 
+ps = [length(voxelRange{1}), length(voxelRange{2})]; % Plane size [pixels]
+
 %% Adjust RF timetags
 % Create RF timetag-per-superframe vector and subtract so it starts at 0.
 %   RFtimeTags is a (# frames per superframe, # channels, # superframes matrix of RF time tags, in seconds, of the start of each frame's acquisition.
@@ -128,6 +130,13 @@ if ~exist('TDsavepath', 'var')
 end
 save([TDsavepath, 'TD.mat'], 'TD')
 
+% Adjust file numbers if needed
+if isfield(P, 'fsFileName') % If FastSave was used, indices start from 0
+    filenumsToUse = 0:RFcount-1;
+else
+    filenumsToUse = 1:RFcount; % Otherwise, indices start from 1
+end
+
 %% Calculate vUS (g1 fits) for each pre-computed g1 file
 % See main_vUS_3D.m
 
@@ -140,7 +149,7 @@ fDim = 3;
 % end
 PDIallSF = cell(3, 1);
 CDIallSF = cell(3, 1);
-for fi = 1:RFcount
+for fi = filenumsToUse
 
     disp(fi)
     load([PDpath, 'fUSdata-', num2str(fi)], 'PDI', 'CDI')
@@ -162,7 +171,7 @@ pixelTimeseriesGUI(PDIallSF{3}, PDIA{3}.^0.5, 'Colormap', 'turbo')
 % Load v from vUS fits
 VallSF_SG = cell(3, 1);
 CallSF_C = cell(3, 1);
-for fi = 1:RFcount
+for fi = filenumsToUse
 
     disp(fi)
     load([FRpath, 'fit_results-', num2str(fi)], 'fit_SG', 'fit_C')
@@ -179,7 +188,7 @@ pixelTimeseriesGUI({PDIallSF{3}, VallSF_SG{3}}, PDIA{3}.^0.5, 'Colormap', 'turbo
 % Load proxies from tl-fUS fits
 CBViallSF = cell(3, 1);
 CBFSiallSF = cell(3, 1);
-for fi = 1:RFcount
+for fi = filenumsToUse
 
     disp(fi)
     load([PDpath, 'tlfUSdata-', num2str(fi)], 'CBVi', 'CBFSi')
@@ -250,12 +259,15 @@ for ind = 1:numel(trial_windows)
 end
 
 % Trial average
-PDIrs_TA = zeros(size(PDIA{3}));
-rPDIrs_TA = zeros(size(PDIA{3}));
-for ind = 1:numel(trial_windows)
-    % PDIrs_TA = PDIrs_TA + 1/numel(trial_windows) .* PDIrs(:, :, :, trial_windows{ind});
-    PDIrs_TA = PDIrs_TA + 1/numel(trial_windows) .* trial_PDIrs{ind};
-    rPDIrs_TA = rPDIrs_TA + 1/numel(trial_windows) .* trial_rPDIrs{ind};
+trialsToUse = [1:numel(trial_windows)]; % Which trials to keep
+% trialsToUse = [2:3, 5:10];
+% trialsToUse = 1:3; % Testing
+PDIrs_TA = zeros(ps);
+rPDIrs_TA = zeros(ps);
+for ind = trialsToUse
+    % PDIrs_TA = PDIrs_TA + 1/numel(trialsToUse) .* PDIrs(:, :, :, trial_windows{ind});
+    PDIrs_TA = PDIrs_TA + 1/numel(trialsToUse) .* trial_PDIrs{ind};
+    rPDIrs_TA = rPDIrs_TA + 1/numel(trialsToUse) .* trial_rPDIrs{ind};
 end
 
 [r_rPDIrs_TA, z_rPDIrs_TA, am_rPDIrs_TA] = activationMap2D(rPDIrs_TA, stimrs1T, 1);
@@ -266,8 +278,8 @@ figure; imagesc(x_mm, z_mm, r_rPDIrs_TA); colormap jet; xlabel('x'); ylabel('z')
 
 % Overlay the activation map (nonzero where z exceeds the threshold) on the averaged power Doppler map
 rt = 0.4; % r threshold
-% overlayActivationMap2D(PDIA{3}.^0.5, r_rPDIrs_TA, x_mm, z_mm, 'Mask', r_rPDIrs_TA > 0.4, 'Alpha', 0.7, 'AmapClim', [0.2, 0.8], 'ColorbarLabel', 'r', 'Title', 'Activation map over power Doppler');
-overlayActivationMap2D(fliplr(PDIA{3}).^0.5, fliplr(r_rPDIrs_TA), x_mm, z_mm, 'Mask', fliplr(r_rPDIrs_TA) > rt, 'Alpha', 0.7, 'AmapClim', [0.2, 0.8], 'ColorbarLabel', 'r', 'Title', 'Activation map over power Doppler');
+overlayActivationMap2D(PDIA{3}.^0.5, r_rPDIrs_TA, x_mm, z_mm, 'Mask', r_rPDIrs_TA > 0.4, 'Alpha', 0.7, 'AmapClim', [0.2, 0.8], 'ColorbarLabel', 'r', 'Title', 'Activation map over power Doppler');
+% overlayActivationMap2D(fliplr(PDIA{3}).^0.5, fliplr(r_rPDIrs_TA), x_mm, z_mm, 'Mask', fliplr(r_rPDIrs_TA) > rt, 'Alpha', 0.7, 'AmapClim', [0.2, 0.8], 'ColorbarLabel', 'r', 'Title', 'Activation map over power Doppler');
 
 %% Trial separation and averaging - vUS
 % Calculate trial windows at the resampled rate
