@@ -7,13 +7,14 @@
 
 %% Specify system parameters
 clear
-cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
+cd 'C:\Verasonics\Vantage Releases\Vantage-5.0.1-p1'
+% cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
 % cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.7-2505271400'
 % cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.5-2409181500'
 % cd 'G:\My Drive\Verasonics files\Vantage-4.9.2-2308102000'
 activate
 
-savepath = uigetdir('F:\', 'Select the save path');
+savepath = uigetdir('D:\', 'Select the save path');
 savepath = [savepath, '\'];
 % mkdir(savepath)
 
@@ -681,9 +682,9 @@ Event(n).seqControl = 3;
 
 %% Save all the data/structures to a .mat file.
 currentDir = cd; currentDir = regexp(currentDir, filesep, 'split');
-filename = 'L22-14v_Allen_loop.mat';
+filename = 'L22-14v_Allen_loop_live.mat';
 
-save(fullfile(currentDir{1:find(contains(currentDir,"Vantage"),1)})+"\MatFiles\"+filename);
+save(fullfile(currentDir{1:find(contains(currentDir,"Vantage-"),1)})+"\MatFiles\"+filename);
 
 
 %% 

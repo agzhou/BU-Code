@@ -482,7 +482,7 @@ if DMATime > numBuffers*SFTime
 % elseif (SFTime - DMATime - SSDWriteTime) < 0
 elseif SFTime < SSDWriteTime
     disp("**** Number of frames possible with the set acquisition rates: " + num2str(min(numFramesPerSFPossible, 2/numGBPerBufferFrame * numFramesPerSF)) + "****")
-    error("There is not enough time to acquire, DMA, and save to disk the amount of frames specified, according to the superframe rate")
+    warning("There is not enough time to acquire, DMA, and save to disk the amount of frames specified, according to the superframe rate")
 end
 
 disp("===============================")
