@@ -30,8 +30,8 @@ function [PDI, CDI, g1, noise] = IQ2g1T_2D(IQ, P, voxelRange, sv_threshold_lower
     clearvars IQf
 
     % Use the IQf with separated negative and positive frequency components
-    [IQf_separated, IQf_FT_separated, nFTpts] = separatePosNegFreqs(IQf_HPF); % Outputs are cell arrays in the order of: negative, positive, all frequencies
-    % [IQf_separated, IQf_FT_separated, ~] = separatePosNegFreqs_bandpass(IQf_HPF, v_max_expected, P.Trans.frequency*1e6, P.Resource.Parameters.speedOfSound, P.frameRate);
+    % [IQf_separated, IQf_FT_separated, nFTpts] = separatePosNegFreqs(IQf_HPF); % Outputs are cell arrays in the order of: negative, positive, all frequencies
+    [IQf_separated, IQf_FT_separated, ~] = separatePosNegFreqs_bandpass(IQf_HPF, v_max_expected, P.Trans.frequency*1e6, P.Resource.Parameters.speedOfSound, P.frameRate);
     % [PDI] = calcPowerDoppler(IQf_separated, noise);
     [PDI] = calcPowerDoppler(IQf_separated);
     [CDI] = calcColorDoppler(IQf_FT_separated, P);

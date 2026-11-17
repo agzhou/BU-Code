@@ -104,11 +104,11 @@ HPF.order = 4; % Butterworth filter order
 %% 3. Loop through files: Clutter Filtering and Power Doppler calculation
 fDim = 3; % Dimension of frames/time
 
-% for filenum = startFile:endFile
+for filenum = startFile:endFile
 % for filenum = endFile:-1:startFile
 % for filenum = 2:endFile
 % for filenum = startFile
-for filenum = 1
+% for filenum = 1
     tic
     load([IQpath, IQfilenameStructure, num2str(filenum)])
 
