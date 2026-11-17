@@ -164,32 +164,32 @@ end
 %% Calculate vUS (g1 fits) for each pre-computed g1 file
 % See main_vUS_3D.m
 
-%% Go through pre-computed data files (for all superframes in the experiment) and store
+%% Go through pre-computed data files (for all slices in the experiment) and store
 % (NO CELL VERSION)
 fDim = 4;
 
-PDIallSF = [];
+PDIT = []; % PDI across time
 % CDIallSF = [];
 for bi = 1:length(blocksToUse)
 
-    disp(bi)
-    load([PDpath, blockFilenames{bi}])
-    PDIallSF = cat(fDim, PDIallSF, PDI);
+    disp("Loading block " + num2str(blocksToUse(bi)))
+    load([PDpath, blockFilenames{bi}], 'PDI')
+    PDIT = cat(fDim, PDIT, PDI);
     % CDIallSF = cat(fDim, CDIallSF, CDI);
 end
-% Average PDI and CDI across superframes
-PDIA = mean(PDIallSF, fDim);
+% Average PDI and CDI across slices
+PDIA = mean(PDIT, fDim);
 % CDIA = mean(CDIallSF, fDim);
 % save([PDpath, 'PDIA_CDIA.mat'], "PDIA", "CDIA")
-voxelTimeseriesGUI(PDIallSF, PDIA.^0.5, 'Colormap', 'turbo')
+voxelTimeseriesGUI(PDIT, PDIA.^0.5, 'Colormap', 'turbo')
 
 % Load v from vUS fits
 VallSF_SG = [];
 VallSF_RCA = [];
 CallSF_C = [];
-for bi = filenumsToUse
+for bi = 1:length(blocksToUse)
 
-    disp(bi)
+    disp("Loading block " + num2str(blocksToUse(bi)))
     load([FRpath, 'fit_results-', num2str(bi)], 'fit_SG', 'fit_RCA', 'fit_C')
 
     VallSF_SG = cat(fDim, VallSF_SG, fit_SG.v);
@@ -202,15 +202,15 @@ voxelTimeseriesGUI(VallSF_RCA, mean(VallSF_RCA, fDim), 'Colormap', 'turbo')
 % Load proxies from tl-fUS fits
 CBViallSF = [];
 % CBFSiallSF = [];
-for bi = filenumsToUse
+for bi = 1:length(blocksToUse)
 
-    disp(bi)
+    disp("Loading block " + num2str(blocksToUse(bi)))
     load([PDpath, 'tlfUSdata-', num2str(bi)], 'CBVi', 'CBFSi')
 
     CBViallSF = cat(fDim, CBViallSF, CBVi);
     % CBFSiallSF = cat(fDim, CBFSiallSF, CBFSi);
 end
-voxelTimeseriesGUI({(PDIallSF - mean(PDIallSF, fDim)) ./ max(PDIallSF - mean(PDIallSF, fDim), [], fDim), CBViallSF}, PDIA.^0.5, 'Colormap', 'turbo')
+voxelTimeseriesGUI({(PDIT - mean(PDIT, fDim)) ./ max(PDIT - mean(PDIT, fDim), [], fDim), CBViallSF}, PDIA.^0.5, 'Colormap', 'turbo')
 
 % Average CBVi across superframes
 CBViA = mean(CBViallSF, fDim);
@@ -223,14 +223,14 @@ fDim = 4;
 % for trialInd = trialsToUse
 % 
 % end
-PDIallSF = cell(3, 1);
+PDIT = cell(3, 1);
 CDIallSF = cell(3, 1);
 for bi = 1:RFcount
 
     disp(bi)
     load([PDpath, 'fUSdata-', num2str(bi)], 'PDI', 'CDI')
     for j = 1:3
-        PDIallSF{j} = cat(fDim, PDIallSF{j}, PDI{j});
+        PDIT{j} = cat(fDim, PDIT{j}, PDI{j});
         CDIallSF{j} = cat(fDim, CDIallSF{j}, CDI{j});
     end
 end
@@ -238,11 +238,11 @@ end
 PDIA = cell(3, 1);
 CDIA = cell(3, 1);
 for j = 1:3
-    PDIA{j} = mean(PDIallSF{j}, fDim);
+    PDIA{j} = mean(PDIT{j}, fDim);
     CDIA{j} = mean(CDIallSF{j}, fDim);
 end
 % save([PDpath, 'PDIA_CDIA.mat'], "PDIA", "CDIA")
-voxelTimeseriesGUI(PDIallSF{3}, PDIA{3}.^0.5, 'Colormap', 'turbo')
+voxelTimeseriesGUI(PDIT{3}, PDIA{3}.^0.5, 'Colormap', 'turbo')
 
 % Load v from vUS fits
 VallSF_SG = cell(3, 1);
@@ -274,7 +274,7 @@ for bi = 1:RFcount
         % CBFSiallSF{j} = cat(fDim, CBFSiallSF{j}, CBFSi{j});
     end
 end
-voxelTimeseriesGUI({(PDIallSF{3} - mean(PDIallSF{3}, fDim)) ./ max(PDIallSF{3} - mean(PDIallSF{3}, fDim), [], fDim), CBViallSF{3}}, PDIA{3}.^0.5, 'Colormap', 'turbo')
+voxelTimeseriesGUI({(PDIT{3} - mean(PDIT{3}, fDim)) ./ max(PDIT{3} - mean(PDIT{3}, fDim), [], fDim), CBViallSF{3}}, PDIA{3}.^0.5, 'Colormap', 'turbo')
 
 % Average CBVi across superframes
 CBViA = cell(3, 1);
@@ -284,17 +284,17 @@ for j = 1:3
 end
 
 %% Smoothing test
-PDIallSF_orig = PDIallSF;
+PDIT_orig = PDIT;
 % gk = [2, 2, 4]; % 3D Gaussian smoothing kernel
 gk = [1, 1, 2];
-if iscell(PDIallSF)
-    for sfi = 1:size(PDIallSF{3}, fDim)
-        PDIallSF{3}(:, :, :, sfi) = imgaussfilt3(PDIallSF_orig{3}(:, :, :, sfi), gk);
+if iscell(PDIT)
+    for sfi = 1:size(PDIT{3}, fDim)
+        PDIT{3}(:, :, :, sfi) = imgaussfilt3(PDIT_orig{3}(:, :, :, sfi), gk);
     
     end
 else
-    for sfi = 1:size(PDIallSF, fDim)
-        PDIallSF(:, :, :, sfi) = imgaussfilt3(PDIallSF_orig(:, :, :, sfi), gk);
+    for sfi = 1:size(PDIT, fDim)
+        PDIT(:, :, :, sfi) = imgaussfilt3(PDIT_orig(:, :, :, sfi), gk);
 
     end
 end
@@ -328,10 +328,10 @@ stimrs1T(P.apis.delay_time_ms/1e3 * rr + 1 : 1 : (P.apis.delay_time_ms/1e3 + P.a
 % stimrs1T((P.apis.delay_time_ms/1e3 + testoffset) * rr + 1 : 1 : (P.apis.delay_time_ms/1e3 + testoffset + P.apis.stim_length_s) * rr) = 1;
 
 % PDIallSF(isnan(PDIallSF)) = eps;
-if iscell(PDIallSF)
-    PDIrs = permute(interp1(sfCenters(1:size(PDIallSF{3}, 4)), permute(PDIallSF{3}, [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
+if iscell(PDIT)
+    PDIrs = permute(interp1(sliceCenters(1:size(PDIT{3}, 4)), permute(PDIT{3}, [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
 else
-    PDIrs = permute(interp1(sfCenters(1:size(PDIallSF, 4)), permute(PDIallSF, [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
+    PDIrs = permute(interp1(sliceCenters(1:size(PDIT, 4)), permute(PDIT, [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
 end
 % CDIrs = permute(interp1(sfCenters, permute(abs(CDIallSF{3}), [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
 
@@ -361,7 +361,7 @@ for ind = trialsToUse
     rPDIrs_TA = rPDIrs_TA + 1/numel(trialsToUse) .* trial_rPDIrs{ind};
 end
 
-% voxelTimeseriesGUI(trial_rPDIrs, PDIA{3}.^0.5, 'Colormap', 'turbo')
+% voxelTimeseriesGUI(trial_rPDIrs, PDIA.^0.5, 'Colormap', 'turbo')
 % voxelTimeseriesGUI(rPDIrs_TA, PDIA{3}.^0.5, 'Colormap', 'turbo')
 % r_rPDIrs_TA = corrCoef3D(rPDIrs_TA, stimrs1T);
 [r_rPDIrs_TA, z_rPDIrs_TA, am_rPDIrs_TA] = activationMap3D(rPDIrs_TA, stimrs1T, 1);
@@ -369,6 +369,17 @@ volumeViewer(r_rPDIrs_TA)
 
 % voxelTimeseriesGUI(rPDIrs_TA, PDIA, 'Colormap', 'turbo')
 voxelTimeseriesGUI(rPDIrs_TA, am_rPDIrs_TA, 'Colormap', 'turbo')
+
+
+figure; imagesc(x_mm, z_mm, r_rPDIrs_TA); colormap jet; xlabel('x'); ylabel('z'); title('r'); daspect([PData.PDelta(1), PData.PDelta(1), PData.PDelta(3)])
+% set(gca, 'XDir', 'reverse')
+% Overlay the MIP'd activation map (nonzero where z exceeds the threshold) on the averaged power Doppler MIP
+PDIA_MIP = squeeze(max(PDIA, [], 1)).';
+am_rPDIrs_MIP = squeeze(max(am_rPDIrs_TA, [], 1)).';
+rt = 0.1; % r threshold
+overlayActivationMap2D(PDIA_MIP, am_rPDIrs_MIP, x_mm, z_mm, 'Mask', am_rPDIrs_MIP > rt, 'Alpha', 0.7, 'AmapClim', [min(am_rPDIrs_TA, [], 'all'), max(am_rPDIrs_TA, [], 'all')], 'ColorbarLabel', 'am', 'Title', 'Activation map over power Doppler');
+overlayActivationMap2D(fliplr(PDIA_MIP), fliplr(am_rPDIrs_MIP), x_mm, z_mm, 'Mask', fliplr(am_rPDIrs_MIP) > rt, 'Alpha', 0.7, 'AmapClim', [min(am_rPDIrs_TA, [], 'all'), max(am_rPDIrs_TA, [], 'all')], 'ColorbarLabel', 'am', 'Title', 'Activation map over power Doppler');
+
 
 %% tl-fUS trial averaging and correlation
 CBVirs = permute(interp1(sfCenters(1:size(CBViallSF{3}, 4)), permute(CBViallSF{3}, [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
@@ -446,11 +457,11 @@ volumeViewer(r_rvUSrs_TA)
 delay_s = P.apis.delay_time_ms/1e3; % Time before the first stim onset [s]
 
 dataTypes = struct();
-dataTypes.PDI = PDIallSF;
+dataTypes.PDI = PDIT;
 % dataTypes.CDI = CDIallSF;
 % dataTypes.vUS_SG = VallSF_SG;
 % dataTypes.vUS_RCA = VallSF_RCA;
-assert(size(PDIallSF{3}, 4) == numel(TD.sfStarts), 'Number of superframes in the data (%d) doesn''t match the RF time tags (%d)', size(PDIallSF{3}, 4), numel(TD.sfStarts))
+assert(size(PDIT{3}, 4) == numel(TD.sfStarts), 'Number of superframes in the data (%d) doesn''t match the RF time tags (%d)', size(PDIT{3}, 4), numel(TD.sfStarts))
 
 % Peri-stimulus average of each trial, interpolated onto a common time grid (percent change for PDI, difference from baseline for the signed types)
 preTime = min(5, delay_s); % Baseline duration before the stim onset [s] (limited by the time available before the first trial)
