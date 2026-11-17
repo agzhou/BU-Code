@@ -1,4 +1,6 @@
-%% Description: processing for 3D fUS data, in an evoked response experimental paradigm
+%% Description: processing for 2D fUS data, in an evoked response experimental paradigm
+
+stimType = 'visual'; % Add this to a user prompt later
 
 %% Add the Processing folder (and subfolders) to path
 codeDir = cd;
@@ -66,18 +68,37 @@ channelDim = 2;
 RFTT = squeeze(mean(RFtimeTags - RFTT_start, channelDim)); % Also collapse the channel dimension, since time tags should be the same across channels
 sfStarts = RFTT(1, :).'; % Superframe start times [s]
 
-% Crop the stimulus (air puff) signal so it's aligned with the start of data
-% acquisition
-analogHigh = 2; % Trigger value past which we treat the signal as 'on'
-indFirstOn = find(inScanData > analogHigh, 1, 'first') - 1; % Index (in DAQ samples) at which the first stim 'on' starts
-% indSFStart_DAQunits = indFirstOn - P.apis.delay_time_ms/1e3 * P.daqrate; % Index (in DAQ samples) at which the data acquisition started
-indSFStart_DAQunits = round(P.vts.delay_s * P.daqrate) + 1; % TESTING
-stim = inScanData(indSFStart_DAQunits:end); % Crop the stim/trigger data to start when the data acquisition started
-stimTimestamps = timeStamp(indSFStart_DAQunits:end); stimTimestamps = stimTimestamps - stimTimestamps(1); % Cropped timestamps for the stim/trigger data
-% stimOnsetTimestamps = ((0:P.numTrials-1).' .* P.apis.seq_length_s) + P.apis.delay_time_ms/1e3; % Time [s] at the stim onset for each trial (assumes repeated trials of the same structure)
-stimOnsetTimestamps = 1 + ((0:P.numTrials-1).' .* P.apis.seq_length_s) + P.apis.delay_time_ms/1e3; % Time [s] at the stim onset for each trial (assumes repeated trials of the same structure)
-stimEndTimestamps = stimOnsetTimestamps + P.apis.stim_length_s; % Time [s] at the stim ends for each trial (assumes repeated trials of the same structure)
-% clearvars inScanData timeStamp
+if isequal(stimType, 'air puff') % For the air puff, there is a marker output, so use that
+    % Crop the stimulus (air puff) signal so it's aligned with the start of data
+    % acquisition
+    analogHigh = 2; % Trigger value past which we treat the signal as 'on'
+    indFirstOn = find(inScanData > analogHigh, 1, 'first') - 1; % Index (in DAQ samples) at which the first stim 'on' starts
+    % indSFStart_DAQunits = indFirstOn - P.apis.delay_time_ms/1e3 * P.daqrate; % Index (in DAQ samples) at which the data acquisition started
+    indSFStart_DAQunits = round(P.vts.delay_s * P.daqrate) + 1; % TESTING
+    stim = inScanData(indSFStart_DAQunits:end); % Crop the stim/trigger data to start when the data acquisition started
+    stimTimestamps = timeStamp(indSFStart_DAQunits:end); stimTimestamps = stimTimestamps - stimTimestamps(1); % Cropped timestamps for the stim/trigger data
+    % stimOnsetTimestamps = ((0:P.numTrials-1).' .* P.apis.seq_length_s) + P.apis.delay_time_ms/1e3; % Time [s] at the stim onset for each trial (assumes repeated trials of the same structure)
+    stimOnsetTimestamps = 1 + ((0:P.numTrials-1).' .* P.apis.seq_length_s) + P.apis.delay_time_ms/1e3; % Time [s] at the stim onset for each trial (assumes repeated trials of the same structure)
+    stimEndTimestamps = stimOnsetTimestamps + P.apis.stim_length_s; % Time [s] at the stim ends for each trial (assumes repeated trials of the same structure)
+    % clearvars inScanData timeStamp
+elseif isequal(stimType, 'visual') % For visual stim, there is no marker output, so use the input trigger signal
+    % Crop the stimulus (air puff) signal so it's aligned with the start of data
+    % acquisition
+    analogHigh = 2; % Trigger value past which we treat the signal as 'on'
+    indFirstOn = find(P.Mcr_fcp.apis.signal > analogHigh, 1, 'first') - 1; % Index (in DAQ samples) at which the first stim 'on' starts
+    % indSFStart_DAQunits = indFirstOn - P.apis.delay_time_ms/1e3 * P.daqrate; % Index (in DAQ samples) at which the data acquisition started
+    indSFStart_DAQunits = round(P.vts.delay_s * P.daqrate) + 1; % TESTING
+    stim = P.Mcr_fcp.apis.signal(indSFStart_DAQunits:end); % Crop the stim/trigger data to start when the data acquisition started
+    timeStamp = 0:1/P.daqrate:(length(P.Mcr_fcp.apis.signal)-1)/P.daqrate;
+    stimTimestamps = timeStamp(indSFStart_DAQunits:end); stimTimestamps = stimTimestamps - stimTimestamps(1); % Cropped timestamps for the stim/trigger data
+    % stimOnsetTimestamps = ((0:P.numTrials-1).' .* P.apis.seq_length_s) + P.apis.delay_time_ms/1e3; % Time [s] at the stim onset for each trial (assumes repeated trials of the same structure)
+    stimOnsetTimestamps = 1 + ((0:P.numTrials-1).' .* P.apis.seq_length_s) + P.apis.delay_time_ms/1e3; % Time [s] at the stim onset for each trial (assumes repeated trials of the same structure)
+    stimEndTimestamps = stimOnsetTimestamps + P.apis.stim_length_s; % Time [s] at the stim ends for each trial (assumes repeated trials of the same structure)
+    % clearvars inScanData timeStamp
+
+else
+    error('Stim type not recognized')
+end
 
 % Visualize stim and superframe times
 figure

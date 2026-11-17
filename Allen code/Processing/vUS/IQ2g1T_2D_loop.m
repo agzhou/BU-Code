@@ -132,7 +132,8 @@ for filenum = startFile:endFile
     % toc
 
     % save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'CDI', 'g1', 'noise', '-v7.3', '-nocompression');
-    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'CDI', 'g1', '-v7.3', '-nocompression');
+    % save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'CDI', 'g1', '-v7.3', '-nocompression');
+    save([savepath, 'fUSdata-', num2str(filenum), '.mat'], 'PDI', 'CDI', 'g1', '-v7.3');
 
     disp("fUS data for file " + num2str(filenum) + " saved" )
 %     disp("g1 result for file " + num2str(filenum) + " saved" )
@@ -143,7 +144,7 @@ for filenum = startFile:endFile
     
 end
 % savefast([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'tau', 'tau_ms', 'tau1_index_CBF', 'tau2_index_CBF', 'tau1_index_CBV');
-save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'voxelRange', 'HPF', 'xp', "zp", "nf", 'nTau', 'tau');
+save([savepath, 'fUS_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper', 'voxelRange', 'HPF', 'xp', "zp", "nf", 'nTau', 'tau', 'zstart', 'zend');
 % savefast([savepath, 'PDI_CDI_proc_params.mat'], 'sv_threshold_lower', 'sv_threshold_upper');
 
 %% 4. Store all the PDI across the experiment into one cell array - one cell for each directional component
