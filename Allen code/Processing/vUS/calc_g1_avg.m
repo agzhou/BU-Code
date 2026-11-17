@@ -24,3 +24,5 @@ for j = 1:3
 end
 
 save([savepath, 'g1_avg.mat'], 'g1_avg', '-v7.3')
+
+% pixelTimeseriesGUI(g1_avg{3}, abs(g1_avg{3}(:, :, 2)), 'ComplexMode', 'abs', 'Colormap', 'turbo')

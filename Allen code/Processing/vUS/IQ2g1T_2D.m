@@ -1,5 +1,8 @@
 function [PDI, CDI, g1, noise] = IQ2g1T_2D(IQ, P, voxelRange, sv_threshold_lower, sv_threshold_upper, HPF, nTau)
 
+    v_max_expected = 50e-3; % [m/s]
+    disp("LPF set with v_cutoff = " + num2str(v_max_expected*1e3) + " mm/s")
+
     % Mask the IQ to some region (according to the function input)
     zrange = voxelRange{1};
     xrange = voxelRange{2};
@@ -28,6 +31,7 @@ function [PDI, CDI, g1, noise] = IQ2g1T_2D(IQ, P, voxelRange, sv_threshold_lower
 
     % Use the IQf with separated negative and positive frequency components
     [IQf_separated, IQf_FT_separated, nFTpts] = separatePosNegFreqs(IQf_HPF); % Outputs are cell arrays in the order of: negative, positive, all frequencies
+    % [IQf_separated, IQf_FT_separated, ~] = separatePosNegFreqs_bandpass(IQf_HPF, v_max_expected, P.Trans.frequency*1e6, P.Resource.Parameters.speedOfSound, P.frameRate);
     % [PDI] = calcPowerDoppler(IQf_separated, noise);
     [PDI] = calcPowerDoppler(IQf_separated);
     [CDI] = calcColorDoppler(IQf_FT_separated, P);
