@@ -2,7 +2,8 @@
 % (Long Ensemble version)
 
 stimType = 'visual'; % Add this to a user prompt later
-numBlocks = 20; % Add this to a user prompt later
+% stimType = 'air puff';
+numBlocks = 50; % Add this to a user prompt later
 warning('stimType and numBlocks are currently hard coded')
 
 %% Add the Processing folder (and subfolders) to path
@@ -321,11 +322,11 @@ figure; plot(stimTimestamps, cleanStim)
 
 %% Resample the data
 rr = 10; % Resampling rate [Hz]
+% stim_delay = 1; % stim is delayed for 1 second compared to the acquisition start... [s]
+stim_delay = stimOnsetTimestamps(1) - P.apis.delay_time_ms/1e3;
 
 stimrs1T = zeros(P.apis.seq_length_s * rr, 1); % Resampled stim for 1 trial
-stimrs1T(P.apis.delay_time_ms/1e3 * rr + 1 : 1 : (P.apis.delay_time_ms/1e3 + P.apis.stim_length_s) * rr) = 1;
-% testoffset = 2;
-% stimrs1T((P.apis.delay_time_ms/1e3 + testoffset) * rr + 1 : 1 : (P.apis.delay_time_ms/1e3 + testoffset + P.apis.stim_length_s) * rr) = 1;
+stimrs1T((P.apis.delay_time_ms/1e3 + stim_delay) * rr + 1 : 1 : ((P.apis.delay_time_ms/1e3 + stim_delay) + P.apis.stim_length_s) * rr) = 1;
 
 % PDIallSF(isnan(PDIallSF)) = eps;
 if iscell(PDIT)
@@ -380,7 +381,7 @@ rt = 0.1; % r threshold
 overlayActivationMap2D(PDIA_MIP, am_rPDIrs_MIP, x_mm, z_mm, 'Mask', am_rPDIrs_MIP > rt, 'Alpha', 0.7, 'AmapClim', [min(am_rPDIrs_TA, [], 'all'), max(am_rPDIrs_TA, [], 'all')], 'ColorbarLabel', 'am', 'Title', 'Activation map over power Doppler');
 overlayActivationMap2D(fliplr(PDIA_MIP), fliplr(am_rPDIrs_MIP), x_mm, z_mm, 'Mask', fliplr(am_rPDIrs_MIP) > rt, 'Alpha', 0.7, 'AmapClim', [min(am_rPDIrs_TA, [], 'all'), max(am_rPDIrs_TA, [], 'all')], 'ColorbarLabel', 'am', 'Title', 'Activation map over power Doppler');
 
-
+[ax_bg, ax_amap, h_amap] = overlayActivationMap2D(fliplr(PDIA_MIP), fliplr(am_rPDIrs_MIP), x_mm, z_mm, 'Mask', fliplr(am_rPDIrs_MIP) > rt, 'Alpha', 0.7, 'AmapClim', [min(am_rPDIrs_TA, [], 'all'), max(am_rPDIrs_TA, [], 'all')], 'ColorbarLabel', 'am', 'Title', 'Activation map over power Doppler');
 %% tl-fUS trial averaging and correlation
 CBVirs = permute(interp1(sfCenters(1:size(CBViallSF{3}, 4)), permute(CBViallSF{3}, [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
 

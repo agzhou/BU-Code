@@ -224,7 +224,9 @@ rr = 10; % Resampling rate [Hz]
 
 % stimrs1T = zeros(P.apis.seq_length_s * rr, 1); % Resampled stim for 1 trial
 % stimrs1T(P.apis.delay_time_ms/1e3 * rr + 1 : 1 : (P.apis.delay_time_ms/1e3 + P.apis.stim_length_s) * rr) = 1;
-stim_delay = 1; % stim is delayed for 1 second compared to the acquisition start... [s]
+% stim_delay = 1; % stim is delayed for 1 second compared to the acquisition start... [s]
+stim_delay = stimOnsetTimestamps(1) - P.apis.delay_time_ms/1e3;
+
 stimrs1T = zeros(P.apis.seq_length_s * rr, 1); % Resampled stim for 1 trial
 stimrs1T((P.apis.delay_time_ms/1e3 + stim_delay) * rr + 1 : 1 : ((P.apis.delay_time_ms/1e3 + stim_delay) + P.apis.stim_length_s) * rr) = 1;
 
