@@ -381,7 +381,9 @@ rt = 0.1; % r threshold
 overlayActivationMap2D(PDIA_MIP, am_rPDIrs_MIP, x_mm, z_mm, 'Mask', am_rPDIrs_MIP > rt, 'Alpha', 0.7, 'AmapClim', [min(am_rPDIrs_TA, [], 'all'), max(am_rPDIrs_TA, [], 'all')], 'ColorbarLabel', 'am', 'Title', 'Activation map over power Doppler');
 overlayActivationMap2D(fliplr(PDIA_MIP), fliplr(am_rPDIrs_MIP), x_mm, z_mm, 'Mask', fliplr(am_rPDIrs_MIP) > rt, 'Alpha', 0.7, 'AmapClim', [min(am_rPDIrs_TA, [], 'all'), max(am_rPDIrs_TA, [], 'all')], 'ColorbarLabel', 'am', 'Title', 'Activation map over power Doppler');
 
-[ax_bg, ax_amap, h_amap] = overlayActivationMap2D(fliplr(PDIA_MIP), fliplr(am_rPDIrs_MIP), x_mm, z_mm, 'Mask', fliplr(am_rPDIrs_MIP) > rt, 'Alpha', 0.7, 'AmapClim', [min(am_rPDIrs_TA, [], 'all'), max(am_rPDIrs_TA, [], 'all')], 'ColorbarLabel', 'am', 'Title', 'Activation map over power Doppler');
+%  TO DO: incorporate the 3D ROI and average timecourse stuff as in
+%         test_3D_activation_roi_mask.m, but as a function
+
 %% tl-fUS trial averaging and correlation
 CBVirs = permute(interp1(sfCenters(1:size(CBViallSF{3}, 4)), permute(CBViallSF{3}, [4, 1, 2, 3]), stimTimestamps(1):1/rr:stimTimestamps(end), "linear", "extrap"), [2, 3, 4, 1]);
 
