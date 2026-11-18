@@ -281,6 +281,37 @@ rt = 0.4; % r threshold
 overlayActivationMap2D(PDIA{3}.^0.5, r_rPDIrs_TA, x_mm, z_mm, 'Mask', r_rPDIrs_TA > 0.4, 'Alpha', 0.7, 'AmapClim', [0.2, 0.8], 'ColorbarLabel', 'r', 'Title', 'Activation map over power Doppler');
 % overlayActivationMap2D(fliplr(PDIA{3}).^0.5, fliplr(r_rPDIrs_TA), x_mm, z_mm, 'Mask', fliplr(r_rPDIrs_TA) > rt, 'Alpha', 0.7, 'AmapClim', [0.2, 0.8], 'ColorbarLabel', 'r', 'Title', 'Activation map over power Doppler');
 
+%% Look at the timecourse from a ROI (rPDI)
+figure; imagesc(x_mm, z_mm, r_rPDIrs_TA); colormap jet; xlabel('x'); ylabel('z'); title('r'); daspect([PData.PDelta(1), PData.PDelta(1), PData.PDelta(3)])
+roi_mask = roipoly; % manually define the ROI
+figure; imagesc(roi_mask)
+
+% numPtsUSI = P.Mcr_fcp.apis.seq_length_s * P.daqrate / interp_factor; % # of time points per trial for the upsampling
+numPtsUSI = size(PDIrs_TA, fDim);
+% Calculate the timecourse from the average within that ROI
+roi_rPDIrs_TA = zeros(size(rPDIrs_TA, 3), 1);
+% repmat(roi_mask, [1, 1, stim_pattern.trial_duration])
+for ti = 1:numPtsUSI
+% for ti = 1
+     temp_rPDIrs_TA = rPDIrs_TA(:, :, ti);
+     temp_roi_rPDIrs_avg = mean(temp_rPDIrs_TA(roi_mask));
+     roi_rPDIrs_TA(ti) = temp_roi_rPDIrs_avg;
+end
+
+% Plot the average timecourse in the ROI
+rsT = (0:numPtsUSI-1) ./ rr; % Resampled time vector [s]
+figure; plot(rsT, roi_rPDIrs_TA, 'LineWidth', 2); xlabel('Time [s]'); ylabel('rPDI'); title('ROI and trial-averaged rPDI')
+hold on
+% plot(rsT, stimrs1T)
+
+maxValue = max(roi_rPDIrs_TA) + 0.01; % max value of the stim, for shading
+minValue = min(roi_rPDIrs_TA) - 0.01;
+yshade = [maxValue, minValue, minValue, maxValue]; % Go top right and clockwise for the shading patch vertices
+xshade = [((P.apis.delay_time_ms/1e3 + stim_delay) + P.apis.stim_length_s), ((P.apis.delay_time_ms/1e3 + stim_delay) + P.apis.stim_length_s), (P.apis.delay_time_ms/1e3 + stim_delay), (P.apis.delay_time_ms/1e3 + stim_delay)];
+patch(xshade, yshade, 'g', 'FaceAlpha', .1, 'EdgeAlpha', 0) % Plot the shaded region
+ylim([minValue, maxValue])
+legend("rPDI", "Stim on")
+clearvars xshade yshade maxValue minValue
 %% Trial separation and averaging - vUS
 % Calculate trial windows at the resampled rate
 trial_windows = cell(P.numTrials, 1);
