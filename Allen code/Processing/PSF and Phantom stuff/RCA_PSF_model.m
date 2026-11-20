@@ -4,6 +4,7 @@ x0 = 0; y0 = 0; z0 = 0;
 sigma_narrow = 50e-6;
 sigma_wide = 150e-6;
 sigma_axial = 40e-6;
+% sigma_narrow = ans(1); sigma_wide = ans(2); sigma_axial = ans(3);
 x = linspace(x0 - sigma_wide*5, x0 + sigma_wide*5, 100);
 y = linspace(y0 - sigma_wide*5, y0 + sigma_wide*5, 100);
 z = linspace(z0 - sigma_wide*5, z0 + sigma_wide*5, 100);
@@ -18,3 +19,18 @@ PSF = @(x, y, z, x0, y0, z0, sigma_narrow, sigma_wide, sigma_axial) ...
 
 test = PSF(X, Y, Z, x0, y0, z0, sigma_narrow, sigma_wide, sigma_axial);
 volumeViewer(test)
+
+% Plot the RC and CR PSFs
+PSF1 = @(x, y, z, x0, y0, z0, sigma_narrow, sigma_wide, sigma_axial) ...
+        exp(-(x - x0).^2 ./ (2*sigma_narrow^2) - (y - y0).^2 ./ (2*sigma_wide^2)) ...
+        .* exp(-(z - z0).^2 ./ (2*sigma_axial^2));
+
+PSF2 = @(x, y, z, x0, y0, z0, sigma_narrow, sigma_wide, sigma_axial) ...
+        exp(-(x - x0).^2 ./ (2*sigma_wide^2) - (y - y0).^2 ./ (2*sigma_narrow^2)) ...
+        .* exp(-(z - z0).^2 ./ (2*sigma_axial^2));
+
+test1 = PSF1(X, Y, Z, x0, y0, z0, sigma_narrow, sigma_wide, sigma_axial);
+test2 = PSF2(X, Y, Z, x0, y0, z0, sigma_narrow, sigma_wide, sigma_axial);
+volumeViewer(test1)
+volumeViewer(test2)
+
