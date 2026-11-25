@@ -26,9 +26,9 @@ codeDir_split = split(string(codeDir), filesep);
 AllenProcessingCodePath = fullfile(join(codeDir_split(1:find(contains(codeDir_split, "BU-Code"))), '\') + "\Allen Code\Processing\");
 addpath(genpath(AllenProcessingCodePath))
 
-cd 'C:\Verasonics\Vantage Releases\Vantage-5.0.1-p1'
+% cd 'C:\Verasonics\Vantage Releases\Vantage-5.0.1-p1' % bme-boas-61
 % cd 'C:\Users\BOAS-US\Desktop\Vantage-5.0.0-p1'
-% cd 'C:\Users\agzhou\Vantage-5.0.1-p1' % BME-BOAS-29
+cd 'C:\Users\agzhou\Vantage-5.0.1-p1' % BME-BOAS-29
 % cd 'C:\Users\BOAS-US\Desktop\Vantage-4.9.7-2505271400' % Lab PC (bme-boas-19)
 % addpath 'C:\Users\BOAS-US\Documents\Allen\GitHub\BU-Code\Allen code\Processing'
 % addpath 'C:\Users\BOAS-US\Documents\GitHub\BU-Code\Allen code\Processing'
