@@ -9,6 +9,7 @@
 % Input folder: params.mat (structure P) and either
 %           RF-<maxAngle>-<na>-<frameRate>-<numFrames>-1-<file #>.mat   (RcvData)         Verasonics .mat saves, or
 %           <P.fsFileName><file #, 5 digits>.rf                          (binary, int16)   Verasonics FastSave
+%           RFc-<file #>.mat                                             (RcvData)         compressed by RCA_compressRF_loop.m
 %         (see Opts.fileFormat)
 % Output: one file per RF file in the save folder, named like the Verasonics recon output (the 'RF-' prefix is replaced; the
 %         .rf files get IQ-<maxAngle>-<na>-<frameRate>-<numFrames>-1-<file #>.mat, as in the Verasonics loop for them):
@@ -54,8 +55,10 @@
 %     pixelSpacingWl   [x, y, z] pixel spacing in wavelengths (default [0.5, 0.5, 0.5])
 %     output           'OPW' (default) or 'RCCR'
 %     unstackedFrames  true (default) or false, see the Notes
-%     fileFormat       'auto' (default), 'mat' or 'rf'. auto: the .mat files if the folder has RF-*.mat files, else the .rf files
-%                      named by P.fsFileName. If it has both, auto uses the .mat files ('rf' to use the others)
+%     fileFormat       'auto' (default), 'mat', 'rf' or 'rfc'. auto: the RFc-*.mat compressed files if the folder has any, else
+%                      the .mat files if it has RF-*.mat files, else the .rf files named by P.fsFileName. The RFc files
+%                      (RcvData (# samples per acquisition, 2*na, numElements, # frames), see compressRCA_RF) are used as is,
+%                      without unstackFrames
 %     overwrite        false: skip files that already have an output (default)
 %     das              struct of options passed to RCA_DAS_rcabeam (frameChunk, fNumber, pythonExe, backend, ...)
 %
@@ -219,19 +222,13 @@ addpath(genpath(processingbeamCodePath))
     for k = 1:numel(f) % Loop through files
 
         % Get the file index from the RF name
-        if strcmp(fmt, 'rf')
-            temp = strsplit(f(k).name, '-');
-            temp2 = strsplit(temp{end}, '.');
-            if strcmp(temp2{1}, '00000')
-                fileInd = 0;
-            else
-                fileInd = strip(temp2{1}, 'left', '0');
-            end
+        if any(strcmp(fmt, {'rf', 'rfc'}))
+            fileInd = fileNum(k); % the number in the .rf name (FastSave starts at 0), which the RFc files keep
         else
             error('Code is not set up to get the file index properly for non FastSave data')
         end
 
-        if strcmp(fmt, 'rf')
+        if any(strcmp(fmt, {'rf', 'rfc'}))
             % like the Verasonics loops: IQ-<maxAngle>-<na>-<frameRate>-<numFramesPerBuffer>-1-<file #>
             outName = sprintf('%s%d-%d-%d-%d-1-%d.mat', namePrefix, round(P.maxAngle), P.na, round(P.frameRate), P.numFramesPerBuffer, fileNum(k));
         else
@@ -253,18 +250,23 @@ addpath(genpath(processingbeamCodePath))
             RcvData = S.RcvData;
             clear S
         end
-        if Opts.unstackedFrames
+        if strcmp(fmt, 'rfc')
+            r = RcvData; % (# samples per acquisition, 2*na, numElements, # frames), already unstacked and remapped
+            frameDim = 4;
+        elseif Opts.unstackedFrames
             r = unstackFrames(RcvData, P); % (# samples per frame, # channels, # frames)
+            frameDim = 3;
         else
             r = RcvData;
             if iscell(r), r = r{1}; end
+            frameDim = 3;
         end
         clear RcvData
 
         % RCA_DAS_rcabeam takes the frame count from P.numSubFrames when that exists, so make sure it matches this file
         Pk = P;
         if isfield(Pk, 'numSubFrames')
-            Pk.numSubFrames = size(r, 3);
+            Pk.numSubFrames = size(r, frameDim);
         end
 
         [IQ_CR, IQ_RC, grid] = RCA_DAS_rcabeam(r, Pk, pix(2), pix(1), pix(3), Opts.das);
@@ -341,9 +343,16 @@ addpath(genpath(processingbeamCodePath))
 function [f, fileNum, fmt] = findRFFiles(datapath, P, fileFormat)
 
     fileFormat = lower(fileFormat);
-    if ~ismember(fileFormat, {'auto', 'mat', 'rf'})
-        error('Opts.fileFormat must be auto, mat or rf')
+    if ~ismember(fileFormat, {'auto', 'mat', 'rf', 'rfc'})
+        error('Opts.fileFormat must be auto, mat, rf or rfc')
     end
+
+    % compressed .mat saves (RCA_compressRF_loop.m): RFc-<file #>.mat
+    fc = dir(fullfile(datapath, 'RFc-*.mat'));
+    tokc = regexp({fc.name}, '^RFc-(\d+)\.mat$', 'tokens', 'once');
+    isC = ~cellfun(@isempty, tokc);
+    fc = fc(isC);
+    numC = cellfun(@(t) str2double(t{1}), tokc(isC));
 
     % .mat saves: RF-...-<file #>.mat
     fm = dir(fullfile(datapath, 'RF-*.mat'));
@@ -365,7 +374,12 @@ function [f, fileNum, fmt] = findRFFiles(datapath, P, fileFormat)
 
     switch fileFormat
         case 'auto'
-            if ~isempty(fm)
+            if ~isempty(fc)
+                fmt = 'rfc';
+                if ~isempty(fm) || ~isempty(fr)
+                    fprintf('The folder also has uncompressed RF files, using the RFc-*.mat files (Opts.fileFormat to choose)\n')
+                end
+            elseif ~isempty(fm)
                 fmt = 'mat';
                 if ~isempty(fr)
                     fprintf('The folder has both .mat and .rf RF files, using the .mat files (Opts.fileFormat = ''rf'' for the others)\n')
@@ -373,8 +387,10 @@ function [f, fileNum, fmt] = findRFFiles(datapath, P, fileFormat)
             elseif ~isempty(fr)
                 fmt = 'rf';
             else
-                error('No RF files in %s (RF-*-<file #>.mat, or <P.fsFileName><file #>.rf)', datapath)
+                error('No RF files in %s (RFc-<file #>.mat, RF-*-<file #>.mat, or <P.fsFileName><file #>.rf)', datapath)
             end
+        case 'rfc'
+            fmt = 'rfc';
         case 'mat'
             fmt = 'mat';
         case 'rf'
@@ -383,9 +399,13 @@ function [f, fileNum, fmt] = findRFFiles(datapath, P, fileFormat)
                 error('P has no fsFileName, so the .rf file names are unknown')
             end
     end
-    if strcmp(fmt, 'mat'), f = fm; fileNum = numM; else, f = fr; fileNum = numR; end
+    switch fmt
+        case 'mat', f = fm; fileNum = numM;
+        case 'rfc', f = fc; fileNum = numC;
+        otherwise,  f = fr; fileNum = numR;
+    end
     if isempty(f)
-        error('No .%s RF files in %s', fmt, datapath)
+        error('No %s RF files in %s', fmt, datapath)
     end
     [fileNum, order] = sort(fileNum);
     f = f(order);

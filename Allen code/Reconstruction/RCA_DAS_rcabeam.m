@@ -5,7 +5,9 @@
 % with the same inputs, pixel grid (Verasonics PData by default) and delay model (plane wave TX time of flight referenced to the first-firing edge
 % element, TW.peak, lens correction, startDepth), so it can replace it in the recon loop.
 
-% Input: RF data and various parameters (same as RCA_DAS_ffdas), plus an optional Opts struct
+% Input: RF data and various parameters (same as RCA_DAS_ffdas), plus an optional Opts struct. The RF is either
+%        (# samples per frame, # channels, # frames) in raw channel order (unstacked, remapped here with Trans.Connector), or
+%        the compressed (# samples per acquisition, 2*na, numElements, # frames) of compressRCA_RF (detected from its size)
 % Output: IQ_CR (TX column, RX row) and IQ_RC (TX row, RX column) volumes, each coherently compounded over the angles.
 %         Size (x, y, z, frames). With Opts.sumOnly, IQ_CR holds the coherent sum of both (OPW) and IQ_RC is empty
 %         grid: struct with the x, y, z pixel coordinates in m
@@ -222,11 +224,20 @@ function [IQ_CR, IQ_RC, grid] = RCA_DAS_rcabeam(RcvData, P, ypix_spacing, xpix_s
     else
         r = RcvData;
     end
-    r = r(:, Trans.Connector, :); % (# z samples * # acquisitions, # channels, # frames)
+    % Compressed layout from compressRCA_RF: (ns, 2*na, numElements, # frames), the receive elements of each acquisition
+    % already in element order. Told apart from the full (ns * 2*na, # channels, # frames) by the size of the first 3 dims
+    % (also with 1 frame, when MATLAB drops the 4th dim)
+    G.compressed = size(r, 1) == ns && size(r, 2) == 2*na && size(r, 3) == numElements;
+    if G.compressed
+        frameDim = 4;
+    else
+        r = r(:, Trans.Connector, :); % (# z samples * # acquisitions, # channels, # frames)
+        frameDim = 3;
+    end
     if isfield(P, 'numSubFrames') % older P structures name the frame count differently, so take it from the data
         nf = P.numSubFrames;
     else
-        nf = size(r, 3);
+        nf = size(r, frameDim);
     end
     nT = min(Opts.frameChunk, nf); % frames per workspace call
 
@@ -336,7 +347,11 @@ function D = prepGroup(r, fi, nT, Receive, grp, G, Opts, useGPU)
 
     for k = 1:na
         a = grp.acq(k);
-        x = r(Receive(a).startSample : Receive(a).endSample, grp.ch, fi); % (# samples, # channels, # frames), still int16 for the transfer
+        if G.compressed
+            x = reshape(r(:, a, :, fi), ns, nc, nfc); % dim 3 holds this group's receive elements (compressRCA_RF)
+        else
+            x = r(Receive(a).startSample : Receive(a).endSample, grp.ch, fi); % (# samples, # channels, # frames), still int16 for the transfer
+        end
         if size(x, 1) ~= ns
             error('Acquisition %d has %d samples, expected %d', a, size(x, 1), ns)
         end
